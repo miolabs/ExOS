@@ -1,1 +1,3 @@
-Welcome to ExOS motherfuckero
+Welcome to ExOS
+Currently testing...
+
