@@ -1,0 +1,213 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		14A6326A15F5E445004463F3 /* UART.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 14A6326915F5E445004463F3 /* UART.1 */; };
+		14A6327115F5E463004463F3 /* uart.c in Sources */ = {isa = PBXBuildFile; fileRef = 14A6327015F5E463004463F3 /* uart.c */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		14A6326115F5E445004463F3 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+				14A6326A15F5E445004463F3 /* UART.1 in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		14A6326315F5E445004463F3 /* UART */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = UART; sourceTree = BUILT_PRODUCTS_DIR; };
+		14A6326915F5E445004463F3 /* UART.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = UART.1; sourceTree = "<group>"; };
+		14A6327015F5E463004463F3 /* uart.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = uart.c; path = ../../../source/uart.c; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		14A6326015F5E445004463F3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		14A6325815F5E445004463F3 = {
+			isa = PBXGroup;
+			children = (
+				14A6326615F5E445004463F3 /* UART */,
+				14A6326415F5E445004463F3 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		14A6326415F5E445004463F3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				14A6326315F5E445004463F3 /* UART */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		14A6326615F5E445004463F3 /* UART */ = {
+			isa = PBXGroup;
+			children = (
+				14A6327015F5E463004463F3 /* uart.c */,
+				14A6326915F5E445004463F3 /* UART.1 */,
+			);
+			path = UART;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		14A6326215F5E445004463F3 /* UART */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 14A6326D15F5E445004463F3 /* Build configuration list for PBXNativeTarget "UART" */;
+			buildPhases = (
+				14A6325F15F5E445004463F3 /* Sources */,
+				14A6326015F5E445004463F3 /* Frameworks */,
+				14A6326115F5E445004463F3 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = UART;
+			productName = UART;
+			productReference = 14A6326315F5E445004463F3 /* UART */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		14A6325A15F5E445004463F3 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0440;
+				ORGANIZATIONNAME = MIOLabs;
+			};
+			buildConfigurationList = 14A6325D15F5E445004463F3 /* Build configuration list for PBXProject "UART" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 14A6325815F5E445004463F3;
+			productRefGroup = 14A6326415F5E445004463F3 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				14A6326215F5E445004463F3 /* UART */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		14A6325F15F5E445004463F3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				14A6327115F5E463004463F3 /* uart.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		14A6326B15F5E445004463F3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		14A6326C15F5E445004463F3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		14A6326E15F5E445004463F3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		14A6326F15F5E445004463F3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		14A6325D15F5E445004463F3 /* Build configuration list for PBXProject "UART" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				14A6326B15F5E445004463F3 /* Debug */,
+				14A6326C15F5E445004463F3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		14A6326D15F5E445004463F3 /* Build configuration list for PBXNativeTarget "UART" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				14A6326E15F5E445004463F3 /* Debug */,
+				14A6326F15F5E445004463F3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 14A6325A15F5E445004463F3 /* Project object */;
+}
