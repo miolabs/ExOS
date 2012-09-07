@@ -1,0 +1,20 @@
+#ifndef EXOS_PANIC_H
+#define EXOS_PANIC_H
+
+#include <kernel/types.h>
+
+typedef enum
+{
+	KERNEL_ERROR_UNKNOWN = 0,
+	KERNEL_ERROR_NULL_POINTER,
+	KERNEL_ERROR_STACK_OVERFLOW,
+    KERNEL_ERROR_STACK_CORRUPTED,
+    KERNEL_ERROR_WRONG_NODE,
+    KERNEL_ERROR_LIST_CORRUPTED,
+} KERNEL_ERROR;
+
+void kernel_panic(KERNEL_ERROR error);
+void __kernel_panic();
+
+#endif // EXOS_PANIC_H
+
