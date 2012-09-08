@@ -1,6 +1,11 @@
 #include <CMSIS/system_LPC17xx.h>
+<<<<<<< HEAD
 #include <kernel/startup.h>
 #include <kernel/machine/hal.h>
+=======
+#include <kernel/types.h>
+#include <kernel/startup.h>
+>>>>>>> 5c314a936eb4b82d55df2ee2c11c7f12fc824acb
 
 #define __init __attribute__((section(".init")))
 #define __naked __attribute__((naked))
@@ -98,8 +103,11 @@ void __weak CANActivity_IRQHandler();
 #pragma weak USBACT_IRQHandler = Default_Handler        
 #pragma weak CANACT_IRQHandler = Default_Handler 
 
+<<<<<<< HEAD
 extern int __stack_process_start__;
 extern int __stack_process_end__;
+=======
+>>>>>>> 5c314a936eb4b82d55df2ee2c11c7f12fc824acb
 extern int __data_load_start__;
 extern int __data_start__;
 extern int __data_end__;
@@ -108,6 +116,7 @@ extern int __bss_end__;
 
 __init __naked void Reset_Handler() 
 {
+<<<<<<< HEAD
 #ifdef DEBUG
 	// initialize process stack
 	__mem_set(&__stack_process_start__, &__stack_process_end__, 0xcc);
@@ -120,6 +129,8 @@ __init __naked void Reset_Handler()
 		"msr control, %0"
 		: : "r" (psp));
 
+=======
+>>>>>>> 5c314a936eb4b82d55df2ee2c11c7f12fc824acb
 	// initialize data sections
 	__mem_copy(&__data_start__, &__data_end__, &__data_load_start__);
 	// initialize bss sections
