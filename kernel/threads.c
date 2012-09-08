@@ -2,16 +2,10 @@
 #include "list.h"
 #include "panic.h"
 #include "syscall.h"
-<<<<<<< HEAD
 #include "machine/hal.h"
 
 // stack limits
 extern unsigned long __stack_process_start__;
-=======
-
-// stack limits
-extern unsigned long __stack_start__;
->>>>>>> 5c314a936eb4b82d55df2ee2c11c7f12fc824acb
 
 // global running thread
 EXOS_THREAD *__running_thread;
@@ -28,11 +22,7 @@ void __threads_init()
 	// initialize system thread
 	_system_thread = (EXOS_THREAD) 
 	{
-<<<<<<< HEAD
 		.StackStart = &__stack_process_start__,
-=======
-		.StackStart = (unsigned long)&__stack_start__,
->>>>>>> 5c314a936eb4b82d55df2ee2c11c7f12fc824acb
 		.Node.Priority = -128,
 #ifdef DEBUG
 		.Node.Type = EXOS_NODE_THREAD,
@@ -78,7 +68,6 @@ EXOS_THREAD *__kernel_schedule()
 	return first;
 }
 
-<<<<<<< HEAD
 void threads_create(EXOS_THREAD *thread, int pri, void *stack, int stack_size, THREAD_FUNC entry, void *arg)
 {
 	stack_size = stack_size & ~7;	// align stack size
@@ -142,5 +131,3 @@ void threads_set_pri(int pri)
 {
 	__kernel_do(_set_pri, pri);
 }
-=======
->>>>>>> 5c314a936eb4b82d55df2ee2c11c7f12fc824acb
