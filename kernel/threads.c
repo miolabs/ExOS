@@ -5,7 +5,7 @@
 #include "machine/hal.h"
 
 // stack limits
-extern unsigned long __stack_start__;
+extern unsigned long __stack_process_start__;
 
 // global running thread
 EXOS_THREAD *__running_thread;
@@ -22,7 +22,7 @@ void __threads_init()
 	// initialize system thread
 	_system_thread = (EXOS_THREAD) 
 	{
-		.StackStart = (unsigned long)&__stack_start__,
+		.StackStart = &__stack_process_start__,
 		.Node.Priority = -128,
 #ifdef DEBUG
 		.Node.Type = EXOS_NODE_THREAD,
@@ -68,3 +68,66 @@ EXOS_THREAD *__kernel_schedule()
 	return first;
 }
 
+void threads_create(EXOS_THREAD *thread, int pri, void *stack, int stack_size, THREAD_FUNC entry, void *arg)
+{
+	stack_size = stack_size & ~7;	// align stack size
+
+#ifdef DEBUG
+	__mem_set(stack, stack + stack_size, 0xcc);
+#endif
+	
+	void *stack_frame = __machine_init_thread_stack(stack + stack_size,
+		(unsigned long)arg, (unsigned long)entry, (unsigned long)threads_join);
+
+#ifdef DEBUG	
+	if (stack_frame <= stack ||
+		*(unsigned long *)stack != 0xcccccccc)
+		kernel_panic(KERNEL_ERROR_STACK_INSUFFICIENT);
+#endif
+
+	*thread = (EXOS_THREAD)
+	{
+#ifdef DEBUG	
+		.Node.Type = EXOS_NODE_THREAD,
+#endif
+		.Node.Priority = pri,
+		.SP = stack_frame,
+		.StackStart = stack,
+	};
+
+	__kernel_do(_add_thread, thread);
+}
+
+static int _join(unsigned long *args)
+{
+	EXOS_THREAD *thread = (EXOS_THREAD *)list_find_node(&_ready, (EXOS_NODE *)__running_thread);
+	if (thread == NULL) kernel_panic(KERNEL_ERROR_THREAD_NOT_READY);
+
+	thread->State = EXOS_THREAD_FINISHED;
+	list_remove((EXOS_NODE *)thread);
+
+	__machine_req_switch();
+	return 0;
+}
+
+void threads_join()
+{
+	__kernel_do(_join);
+
+	__kernel_panic();
+}
+
+static int _set_pri(unsigned long *args)
+{
+	int priority = (int)args[0];
+
+	__running_thread->Node.Priority = priority;
+	
+	__machine_req_switch();
+	return 0;
+}
+
+void threads_set_pri(int pri)
+{
+	__kernel_do(_set_pri, pri);
+}

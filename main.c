@@ -1,6 +1,6 @@
-
+static int _check = 0;
 
 void main()
 {
-	while(1);
+	_check = 1;
 }

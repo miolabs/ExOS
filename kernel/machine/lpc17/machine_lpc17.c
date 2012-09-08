@@ -1,3 +1,4 @@
+#include <kernel/machine/hal.h>
 #include <kernel/startup.h>
 #include <kernel/threads.h>
 #include <kernel/panic.h>
@@ -8,8 +9,6 @@ extern EXOS_THREAD *__running_thread;
 
 void __machine_init()
 {
-	
-
 	// set lowest priority for PendSV
 	NVIC_SetPriority(PendSV_IRQn, 0xFF);	
 
@@ -29,12 +28,13 @@ void __machine_req_switch()
 
 __naked void PendSV_Handler()
 {
-	register unsigned long psp __asm__("r0");
+	register void *psp __asm__("r0");
 
 	// save high registers in process stack
 	__asm__ volatile (
-		"MRS %0, psp\n\t"
-		"STMDB %0!, {r4-r11}\n\t"
+		"push {lr}\n\t"
+		"mrs %0, psp\n\t"
+		"stmdb %0!, {r4-r11}\n\t"
 		: "=r" (psp));
 
 	if (__running_thread == NULL)
@@ -52,8 +52,9 @@ __naked void PendSV_Handler()
 	psp = __running_thread->SP;
 	// restore high registers from process stack
 	__asm__ volatile (
-		"LDMIA %0!, {r4-r11}\n\t"
-		"MSR psp, %0\n\t"
+		"ldmia %0!, {r4-r11}\n\t"
+		"msr psp, %0\n\t"
+		"pop {pc}\n\t"
 		: : "r" (psp));
 }
 
@@ -91,4 +92,30 @@ __naked int __kernel_do(EXOS_SYSTEM_FUNC entry, ...)
 		"svc #0\n\t"
 		"pop {pc}");
 #endif
+}
+
+void *__machine_init_thread_stack(void *stack_end, unsigned long arg, unsigned long pc, unsigned long lr)
+{
+	unsigned long *frame = (unsigned long *)stack_end;
+	*--frame = 0x21000000; // xPSR (C + T)
+	*--frame = pc;
+	*--frame = lr;
+	*--frame = 12;
+
+	*--frame = 3;
+	*--frame = 2;
+	*--frame = 1;
+	*--frame = arg;
+
+	*--frame = 11;
+	*--frame = 10;
+	*--frame = 9;
+	*--frame = 8;
+
+	*--frame = 7;
+	*--frame = 6;
+	*--frame = 5;
+	*--frame = 4;
+
+	return frame;
 }
