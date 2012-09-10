@@ -1,5 +1,6 @@
 #include "startup.h"
-#include "threads.h"
+#include "thread.h"
+#include "timer.h"
 #include "machine/hal.h"
 
 void main();
@@ -11,10 +12,11 @@ void __kernel_start()
 {
 	__machine_init();
 	//__mem_init();
-	__threads_init();
+	__thread_init();
+	__timer_init();
 
 	// create the main thread
-	threads_create(&_main_thread, MAIN_THREAD_PRI, _main_stack, MAIN_THREAD_STACK, (THREAD_FUNC)main, NULL);
+	exos_thread_create(&_main_thread, MAIN_THREAD_PRI, _main_stack, MAIN_THREAD_STACK, main, NULL);
 
 	__machine_idle();
 }

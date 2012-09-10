@@ -31,8 +31,11 @@ void list_enqueue(EXOS_LIST *list, EXOS_NODE *node)
 	EXOS_NODE *pred = LIST_HEAD(list);
 	FOREACH(node_i, list)
 	{
-		if (node_i->Priority >= node->Priority) pred = node_i;
-		else break;
+		if (node_i->Priority < node->Priority) 
+		{
+			pred = node_i->Pred;
+			break;
+		}
 	}
 	list_insert(pred, node);
 }

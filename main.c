@@ -1,6 +1,11 @@
-static int _check = 0;
+#include <kernel/tests/threading_tests.h>
+#include <kernel/posix/tests/basic_pthread_tests.h>
 
 void main()
 {
-	_check = 1;
+	int result = threading_tests();
+
+	result = pthread_tests();
+
+	while(1);
 }

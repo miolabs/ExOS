@@ -1,11 +1,9 @@
 #include <kernel/machine/hal.h>
 #include <kernel/startup.h>
-#include <kernel/threads.h>
+#include <kernel/thread.h>
 #include <kernel/panic.h>
 #include <kernel/syscall.h>
 #include <CMSIS/LPC17xx.h>
-
-extern EXOS_THREAD *__running_thread;
 
 void __machine_init()
 {

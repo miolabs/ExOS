@@ -1,7 +1,9 @@
-#include "threads.h"
+#include "thread.h"
 #include "list.h"
 #include "panic.h"
 #include "syscall.h"
+#include "signal.h"
+#include "timer.h"
 #include "machine/hal.h"
 
 // stack limits
@@ -11,13 +13,15 @@ extern unsigned long __stack_process_start__;
 EXOS_THREAD *__running_thread;
 
 static EXOS_LIST _ready;
+static EXOS_LIST _wait;
 static EXOS_THREAD _system_thread;
 
 static int _add_thread(unsigned long *args);
 
-void __threads_init()
+void __thread_init()
 {
 	list_initialize(&_ready);
+	list_initialize(&_wait);
 
 	// initialize system thread
 	_system_thread = (EXOS_THREAD) 
@@ -68,7 +72,7 @@ EXOS_THREAD *__kernel_schedule()
 	return first;
 }
 
-void threads_create(EXOS_THREAD *thread, int pri, void *stack, int stack_size, THREAD_FUNC entry, void *arg)
+void exos_thread_create(EXOS_THREAD *thread, int pri, void *stack, unsigned stack_size, EXOS_THREAD_FUNC entry, void *arg)
 {
 	stack_size = stack_size & ~7;	// align stack size
 
@@ -77,7 +81,7 @@ void threads_create(EXOS_THREAD *thread, int pri, void *stack, int stack_size, T
 #endif
 	
 	void *stack_frame = __machine_init_thread_stack(stack + stack_size,
-		(unsigned long)arg, (unsigned long)entry, (unsigned long)threads_join);
+		(unsigned long)arg, (unsigned long)entry, (unsigned long)exos_thread_exit);
 
 #ifdef DEBUG	
 	if (stack_frame <= stack ||
@@ -93,12 +97,16 @@ void threads_create(EXOS_THREAD *thread, int pri, void *stack, int stack_size, T
 		.Node.Priority = pri,
 		.SP = stack_frame,
 		.StackStart = stack,
+
+		.SignalsReceived = 0,
+		.SignalsWaiting = 0,
+		.SignalsReserved = EXOS_SIGF_RESERVED_MASK,
 	};
 
 	__kernel_do(_add_thread, thread);
 }
 
-static int _join(unsigned long *args)
+static int _exit(unsigned long *args)
 {
 	EXOS_THREAD *thread = (EXOS_THREAD *)list_find_node(&_ready, (EXOS_NODE *)__running_thread);
 	if (thread == NULL) kernel_panic(KERNEL_ERROR_THREAD_NOT_READY);
@@ -110,9 +118,9 @@ static int _join(unsigned long *args)
 	return 0;
 }
 
-void threads_join()
+void exos_thread_exit()
 {
-	__kernel_do(_join);
+	__kernel_do(_exit);
 
 	__kernel_panic();
 }
@@ -127,7 +135,55 @@ static int _set_pri(unsigned long *args)
 	return 0;
 }
 
-void threads_set_pri(int pri)
+void exos_thread_set_pri(int pri)
 {
 	__kernel_do(_set_pri, pri);
+}
+
+void exos_thread_sleep(unsigned ticks)
+{
+	EXOS_TIMER sleep_timer;
+	exos_timer_create(&sleep_timer, ticks, 0);
+	exos_timer_wait(&sleep_timer);
+}
+
+void __thread_block()
+{
+	EXOS_THREAD *thread = __running_thread;
+	if (thread->State == EXOS_THREAD_READY)
+	{
+#ifdef DEBUG
+		if (NULL == list_find_node(&_ready, (EXOS_NODE *)thread))
+			kernel_panic(KERNEL_ERROR_THREAD_NOT_READY);
+#endif
+		list_remove((EXOS_NODE *)thread);
+
+		thread->State = EXOS_THREAD_WAIT;
+
+		list_enqueue(&_wait, (EXOS_NODE *)thread);
+
+		__machine_req_switch();
+	}
+}
+
+void __thread_unblock(EXOS_THREAD *thread)
+{
+#ifdef DEBUG
+	if (thread == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+
+	if (thread->State == EXOS_THREAD_WAIT)
+	{
+#ifdef DEBUG
+		if (NULL == list_find_node(&_wait, (EXOS_NODE *)thread))
+			kernel_panic(KERNEL_ERROR_THREAD_NOT_WAITING);
+#endif
+		list_remove((EXOS_NODE *)thread);
+
+		thread->State = EXOS_THREAD_READY;
+
+		list_enqueue(&_ready, (EXOS_NODE *)thread);
+	
+		__machine_req_switch();
+	}
 }
