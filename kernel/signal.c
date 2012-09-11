@@ -6,6 +6,8 @@ void __signal_set(EXOS_THREAD *thread, unsigned long mask)
 	thread->SignalsReceived |= mask;
 	if (mask & thread->SignalsWaiting)
 	{
+		thread->SignalsWaiting &= ~mask;
+
 		//TODO: use thread context to implement signal handlers
 		__thread_unblock(thread);
 	}
@@ -86,15 +88,15 @@ int exos_signal_alloc()
 
 
 
-void __signal_free(int signal)
+void __signal_free(EXOS_THREAD *thread, int signal)
 {
-	__running_thread->SignalsReserved &= ~(1 << signal);
+	thread->SignalsReserved &= ~(1 << signal);
 }
 
 static int _sig_free(unsigned long *args)
 {
 	int signal = (int)args[0];
-	__signal_free(signal);
+	__signal_free(__running_thread, signal);
 }
 
 void exos_signal_free(int signal)

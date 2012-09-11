@@ -18,7 +18,7 @@ typedef EXOS_SIGNAL_HANDLER EXOS_SIGNAL_HANDLER_TABLE[32];
 
 void __signal_set(EXOS_THREAD *thread, unsigned long mask);
 int __signal_alloc();
-void __signal_free(int signal);
+void __signal_free(EXOS_THREAD *thread, int signal);
 
 int exos_signal_alloc();
 void exos_signal_free(int signal);

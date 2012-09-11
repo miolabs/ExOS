@@ -4,9 +4,12 @@
 #include <kernel/panic.h>
 #include <kernel/syscall.h>
 #include <CMSIS/LPC17xx.h>
+#include <support/board_hal.h>
 
 void __machine_init()
 {
+	hal_board_initialize();
+
 	// set lowest priority for PendSV
 	NVIC_SetPriority(PendSV_IRQn, 0xFF);	
 

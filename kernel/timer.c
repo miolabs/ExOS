@@ -39,6 +39,9 @@ static int _add_timer(unsigned long *args)
 int exos_timer_create(EXOS_TIMER *timer, unsigned long time, unsigned long period)
 {
 #ifdef DEBUG
+	if (timer == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+
 	timer->Node = (EXOS_NODE) { .Type = EXOS_NODE_TIMER };
 #endif
 	timer->Time = time;
@@ -51,6 +54,8 @@ int exos_timer_create(EXOS_TIMER *timer, unsigned long time, unsigned long perio
 int exos_timer_wait(EXOS_TIMER *timer)
 {
 #ifdef DEBUG
+	if (timer == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
 	if (timer->Node.Type != EXOS_NODE_TIMER)
 		kernel_panic(KERNEL_ERROR_TIMER_NOT_FOUND);
 	if (timer->Owner != __running_thread)
@@ -61,6 +66,17 @@ int exos_timer_wait(EXOS_TIMER *timer)
 }
 
 
+static inline void _rem_timer_cleanup(EXOS_TIMER *timer, EXOS_TIMER_STATE state)
+{
+#ifdef DEBUG
+	if (timer == NULL || timer->Owner == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+	__signal_free(timer->Owner, timer->Signal);
+
+	list_remove((EXOS_NODE *)timer);
+	timer->State = state;
+}
 
 static int _rem_timer(unsigned long *args)
 {
@@ -73,8 +89,7 @@ static int _rem_timer(unsigned long *args)
 			kernel_panic(KERNEL_ERROR_TIMER_NOT_FOUND);
 #endif
 
-		list_remove((EXOS_NODE *)timer);
-		timer->State = EXOS_TIMER_ABORTED;
+		_rem_timer_cleanup(timer, EXOS_TIMER_ABORTED);
 	}
 	return 0;
 }
@@ -82,6 +97,8 @@ static int _rem_timer(unsigned long *args)
 void exos_timer_abort(EXOS_TIMER *timer)
 {
 #ifdef DEBUG
+	if (timer == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
 	if (timer->Node.Type != EXOS_NODE_TIMER)
 		kernel_panic(KERNEL_ERROR_TIMER_NOT_FOUND);
 	if (timer->Owner != __running_thread)
@@ -105,8 +122,7 @@ static int _signal_timer(unsigned long *args)
 
 	if (timer->Period == 0)
 	{
-		list_remove((EXOS_NODE *)timer);
-		timer->State = EXOS_TIMER_FINISHED;
+		_rem_timer_cleanup(timer, EXOS_TIMER_FINISHED);
 	}
 	else
 	{
