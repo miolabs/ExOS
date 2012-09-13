@@ -18,9 +18,9 @@ typedef struct
 	EXOS_THREAD_STATE State;
 	void *SP;
 	void *StackStart;
-	unsigned long SignalsWaiting;
-	unsigned long SignalsReceived;
-	unsigned long SignalsReserved;
+	volatile unsigned long SignalsWaiting;
+	volatile unsigned long SignalsReceived;
+	volatile unsigned long SignalsReserved;
 	void *ThreadContext;	// TODO
 } EXOS_THREAD;
 

@@ -143,7 +143,7 @@ void exos_thread_set_pri(int pri)
 void exos_thread_sleep(unsigned ticks)
 {
 	EXOS_TIMER sleep_timer;
-	exos_timer_create(&sleep_timer, ticks, 0);
+	exos_timer_create(&sleep_timer, ticks, 0, EXOS_SIGB_ABORT);
 	exos_timer_wait(&sleep_timer);
 }
 

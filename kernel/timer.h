@@ -31,9 +31,11 @@ typedef struct
 } EXOS_TIMER;
 
 void __timer_init();
+void __timer_create_timer(EXOS_TIMER *timer, EXOS_SIGNAL signal);
+void __timer_destroy_timer(EXOS_TIMER *timer);
 
-int exos_timer_create(EXOS_TIMER *timer, unsigned long time, unsigned long period);
-int exos_timer_wait(EXOS_TIMER *timer);
+int exos_timer_create(EXOS_TIMER *timer, unsigned long time, unsigned long period, EXOS_SIGNAL signal);
+void exos_timer_wait(EXOS_TIMER *timer);
 void exos_timer_abort(EXOS_TIMER *timer);
 
 #endif // EXOS_TIMER_H

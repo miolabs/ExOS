@@ -1,5 +1,6 @@
 #include "signal.h"
 #include "syscall.h"
+#include "panic.h"
 
 void __signal_set(EXOS_THREAD *thread, unsigned long mask)
 {
@@ -30,8 +31,6 @@ void exos_signal_set(EXOS_THREAD *thread, unsigned long mask)
 	__kernel_do(_set_signal, thread, mask);
 }
 
-
-
 static int _check_signal(unsigned long *args)
 {
 	EXOS_THREAD *thread = __running_thread;
@@ -58,7 +57,7 @@ unsigned long exos_signal_wait(unsigned long mask)
 
 
 
-int __signal_alloc()
+EXOS_SIGNAL __signal_alloc()
 {
 	EXOS_THREAD *thread = __running_thread;
 	unsigned long allocated = thread->SignalsReserved;
@@ -73,10 +72,10 @@ int __signal_alloc()
 			return i;
 		}
 	}
-	return -1;
+	kernel_panic(KERNEL_ERROR_NO_SIGNALS_AVAILABLE);
 }
 
-static int _sig_alloc(unsigned long *args)
+static EXOS_SIGNAL _sig_alloc(unsigned long *args)
 {
 	return __signal_alloc();
 }
@@ -88,18 +87,23 @@ int exos_signal_alloc()
 
 
 
-void __signal_free(EXOS_THREAD *thread, int signal)
+void __signal_free(EXOS_THREAD *thread, EXOS_SIGNAL signal)
 {
+#ifdef DEBUG
+	if (signal < EXOS_SIGB_RESERVED_COUNT)
+		__kernel_panic();
+#endif
+
 	thread->SignalsReserved &= ~(1 << signal);
 }
 
 static int _sig_free(unsigned long *args)
 {
-	int signal = (int)args[0];
+	EXOS_SIGNAL signal = (EXOS_SIGNAL)args[0];
 	__signal_free(__running_thread, signal);
 }
 
-void exos_signal_free(int signal)
+void exos_signal_free(EXOS_SIGNAL signal)
 {
 	__kernel_do(_sig_free, signal);
 }

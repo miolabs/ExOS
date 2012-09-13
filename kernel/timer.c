@@ -13,69 +13,62 @@ void __timer_init()
 	hal_time_initialize(EXOS_TICK_MICROS);
 }
 
-
-
-static int _add_timer(unsigned long *args)
+void __timer_create_timer(EXOS_TIMER *timer, EXOS_SIGNAL signal)
 {
-	EXOS_TIMER *timer = (EXOS_TIMER *)args[0];
-
 #ifdef DEBUG
 	if (NULL != list_find_node(&_timers, (EXOS_NODE *)timer))
 		kernel_panic(KERNEL_ERROR_TIMER_ALREADY_IN_USE);
-#endif
 
-	int signal = __signal_alloc();
-	if (signal < 0) 
-		kernel_panic(KERNEL_ERROR_TIMER_NOT_AVAILABLE);
+	timer->Node = (EXOS_NODE) { .Type = EXOS_NODE_TIMER };
+#endif
 
 	timer->Owner = __running_thread;
 	timer->Signal = signal;
 	timer->State = EXOS_TIMER_READY;
 
 	list_add_tail(&_timers, (EXOS_NODE *)timer);
+}
+
+static int _add_timer(unsigned long *args)
+{
+	EXOS_TIMER *timer = (EXOS_TIMER *)args[0];
+	EXOS_SIGNAL signal = (EXOS_SIGNAL)args[1];
+
+	if (signal == EXOS_SIGB_NONE) 
+	{
+		signal = __signal_alloc();
+	}
+	else
+	{
+		__running_thread->SignalsReceived &= ~(1 << signal);
+	}
+		
+	__timer_create_timer(timer, signal);
 	return 0;
 }
 
-int exos_timer_create(EXOS_TIMER *timer, unsigned long time, unsigned long period)
+int exos_timer_create(EXOS_TIMER *timer, unsigned long time, unsigned long period, EXOS_SIGNAL signal)
 {
 #ifdef DEBUG
 	if (timer == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-
-	timer->Node = (EXOS_NODE) { .Type = EXOS_NODE_TIMER };
 #endif
 	timer->Time = time;
 	timer->Period = period;
-	__kernel_do(_add_timer, timer);
+	return __kernel_do(_add_timer, timer, signal);
 }
 
 
-
-int exos_timer_wait(EXOS_TIMER *timer)
-{
-#ifdef DEBUG
-	if (timer == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-	if (timer->Node.Type != EXOS_NODE_TIMER)
-		kernel_panic(KERNEL_ERROR_TIMER_NOT_FOUND);
-	if (timer->Owner != __running_thread)
-		kernel_panic(KERNEL_ERROR_CROSS_THREAD_OPERATION_NOT_PERMITTED);
-#endif
-
-	exos_signal_wait(1 << timer->Signal);
-}
-
-
-static inline void _rem_timer_cleanup(EXOS_TIMER *timer, EXOS_TIMER_STATE state)
+void __timer_destroy_timer(EXOS_TIMER *timer)
 {
 #ifdef DEBUG
 	if (timer == NULL || timer->Owner == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
 #endif
-	__signal_free(timer->Owner, timer->Signal);
+	if (timer->Signal >= EXOS_SIGB_RESERVED_COUNT)
+		__signal_free(timer->Owner, timer->Signal);
 
 	list_remove((EXOS_NODE *)timer);
-	timer->State = state;
 }
 
 static int _rem_timer(unsigned long *args)
@@ -89,7 +82,8 @@ static int _rem_timer(unsigned long *args)
 			kernel_panic(KERNEL_ERROR_TIMER_NOT_FOUND);
 #endif
 
-		_rem_timer_cleanup(timer, EXOS_TIMER_ABORTED);
+		__timer_destroy_timer(timer);
+		timer->State = EXOS_TIMER_ABORTED;
 	}
 	return 0;
 }
@@ -102,39 +96,33 @@ void exos_timer_abort(EXOS_TIMER *timer)
 	if (timer->Node.Type != EXOS_NODE_TIMER)
 		kernel_panic(KERNEL_ERROR_TIMER_NOT_FOUND);
 	if (timer->Owner != __running_thread)
-		kernel_panic(KERNEL_ERROR_CROSS_THREAD_OPERATION_NOT_PERMITTED);
+		kernel_panic(KERNEL_ERROR_CROSS_THREAD_OPERATION);
 #endif
 
 	__kernel_do(_rem_timer, timer);
 }
 
 
-
-static int _signal_timer(unsigned long *args)
+void exos_timer_wait(EXOS_TIMER *timer)
 {
-	EXOS_TIMER *timer = (EXOS_TIMER *)args[0];
 #ifdef DEBUG
-	if (NULL == list_find_node(&_timers, (EXOS_NODE *)timer))
+	if (timer == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+	if (timer->Node.Type != EXOS_NODE_TIMER)
 		kernel_panic(KERNEL_ERROR_TIMER_NOT_FOUND);
+	if (timer->Owner != __running_thread)
+		kernel_panic(KERNEL_ERROR_CROSS_THREAD_OPERATION);
 #endif
 
-	__signal_set(timer->Owner, 1 << timer->Signal);
-
-	if (timer->Period == 0)
-	{
-		_rem_timer_cleanup(timer, EXOS_TIMER_FINISHED);
-	}
-	else
-	{
-		timer->Time = timer->Period;
-	}
-	return  0;
+	exos_signal_wait(1 << timer->Signal);
 }
 
-void __kernel_tick()
+
+
+static int _tick(unsigned long *args)
 {
 	EXOS_NODE *node = LIST_HEAD(&_timers)->Succ;
-	while(node != LIST_TAIL(&_timers))
+	while (node != LIST_TAIL(&_timers))
 	{
 		EXOS_TIMER *timer = (EXOS_TIMER *)node;
 		node = node->Succ;
@@ -143,7 +131,25 @@ void __kernel_tick()
 			timer->Time--;
 		
 		if (timer->Time == 0)
-			__kernel_do(_signal_timer, timer);
+		{
+			__signal_set(timer->Owner, 1 << timer->Signal);
+		
+			if (timer->Period == 0)
+			{
+				__timer_destroy_timer(timer);
+				timer->State = EXOS_TIMER_FINISHED;
+			}
+			else
+			{
+				timer->Time = timer->Period;
+			}
+		}
 	}
+	return  0;
+}
+
+void __kernel_tick()
+{
+	__kernel_do(_tick);
 }
 
