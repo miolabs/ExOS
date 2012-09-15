@@ -1,4 +1,5 @@
 #include "startup.h"
+#include "memory.h"
 #include "thread.h"
 #include "timer.h"
 #include "machine/hal.h"
@@ -11,7 +12,7 @@ static unsigned char _main_stack[MAIN_THREAD_STACK] __attribute__((aligned(16)))
 void __kernel_start()
 {
 	__machine_init();
-	//__mem_init();
+	__mem_init();
 	__thread_init();
 	__timer_init();
 
