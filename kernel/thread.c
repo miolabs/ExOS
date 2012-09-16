@@ -8,6 +8,7 @@
 
 // stack limits
 extern unsigned long __stack_process_start__;
+extern unsigned long __stack_start__;
 
 // global running thread
 EXOS_THREAD *__running_thread;
@@ -54,6 +55,9 @@ static int _add_thread(unsigned long *args)
 EXOS_THREAD *__kernel_schedule()
 {
 #ifdef DEBUG
+	if (*((unsigned long *)&__stack_start__) != 0xcccccccc)
+		kernel_panic(KERNEL_ERROR_STACK_OVERFLOW);
+
 	EXOS_THREAD *current = __running_thread;
 	if (current != NULL)
 	{

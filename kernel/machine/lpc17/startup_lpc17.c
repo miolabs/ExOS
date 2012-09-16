@@ -98,17 +98,18 @@ void __weak CANActivity_IRQHandler();
 #pragma weak USBACT_IRQHandler = Default_Handler        
 #pragma weak CANACT_IRQHandler = Default_Handler 
 
-extern int __stack_process_start__;
-extern int __stack_process_end__;
+extern int __stack_start__, __stack_end__;
+extern int __stack_process_start__, __stack_process_end__;
 extern int __data_load_start__;
-extern int __data_start__;
-extern int __data_end__;
-extern int __bss_start__;
-extern int __bss_end__;
+extern int __data_start__, __data_end__;
+extern int __bss_start__, __bss_end__;
 
 __init __naked void Reset_Handler() 
 {
 #ifdef DEBUG
+	// initialize top of system stack
+	*((unsigned long *)&__stack_start__) = 0xcccccccc;
+
 	// initialize process stack
 	__mem_set(&__stack_process_start__, &__stack_process_end__, 0xcc);
 #endif

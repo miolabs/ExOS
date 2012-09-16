@@ -1,5 +1,6 @@
 #include "memory.h"
 #include "panic.h"
+#include <kernel/machine/hal.h>
 
 extern unsigned char __heap_start__, __heap_end__;
 
@@ -28,7 +29,7 @@ static EXOS_MEM_HEADER *_init_block(EXOS_MEM_REGION *region, void *start, void *
 	return header;
 }
 
-void exos_mem_add_region(EXOS_MEM_REGION *region, void *start, void *end, int pri, unsigned long flags)
+void exos_mem_add_region(EXOS_MEM_REGION *region, void *start, void *end, int pri, EXOS_MEM_FLAGS flags)
 {
 	unsigned long size = end -start;
 	EXOS_MEM_FOOTER *head = (EXOS_MEM_FOOTER *)start;
@@ -69,7 +70,7 @@ static EXOS_MEM_HEADER *_find_room(EXOS_MEM_REGION *region, unsigned long size)
 			kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
 		if ((void *)header < region->StartAddress ||
 			(void *)header >= (region->StartAddress + region->Size) ||
-			((unsigned long)header & 0x7))
+			((unsigned long)header & 0x3))
             kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
 #endif
 		if (header->Size >= size)
@@ -78,7 +79,7 @@ static EXOS_MEM_HEADER *_find_room(EXOS_MEM_REGION *region, unsigned long size)
 	return NULL;
 }
 
-void *exos_mem_alloc(unsigned long size, unsigned long flags)
+void *exos_mem_alloc(unsigned long size, EXOS_MEM_FLAGS flags)
 {
 	if (size == 0) return NULL;
 
@@ -88,12 +89,12 @@ void *exos_mem_alloc(unsigned long size, unsigned long flags)
 	FOREACH(node, &_mem_list)
 	{
 		EXOS_MEM_REGION *region = (EXOS_MEM_REGION *)node;
-		if (region->Flags & flags)
+		if ((region->Flags & flags) == (flags & EXOS_MEMF_REGION))
 		{
 			EXOS_MEM_HEADER *header = _find_room(region, size);
 			if (header != NULL) 
 			{
-				if (header->Size != size)
+				if ((header->Size - size) >= (sizeof(EXOS_MEM_HEADER) + sizeof(EXOS_NODE) + sizeof(EXOS_MEM_FOOTER)))
 				{
 					void *end = (void *)header + (sizeof(EXOS_MEM_HEADER) + header->Size + sizeof(EXOS_MEM_FOOTER));
 					void *split = (void*)header + (sizeof(EXOS_MEM_HEADER) + size + sizeof(EXOS_MEM_FOOTER));
@@ -106,7 +107,14 @@ void *exos_mem_alloc(unsigned long size, unsigned long flags)
 					EXOS_MEM_HEADER *free = _init_block(region, split, end); 
                     list_insert((EXOS_NODE *)header->Contents, (EXOS_NODE *)free->Contents);
 				}
+				else
+				{
+					EXOS_MEM_FOOTER *footer = (EXOS_MEM_FOOTER *)(header->Contents + header->Size);
+					*footer = (EXOS_MEM_FOOTER) { .FreeSize = 0 };
+				}
 				list_remove((EXOS_NODE *)header->Contents);
+
+				if (flags & EXOS_MEMF_CLEAR) __mem_set(header->Contents, header->Contents + size, 0);
 				return header->Contents;
 			}
 		}
@@ -116,7 +124,112 @@ void *exos_mem_alloc(unsigned long size, unsigned long flags)
 
 void exos_mem_free(void *addr)
 {
-	// TODO: check location for header/footer
+	EXOS_MEM_HEADER *header = (EXOS_MEM_HEADER *)(addr - sizeof(EXOS_MEM_HEADER));
+	EXOS_MEM_REGION *region = header->Region;
+#ifdef DEBUG
+	if (region->Node.Type != EXOS_NODE_MEM_REGION)
+		kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
+#endif
+	if (header->Size < sizeof(EXOS_NODE))
+		kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
+	EXOS_MEM_FOOTER *footer = (EXOS_MEM_FOOTER *)(header->Contents + header->Size);
+	if (footer->FreeSize != 0) 
+		kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
 
-	// TODO: add location to free list / coalesce to adjacent regions
+	EXOS_NODE *pred_node = NULL;
+
+	// coalescence to linear successor
+	EXOS_MEM_HEADER *next_header = (EXOS_MEM_HEADER *)((void *)footer + sizeof(EXOS_MEM_FOOTER));
+	if (next_header->Size != 0)
+	{
+#ifdef DEBUG
+		if (next_header->Region != region)
+			kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
+#endif
+		EXOS_MEM_FOOTER *next_footer = (EXOS_MEM_FOOTER *)(next_header->Contents + next_header->Size);
+		if (next_footer->FreeSize == next_header->Size)
+		{
+#ifdef DEBUG
+			if (((EXOS_NODE *)next_header->Contents)->Type != EXOS_NODE_MEM_NODE)
+				kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
+#endif
+			pred_node = ((EXOS_NODE *)next_header->Contents)->Pred;
+			list_remove((EXOS_NODE *)next_header->Contents);
+			
+			footer = next_footer;
+		}
+	}
+
+	// coalescence to linear predecessor
+	EXOS_MEM_FOOTER *prev_footer = (EXOS_MEM_FOOTER *)((void *)header - sizeof(EXOS_MEM_FOOTER));
+	if (prev_footer->FreeSize != 0)
+	{
+		EXOS_MEM_HEADER *prev_header = (EXOS_MEM_HEADER *)((void *)prev_footer - (prev_footer->FreeSize + sizeof(EXOS_MEM_HEADER)));
+#ifdef DEBUG
+		if (prev_header->Region != region  ||
+			((EXOS_NODE *)prev_header->Contents)->Type != EXOS_NODE_MEM_NODE || 
+			prev_header->Size != prev_footer->FreeSize)
+			kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
+#endif
+		pred_node = ((EXOS_NODE *)prev_header->Contents)->Pred;
+		list_remove((EXOS_NODE *)prev_header->Contents);
+		
+		header = prev_header;
+	}
+
+	_init_block(region, header, (void *)footer + sizeof(EXOS_MEM_FOOTER));
+
+	if (pred_node != NULL)
+	{
+		list_insert(pred_node, (EXOS_NODE *)header->Contents);
+	}
+	else
+	{
+		list_add_head(&region->FreeList, (EXOS_NODE *)header->Contents);
+	}
+}
+
+void exos_mem_stats(EXOS_MEM_REGION *region, EXOS_MEM_STATS *stats)
+{
+#ifdef DEBUG
+	if (region->Node.Type != EXOS_NODE_MEM_REGION)
+		kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
+#endif
+
+	unsigned long total = 0, count = 0, largest = 0;
+	FOREACH(node, &region->FreeList)
+	{
+		EXOS_MEM_HEADER *header = (EXOS_MEM_HEADER *)((void *)node - sizeof(EXOS_MEM_HEADER));
+#ifdef DEBUG
+		if (header->Region != region  ||
+			node->Type != EXOS_NODE_MEM_NODE ||
+			(void *)header < region->StartAddress) 
+			kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
+		EXOS_MEM_FOOTER *footer = (EXOS_MEM_FOOTER *)(header->Contents + header->Size);
+		if (header->Size != footer->FreeSize ||
+			((void *)footer + sizeof(EXOS_MEM_FOOTER)) >= (region->StartAddress + region->Size))
+			kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
+#endif	
+		if (header->Size > largest) largest = header->Size; 
+		total += header->Size;
+		count++;
+	}
+	*stats = (EXOS_MEM_STATS) { .Free = total, .Fragments = count, .Largest = largest };
+}
+
+EXOS_MEM_REGION *exos_mem_get_region(EXOS_MEM_FLAGS flags, int index)
+{
+	int i = 0;
+	FOREACH(node, &_mem_list)
+	{
+		EXOS_MEM_REGION *region = (EXOS_MEM_REGION *)node;
+		if ((region->Flags & flags) == (flags & EXOS_MEMF_REGION))
+		{
+			if (i == index) 
+				return region;
+				 
+			i++;
+		}
+	}
+	return NULL;
 }

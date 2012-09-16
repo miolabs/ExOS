@@ -48,6 +48,7 @@ typedef struct
 // prototypes
 void list_initialize(EXOS_LIST *list);
 void list_insert(EXOS_NODE *pred, EXOS_NODE *node);
+void list_add_head(EXOS_LIST *list, EXOS_NODE *node);
 void list_add_tail(EXOS_LIST *list, EXOS_NODE *node);
 void list_remove(EXOS_NODE *node);
 void list_enqueue(EXOS_LIST *list, EXOS_NODE *node);

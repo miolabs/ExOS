@@ -105,7 +105,7 @@ int threading_tests()
 		return -1;
 
 	if (_event_test() != 0)
-		return -1;
+		return -2;
 
 	return 0;
 }
