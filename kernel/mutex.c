@@ -26,7 +26,7 @@ static int _try_lock(unsigned long *args)
 	else
 	{
 		__cond_add_wait_handle(&mutex->Handles, handle);
-
+		__signal_wait(1 << handle->Signal);
 		return -1;
 	}
 	return 0;
