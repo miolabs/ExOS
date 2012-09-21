@@ -19,18 +19,39 @@ typedef unsigned long off_t; // TODO: signed?
 // [...]
 
 // WIP: struct types:
-//pthread_attr_t
+
+typedef struct 
+{
+	
+} pthread_attr_t;
+
 //pthread_barrier_t
 //pthread_barrierattr_t
-//pthread_cond_t
-//pthread_condattr_t
+
+typedef struct
+{
+} pthread_cond_t;
+
+typedef struct
+{
+	// TODO
+} pthread_condattr_t;
+
 //pthread_key_t
-//pthread_mutex_t
-//pthread_mutexattr_t
+
+typedef struct
+{
+} pthread_mutex_t;
+
+typedef struct
+{
+} pthread_mutexattr_t;
+
 //pthread_once_t
 //pthread_rwlock_t
 //pthread_rwlockattr_t
 //pthread_spinlock_t
+
 typedef struct
 {
 	EXOS_THREAD exos_thread;
@@ -49,7 +70,9 @@ typedef unsigned long size_t;
 typedef long ssize_t; 
 typedef long long suseconds_t;
 typedef unsigned long time_t;
-typedef int timer_t;	// TODO
+
+typedef int timer_t;	// TODO: Used for timer ID returned by timer_create()
+
 
 
 #endif // __posix_types_h

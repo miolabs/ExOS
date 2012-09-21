@@ -65,7 +65,7 @@ void __timer_destroy_timer(EXOS_TIMER *timer)
 	if (timer == NULL || timer->Owner == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
 #endif
-	if (timer->Signal >= EXOS_SIGB_RESERVED_COUNT)
+	if (!((1 << timer->Signal) & EXOS_SIGF_RESERVED_MASK))
 		__signal_free(timer->Owner, timer->Signal);
 
 	list_remove((EXOS_NODE *)timer);
@@ -94,7 +94,7 @@ void exos_timer_abort(EXOS_TIMER *timer)
 	if (timer == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
 	if (timer->Node.Type != EXOS_NODE_TIMER)
-		kernel_panic(KERNEL_ERROR_TIMER_NOT_FOUND);
+		kernel_panic(KERNEL_ERROR_WRONG_NODE);
 	if (timer->Owner != __running_thread)
 		kernel_panic(KERNEL_ERROR_CROSS_THREAD_OPERATION);
 #endif

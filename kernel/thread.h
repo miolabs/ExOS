@@ -30,6 +30,7 @@ void __thread_init();
 EXOS_THREAD *__kernel_schedule();
 void __thread_block();
 void __thread_unblock(EXOS_THREAD *thread);
+void __thread_vacate();
 
 void exos_thread_create(EXOS_THREAD *thread, int pri, void *stack, unsigned stack_size, EXOS_THREAD_FUNC entry, void *arg);
 void exos_thread_exit();

@@ -191,3 +191,19 @@ void __thread_unblock(EXOS_THREAD *thread)
 		__machine_req_switch();
 	}
 }
+
+void __thread_vacate()
+{
+	EXOS_THREAD *thread = __running_thread;
+	if (thread->State == EXOS_THREAD_READY)
+	{
+#ifdef DEBUG
+		if (NULL == list_find_node(&_ready, (EXOS_NODE *)thread))
+			kernel_panic(KERNEL_ERROR_THREAD_NOT_READY);
+#endif
+		list_remove((EXOS_NODE *)thread);
+		list_enqueue(&_ready, (EXOS_NODE *)thread);
+
+		__machine_req_switch();
+	}
+}

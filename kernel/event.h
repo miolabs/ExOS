@@ -4,24 +4,9 @@
 #include <kernel/thread.h>
 #include <kernel/signal.h>
 
-typedef enum
-{
-	EXOS_WAIT_PENDING,
-	EXOS_WAIT_ABORTED,
-	EXOS_WAIT_DONE,
-} EXOS_WAIT_STATE;
 
 typedef struct
 {
-	EXOS_NODE Node;
-	EXOS_THREAD *Owner;
-	EXOS_SIGNAL Signal;
-	EXOS_WAIT_STATE State;
-} EXOS_WAIT_HANDLE;
-
-typedef struct
-{
-	EXOS_NODE Node;
 	EXOS_LIST Handles;
 	volatile int State;
 } EXOS_EVENT;
