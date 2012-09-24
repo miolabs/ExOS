@@ -3,7 +3,7 @@
 
 #include <kernel/list.h>
 
-typedef void (* EXOS_THREAD_FUNC)();
+typedef void *(* EXOS_THREAD_FUNC)(void *arg);
 
 typedef enum
 {
@@ -21,7 +21,9 @@ typedef struct
 	volatile unsigned long SignalsWaiting;
 	volatile unsigned long SignalsReceived;
 	volatile unsigned long SignalsReserved;
-	void *ThreadContext;	// TODO
+	EXOS_LIST Joining;
+	void *Result;
+	//void *ThreadContext;
 } EXOS_THREAD;
 
 extern EXOS_THREAD *__running_thread;
@@ -33,7 +35,9 @@ void __thread_unblock(EXOS_THREAD *thread);
 void __thread_vacate();
 
 void exos_thread_create(EXOS_THREAD *thread, int pri, void *stack, unsigned stack_size, EXOS_THREAD_FUNC entry, void *arg);
-void exos_thread_exit();
+void exos_thread_exit(void *result);
+void *exos_thread_join(EXOS_THREAD *thread);
+
 void exos_thread_set_pri(int pri);
 void exos_thread_sleep(unsigned ticks);
 

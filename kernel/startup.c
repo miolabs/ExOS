@@ -17,7 +17,8 @@ void __kernel_start()
 	__timer_init();
 
 	// create the main thread
-	exos_thread_create(&_main_thread, MAIN_THREAD_PRI, _main_stack, MAIN_THREAD_STACK, main, NULL);
+	exos_thread_create(&_main_thread, MAIN_THREAD_PRI, _main_stack, MAIN_THREAD_STACK, 
+		(EXOS_THREAD_FUNC)main, NULL);
 
 	__machine_idle();
 }

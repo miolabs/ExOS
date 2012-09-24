@@ -25,6 +25,8 @@ static int _try_lock(unsigned long *args)
 	}
 	else
 	{
+		if (mutex->Handles.Tail != NULL)	// NOTE: complete static initialization
+			list_initialize(&mutex->Handles);
 		__cond_add_wait_handle(&mutex->Handles, handle);
 		__signal_wait(1 << handle->Signal);
 		return -1;

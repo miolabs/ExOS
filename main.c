@@ -8,7 +8,7 @@ void main()
 
 	result = memory_tests();
 	
-	result = threading_tests();
+	//result = threading_tests();
 	
 	result = pthread_tests();
 

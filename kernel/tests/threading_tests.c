@@ -12,9 +12,10 @@ static EXOS_THREAD _thread1, _thread2;
 
 static volatile int _shared_int;
 
-static void _set_shared_int(void *arg)
+static void *_set_shared_int(void *arg)
 {
 	_shared_int = *(int *)arg;
+	return NULL;
 }
 
 static int _basic_thread_test()
@@ -48,7 +49,7 @@ static int _basic_thread_test()
 
 static EXOS_EVENT _event;
 
-static void _event_counter(void *arg)
+static void *_event_counter(void *arg)
 {
 	int *pvalue = (int *)arg;
 	while(!_event.State)
@@ -56,6 +57,7 @@ static void _event_counter(void *arg)
 		(*pvalue)++;
 		exos_event_wait(&_event, EXOS_TIMEOUT_NEVER);
 	}
+	return NULL;
 }
 
 static int _event_test()
@@ -76,7 +78,7 @@ static int _event_test()
 	exos_thread_create(&_thread2, 2, _thread2_stack, TEST_THREAD_STACK, 
 		_event_counter, (void *)&count2);
 	if (count2 != 1 ||
-		_thread1.State != EXOS_THREAD_WAIT) return -2;
+		_thread2.State != EXOS_THREAD_WAIT) return -2;
 
 	int iterations = 10000;
 	for (int i = 0; i < iterations; i++)
@@ -90,8 +92,11 @@ static int _event_test()
 
 	exos_event_set(&_event);
 	// both counter should have exit now
+	exos_thread_join(&_thread1);
+	exos_thread_join(&_thread2);
+
 	if (_thread1.State != EXOS_THREAD_FINISHED ||
-		_thread1.State != EXOS_THREAD_FINISHED) return -5;
+		_thread2.State != EXOS_THREAD_FINISHED) return -5;
 
 	done = exos_event_wait(&_event, 1000);
 	if (done != 0) return -6;
@@ -102,7 +107,7 @@ static int _event_test()
 
 static EXOS_MUTEX _mutex;
 
-static void _mutex_func(void *arg)
+static void *_mutex_func(void *arg)
 {
 	int led = (int)arg;
 	
@@ -114,7 +119,7 @@ static void _mutex_func(void *arg)
 		hal_led_set(led, 0);
 		exos_mutex_unlock(&_mutex);
 	}
-	exos_event_reset(&_event);
+	return NULL;
 }
 
 static int _monitor_test()
@@ -122,7 +127,6 @@ static int _monitor_test()
 	exos_thread_set_pri(0);
 	exos_thread_sleep(10);	// idle should run now
 
-	exos_event_create(&_event);	// ending event
 	exos_mutex_create(&_mutex);
 
 	exos_thread_create(&_thread1, -1, _thread1_stack, TEST_THREAD_STACK, 
@@ -130,8 +134,8 @@ static int _monitor_test()
 	exos_thread_create(&_thread2, -1, _thread2_stack, TEST_THREAD_STACK, 
 		_mutex_func, (void *)1);
 
-	exos_event_wait(&_event, EXOS_TIMEOUT_NEVER);
-	exos_event_wait(&_event, EXOS_TIMEOUT_NEVER);
+	exos_thread_join(&_thread1);
+	exos_thread_join(&_thread2);
 	return 0;
 }
 

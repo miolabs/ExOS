@@ -35,6 +35,8 @@ struct timespec
 };
 
 
+int nanosleep(const struct timespec *rqtp, struct timespec *rmtp);
+
 #endif // __posix_time_h
 
 

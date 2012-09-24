@@ -251,17 +251,31 @@ void hal_led_set(HAL_LED led, int state)
 	switch(led)
 	{
 		case LED_STATUS:
+		case 0:
 			if (state) 
-				LPC_GPIO2->FIOSET = (1<<0);	// STATUS_LED
+				LPC_GPIO2->FIOSET = (1<<0);
 			else
-				LPC_GPIO2->FIOCLR = (1<<0);	// STATUS_LED
+				LPC_GPIO2->FIOCLR = (1<<0);
 			break;
 		case LED_SDCARD:
+		case 1:
 			if (state)
-				LPC_GPIO2->FIOSET = (1<<1); // SD_LED
+				LPC_GPIO2->FIOSET = (1<<1);
 			else
-				LPC_GPIO2->FIOCLR = (1<<1); // SD_LED
+				LPC_GPIO2->FIOCLR = (1<<1);
 			break;
+		case 2:
+		case 3:
+		case 4:
+		case 5:
+		case 6:
+		case 7:
+			if (state)
+				LPC_GPIO2->FIOSET = (1<<led);
+			else
+				LPC_GPIO2->FIOCLR = (1<<led);
+			break;
+			
 	}
 }
 
@@ -279,18 +293,21 @@ void hal_led_set(HAL_LED led, int state)
 	switch(led)
 	{
 		case LED_STATUS:
+		case 0:
 			if (state) 
 				LPC_GPIO2->FIOSET = (1<<6);	// STATUS_LED
 			else
 				LPC_GPIO2->FIOCLR = (1<<6);	// STATUS_LED
 			break;
 		case LED_SDCARD:
+		case 1:
 			if (state)
 				LPC_GPIO1->FIOSET = (1<<18); // USB_LED
 			else
 				LPC_GPIO1->FIOCLR = (1<<18); // USB_LED
 			break;
 		case LED_GPS:
+		case 2:
 			if (state)
 				LPC_GPIO3->FIOSET = (1<<25); // GPS_LED 
 			else

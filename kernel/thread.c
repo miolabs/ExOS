@@ -106,6 +106,7 @@ void exos_thread_create(EXOS_THREAD *thread, int pri, void *stack, unsigned stac
 		.SignalsWaiting = 0,
 		.SignalsReserved = EXOS_SIGF_RESERVED_MASK,
 	};
+	list_initialize(&thread->Joining);
 
 	__kernel_do(_add_thread, thread);
 }
@@ -115,6 +116,9 @@ static int _exit(unsigned long *args)
 	EXOS_THREAD *thread = (EXOS_THREAD *)list_find_node(&_ready, (EXOS_NODE *)__running_thread);
 	if (thread == NULL) kernel_panic(KERNEL_ERROR_THREAD_NOT_READY);
 
+	thread->Result = (void *)args[0];
+	__cond_signal_all(&thread->Joining);
+
 	thread->State = EXOS_THREAD_FINISHED;
 	list_remove((EXOS_NODE *)thread);
 
@@ -122,11 +126,33 @@ static int _exit(unsigned long *args)
 	return 0;
 }
 
-void exos_thread_exit()
+void exos_thread_exit(void *result)
 {
-	__kernel_do(_exit);
+	__kernel_do(_exit, result);
 
 	__kernel_panic();
+}
+
+
+static int _join(unsigned long *args)
+{
+	EXOS_THREAD *thread = (EXOS_THREAD *)args[0];
+	EXOS_WAIT_HANDLE *handle = (EXOS_WAIT_HANDLE *)args[1];
+
+	if (thread->State != EXOS_THREAD_FINISHED)
+	{
+		__cond_add_wait_handle(&thread->Joining, handle);
+		__signal_wait(1 << handle->Signal);
+		return -1;
+	}
+	return 0;
+}
+
+void *exos_thread_join(EXOS_THREAD *thread)
+{
+	EXOS_WAIT_HANDLE handle;
+	while(__kernel_do(_join, thread, &handle) != 0);
+	return thread->Result;
 }
 
 static int _set_pri(unsigned long *args)

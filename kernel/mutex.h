@@ -11,6 +11,7 @@ typedef struct
 } EXOS_MUTEX;
 
 void exos_mutex_create(EXOS_MUTEX *mutex);
+int exos_mutex_try(EXOS_MUTEX *mutex);
 void exos_mutex_lock(EXOS_MUTEX *mutex);
 void exos_mutex_unlock(EXOS_MUTEX *mutex);
 
