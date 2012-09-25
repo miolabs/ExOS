@@ -10,7 +10,7 @@ static void *_lock_func(void *arg)
 
 	for(int i = 0; i < 3; i++)
 	{
-		struct timespec blink = (struct timespec) { .tv_nsec = 500000 };
+		struct timespec blink = (struct timespec) { .tv_nsec = 500000000 };
 		pthread_mutex_lock(&_mutex);
 		hal_led_set(led, 1); // led on
 		nanosleep(&blink, &blink);
