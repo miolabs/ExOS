@@ -1,6 +1,7 @@
 #include "signal.h"
 #include "syscall.h"
 #include "panic.h"
+#include "timer.h"
 
 void __signal_set(EXOS_THREAD *thread, unsigned long mask)
 {
@@ -56,11 +57,28 @@ static int _check_signal(unsigned long *args)
 	return -1;
 }
 
-unsigned long exos_signal_wait(unsigned long mask)
+unsigned long exos_signal_wait(unsigned long mask, unsigned long timeout)
 {
-	while(__kernel_do(_check_signal, &mask) != 0);
+	if (timeout != EXOS_TIMEOUT_NEVER)
+	{
+		EXOS_TIMER timer;
+		exos_timer_create(&timer, timeout, 0, EXOS_SIGB_ABORT);
+		mask |= EXOS_SIGF_ABORT;
+
+		while(__kernel_do(_check_signal, &mask) != 0);
+		
+		if (mask != EXOS_SIGF_ABORT)
+		{
+			exos_timer_abort(&timer);
+		}
+	}
+	else
+	{
+		while(__kernel_do(_check_signal, &mask) != 0);
+	}
 	return mask;
 }
+
 
 
 
@@ -162,4 +180,20 @@ int __cond_signal_all(EXOS_LIST *list)
 	}
 	return done;
 }
+
+
+static int _abort_wait(unsigned long *args)
+{
+	EXOS_WAIT_HANDLE *handle = (EXOS_WAIT_HANDLE *)args[0];
+	
+	__cond_rem_wait_handle(handle, EXOS_WAIT_ABORTED);
+	return 0;
+}
+
+void exos_cond_abort(EXOS_WAIT_HANDLE *handle)
+{
+	__kernel_do(_abort_wait, handle);
+}
+
+
 

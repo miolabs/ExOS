@@ -5,15 +5,20 @@
 #include <kernel/signal.h>
 
 
+typedef enum
+{
+	EXOS_EVENT_MANUAL_RESET = 0,
+	EXOS_EVENT_AUTO_RESET,
+} EXOS_EVENT_TYPE;
+
 typedef struct
 {
 	EXOS_LIST Handles;
-	volatile int State;
+	unsigned State;
+	EXOS_EVENT_TYPE Type;
 } EXOS_EVENT;
 
-#define EXOS_TIMEOUT_NEVER 0
-
-int exos_event_create(EXOS_EVENT *event);
+int exos_event_create(EXOS_EVENT *event, EXOS_EVENT_TYPE flags);
 int exos_event_wait(EXOS_EVENT *event, unsigned long timeout);
 int exos_event_wait_handle(EXOS_WAIT_HANDLE *handle, unsigned long timeout);
 void exos_event_set(EXOS_EVENT *event);

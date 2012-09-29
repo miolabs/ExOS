@@ -65,7 +65,7 @@ static int _event_test()
 	exos_thread_set_pri(0);
 	exos_thread_sleep(10);	// idle should run now
 
-	exos_event_create(&_event);
+	exos_event_create(&_event, EXOS_EVENT_MANUAL_RESET);
 	volatile int count1 = 0, count2= 0;
 	int done = exos_event_wait(&_event, 1000);
 	// should timeout

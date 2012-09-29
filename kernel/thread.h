@@ -23,7 +23,7 @@ typedef struct
 	volatile unsigned long SignalsReserved;
 	EXOS_LIST Joining;
 	void *Result;
-	//void *ThreadContext;
+	void *ThreadContext;
 } EXOS_THREAD;
 
 extern EXOS_THREAD *__running_thread;

@@ -6,4 +6,6 @@
 // prototypes
 void __kernel_start();
 
+__weak void __posix_init();
+
 #endif // EXOS_STARTUP_H

@@ -114,7 +114,7 @@ void exos_timer_wait(EXOS_TIMER *timer)
 		kernel_panic(KERNEL_ERROR_CROSS_THREAD_OPERATION);
 #endif
 
-	exos_signal_wait(1 << timer->Signal);
+	exos_signal_wait(1 << timer->Signal, EXOS_TIMEOUT_NEVER);
 }
 
 

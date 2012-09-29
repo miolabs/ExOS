@@ -105,6 +105,8 @@ void exos_thread_create(EXOS_THREAD *thread, int pri, void *stack, unsigned stac
 		.SignalsReceived = 0,
 		.SignalsWaiting = 0,
 		.SignalsReserved = EXOS_SIGF_RESERVED_MASK,
+		.ThreadContext = __running_thread != NULL ? 
+			__running_thread->ThreadContext : NULL,
 	};
 	list_initialize(&thread->Joining);
 

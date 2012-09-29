@@ -15,6 +15,7 @@ void __kernel_start()
 	__mem_init();
 	__thread_init();
 	__timer_init();
+	__posix_init();
 
 	// create the main thread
 	exos_thread_create(&_main_thread, MAIN_THREAD_PRI, _main_stack, MAIN_THREAD_STACK, 
