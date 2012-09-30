@@ -26,13 +26,14 @@
         <file file_name="kernel/thread.c"/>
         <file file_name="kernel/timer.c"/>
         <folder Name="posix" file_name="">
-          <file file_name="kernel/posix/pthread_base.c"/>
-          <file file_name="kernel/posix/unistd_base.c"/>
           <folder Name="tests">
             <file file_name="kernel/posix/tests/basic_pthread_tests.c"/>
           </folder>
           <file file_name="kernel/posix/pthread_cond.c"/>
           <file file_name="kernel/posix/pthread_time.c"/>
+          <file file_name="kernel/posix/posix.c"/>
+          <file file_name="kernel/posix/pthread.c"/>
+          <file file_name="kernel/posix/unistd.c"/>
         </folder>
         <file file_name="kernel/memory.c"/>
         <file file_name="kernel/mutex.c"/>

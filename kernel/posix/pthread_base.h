@@ -1,9 +1,0 @@
-#ifndef EXOS_POSIX_PTHREAD_BASE_H
-#define EXOS_POSIX_PTHREAD_BASE_H
-
-
-
-
-
-#endif // EXOS_POSIX_PTHREAD_BASE_H
-

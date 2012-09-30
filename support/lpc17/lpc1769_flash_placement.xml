@@ -11,6 +11,7 @@
     <ProgramSection alignment="4" load="Yes" runin=".fast_run" name=".fast" />
     <ProgramSection alignment="4" load="Yes" runin=".data_run" name=".data" />
     <ProgramSection alignment="4" load="Yes" runin=".tdata_run" name=".tdata" />
+    <ProgramSection alignment="4" load="Yes" runin=".data2_run" name=".data2" />
     <ProgramSection alignment="4" load="No" name=".iap" alignment="0x8000" />
   </MemorySegment>
   <MemorySegment name="$(RAM_NAME:RAM);SRAM" >
