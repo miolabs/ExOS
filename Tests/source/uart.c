@@ -13,13 +13,15 @@
 #include <fcntl.h>   /* File control definitions */
 #include <errno.h>   /* Error number definitions */
 #include <termios.h> /* POSIX terminal control definitions */
-#include <sys/ioctl.h>
+//#include <sys/ioctl.h> <--- obsolete api
 #include <sys/select.h>
 #include <unistd.h>
 #include <string.h>
 
 #ifdef __APPLE__
 #define kUARTDevice "/dev/cu.usbserial-FTB4ND9F"
+#elif defined __EXOS__
+#define kUARTDevice "/dev/comm0"
 #endif
 
 #define kBaudRate       9600
@@ -79,12 +81,12 @@ int OpenUART()
     // processes.
     // See tty(4) ("man 4 tty") and ioctl(2) ("man 2 ioctl") for details.
     
-    if (ioctl(fd, TIOCEXCL) == -1)
-    {
-        printf("Error setting TIOCEXCL on %s - %s(%d).\n",
-               kUARTDevice, strerror(errno), errno);
-        goto error;
-    }
+//    if (ioctl(fd, TIOCEXCL) == -1)
+//    {
+//        printf("Error setting TIOCEXCL on %s - %s(%d).\n",
+//               kUARTDevice, strerror(errno), errno);
+//        goto error;
+//    }
     
     // Now that the device is open, clear the O_NONBLOCK flag so subsequent I/O will block.
     // See fcntl(2) ("man 2 fcntl") for details.

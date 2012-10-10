@@ -5,6 +5,54 @@
 #define __init __attribute__((section(".init")))
 #define __naked __attribute__((naked))
 
+extern int __stack_start__, __stack_end__;
+extern int __stack_process_start__, __stack_process_end__;
+extern int __data_start__, __data_end__, __data_load_start__;
+extern int __data2_start__, __data2_end__, __data2_load_start__;
+extern int __bss_start__, __bss_end__;
+extern int __bss2_start__, __bss2_end__;
+
+const void *__machine_process_start = &__stack_process_start__;
+
+__init __naked void Reset_Handler() 
+{
+#ifdef DEBUG
+	// initialize process stack
+	__mem_set(&__stack_process_start__, &__stack_process_end__, 0xcc);
+#endif
+
+	// switch to process stack
+	void *psp = &__stack_process_end__;
+	__asm__ volatile (
+		"msr psp, %0\n\t"
+		"mov %0, #2\n\t"
+		"msr control, %0"
+		: : "r" (psp));
+
+#ifdef DEBUG
+	// initialize system stack
+	__mem_set(&__stack_start__, &__stack_end__, 0xcc);
+#endif
+
+	// initialize data sections
+	__mem_copy(&__data_start__, &__data_end__, &__data_load_start__);
+	__mem_copy(&__data2_start__, &__data2_end__, &__data2_load_start__);
+	// initialize bss sections
+	__mem_set(&__bss_start__, &__bss_end__, 0);
+	__mem_set(&__bss2_start__, &__bss2_end__, 0);
+
+	SystemInit();
+	
+	__kernel_start();
+
+	while(1);
+}
+
+__init __naked void Default_Handler()
+{
+	while(1);
+}
+
 // weak IRQ handler prototypes
 void __weak Reset_Handler();   
 void __weak NMI_Handler();       
@@ -97,48 +145,4 @@ void __weak CANActivity_IRQHandler();
 #pragma weak PLL1_IRQHandler = Default_Handler      
 #pragma weak USBACT_IRQHandler = Default_Handler        
 #pragma weak CANACT_IRQHandler = Default_Handler 
-
-extern int __stack_start__, __stack_end__;
-extern int __stack_process_start__, __stack_process_end__;
-extern int __data_start__, __data_end__, __data_load_start__;
-extern int __data2_start__, __data2_end__, __data2_load_start__;
-extern int __bss_start__, __bss_end__;
-extern int __bss2_start__, __bss2_end__;
-
-__init __naked void Reset_Handler() 
-{
-#ifdef DEBUG
-	// initialize top of system stack
-	*((unsigned long *)&__stack_start__) = 0xcccccccc;
-
-	// initialize process stack
-	__mem_set(&__stack_process_start__, &__stack_process_end__, 0xcc);
-#endif
-	// switch to process stack
-	void *psp = &__stack_process_end__;
-	__asm__ volatile (
-		"msr psp, %0\n\t"
-		"mov %0, #2\n\t"
-		"msr control, %0"
-		: : "r" (psp));
-
-	// initialize data sections
-	__mem_copy(&__data_start__, &__data_end__, &__data_load_start__);
-	__mem_copy(&__data2_start__, &__data2_end__, &__data2_load_start__);
-	// initialize bss sections
-	__mem_set(&__bss_start__, &__bss_end__, 0);
-	__mem_set(&__bss2_start__, &__bss2_end__, 0);
-
-	SystemInit();
-	
-	__kernel_start();
-
-	while(1);
-}
-
-__init __naked void Default_Handler()
-{
-	while(1);
-}
-
 

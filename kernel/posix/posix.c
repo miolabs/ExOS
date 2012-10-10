@@ -56,3 +56,9 @@ EXOS_IO_ENTRY *posix_remove_file_descriptor(int fd)
     exos_mutex_unlock(&context->Mutex);
 	return old;
 }
+
+int inline posix_set_error(posix_err_t error)
+{
+	pthread_info_t *info = (pthread_info_t *)__running_thread;
+	return -1;
+}

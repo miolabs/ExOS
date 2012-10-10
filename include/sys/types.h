@@ -47,6 +47,8 @@ extern const pthread_mutex_t __mutex_initializer;
 typedef struct
 {
 	EXOS_THREAD thread;
+	size_t stack_size;
+	int error;
 } pthread_info_t;
 
 typedef struct

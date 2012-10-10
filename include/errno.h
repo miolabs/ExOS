@@ -1,6 +1,9 @@
 #ifndef __errno_h
 #define __errno_h
 
+#include <sys/types.h>
+#include <kernel/thread.h>
+
 typedef enum
 {
 	__POSIX_OK = 0,
@@ -84,6 +87,7 @@ typedef enum
 	EXDEV,
 } posix_err_t;
 
+#define errno ((posix_err_t)((pthread_info_t *)__running_thread)->error)
 
 #endif // __errno_h
 

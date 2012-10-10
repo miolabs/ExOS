@@ -1,6 +1,6 @@
 #include <pthread.h>
 #include <errno.h>
-
+#include "posix.h"
 #include <kernel/thread.h>
 #include <kernel/memory.h>
 
@@ -8,28 +8,34 @@ static const pthread_attr_t _default_pthread_attrs = { 256, NULL };
 
 int pthread_create(pthread_t *thread, const pthread_attr_t *attrs, void *(* func)(void*), void *arg)
 {
-	const pthread_attr_t *safe_attrs = attrs != NULL ? attrs : &_default_pthread_attrs;
+	pthread_info_t *info = (pthread_info_t *)__running_thread;
 	
+	size_t stack_size = attrs != NULL && attrs->stack_size != 0 ? 
+		attrs->stack_size : info->stack_size;
+
 	void *stack;
-	pthread_info_t *info;
-	if (safe_attrs->stack == NULL)
+	pthread_info_t *new_info;
+	if (attrs == NULL || attrs->stack == NULL)
 	{
-		size_t alloc_size = safe_attrs->stack_size + sizeof(pthread_info_t); 
-		void *alloc = exos_mem_alloc(alloc_size, EXOS_MEMF_ANY);
-		if (alloc == NULL) return EAGAIN;
-		info = (pthread_info_t *)(alloc + alloc_size - sizeof(pthread_info_t));
+		stack_size = (stack_size + 15) & ~15;
+		void *alloc = exos_mem_alloc(stack_size + sizeof(pthread_info_t), EXOS_MEMF_ANY);
+		if (alloc == NULL) return posix_set_error(EAGAIN);
+		new_info = (pthread_info_t *)(alloc + stack_size);
 		stack = alloc;
 	}
 	else
 	{
-		info = (pthread_info_t *)exos_mem_alloc(sizeof(pthread_info_t), EXOS_MEMF_ANY);
-		if (info == NULL) return EAGAIN;
-		stack = safe_attrs->stack;
+		new_info = (pthread_info_t *)exos_mem_alloc(sizeof(pthread_info_t), EXOS_MEMF_ANY);
+		if (info == NULL) return posix_set_error(EAGAIN);
+		stack = attrs->stack;
 	}
-	thread->info = info;
+	thread->info = new_info;
+	new_info->stack_size = stack_size;
+	new_info->error = 0;
 
-	exos_thread_create(&info->thread, safe_attrs->pri, 
-		stack, safe_attrs->stack_size,
+	exos_thread_create(&new_info->thread, 
+		attrs != NULL ? attrs->pri : info->thread.Node.Priority, 
+		stack, stack_size,
 		func, arg);
 	return 0;
 }

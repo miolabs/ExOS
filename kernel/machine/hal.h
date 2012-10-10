@@ -3,6 +3,8 @@
 
 #include <kernel/types.h>
 
+extern const void *__machine_process_start;
+
 void __machine_init();
 void __machine_req_switch();
 void __machine_idle();

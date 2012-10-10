@@ -1,6 +1,6 @@
 #include <pthread.h>
 #include <errno.h>
-
+#include "posix.h"
 #include <kernel/signal.h>
 #include <kernel/mutex.h>
 #include <kernel/panic.h>
@@ -26,7 +26,7 @@ int pthread_mutex_lock(pthread_mutex_t *mutex)
 
 int pthread_mutex_trylock(pthread_mutex_t *mutex)
 {
-	return exos_mutex_try(&mutex->native_mutex) == 0 ? 0 : EBUSY;
+	return exos_mutex_try(&mutex->native_mutex) == 0 ? 0 : posix_set_error(EBUSY);
 }
 
 int pthread_mutex_unlock(pthread_mutex_t *mutex)

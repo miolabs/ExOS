@@ -2,6 +2,7 @@
 #include "memory.h"
 #include "thread.h"
 #include "timer.h"
+#include "io.h"
 #include "machine/hal.h"
 
 void main();
@@ -15,10 +16,12 @@ void __kernel_start()
 	__mem_init();
 	__thread_init();
 	__timer_init();
+	__io_initialize();
 	__posix_init();
 
 	// create the main thread
-	exos_thread_create(&_main_thread, MAIN_THREAD_PRI, _main_stack, MAIN_THREAD_STACK, 
+	exos_thread_create(&_main_thread, MAIN_THREAD_PRI, 
+		_main_stack, MAIN_THREAD_STACK, 
 		(EXOS_THREAD_FUNC)main, NULL);
 
 	__machine_idle();

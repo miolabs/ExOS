@@ -4,11 +4,8 @@
 #include "syscall.h"
 #include "signal.h"
 #include "timer.h"
+#include "memory.h"
 #include "machine/hal.h"
-
-// stack limits
-extern unsigned long __stack_process_start__;
-extern unsigned long __stack_start__;
 
 // global running thread
 EXOS_THREAD *__running_thread;
@@ -24,10 +21,10 @@ void __thread_init()
 	list_initialize(&_ready);
 	list_initialize(&_wait);
 
-	// initialize system thread
+	// initialize system thread in process stack
 	_system_thread = (EXOS_THREAD) 
 	{
-		.StackStart = &__stack_process_start__,
+		.StackStart = (void *)__machine_process_start,
 		.Node.Priority = -128,
 #ifdef DEBUG
 		.Node.Type = EXOS_NODE_THREAD,
@@ -55,9 +52,6 @@ static int _add_thread(unsigned long *args)
 EXOS_THREAD *__kernel_schedule()
 {
 #ifdef DEBUG
-	if (*((unsigned long *)&__stack_start__) != 0xcccccccc)
-		kernel_panic(KERNEL_ERROR_STACK_OVERFLOW);
-
 	EXOS_THREAD *current = __running_thread;
 	if (current != NULL)
 	{
