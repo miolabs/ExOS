@@ -35,6 +35,7 @@ struct _EXOS_IO_DRIVER
 
 void __io_initialize();
 void exos_io_create(EXOS_IO_ENTRY *io, EXOS_IO_TYPE type, const EXOS_IO_DRIVER *driver, EXOS_IO_FLAGS flags);
+void exos_io_set_flags(EXOS_IO_ENTRY *io, EXOS_IO_FLAGS flags);
 void exos_io_set_timeout(EXOS_IO_ENTRY *io, unsigned long timeout);
 int exos_io_read(EXOS_IO_ENTRY *io, void *buffer, unsigned long length);
 

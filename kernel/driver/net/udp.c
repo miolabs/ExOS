@@ -14,7 +14,7 @@ static const NET_PROTOCOL_DRIVER _udp_driver = {
 	.IO = {  },
 	.Bind = _bind, .Receive = _receive, .Send = _send };
 
-static EXOS_LIST _entries;
+static EXOS_LIST _entries;	// udp bound io entries
 static EXOS_MUTEX _entries_mutex;
 
 void net_udp_initialize()
@@ -50,7 +50,7 @@ int net_udp_input(ETH_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip)
 					ETH_INPUT_BUFFER *packet = net_adapter_alloc_input_buffer(adapter, buffer);
 					exos_fifo_queue(&io->Incoming, (EXOS_NODE *)packet);
 					queued = 1;
-                    exos_event_set(&io->InputEvent);
+					//exos_event_set(&io->InputEvent);
 				}
 			}
 			exos_mutex_unlock(&_entries_mutex);
@@ -62,7 +62,7 @@ int net_udp_input(ETH_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip)
 int net_udp_send(ETH_ADAPTER *adapter, IP_ENDPOINT *destination, unsigned short source_port, unsigned short dest_port, NET_MBUF *data)
 {
 	EXOS_EVENT completed_event;
-	exos_event_create(&completed_event, EXOS_EVENT_MANUAL_RESET);
+	exos_event_create(&completed_event);
 	ETH_OUTPUT_BUFFER resp = (ETH_OUTPUT_BUFFER) { .CompletedEvent = &completed_event };
 
 	UDP_HEADER *udp = (UDP_HEADER *)net_ip_output(adapter, &resp, sizeof(UDP_HEADER), destination, IP_PROTOCOL_UDP);
@@ -130,7 +130,7 @@ void net_udp_create_io(NET_IO_ENTRY *io, EXOS_IO_FLAGS flags)
 	
 	io->Adapter = NULL;
 	io->LocalPort = 0;
-	exos_fifo_create(&io->Incoming);
+	exos_fifo_create(&io->Incoming, &io->InputEvent);
 }
 
 static int _bind(NET_IO_ENTRY *socket, void *addr)

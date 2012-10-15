@@ -2,18 +2,46 @@
 #include "posix.h"
 #include <kernel/thread.h>
 #include <kernel/timer.h>
+#include <kernel/memory.h>
+#include <kernel/panic.h>
+#include <comm/comm.h>
 
 int close(int fd)
 {
-	return -1;
+	EXOS_IO_ENTRY *io = posix_get_file_descriptor(fd);
+	if (io == NULL) return posix_set_error(EBADF);
+	switch(io->Type)
+	{
+		case EXOS_IO_COMM:
+			comm_io_close((COMM_IO_ENTRY *)io);
+			break;
+		default:
+			return posix_set_error(EBADF);
+	}
+
+#ifdef DEBUG
+	EXOS_IO_ENTRY *io_old = posix_remove_file_descriptor(fd);
+	if (io_old != io) kernel_panic(KERNEL_ERROR_LIST_CORRUPTED);
+#else
+	posix_remove_file_descriptor(fd);
+#endif
+	exos_mem_free(io);
+	return 0;
 }
 
 ssize_t pread(int fd, void *buf, size_t nbyte, off_t offset)
 {
+	// TODO: call seek() (if stream) and then read()
+	return -1;
 }
 
 ssize_t read(int fd, void *buf, size_t nbyte)
 {
+	EXOS_IO_ENTRY *io = posix_get_file_descriptor(fd);
+	if (io == NULL) return posix_set_error(EBADF);
+
+    const EXOS_IO_DRIVER *driver = io->Driver;
+	return driver->Read(io, buf, nbyte);
 }
 
 ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset)

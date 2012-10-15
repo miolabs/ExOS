@@ -17,6 +17,7 @@ struct termios
 	tcflag_t c_oflag;
 	tcflag_t c_cflag;
 	tcflag_t c_lflag;
+	speed_t __baudrate; 
 	cc_t c_cc[NCCS];
 };
 
@@ -47,8 +48,8 @@ enum
 	TCSAFLUSH = 2,
 };
 
-int tcgetattr(int fildes, struct termios *termios_p);
-int tcsetattr(int fildes, int optional_actions, const struct termios *termios_p);
+int tcgetattr(int fd, struct termios *termios_p);
+int tcsetattr(int fd, int optional_actions, const struct termios *termios_p);
 void cfmakeraw(struct termios *termios_p);
 
 speed_t cfgetispeed(const struct termios *termios_p);

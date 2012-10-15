@@ -21,10 +21,10 @@
 #ifdef __APPLE__
 #define kUARTDevice "/dev/cu.usbserial-FTB4ND9F"
 #elif defined __EXOS__
-#define kUARTDevice "/dev/comm0"
+#define kUARTDevice "/dev/comm1"
 #endif
 
-#define kBaudRate       9600
+#define kBaudRate       57600
 #define kBufferBytes    256
 
 int OpenUART();

@@ -9,14 +9,6 @@
 #define COMM_DEVICE_THREAD_STACK 512
 #endif
 
-typedef struct
-{
-	void *Buffer;
-	unsigned long Length;
-	unsigned long WriteIndex;
-	unsigned long ReadIndex;
-} COMM_BUFFER;
-
 typedef struct _COMM_DRIVER COMM_DRIVER;
 
 typedef struct
@@ -35,14 +27,13 @@ typedef struct
 	COMM_DEVICE *Device;
 	unsigned Port;
 	unsigned long Baudrate;
-
-	COMM_BUFFER InputBuffer;
-	COMM_BUFFER OutputBuffer;
 } COMM_IO_ENTRY;
 
 struct _COMM_DRIVER
 {
 	int (*Open)(COMM_IO_ENTRY *io);
+	int (*SetAttrs)(COMM_IO_ENTRY *io);
+	void (*Close)(COMM_IO_ENTRY *io);
 	int (*Read)(COMM_IO_ENTRY *io, unsigned char *buffer, unsigned long length);
 	int (*Write)(COMM_IO_ENTRY *io, unsigned char *buffer, unsigned long length);
 };
@@ -51,5 +42,7 @@ struct _COMM_DRIVER
 void comm_initialize();
 void comm_io_create(COMM_IO_ENTRY *io, COMM_DEVICE *device, unsigned port, EXOS_IO_FLAGS flags);
 int comm_io_open(COMM_IO_ENTRY *io, int baudrate);
+int comm_io_set_baudrate(COMM_IO_ENTRY *io, int baudrate);
+void comm_io_close(COMM_IO_ENTRY *io);
 
 #endif // COMM_COMM_H
