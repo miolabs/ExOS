@@ -79,6 +79,41 @@ int uart_initialize(unsigned module, unsigned long baudrate, UART_CONTROL_BLOCK 
     return 0;
 }
 
+int uart_set_baudrate(unsigned module, unsigned long baudrate)
+{
+	LPC_UART_TypeDef *uart = _module(module);
+	if (uart)
+	{
+		_initialize(uart, baudrate);
+		return 1;
+	}
+    return 0;
+}
+
+void uart_disable(unsigned module)
+{
+	switch(module)
+	{
+		case 0:
+			NVIC_DisableIRQ(UART0_IRQn);
+			break;
+		case 1:
+			NVIC_DisableIRQ(UART1_IRQn);
+			break;
+		case 2:
+			NVIC_DisableIRQ(UART2_IRQn);
+			break;
+		case 3:
+			NVIC_DisableIRQ(UART3_IRQn);
+			break;
+	}
+    LPC_UART_TypeDef *uart = _module(module);
+	if (uart)
+	{
+		_control[module] = (UART_CONTROL_BLOCK *)0;
+	}
+}
+
 int uart_read(unsigned module, unsigned char *buffer, unsigned long length)
 {
 	UART_CONTROL_BLOCK *cb = _control[module];
@@ -88,7 +123,11 @@ int uart_read(unsigned module, unsigned char *buffer, unsigned long length)
 	for(done = 0; done < length; done++)
 	{
 		int index = input->ConsumeIndex;
-		if (index == input->ProduceIndex) break;
+		if (index == input->ProduceIndex) 
+		{
+			if (cb->Handler) cb->Handler(UART_EVENT_INPUT_EMPTY, cb->HandlerState);
+			break;
+		}
 		buffer[done] = input->Buffer[index++];
 		if (index == input->Size) index = 0;
 		input->ConsumeIndex = index;
@@ -146,6 +185,9 @@ static void _serve_uart(int module)
 {
 	LPC_UART_TypeDef *uart = _modules[module];
 	UART_CONTROL_BLOCK *cb = _control[module];
+#ifdef DEBUG
+	while(!cb);	// halt
+#endif
 
 	unsigned char c;
 	int count;

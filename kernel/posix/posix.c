@@ -3,16 +3,16 @@
 #include <kernel/startup.h>
 #include <kernel/thread.h>
 
-static EXOS_POSIX_CONTEXT _context;
+EXOS_POSIX_CONTEXT __main_context;
 
 void __posix_init()
 {
-	exos_mutex_create(&_context.Mutex);
+	exos_mutex_create(&__main_context.Mutex);
 
 	//TODO: fill default descriptors and other context data
 
 	EXOS_THREAD *thread = __running_thread;
-	thread->ThreadContext = &_context;
+	thread->ThreadContext = &__main_context;
 }
 
 int posix_add_file_descriptor(EXOS_IO_ENTRY *io)

@@ -21,8 +21,6 @@ static char buf[1024];
 
 int main(void) 
 { 
-	net_initialize();	// initialize hardware and begin driver initialization
-
 	struct Test test_name; 
 	
 	int sock = socket(AF_INET, SOCK_DGRAM, 0); 

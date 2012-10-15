@@ -62,14 +62,14 @@ ssize_t recvfrom(int socket, void *buffer, size_t length, int flags, struct sock
 {
 	EXOS_IO_ENTRY *io = posix_get_file_descriptor(socket);
 	if (io == NULL) return EBADF;
-	if (io->Type != EXOS_IO_SOCKET) return ENOTSOCK;
+	if (io->Type != EXOS_IO_SOCKET) return posix_set_error(ENOTSOCK);
 
 	struct sockaddr_in *udp_addr = (struct sockaddr_in *)address;
 	IP_PORT_ADDR ip;
 	int done;
 	if (flags & MSG_PEEK)
 	{
-		done = -1;	// TODO
+		return -1;	// TODO
 	}
 	else
 	{
@@ -82,7 +82,7 @@ ssize_t recvfrom(int socket, void *buffer, size_t length, int flags, struct sock
 			.sin_addr.s_addr = ip.Address.Value,
 			.sin_port = htons(ip.Port) };
 	}
-	else done = EWOULDBLOCK;
+	else return posix_set_error(EWOULDBLOCK);
 
 	return (ssize_t)done;
 }

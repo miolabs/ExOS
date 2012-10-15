@@ -14,13 +14,14 @@ static void _handler(UART_EVENT event, void *state);
 static UART_CONTROL_BLOCK _cb[UART_MODULE_COUNT];
 
 static int _open(COMM_IO_ENTRY *io);
+static int _set_attrs(COMM_IO_ENTRY *io);
+static void _close(COMM_IO_ENTRY *io);
 static int _read(COMM_IO_ENTRY *io, unsigned char *buffer, unsigned long length);
 static int _write(COMM_IO_ENTRY *io, unsigned char *buffer, unsigned long length);
 
 const COMM_DRIVER __comm_driver_lpc17 = {
-	.Open = _open,
-	.Read = _read,
-	.Write = _write };
+	.Open = _open, .SetAttrs = _set_attrs, .Close = _close,
+	.Read = _read, .Write = _write };
 
 static int _alloc_uart_buffers(UART_CONTROL_BLOCK *cb)
 {
@@ -33,7 +34,7 @@ static int _alloc_uart_buffers(UART_CONTROL_BLOCK *cb)
 		cb->OutputBuffer = (UART_BUFFER) { .Buffer = buffer + UART_BUFFER_SIZE, .Size = UART_BUFFER_SIZE };
 		return 0;
 	}
-	return -2;
+	return -1;
 }
 
 static int _open(COMM_IO_ENTRY *io)
@@ -46,8 +47,41 @@ static int _open(COMM_IO_ENTRY *io)
 			cb->Handler = _handler;
 			cb->HandlerState = io;
 			hal_board_init_pinmux(HAL_RESOURCE_UART, io->Port);
+			
+			if (io->Baudrate == 0) io->Baudrate = 9600;
 			uart_initialize(io->Port, io->Baudrate, cb);
+			return 0;
 		}
+	}
+	return -1;
+}
+
+static int _set_attrs(COMM_IO_ENTRY *io)
+{
+	uart_set_baudrate(io->Port, io->Baudrate);
+	return 0;
+}
+
+static void _free_uart_buffers(UART_CONTROL_BLOCK *cb)
+{
+	if (cb->InputBuffer.Buffer != NULL)
+	{
+		void *ptr = cb->InputBuffer.Buffer;
+		exos_mem_free(ptr);
+
+		cb->InputBuffer.Buffer = NULL;
+		cb->OutputBuffer.Buffer = NULL;
+	}
+}
+
+static void _close(COMM_IO_ENTRY *io)
+{
+	if (io->Port < UART_MODULE_COUNT)
+	{
+		UART_CONTROL_BLOCK *cb = &_cb[io->Port];
+
+		uart_disable(io->Port);
+		_free_uart_buffers(cb);
 	}
 }
 
@@ -68,6 +102,9 @@ static void _handler(UART_EVENT event, void *state)
 	{
 		case UART_EVENT_INPUT_READY:
 			exos_event_set(&io->InputEvent);
+			break;
+		case UART_EVENT_INPUT_EMPTY:
+			exos_event_reset(&io->InputEvent);
 			break;
 	}
 }

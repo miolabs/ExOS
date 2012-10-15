@@ -20,9 +20,7 @@ int net_io_receive(NET_IO_ENTRY *io, void *buffer, unsigned long length, IP_PORT
 #endif
 	
 	if (io->Flags & EXOS_IOF_WAIT)
-	{
 		exos_event_wait(&io->InputEvent, io->Timeout);
-	}
 
 	const NET_PROTOCOL_DRIVER *protocol = (const NET_PROTOCOL_DRIVER *)io->Driver;
 	return protocol->Receive(io, buffer, length, addr);

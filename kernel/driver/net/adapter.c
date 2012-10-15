@@ -11,6 +11,7 @@
 static EXOS_MUTEX _adapters_lock;
 static EXOS_LIST _adapters;
 static EXOS_FIFO _free_wrappers;
+static EXOS_EVENT _free_wrapper_event;
 #define NET_PACKET_WRAPPERS 16
 static ETH_INPUT_BUFFER _wrappers[NET_PACKET_WRAPPERS];
 
@@ -19,7 +20,8 @@ static const HW_ADDR _dummy = { 1, 2, 3, 4, 5, 6 };
 void net_adapter_initialize()
 {
 	list_initialize(&_adapters);
-	exos_fifo_create(&_free_wrappers);
+	exos_event_create(&_free_wrapper_event);
+	exos_fifo_create(&_free_wrappers, &_free_wrapper_event);
 	for(int i = 0; i < NET_PACKET_WRAPPERS; i++)
 	{
 		_wrappers[i] = (ETH_INPUT_BUFFER) { .Adapter = NULL }; 
