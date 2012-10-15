@@ -1,0 +1,73 @@
+<!DOCTYPE CrossStudio_for_ARM_Session_File>
+<session>
+ <Bookmarks/>
+ <Breakpoints/>
+ <ETMWindow>
+  <ETMRegister number="0" value="800" />
+  <ETMRegister number="8" value="6f" />
+  <ETMRegister number="9" value="1000000" />
+ </ETMWindow>
+ <ExecutionCountWindow/>
+ <Memory1>
+  <MemoryWindow autoEvaluate="0" addressText="" numColumns="8" sizeText="" dataSize="1" radix="16" addressSpace="" />
+ </Memory1>
+ <Memory2>
+  <MemoryWindow autoEvaluate="0" addressText="" numColumns="8" sizeText="" dataSize="1" radix="16" addressSpace="" />
+ </Memory2>
+ <Memory3>
+  <MemoryWindow autoEvaluate="0" addressText="" numColumns="8" sizeText="" dataSize="1" radix="16" addressSpace="" />
+ </Memory3>
+ <Memory4>
+  <MemoryWindow autoEvaluate="0" addressText="" numColumns="8" sizeText="" dataSize="1" radix="16" addressSpace="" />
+ </Memory4>
+ <Project>
+  <ProjectSessionItem path="exos_lpc17" name="unnamed" />
+  <ProjectSessionItem path="exos_lpc17;exos_lpc17" name="unnamed" />
+  <ProjectSessionItem path="exos_lpc17;exos_lpc17;Source Files" name="unnamed" />
+  <ProjectSessionItem path="exos_lpc17;exos_lpc17;Source Files;kernel" name="unnamed" />
+  <ProjectSessionItem path="exos_lpc17;exos_lpc17;Source Files;kernel;driver" name="unnamed" />
+  <ProjectSessionItem path="exos_lpc17;exos_lpc17;Source Files;kernel;driver;comm" name="unnamed" />
+  <ProjectSessionItem path="exos_lpc17;exos_lpc17;Source Files;kernel;driver;net" name="unnamed" />
+  <ProjectSessionItem path="exos_lpc17;exos_lpc17;Source Files;kernel;driver;net;tests" name="unnamed" />
+  <ProjectSessionItem path="exos_lpc17;exos_lpc17;Source Files;kernel;machine" name="unnamed" />
+ </Project>
+ <Register1>
+  <RegisterWindow openNodes="CPU" binaryNodes="" hiddenNodes="" unsignedNodes="" visibleGroups="CPU" decimalNodes="" octalNodes="" asciiNodes="" />
+ </Register1>
+ <Register2>
+  <RegisterWindow openNodes="CPU" binaryNodes="" hiddenNodes="" unsignedNodes="" visibleGroups="CPU" decimalNodes="" octalNodes="" asciiNodes="" />
+ </Register2>
+ <Register3>
+  <RegisterWindow openNodes="CPU" binaryNodes="" hiddenNodes="" unsignedNodes="" visibleGroups="CPU" decimalNodes="" octalNodes="" asciiNodes="" />
+ </Register3>
+ <Register4>
+  <RegisterWindow openNodes="CPU" binaryNodes="" hiddenNodes="" unsignedNodes="" visibleGroups="CPU" decimalNodes="" octalNodes="" asciiNodes="" />
+ </Register4>
+ <TargetWindow programAction="" uploadFileType="" programLoadAddress="" programSize="" uploadFileName="" uploadMemoryInterface="" programFileName="" uploadStartAddress="" programFileType="" uploadSize="" programMemoryInterface="" />
+ <TraceWindow>
+  <Trace enabled="Yes" />
+ </TraceWindow>
+ <Watch1>
+  <Watches active="1" update="Never" />
+ </Watch1>
+ <Watch2>
+  <Watches active="0" update="Never" />
+ </Watch2>
+ <Watch3>
+  <Watches active="0" update="Never" />
+ </Watch3>
+ <Watch4>
+  <Watches active="0" update="Never" />
+ </Watch4>
+ <Files>
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="/Users/godshadow/Projects/mio/ExOS/kernel/driver/net/ip.c" y="6" path="/Users/godshadow/Projects/mio/ExOS/kernel/driver/net/ip.c" left="0" selected="0" name="unnamed" top="0" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="/Users/godshadow/Projects/mio/ExOS/kernel/driver/net/tests/testing.c" y="45" path="/Users/godshadow/Projects/mio/ExOS/kernel/driver/net/tests/testing.c" left="0" selected="0" name="unnamed" top="19" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="/Users/godshadow/Projects/mio/ExOS/kernel/machine/lpc17/comm_lpc17.c" y="55" path="/Users/godshadow/Projects/mio/ExOS/kernel/machine/lpc17/comm_lpc17.c" left="0" selected="0" name="unnamed" top="24" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="/Users/godshadow/Projects/mio/ExOS/support/lpc17/uart.c" y="0" path="/Users/godshadow/Projects/mio/ExOS/support/lpc17/uart.c" left="0" selected="0" name="unnamed" top="129" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="/Users/godshadow/Projects/mio/ExOS/support/board/drivers_generic_lpc17.c" y="0" path="/Users/godshadow/Projects/mio/ExOS/support/board/drivers_generic_lpc17.c" left="0" selected="0" name="unnamed" top="0" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="/Users/godshadow/Projects/mio/ExOS/kernel/machine/hal.c" y="13" path="/Users/godshadow/Projects/mio/ExOS/kernel/machine/hal.c" left="0" selected="0" name="unnamed" top="0" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="/Users/godshadow/Projects/mio/ExOS/kernel/driver/comm/comm.c" y="19" path="/Users/godshadow/Projects/mio/ExOS/kernel/driver/comm/comm.c" left="0" selected="0" name="unnamed" top="0" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="/Users/godshadow/Projects/mio/ExOS/kernel/list.c" y="0" path="/Users/godshadow/Projects/mio/ExOS/kernel/list.c" left="0" selected="1" name="unnamed" top="0" />
+ </Files>
+ <ARMCrossStudioWindow activeProject="exos_lpc17" autoConnectTarget="Olimex FTDI driver" debugSearchFileMap="" fileDialogInitialDirectory="" fileDialogDefaultFilter="*.c" autoConnectCapabilities="388991" debugSearchPath="" buildConfiguration="LandTiger Debug" />
+</session>
