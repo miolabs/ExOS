@@ -35,7 +35,7 @@ struct _COMM_DRIVER
 	int (*SetAttrs)(COMM_IO_ENTRY *io);
 	void (*Close)(COMM_IO_ENTRY *io);
 	int (*Read)(COMM_IO_ENTRY *io, unsigned char *buffer, unsigned long length);
-	int (*Write)(COMM_IO_ENTRY *io, unsigned char *buffer, unsigned long length);
+	int (*Write)(COMM_IO_ENTRY *io, const unsigned char *buffer, unsigned long length);
 };
 
 

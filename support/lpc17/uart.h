@@ -56,7 +56,8 @@ typedef enum
 	UART_EVENT_ERROR = 0,
 	UART_EVENT_INPUT_READY,
 	UART_EVENT_INPUT_EMPTY,
-	UART_EVENT_OUTPUT_EMPTY,
+	UART_EVENT_OUTPUT_FULL,
+	UART_EVENT_OUTPUT_READY,
 	UART_EVENT_MODEM,
 } UART_EVENT;
 
@@ -90,7 +91,7 @@ int uart_initialize(unsigned module, unsigned long baudrate, UART_CONTROL_BLOCK 
 void uart_disable(unsigned module);
 int uart_set_baudrate(unsigned module, unsigned long baudrate);
 int uart_read(unsigned module, unsigned char *buffer, unsigned long length);
-int uart_write(unsigned module, unsigned char *buffer, unsigned long length);
+int uart_write(unsigned module, const unsigned char *buffer, unsigned long length);
 
 #endif // LPC_UART_H
 

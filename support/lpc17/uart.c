@@ -9,9 +9,6 @@ static UART_CONTROL_BLOCK *_control[UART_MODULE_COUNT];
 static LPC_UART_TypeDef *_modules[] = {
 	(LPC_UART_TypeDef *)LPC_UART0, (LPC_UART_TypeDef *)LPC_UART1, LPC_UART2, LPC_UART3 };
 
-// prototypes
-//static int _fill_buffer(UART_MODULE *mod, UART_Output_Buffer *buf, int max);
-
 static void _initialize(LPC_UART_TypeDef *uart, unsigned long baudrate)
 {
 	int pclk = cpu_pclk(cpu_cclk(), 1);	// PCLK is fixed to CCLK/1
@@ -114,34 +111,6 @@ void uart_disable(unsigned module)
 	}
 }
 
-int uart_read(unsigned module, unsigned char *buffer, unsigned long length)
-{
-	UART_CONTROL_BLOCK *cb = _control[module];
-    UART_BUFFER *input = &cb->InputBuffer;
-
-	int done;
-	for(done = 0; done < length; done++)
-	{
-		int index = input->ConsumeIndex;
-		if (index == input->ProduceIndex) 
-		{
-			if (cb->Handler) cb->Handler(UART_EVENT_INPUT_EMPTY, cb->HandlerState);
-			break;
-		}
-		buffer[done] = input->Buffer[index++];
-		if (index == input->Size) index = 0;
-		input->ConsumeIndex = index;
-	}
-	return done;
-}
-
-int uart_write(unsigned module, unsigned char *buffer, unsigned long length)
-{
-	UART_CONTROL_BLOCK *cb = _control[module];
-
-	// TODO
-}
-
 static void _reset_receiver(LPC_UART_TypeDef *uart, UART_CONTROL_BLOCK *cb)
 {
 	// TODO
@@ -175,10 +144,11 @@ static void _write_data(LPC_UART_TypeDef *uart, UART_CONTROL_BLOCK *cb, unsigned
 	{
 		uart->THR = buf->Buffer[buf->ConsumeIndex++];
 		if (buf->ConsumeIndex == buf->Size) buf->ConsumeIndex = 0;
-		if (++count >= max) return;
+		if (++count >= max) break;
 	}
 
-	if (cb->Handler) cb->Handler(UART_EVENT_OUTPUT_EMPTY, cb->HandlerState);
+	if (count != 0 && cb->Handler) 
+		cb->Handler(UART_EVENT_OUTPUT_READY, cb->HandlerState);
 }
 
 static void _serve_uart(int module)
@@ -214,6 +184,53 @@ static void _serve_uart(int module)
 	}
 }
 
+int uart_read(unsigned module, unsigned char *buffer, unsigned long length)
+{
+	UART_CONTROL_BLOCK *cb = _control[module];
+    UART_BUFFER *input = &cb->InputBuffer;
+
+	int done;
+	for(done = 0; done < length; done++)
+	{
+		int index = input->ConsumeIndex;
+		if (index == input->ProduceIndex) 
+		{
+			if (cb->Handler) cb->Handler(UART_EVENT_INPUT_EMPTY, cb->HandlerState);
+			break;
+		}
+		buffer[done] = input->Buffer[index++];
+		if (index == input->Size) index = 0;
+		input->ConsumeIndex = index;
+	}
+	return done;
+}
+
+int uart_write(unsigned module, const unsigned char *buffer, unsigned long length)
+{
+	UART_CONTROL_BLOCK *cb = _control[module];
+    UART_BUFFER *output = &cb->OutputBuffer;
+
+	int done;
+	for(done = 0; done < length; done++)
+	{
+		int index = output->ProduceIndex + 1;
+        if (index == output->Size) index = 0;
+		if (index == output->ConsumeIndex)
+		{
+			if (cb->Handler) cb->Handler(UART_EVENT_OUTPUT_FULL, cb->HandlerState);
+			break;
+		}
+		output->Buffer[output->ProduceIndex] = buffer[done];
+		output->ProduceIndex = index;
+	}
+
+    LPC_UART_TypeDef *uart = _module(module);
+	if (uart && (uart->LSR & UART_LSR_THRE))
+		_write_data(uart, cb, 8);
+
+	return done;
+}
+
 void UART0_IRQHandler(void)
 {
 	_serve_uart(0);
@@ -234,64 +251,5 @@ void UART3_IRQHandler(void)
 	_serve_uart(3);
 }
 
-
-//static void _write_char(UART_MODULE *uart, UART_Output_Buffer *buf, unsigned char ch)
-//{
-//	int next_index = (buf->WriteIndex + 1) % buf->Size;
-//	for(int wait = 0; next_index == buf->ReadIndex; wait++)
-//	{
-//		if (wait > 1000000) 
-//		{
-//			// timeout
-//			buf->Running = 0;
-//			break;
-//		}
-//	}
-//
-//	buf->Data[buf->WriteIndex] = ch;
-//	buf->WriteIndex = next_index;
-//
-//	if (!buf->Running)
-//	{
-//		_fill_buffer(uart, buf, 1);
-//	}
-//}
-//
-//void uart_write_char(int module, unsigned char ch)
-//{
-//	UART_MODULE *uart;
-//	UART_Output_Buffer *buf;
-//	if (_get_output_module(module, &uart, &buf))
-//		_write_char(uart, buf, ch);
-//}
-//
-//void uart_write_buf_length(int module, unsigned char *buf, int length)
-//{
-//	UART_MODULE *uart;
-//	UART_Output_Buffer *uart_buf;
-//	if (_get_output_module(module, &uart, &uart_buf))
-//	{
-//		for(int i = 0; i < length; i++)
-//		{
-//			_write_char(uart, uart_buf, *buf++);
-//		}
-//	}
-//}
-//
-//static int _fill_buffer(UART_MODULE *uart, UART_Output_Buffer *buf, int max)
-//{
-//	while(uart->LSRbits.THRE == 0);
-//	int count = 0;
-//	while ((buf->ReadIndex != buf->WriteIndex) && (count < max))
-//	{
-//		buf->Running = 1;
-//
-//		uart->THR = buf->Data[buf->ReadIndex];
-//		buf->ReadIndex = (buf->ReadIndex + 1) % buf->Size;
-//		count++;
-//	}
-//
-//	return count;
-//}
 
 

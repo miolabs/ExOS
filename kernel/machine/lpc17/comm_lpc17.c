@@ -17,7 +17,7 @@ static int _open(COMM_IO_ENTRY *io);
 static int _set_attrs(COMM_IO_ENTRY *io);
 static void _close(COMM_IO_ENTRY *io);
 static int _read(COMM_IO_ENTRY *io, unsigned char *buffer, unsigned long length);
-static int _write(COMM_IO_ENTRY *io, unsigned char *buffer, unsigned long length);
+static int _write(COMM_IO_ENTRY *io, const unsigned char *buffer, unsigned long length);
 
 const COMM_DRIVER __comm_driver_lpc17 = {
 	.Open = _open, .SetAttrs = _set_attrs, .Close = _close,
@@ -50,6 +50,8 @@ static int _open(COMM_IO_ENTRY *io)
 			
 			if (io->Baudrate == 0) io->Baudrate = 9600;
 			uart_initialize(io->Port, io->Baudrate, cb);
+
+			exos_event_set(&io->OutputEvent);
 			return 0;
 		}
 	}
@@ -90,9 +92,9 @@ static int _read(COMM_IO_ENTRY *io, unsigned char *buffer, unsigned long length)
 	return uart_read(io->Port, buffer, length);
 }
 
-static int _write(COMM_IO_ENTRY *io, unsigned char *buffer, unsigned long length)
+static int _write(COMM_IO_ENTRY *io, const unsigned char *buffer, unsigned long length)
 {
-	return -1;
+	return uart_write(io->Port, buffer, length);
 }
 
 static void _handler(UART_EVENT event, void *state)
@@ -105,6 +107,12 @@ static void _handler(UART_EVENT event, void *state)
 			break;
 		case UART_EVENT_INPUT_EMPTY:
 			exos_event_reset(&io->InputEvent);
+			break;
+		case UART_EVENT_OUTPUT_READY:
+			exos_event_set(&io->OutputEvent);
+			break;
+		case UART_EVENT_OUTPUT_FULL:
+			exos_event_reset(&io->OutputEvent);
 			break;
 	}
 }

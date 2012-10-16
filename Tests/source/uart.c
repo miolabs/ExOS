@@ -21,7 +21,11 @@
 #ifdef __APPLE__
 #define kUARTDevice "/dev/cu.usbserial-FTB4ND9F"
 #elif defined __EXOS__
+	#if defined BOARD_NANO2
 #define kUARTDevice "/dev/comm1"
+	#else
+#define kUARTDevice "/dev/comm0"
+	#endif
 #endif
 
 #define kBaudRate       57600
@@ -29,7 +33,6 @@
 
 int OpenUART();
 void CloseUART(int fd);
-
 
 int main(int argc, const char * argv[])
 {
@@ -56,7 +59,8 @@ int main(int argc, const char * argv[])
         {
             if (FD_ISSET(fd, &readfds))
             {
-                read(fd, buffer, kBufferBytes);
+                int length = read(fd, buffer, kBufferBytes);
+				write(fd, buffer, length);
                 printf("%s\n", buffer);
             }
         }

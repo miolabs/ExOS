@@ -4,14 +4,17 @@
 #include "udp.h"
 #include "mbuf.h"
 #include "net_io.h"
+#include <kernel/panic.h>
 #include <string.h>
 
 static int _bind(NET_IO_ENTRY *socket, void *addr);
 static int _receive(NET_IO_ENTRY *socket, void *buffer, unsigned long length, void *addr);
 static int _send(NET_IO_ENTRY *socket, void *buffer, unsigned long length, void *addr);
+static int _read(EXOS_IO_ENTRY *io, void *buffer, unsigned long length);
+static int _write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length);
 
 static const NET_PROTOCOL_DRIVER _udp_driver = {
-	.IO = {  },
+	.IO = { .Read = _read, .Write = _write  },
 	.Bind = _bind, .Receive = _receive, .Send = _send };
 
 static EXOS_LIST _entries;	// udp bound io entries
@@ -191,7 +194,8 @@ static int _receive(NET_IO_ENTRY *socket, void *buffer, unsigned long length, vo
 		int fit = payload_length > length ? length : payload_length; 
 		memcpy(buffer, payload, fit);
 
-		*ip = (IP_PORT_ADDR) { .Address = ip_hdr->SourceIP, .Port = NTOH16(udp_hdr->SourcePort) };
+		if (ip != NULL)
+			*ip = (IP_PORT_ADDR) { .Address = ip_hdr->SourceIP, .Port = NTOH16(udp_hdr->SourcePort) };
 
 		net_adapter_discard_input_buffer(packet);
 		return fit;
@@ -239,6 +243,25 @@ static int _send(NET_IO_ENTRY *socket, void *buffer, unsigned long length, void 
 	return -1;
 }
 
+static int _read(EXOS_IO_ENTRY *io, void *buffer, unsigned long length)
+{
+#ifdef DEBUG
+	if (io->Type != EXOS_IO_SOCKET)
+		kernel_panic(KERNEL_ERROR_IO_TYPE_MISMATCH);
+#endif
+	
+	return _receive((NET_IO_ENTRY *)io, buffer, length, NULL);
+}
+
+static int _write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length)
+{
+#ifdef DEBUG
+	if (io->Type != EXOS_IO_SOCKET)
+		kernel_panic(KERNEL_ERROR_IO_TYPE_MISMATCH);
+#endif
+
+	return -1;
+}
 
 
 

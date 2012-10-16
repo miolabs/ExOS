@@ -39,17 +39,20 @@ ssize_t read(int fd, void *buf, size_t nbyte)
 {
 	EXOS_IO_ENTRY *io = posix_get_file_descriptor(fd);
 	if (io == NULL) return posix_set_error(EBADF);
-
-    const EXOS_IO_DRIVER *driver = io->Driver;
-	return driver->Read(io, buf, nbyte);
+	return exos_io_read(io, buf, nbyte);
 }
 
 ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 {
+	// TODO: call seek() (if stream) and then read()
+	return -1;
 }
 
 ssize_t write(int fd, const void *buf, size_t nbyte)
 {
+	EXOS_IO_ENTRY *io = posix_get_file_descriptor(fd);
+	if (io == NULL) return posix_set_error(EBADF);
+	return exos_io_write(io, buf, nbyte);
 }
 
 unsigned sleep(unsigned seconds)
