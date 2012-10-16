@@ -7,7 +7,6 @@
 #include "cpu.h"
 #include <CMSIS/LPC17xx.h>
 
-static PHY_ID _phy_id;
 static void (*_handler)() = (void *)0;
 
 static void _write_phy(PHYREG reg, unsigned short value);
@@ -71,7 +70,7 @@ int emac_initialize(ETH_MAC *mac, void (*handler)())
 		MAC_COMMAND_PASS_RUNT_FRAME | MAC_COMMAND_PASS_RX_FILTER;
 
 	// init phy
-	phy_reset(&_phy, &_phy_id);
+	phy_reset(&_phy);
 
 	// configure hw address 
 	LPC_EMAC->SA0 = (mac->Byte[1] << 8) | mac->Byte[0];
@@ -96,7 +95,7 @@ int emac_initialize(ETH_MAC *mac, void (*handler)())
 
 ETH_LINK emac_init_link()
 {
-	ETH_LINK mode = phy_link_state(&_phy, _phy_id);
+	ETH_LINK mode = phy_link_state(&_phy);
 	if (mode != ETH_LINK_NONE)
 	{
 		if (mode & ETH_LINK_FULL_DUPLEX)
