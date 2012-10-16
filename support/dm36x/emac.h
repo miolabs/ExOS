@@ -3,6 +3,7 @@
 
 #include "intc.h"
 #include <net/mbuf.h>
+#include <net/support/phy.h>
 
 typedef volatile struct
 {
@@ -172,12 +173,14 @@ typedef struct __attribute__((__aligned__(4)))
 
 
 //prototypes
-void emac_initialize();
+void emac_initialize(unsigned char *mac_addr);
+ETH_LINK emac_check_link();
+
+void *emac_get_input_buffer(unsigned long *psize);
+void emac_discard_input_buffer(void *buffer);
+void *emac_get_output_buffer(unsigned long size);
+int emac_send_output_buffer(NET_MBUF *mbuf, ETH_CALLBACK callback, void *state);
 
 void emac_dm36x_rx_handler() __attribute__((__weak__));
-void *emac_get_input_buffer(int *psize);
-void emac_discard_input_buffer();
-void *emac_get_output_buffer();
-int emac_send_output_buffer(NET_MBUF *mbuf);
 
 #endif // DM36X_EMAC_H

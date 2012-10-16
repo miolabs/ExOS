@@ -1,6 +1,13 @@
 #include "phy.h"
+#include <kernel/types.h>
 
-int phy_reset(const PHY_HANDLER *phy, PHY_ID *pid)
+static PHY_ID _identify(const PHY_HANDLER *phy)
+{
+	unsigned long identifier = (phy->Read(PHYR_ID1) << 16) | phy->Read(PHYR_ID2);
+	return (PHY_ID)(identifier & 0xfffffff0);	// exclude revision number
+}
+
+int phy_reset(const PHY_HANDLER *phy)
 {
 	// reset PHY
 	phy->Write(PHYR_BCR, PHY_BCR_RESET);
@@ -12,11 +19,10 @@ int phy_reset(const PHY_HANDLER *phy, PHY_ID *pid)
 	}
 	if (startup_time == 0) return 0; // no response from PHY
 
-	// identify PHY
-	PHY_ID id = (phy->Read(PHYR_ID1) << 16) | phy->Read(PHYR_ID2);
-
+	PHY_ID id = _identify(phy);
+	
 	// custom (specific) initialization
-	if (id == PHY_ID_KSZ8001 || id == PHY_ID_KSZ8721)
+	if (id == PHY_ID_KSZ8001)
 	{
 		PHY_KSZ_100TPCR_BITS ctrl = phy->Read(PHYR_KSZ_100TPCR);
 		ctrl &= ~PHY_KSZ_100TPCR_PAIRSWAP_DISABLE;
@@ -28,7 +34,8 @@ int phy_reset(const PHY_HANDLER *phy, PHY_ID *pid)
 		ctrl |= 0x8000;	// enable auto-neg auto-mdix capability
 		phy->Write(PHYR_DP83848_PHYCR, ctrl);
 	}
-	*pid = id;
+
+	return 1;
 }
 
 void phy_restart_neg(const PHY_HANDLER *phy)
@@ -37,29 +44,32 @@ void phy_restart_neg(const PHY_HANDLER *phy)
 	phy->Write(PHYR_BCR, bcr);
 }
 
-ETH_LINK phy_link_state(const PHY_HANDLER *phy, PHY_ID id)
+ETH_LINK phy_link_state(const PHY_HANDLER *phy)
 {
 	ETH_LINK mode = ETH_LINK_NONE;
 	unsigned short bsr = phy->Read(PHYR_BSR); 
 	if (0 != (bsr & PHY_BSR_AUTO_COMPLETE))
 	{
-		if (id == PHY_ID_KSZ8001 || id == PHY_ID_KSZ8721)
+		unsigned short reg;
+		PHY_ID id = _identify(phy);
+		switch(id)
 		{
-			unsigned short phycon = phy->Read(PHYR_KSZ_100TPCR);
-	
-			switch((PHY_KSZ_OPMODE)((phycon >> 2) & 0x7)) // Operation Mode
-			{
-				case PHY_KSZ_OPMODE_10M_HALF:	mode = ETH_LINK_10M | ETH_LINK_HALF_DUPLEX;		break;
-				case PHY_KSZ_OPMODE_100M_HALF:	mode = ETH_LINK_100M | ETH_LINK_HALF_DUPLEX;	break;
-				case PHY_KSZ_OPMODE_10M_FULL:	mode = ETH_LINK_10M | ETH_LINK_FULL_DUPLEX;		break;
-				case PHY_KSZ_OPMODE_100M_FULL:	mode = ETH_LINK_100M | ETH_LINK_FULL_DUPLEX;	break;
-			}
-		}
-		else if (id == PHY_ID_DP83848)
-		{
-			unsigned short sta = phy->Read(PHYR_DP83848_PHYSTA);
-			mode = ((sta & PHY_DP83848_PHYSTA_SPEED) ? ETH_LINK_10M : ETH_LINK_100M)
-			 | ((sta & PHY_DP83848_PHYSTA_DUPLEX) ? ETH_LINK_FULL_DUPLEX : ETH_LINK_HALF_DUPLEX);
+			case PHY_ID_KSZ8001:
+				reg = phy->Read(PHYR_KSZ_100TPCR);
+		
+				switch((PHY_KSZ_OPMODE)((reg >> 2) & 0x7)) // Operation Mode
+				{
+					case PHY_KSZ_OPMODE_10M_HALF:	mode = ETH_LINK_10M | ETH_LINK_HALF_DUPLEX;		break;
+					case PHY_KSZ_OPMODE_100M_HALF:	mode = ETH_LINK_100M | ETH_LINK_HALF_DUPLEX;	break;
+					case PHY_KSZ_OPMODE_10M_FULL:	mode = ETH_LINK_10M | ETH_LINK_FULL_DUPLEX;		break;
+					case PHY_KSZ_OPMODE_100M_FULL:	mode = ETH_LINK_100M | ETH_LINK_FULL_DUPLEX;	break;
+				}
+				break;
+			case PHY_ID_DP83848:
+				reg = phy->Read(PHYR_DP83848_PHYSTA);
+				mode = ((reg & PHY_DP83848_PHYSTA_SPEED) ? ETH_LINK_10M : ETH_LINK_100M)
+					| ((reg & PHY_DP83848_PHYSTA_DUPLEX) ? ETH_LINK_FULL_DUPLEX : ETH_LINK_HALF_DUPLEX);
+				break;
 		}
 	}
 	return mode;

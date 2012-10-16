@@ -12,11 +12,19 @@ unsigned long __psp;
 
 extern unsigned long __stack_start__;
 const void *__machine_process_start = &__stack_start__;
+extern int __data_start__, __data_end__, __data_load_start__;
+extern int __bss_start__, __bss_end__;
+
 
 static int _memtest(void *base, int size);
 
 void __machine_init()
 {
+	// initialize data sections
+	__mem_copy(&__data_start__, &__data_end__, &__data_load_start__);
+	// initialize bss sections
+	__mem_set(&__bss_start__, &__bss_end__, 0);
+
 	hal_board_initialize();
 
 	// 432 MHz

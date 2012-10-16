@@ -5,7 +5,7 @@
 #include "emac_mdio.h"
 #include "system.h"
 #include "intc.h"
-#include <kernel/user.h>
+#include <kernel/panic.h>
 #include <net/mbuf.h>
 
 #define EMAC_INT_PRI INTC_PRI_IRQ_MEDHIGH
@@ -142,7 +142,6 @@ void emac_initialize(unsigned char *mac_addr)
 	_emac_control->CMMISCINTEN = 0xFF;
 
 	emac_mdio_reset(emac_clk);
-	int link = emac_mdio_init_phy(1);
 
     intc_set_priority(52, 1, EMAC_INT_PRI);
     intc_set_priority(53, 1, EMAC_INT_PRI);
@@ -226,7 +225,7 @@ void INT55_Handler()
 {
 }
 
-void *emac_get_input_buffer(int *psize)
+void *emac_get_input_buffer(unsigned long *psize)
 {
 	EMAC_Desc *rx_desc = (EMAC_Desc *)_rx_ready_head;
 	if (rx_desc != NULL && rx_desc != _rx_chain.Head)
@@ -240,15 +239,17 @@ void *emac_get_input_buffer(int *psize)
 	}
 }
 
-void emac_discard_input_buffer()
+void emac_discard_input_buffer(void *buffer)
 {
 	EMAC_Desc *rx_desc = _rx_ready_head;
 #ifdef DEBUG
-	if (rx_desc == NULL) halt();
+	if (rx_desc == NULL) kernel_panic(KERNEL_ERROR_UNKNOWN);
 #endif
 	_rx_ready_head = rx_desc->Next;
 	if (rx_desc != NULL)
 	{
+		rx_desc->Buffer = buffer;
+
 		// Recycle packet descriptor/buffer
 		rx_desc->Next = NULL;
 		rx_desc->BufOffLen = EMAC_MAX_ETHERNET_PKT_SIZE;
@@ -270,7 +271,7 @@ void emac_discard_input_buffer()
 	}
 }
 
-void *emac_get_output_buffer()
+void *emac_get_output_buffer(unsigned long size)
 {
 	int index = _tx_index;
 	EMAC_PKT_BUFFER *tx_pkt = &_tx_buffers[index];
@@ -279,8 +280,10 @@ void *emac_get_output_buffer()
 	return tx_pkt;
 }
 
-int emac_send_output_buffer(NET_MBUF *mbuf)
+int emac_send_output_buffer(NET_MBUF *mbuf, ETH_CALLBACK callback, void *state)
 {
+	// TODO: setup storage for callback pointers ans states
+
 	int complete = 0;
 	if (mbuf != NULL)
 	{
@@ -335,7 +338,7 @@ int emac_send_output_buffer(NET_MBUF *mbuf)
 			}
 		}
 	}
-	if (!complete) halt();
+	if (!complete) kernel_panic(KERNEL_ERROR_UNKNOWN);
 	return complete;
 }
 

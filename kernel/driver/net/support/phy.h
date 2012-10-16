@@ -11,7 +11,6 @@ typedef enum
 	PHY_ID_NONE = 0,
 	PHY_ID_DP83848 = 0x20005C90,
 	PHY_ID_KSZ8001 = 0x00221610,
-	PHY_ID_KSZ8721 = 0x00221619,
 } PHY_ID;
 
 typedef enum _PHY_REG
@@ -111,8 +110,8 @@ typedef enum _ETH_LINK
 
 
 // prototypes
-int phy_reset(const PHY_HANDLER *phy, PHY_ID *pid);
+int phy_reset(const PHY_HANDLER *phy);
 void phy_restart_neg(const PHY_HANDLER *phy);
-ETH_LINK phy_link_state(const PHY_HANDLER *phy, PHY_ID id);
+ETH_LINK phy_link_state(const PHY_HANDLER *phy);
 
 #endif // SUPPORT_NET_PHY_H

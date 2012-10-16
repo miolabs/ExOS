@@ -11,10 +11,13 @@
           <file file_name="support/dm36x/intc.c"/>
           <file file_name="support/dm36x/system.c"/>
           <file file_name="support/dm36x/timer.c"/>
+          <file file_name="support/dm36x/emac.c"/>
+          <file file_name="support/dm36x/emac_mdio.c"/>
         </folder>
         <configuration Name="Common" build_intermediate_directory=".output/$(Configuration)/support" build_output_directory=".output/$(Configuration)/support"/>
-        <folder Name="board">
+        <folder Name="board" file_name="">
           <file file_name="support/board/leopardboard.c"/>
+          <file file_name="support/board/drivers_generic_dm36x.c"/>
         </folder>
       </folder>
       <folder Name="kernel">
@@ -26,6 +29,7 @@
             <file file_name="kernel/machine/dm36x/tests/main.c"/>
             <file file_name="kernel/machine/dm36x/machine_dm36x.c"/>
             <file file_name="kernel/machine/dm36x/kernel_armv4.s"/>
+            <file file_name="kernel/machine/dm36x/net_dm36x.c"/>
           </folder>
           <file file_name="kernel/machine/hal.c"/>
         </folder>
@@ -41,6 +45,27 @@
         <file file_name="kernel/thread.c"/>
         <file file_name="kernel/timer.c"/>
         <file file_name="kernel/tree.c"/>
+        <folder Name="driver">
+          <folder Name="comm">
+            <file file_name="kernel/driver/comm/comm.c"/>
+          </folder>
+          <folder Name="net">
+            <file file_name="kernel/driver/net/adapter.c"/>
+            <file file_name="kernel/driver/net/arp.c"/>
+            <file file_name="kernel/driver/net/arp_tables.c"/>
+            <file file_name="kernel/driver/net/icmp.c"/>
+            <file file_name="kernel/driver/net/ip.c"/>
+            <file file_name="kernel/driver/net/mbuf.c"/>
+            <file file_name="kernel/driver/net/net.c"/>
+            <file file_name="kernel/driver/net/net_io.c"/>
+            <file file_name="kernel/driver/net/net_service.c"/>
+            <file file_name="kernel/driver/net/udp.c"/>
+            <folder Name="support">
+              <file file_name="kernel/driver/net/support/apipa.c"/>
+              <file file_name="kernel/driver/net/support/phy.c"/>
+            </folder>
+          </folder>
+        </folder>
       </folder>
     </folder>
     <folder Name="System Files">
@@ -48,7 +73,7 @@
         <configuration Name="Common" file_type="Target Script"/>
       </file>
     </folder>
-    <configuration Name="DDR" arm_linker_heap_size="8192000" arm_target_flash_loader_file_path="C:/Users/Mich/AppData/Local/Rowley Associates Limited/CrossWorks for ARM/packages/targets/TMS320DM3x/loader_dm36x.elf" arm_target_flash_loader_type="LIBMEM RPC Loader" linker_section_placement_file="$(ProjectDir)/support/dm36x/sdram_placement.xml" target_reset_script="Reset()"/>
+    <configuration Name="DDR" arm_linker_heap_size="8192000" arm_target_flash_loader_file_path="$(TargetsDir)/TMS320DM3x/loader_dm36x.elf" arm_target_flash_loader_type="LIBMEM RPC Loader" linker_section_placement_file="$(ProjectDir)/support/dm36x/sdram_placement.xml" target_reset_script="Reset()"/>
     <configuration Name="SRAM" linker_section_placement_file="$(ProjectDir)/support/dm36x/sram_placement.xml" target_reset_script="SRAMReset()"/>
   </project>
   <configuration Name="Debug" c_preprocessor_definitions="DEBUG" gcc_optimization_level="None" hidden="Yes" link_include_startup_code="No"/>

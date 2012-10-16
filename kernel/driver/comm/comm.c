@@ -78,3 +78,7 @@ static int _write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length)
 	return done;
 }
 
+__weak EXOS_TREE_DEVICE *hal_comm_get_device(int index)
+{
+	return NULL;
+}

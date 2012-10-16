@@ -57,8 +57,12 @@ void net_adapter_initialize()
 	}
 }
 
-__attribute__((__weak__))
-void hal_net_set_mac_address(ETH_ADAPTER *adapter, int index)
+__weak ETH_ADAPTER *hal_net_get_adapter(int index)
+{
+	return NULL;
+}
+
+__weak void hal_net_set_mac_address(ETH_ADAPTER *adapter, int index)
 {
 	adapter->MAC = _dummy;
 	adapter->MAC.Bytes[5] += index;
@@ -130,6 +134,7 @@ void net_adapter_input(ETH_ADAPTER *adapter)
 				break;
 			case ETH_TYPE_IP:
 				queued = net_ip_input(adapter, buffer, (IP_HEADER *)payload);
+				break;
 		}
 		if (!queued) 
 			driver->DiscardInputBuffer(adapter, buffer);
