@@ -1,4 +1,5 @@
 #include "adapter.h"
+#include "board.h"
 #include "mbuf.h"
 #include "arp.h"
 #include "arp_tables.h"
@@ -6,7 +7,6 @@
 #include "net_service.h"
 #include <kernel/fifo.h>
 #include <kernel/panic.h>
-#include <support/net_hal.h>
  
 static EXOS_MUTEX _adapters_lock;
 static EXOS_LIST _adapters;
@@ -14,8 +14,6 @@ static EXOS_FIFO _free_wrappers;
 static EXOS_EVENT _free_wrapper_event;
 #define NET_PACKET_WRAPPERS 16
 static ETH_INPUT_BUFFER _wrappers[NET_PACKET_WRAPPERS];
-
-static const HW_ADDR _dummy = { 1, 2, 3, 4, 5, 6 };
 
 void net_adapter_initialize()
 {
@@ -31,7 +29,7 @@ void net_adapter_initialize()
 	exos_mutex_create(&_adapters_lock);
 	ETH_ADAPTER *adapter;
 	int index = 0;
-	while(NULL != (adapter = hal_net_get_adapter(index)))
+	while(NULL != (adapter = net_board_get_adapter(index)))
 	{
 #ifdef DEBUG
 		adapter->Node = (EXOS_NODE) { .Type = EXOS_NODE_IO_DEVICE };
@@ -40,7 +38,7 @@ void net_adapter_initialize()
 		adapter->NetMask = (IP_ADDR) { .Bytes = { 255, 255, 255, 255 } };
 		adapter->Gateway = (IP_ADDR) { .Value = 0 };
 		adapter->Speed = 0;
-		hal_net_set_mac_address(adapter, index);
+		net_board_set_mac_address(adapter, index);
 
 		const ETH_DRIVER *driver = adapter->Driver;
 		if (driver->Initialize(adapter))
@@ -51,21 +49,10 @@ void net_adapter_initialize()
 			exos_mutex_create(&adapter->OutputLock);
 			net_service_start(adapter);
 
-			hal_net_set_ip_address(adapter, index);
+			net_board_set_ip_address(adapter, index);
 		}
 		index++;
 	}
-}
-
-__weak ETH_ADAPTER *hal_net_get_adapter(int index)
-{
-	return NULL;
-}
-
-__weak void hal_net_set_mac_address(ETH_ADAPTER *adapter, int index)
-{
-	adapter->MAC = _dummy;
-	adapter->MAC.Bytes[5] += index;
 }
 
 void net_adapter_list_lock()

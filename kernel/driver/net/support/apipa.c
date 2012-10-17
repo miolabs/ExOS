@@ -1,5 +1,5 @@
 #include "apipa.h"
-#include <support/net_hal.h>
+#include <net/board.h>
 
 void net_apipa_set_ip_address(ETH_ADAPTER *adapter)
 {
@@ -7,7 +7,7 @@ void net_apipa_set_ip_address(ETH_ADAPTER *adapter)
 	adapter->NetMask = (IP_ADDR) { 255, 255, 0, 0 };
 }
 
-void hal_net_set_ip_address(ETH_ADAPTER *adapter, int index)
+void net_board_set_ip_address(ETH_ADAPTER *adapter, int index)
 {
 	net_apipa_set_ip_address(adapter);
 }

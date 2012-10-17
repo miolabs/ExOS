@@ -1,6 +1,6 @@
 #include "comm.h"
+#include "board.h"
 #include <kernel/panic.h>
-#include <support/comm_hal.h>
 
 static int _read(EXOS_IO_ENTRY *io, void *buffer, unsigned long length);
 static int _write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length);
@@ -13,7 +13,7 @@ void comm_initialize()
 	// add board devices to device tree
 	EXOS_TREE_DEVICE *device;
 	for(int index = 0; 
-		NULL != (device = hal_comm_get_device(index));
+		NULL != (device = comm_board_get_device(index));
 		index++)
 	{
 		device->Type = EXOS_TREE_NODE_DEVICE;
@@ -78,7 +78,8 @@ static int _write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length)
 	return done;
 }
 
-__weak EXOS_TREE_DEVICE *hal_comm_get_device(int index)
+// defined in board_support
+__weak EXOS_TREE_DEVICE *comm_board_get_device(int index)
 {
 	return NULL;
 }

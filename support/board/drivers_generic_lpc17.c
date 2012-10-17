@@ -1,5 +1,5 @@
-#include <support/net_hal.h>
-#include <support/comm_hal.h>
+#include <net/board.h>
+#include <comm/board.h>
 #include <kernel/machine/lpc17/net_lpc17.h>
 #include <kernel/machine/lpc17/comm_lpc17.h>
 

@@ -1,30 +1,14 @@
+// LPC17xx Timer Peripheral Support
+// by Miguel Fides
+
+#include "timer.h"
+#include "cpu.h"
 #include <support/cap_hal.h>
 #include <support/board_hal.h>
-#include "cpu.h"
 #include <CMSIS/LPC17xx.h>
 
 static HAL_CAP_HANDLER _capture_handlers[4];
 //static TIMER_EVENT_HANDLER _match_handlers[4]
-
-typedef enum
-{
-	CAPM_RISING = 1,
-	CAPM_FALLING = 2,
-	CAPM_INT = 4,
-} TIMER_CAPM;
-
-typedef struct
-{
-	TIMER_CAPM CR0:3;
-	TIMER_CAPM CR1:3;
-} TIMER_CCR;
-
-#define TIMER_IR_MR0 (1<<0)
-#define TIMER_IR_MR1 (1<<1)
-#define TIMER_IR_MR2 (1<<2)
-#define TIMER_IR_MR3 (1<<3)
-#define TIMER_IR_CR0 (1<<4)
-#define TIMER_IR_CR1 (1<<5)
 
 static LPC_TIM_TypeDef *_initialize(int module, int freq)
 {
