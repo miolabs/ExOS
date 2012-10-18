@@ -11,7 +11,7 @@ static EXOS_TREE_DEVICE _comm_devices[] = {
 	{ .Name = "comm2", .Device = &_internal_comm_device, .Port = 2 },
 	{ .Name = "comm3", .Device = &_internal_comm_device, .Port = 3 } };
 
-ETH_ADAPTER *hal_net_get_adapter(int index)
+ETH_ADAPTER *net_board_get_adapter(int index)
 {
 	switch(index)
 	{
@@ -20,7 +20,7 @@ ETH_ADAPTER *hal_net_get_adapter(int index)
 	return NULL;
 }
 
-EXOS_TREE_DEVICE *hal_comm_get_device(int index)
+EXOS_TREE_DEVICE *comm_board_get_device(int index)
 {
 	switch(index)
 	{

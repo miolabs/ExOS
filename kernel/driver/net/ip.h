@@ -83,6 +83,12 @@ extern const IP_ADDR __ip_any;
 #define IP_ADDR_BROADCAST (__ep_broadcast.IP)
 #define IP_ADDR_ANY (__ip_any)
 
+typedef struct
+{
+	IP_ADDR Address;
+	unsigned short Port;
+} IP_PORT_ADDR;
+
 // prototypes
 void net_ip_initialize();
 int net_ip_input(ETH_ADAPTER *adapter, ETH_HEADER *eth, IP_HEADER *ip);

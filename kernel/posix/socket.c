@@ -4,8 +4,7 @@
 #include <sys/socket.h>
 
 #include <kernel/memory.h>
-#include <net/net_io.h>
-#include <net/udp.h>
+#include <net/udp_io.h>
 
 int socket(int domain, int type, int protocol)
 {
@@ -17,9 +16,9 @@ int socket(int domain, int type, int protocol)
 	{
 		case SOCK_DGRAM:
 			if (protocol != 0) return EPROTONOSUPPORT;
-			entry = (EXOS_IO_ENTRY *)exos_mem_alloc(sizeof(NET_IO_ENTRY), EXOS_MEMF_CLEAR);
+			entry = (EXOS_IO_ENTRY *)exos_mem_alloc(sizeof(UDP_IO_ENTRY), EXOS_MEMF_CLEAR);
 			if (entry == NULL) return ENOMEM;
-			net_udp_create_io((NET_IO_ENTRY *)entry, EXOS_IOF_WAIT);
+			net_udp_create_io((UDP_IO_ENTRY *)entry, EXOS_IOF_WAIT);
 			break;
 		default:
 			return EPROTOTYPE;
@@ -43,6 +42,8 @@ int bind(int socket, const struct sockaddr *address, socklen_t address_len)
 	if (address->sa_family != AF_INET ||
 		address_len != sizeof(struct sockaddr_in))
 		return EAFNOSUPPORT;
+
+	// FIXME: check that this was a DGRAM socket
 
 	struct sockaddr_in *udp_addr = (struct sockaddr_in *)address;
 	IP_PORT_ADDR ip = (IP_PORT_ADDR) { 

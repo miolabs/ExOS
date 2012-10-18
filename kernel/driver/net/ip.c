@@ -3,8 +3,8 @@
 
 #include "ip.h"
 #include "icmp.h"
-#include "udp.h"
-#include "tcp.h"
+#include "udp_io.h"
+#include "tcp_io.h"
 #include "arp_tables.h"
 #include <kernel/panic.h>
 
@@ -17,13 +17,14 @@ static int _packet_id = 0;
 
 void net_ip_initialize()
 {
-	net_udp_initialize();
+	__udp_io_initialize();
+	__tcp_io_initialize();
 }
 
 void *net_ip_get_payload(IP_HEADER *ip, unsigned short *plength)
 {
 	int header_length = ip->HeaderLength << 2;
-	*plength = NTOH16(ip->TotalLength) - header_length; 
+	if (plength) *plength = NTOH16(ip->TotalLength) - header_length; 
 	return (void *)ip + header_length;
 }
 
@@ -43,10 +44,9 @@ int net_ip_input(ETH_ADAPTER *adapter, ETH_HEADER *eth, IP_HEADER *ip)
 					net_arp_set_entry(&eth->Sender, &ip->SourceIP);
 					net_icmp_input(adapter, eth, ip);
 					break;
-//				case IP_PROTOCOL_TCP:
-//					net_arp_set_entry(sender, &ip->SourceIP);
-//					net_tcp_input(driver, ip, sender);
-//					break;
+				case IP_PROTOCOL_TCP:
+					net_arp_set_entry(&eth->Sender, &ip->SourceIP);
+					return net_tcp_input(adapter, eth, ip);
 				case IP_PROTOCOL_UDP:
 					net_arp_set_entry(&eth->Sender, &ip->SourceIP);
 					return net_udp_input(adapter, eth, ip);

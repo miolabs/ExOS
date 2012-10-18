@@ -1,5 +1,3 @@
-#include <net/net.h>
-
 #include <sys/types.h> 
 #include <sys/socket.h> 
 #include <netinet/in.h> 
@@ -21,21 +19,21 @@ static char buf[1024];
 
 int main(void) 
 { 
-	struct Test test_name; 
-	
-	int sock = socket(AF_INET, SOCK_DGRAM, 0); 
+	struct Test test_name;
+
+	int sock = socket(AF_INET, SOCK_DGRAM, 0);
 	if (sock < 0) return -1;
 
 	struct sockaddr_in server = (struct sockaddr_in) {
 		.sin_family = AF_INET,
 		.sin_addr.s_addr = INADDR_ANY,
 		.sin_port = htons(1818) };
-	socklen_t length = sizeof(server); 
+	socklen_t length = sizeof(server);
 	
 	if (bind(sock, (struct sockaddr *)&server, length) < 0)
 		return -2; // error binding
 
-	socklen_t fromlen = sizeof(struct sockaddr_in); 
+	socklen_t fromlen = sizeof(struct sockaddr_in);
 	while (1)
 	{
 		struct sockaddr_in from; 
