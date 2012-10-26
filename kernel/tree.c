@@ -63,10 +63,11 @@ static int _name_eq(const char **ppath, const char *name)
 	return 0;
 }
 
-EXOS_TREE_NODE *exos_tree_find_node(EXOS_TREE_NODE *parent, const char **ppath)
+EXOS_TREE_NODE *exos_tree_find_node(EXOS_TREE_NODE *parent, const char *path)
 {
 	if (parent == NULL) parent = (EXOS_TREE_NODE *)&__root;
 
+	const char *subpath = path;
 	do
 	{
 #ifdef DEBUG
@@ -81,7 +82,7 @@ EXOS_TREE_NODE *exos_tree_find_node(EXOS_TREE_NODE *parent, const char **ppath)
 			FOREACH(node, group->Children)
 			{
 				EXOS_TREE_NODE *child = (EXOS_TREE_NODE *)node;
-				if (_name_eq(ppath, child->Name))
+				if (_name_eq(&subpath, child->Name))
 				{
 					found = child;
 					break;

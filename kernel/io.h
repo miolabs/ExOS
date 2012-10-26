@@ -42,4 +42,21 @@ void exos_io_set_timeout(EXOS_IO_ENTRY *io, unsigned long timeout);
 int exos_io_read(EXOS_IO_ENTRY *io, void *buffer, unsigned long length);
 int exos_io_write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length);
 
+typedef struct
+{
+	unsigned char *Buffer;
+	unsigned short Size;
+	volatile unsigned short ProduceIndex;
+	volatile unsigned short ConsumeIndex;
+	EXOS_EVENT *NotFullEvent;
+	EXOS_EVENT *NotEmptyEvent;
+} EXOS_IO_BUFFER;
+
+void exos_io_buffer_create(EXOS_IO_BUFFER *iobuf, void *buffer, unsigned short size);
+int exos_io_buffer_write(EXOS_IO_BUFFER *iobuf, void *buffer, unsigned short length);
+int exos_io_buffer_read(EXOS_IO_BUFFER *iobuf, void *buffer, unsigned short length);
+int exos_io_buffer_avail(EXOS_IO_BUFFER *iobuf);
+int exos_io_buffer_discard(EXOS_IO_BUFFER *iobuf, unsigned short length);
+int exos_io_buffer_peek(EXOS_IO_BUFFER *iobuf, unsigned short offset, void **pptr);
+
 #endif // EXOS_IO_H

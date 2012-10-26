@@ -15,10 +15,6 @@ typedef struct
 {
 	const COMM_DRIVER *Driver;
 	unsigned PortCount;
-
-//	unsigned long InputSignal;
-//	EXOS_THREAD Thread;
-//	unsigned char Stack[COMM_DEVICE_THREAD_STACK];
 } COMM_DEVICE;
 
 typedef struct 

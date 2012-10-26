@@ -8,7 +8,7 @@
 #include <kernel/mutex.h>
 
 #ifndef NET_ADAPTER_THREAD_STACK
-#define NET_ADAPTER_THREAD_STACK 512
+#define NET_ADAPTER_THREAD_STACK 768
 #endif
 
 typedef struct __attribute__((__packed__))
@@ -52,7 +52,9 @@ typedef struct
 	EXOS_NODE Node;
 	ETH_ADAPTER *Adapter;
 	void *Buffer;
-} ETH_INPUT_BUFFER;
+	unsigned short Offset;
+	unsigned short Length;
+} ETH_BUFFER;
 
 typedef struct
 {
@@ -83,8 +85,8 @@ void net_adapter_input(ETH_ADAPTER *adapter);
 void *net_adapter_output(ETH_ADAPTER *adapter, ETH_OUTPUT_BUFFER *buf, unsigned hdr_size, HW_ADDR *destination, ETH_TYPE type);
 int net_adapter_send_output(ETH_ADAPTER *adapter, ETH_OUTPUT_BUFFER *buf);
 
-ETH_INPUT_BUFFER *net_adapter_alloc_input_buffer(ETH_ADAPTER *adapter, void *buffer);
-void net_adapter_discard_input_buffer(ETH_INPUT_BUFFER *packet);
+ETH_BUFFER *net_adapter_alloc_buffer(ETH_ADAPTER *adapter, void *buffer, void *data, unsigned long length);
+void net_adapter_discard_input_buffer(ETH_BUFFER *packet);
 
 
 #endif // NET_DRIVERS_H

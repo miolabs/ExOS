@@ -94,18 +94,14 @@ static int _receive(NET_IO_ENTRY *socket, void *buffer, unsigned long length, vo
 	IP_PORT_ADDR *ip = (IP_PORT_ADDR *)addr;
 	UDP_IO_ENTRY *io = (UDP_IO_ENTRY *)socket;
 
-	ETH_INPUT_BUFFER *packet = (ETH_INPUT_BUFFER *)exos_fifo_dequeue(&io->Incoming);
+	ETH_BUFFER *packet = (ETH_BUFFER *)exos_fifo_dequeue(&io->Incoming);
 	if (packet != NULL)
 	{
 		IP_HEADER *ip_hdr = (IP_HEADER *)((void *)packet->Buffer + sizeof(ETH_HEADER));
-		unsigned short udp_length;
-		UDP_HEADER *udp_hdr = net_ip_get_payload(ip_hdr, &udp_length);
-		
-		void *payload = (void *)udp_hdr + sizeof(UDP_HEADER);
-		int payload_length = (int)udp_length - sizeof(UDP_HEADER);
+		UDP_HEADER *udp_hdr = (UDP_HEADER *)net_ip_get_payload(ip_hdr, NULL);
 
-		int fit = payload_length > length ? length : payload_length; 
-		memcpy(buffer, payload, fit);
+		int fit = packet->Length > length ? length : packet->Length; 
+		memcpy(buffer, packet->Buffer + packet->Offset, fit);
 
 		if (ip != NULL)
 			*ip = (IP_PORT_ADDR) { .Address = ip_hdr->SourceIP, .Port = NTOH16(udp_hdr->SourcePort) };

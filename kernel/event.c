@@ -75,11 +75,21 @@ static int _set_event(unsigned long *args)
 
 void exos_event_set(EXOS_EVENT *event)
 {
+#ifdef DEBUG
+	if (event == NULL || event->Handles.Tail != NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+
 	__kernel_do(_set_event, event, 1);
 }
 
 void exos_event_reset(EXOS_EVENT *event)
 {
+#ifdef DEBUG
+	if (event == NULL || event->Handles.Tail != NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+
 	__kernel_do(_set_event, event, 0);
 }
 

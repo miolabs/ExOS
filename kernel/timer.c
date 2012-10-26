@@ -118,6 +118,7 @@ void exos_timer_wait(EXOS_TIMER *timer)
 }
 
 
+static unsigned long _time = 0;
 
 static int _tick(unsigned long *args)
 {
@@ -145,6 +146,8 @@ static int _tick(unsigned long *args)
 			}
 		}
 	}
+
+	_time++;
 	return  0;
 }
 
@@ -153,3 +156,12 @@ void __kernel_tick()
 	__kernel_do(_tick);
 }
 
+unsigned long exos_timer_time()
+{
+	return _time;
+}
+
+unsigned long exos_timer_elapsed(unsigned long time)
+{
+	return _time - time;
+}

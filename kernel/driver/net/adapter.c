@@ -13,7 +13,7 @@ static EXOS_LIST _adapters;
 static EXOS_FIFO _free_wrappers;
 static EXOS_EVENT _free_wrapper_event;
 #define NET_PACKET_WRAPPERS 16
-static ETH_INPUT_BUFFER _wrappers[NET_PACKET_WRAPPERS];
+static ETH_BUFFER _wrappers[NET_PACKET_WRAPPERS];
 
 void net_adapter_initialize()
 {
@@ -22,7 +22,7 @@ void net_adapter_initialize()
 	exos_fifo_create(&_free_wrappers, &_free_wrapper_event);
 	for(int i = 0; i < NET_PACKET_WRAPPERS; i++)
 	{
-		_wrappers[i] = (ETH_INPUT_BUFFER) { .Adapter = NULL }; 
+		_wrappers[i] = (ETH_BUFFER) { .Adapter = NULL }; 
 		exos_fifo_queue(&_free_wrappers, (EXOS_NODE *)&_wrappers[i]);
 	}
 
@@ -165,18 +165,20 @@ int net_adapter_send_output(ETH_ADAPTER *adapter, ETH_OUTPUT_BUFFER *output)
 	return done;
 }
 
-ETH_INPUT_BUFFER *net_adapter_alloc_input_buffer(ETH_ADAPTER *adapter, void *buffer)
+ETH_BUFFER *net_adapter_alloc_buffer(ETH_ADAPTER *adapter, void *buffer, void *data, unsigned long length)
 {
-	ETH_INPUT_BUFFER *packet = (ETH_INPUT_BUFFER *)exos_fifo_wait(&_free_wrappers, EXOS_TIMEOUT_NEVER);
+	ETH_BUFFER *packet = (ETH_BUFFER *)exos_fifo_wait(&_free_wrappers, EXOS_TIMEOUT_NEVER);
 #ifdef DEBUG
 	packet->Node = (EXOS_NODE) { .Type = EXOS_NODE_IO_BUFFER };
 #endif
 	packet->Adapter = adapter;
 	packet->Buffer = buffer;
+	packet->Offset = (unsigned short)(data - buffer);
+	packet->Length = length;
 	return packet;
 }
 
-void net_adapter_discard_input_buffer(ETH_INPUT_BUFFER *packet)
+void net_adapter_discard_input_buffer(ETH_BUFFER *packet)
 {
 	ETH_ADAPTER *adapter = packet->Adapter;
 	const ETH_DRIVER *driver = adapter->Driver;

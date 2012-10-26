@@ -208,7 +208,7 @@ int uart_read(unsigned module, unsigned char *buffer, unsigned long length)
 int uart_write(unsigned module, const unsigned char *buffer, unsigned long length)
 {
 	UART_CONTROL_BLOCK *cb = _control[module];
-    UART_BUFFER *output = &cb->OutputBuffer;
+	UART_BUFFER *output = &cb->OutputBuffer;
 
 	int done;
 	for(done = 0; done < length; done++)
@@ -222,6 +222,14 @@ int uart_write(unsigned module, const unsigned char *buffer, unsigned long lengt
 		}
 		output->Buffer[output->ProduceIndex] = buffer[done];
 		output->ProduceIndex = index;
+	}
+
+	if (done == length && cb->Handler)
+	{
+		int index = output->ProduceIndex + 1;
+        if (index == output->Size) index = 0;
+		if (index == output->ConsumeIndex)
+			cb->Handler(UART_EVENT_OUTPUT_FULL, cb->HandlerState);
 	}
 
     LPC_UART_TypeDef *uart = _module(module);

@@ -28,7 +28,7 @@
 	#endif
 #endif
 
-#define kBaudRate       57600
+#define kBaudRate       115200
 #define kBufferBytes    256
 
 int OpenUART();

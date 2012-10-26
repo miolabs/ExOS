@@ -7,7 +7,7 @@
 
 void main();
 
-static EXOS_THREAD _main_thread;
+EXOS_THREAD _main_thread;
 static unsigned char _main_stack[MAIN_THREAD_STACK] __attribute__((aligned(16)));
 
 void __kernel_start()

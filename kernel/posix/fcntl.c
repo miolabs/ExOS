@@ -39,7 +39,7 @@ int open(const char *path, int oflag, ...)
 
 	const char *dev_path = path;
 	if (*dev_path == '/') dev_path++;
-	EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, &dev_path);
+	EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, dev_path);
 	if (dev_node == NULL)
 		return posix_set_error(ENODEV);
 

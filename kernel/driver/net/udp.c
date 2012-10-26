@@ -23,7 +23,7 @@ int net_udp_input(ETH_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip)
 			UDP_IO_ENTRY *io = __udp_io_find_io(adapter, port);
 			if (io != NULL)
 			{
-				ETH_INPUT_BUFFER *packet = net_adapter_alloc_input_buffer(adapter, buffer);
+				ETH_BUFFER *packet = net_adapter_alloc_buffer(adapter, buffer, (void *)udp + sizeof(UDP_HEADER), udp_length - sizeof(UDP_HEADER));
 				exos_fifo_queue(&io->Incoming, (EXOS_NODE *)packet);
 				return 1;
 			}

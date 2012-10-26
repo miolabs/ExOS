@@ -26,7 +26,6 @@
             <file file_name="kernel/machine/dm36x/startup_dm36x.s"/>
             <file file_name="kernel/machine/dm36x/time_dm36x.c"/>
             <file file_name="kernel/machine/dm36x/vectors_dm36x.s"/>
-            <file file_name="kernel/machine/dm36x/tests/main.c"/>
             <file file_name="kernel/machine/dm36x/machine_dm36x.c"/>
             <file file_name="kernel/machine/dm36x/kernel_armv4.s"/>
             <file file_name="kernel/machine/dm36x/net_dm36x.c"/>
@@ -63,6 +62,12 @@
             <folder Name="support">
               <file file_name="kernel/driver/net/support/apipa.c"/>
               <file file_name="kernel/driver/net/support/phy.c"/>
+            </folder>
+            <file file_name="kernel/driver/net/tcp.c"/>
+            <file file_name="kernel/driver/net/tcp_io.c"/>
+            <file file_name="kernel/driver/net/udp_io.c"/>
+            <folder Name="tests">
+              <file file_name="kernel/driver/net/tests/tcp_test.c"/>
             </folder>
           </folder>
         </folder>

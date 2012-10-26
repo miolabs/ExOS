@@ -1,11 +1,11 @@
-#include <support/net_hal.h>
-#include <support/comm_hal.h>
+#include <net/board.h>
+#include <comm/board.h>
 #include <kernel/machine/dm36x/net_dm36x.h>
 //#include <kernel/machine/dm36x/comm_dm36x.h>
 
 static ETH_ADAPTER _internal_adapter = { .Driver = &__net_driver_dm36x };
 
-ETH_ADAPTER *hal_net_get_adapter(int index)
+ETH_ADAPTER *net_board_get_adapter(int index)
 {
 	switch(index)
 	{

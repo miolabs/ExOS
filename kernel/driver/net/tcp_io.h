@@ -11,31 +11,25 @@ typedef struct
    	unsigned short LocalPort;
 	unsigned short RemotePort;
 	IP_ENDPOINT RemoteEP;
-	EXOS_FIFO Incoming;
-
-	unsigned short LocalWindowSize;
-	unsigned short RemoteWindowSize;
 
 	unsigned long RcvNext;
-//	TCP_RECEIVE_CALLBACK RcvCallback;
+	EXOS_IO_BUFFER RcvBuffer;
 
 	unsigned long SndBase;
 	unsigned long SndAck;
 	unsigned long SndNext; 
-	NET_MBUF *SndBuffer;
 	TCP_FLAGS SndFlags;
-//	TCP_SEND_CALLBACK SndCallback;
-} TCP_IO_ENTRY;
+	EXOS_IO_BUFFER SndBuffer;
 
-//typedef void (* TCP_RECEIVE_CALLBACK)(TCP_PCB *pcb, void *data, int data_length);
-//typedef void (* TCP_SEND_CALLBACK)(TCP_PCB *pcb, NET_MBUF *done);
+	EXOS_MUTEX Mutex;
+	unsigned long ServiceWait;
+	unsigned long ServiceTime;
+} TCP_IO_ENTRY;
 
 
 void __tcp_io_initialize();
-TCP_IO_ENTRY *__tcp_io_find_io(ETH_ADAPTER *adapter, unsigned short local_port, IP_ADDR src_ip, unsigned short src_port);
-void __tcp_io_remove_io(TCP_IO_ENTRY *io);
 
-void net_tcp_create_io(TCP_IO_ENTRY *io, EXOS_IO_FLAGS flags);
+void net_tcp_io_create(TCP_IO_ENTRY *io, EXOS_IO_FLAGS flags, void *rcv_buffer, unsigned short rcv_length, void *snd_buffer, unsigned short snd_length);
 int net_tcp_listen(TCP_IO_ENTRY *io);
 int net_tcp_accept(TCP_IO_ENTRY *io);
 int net_tcp_connect(TCP_IO_ENTRY *io, IP_PORT_ADDR *remote);

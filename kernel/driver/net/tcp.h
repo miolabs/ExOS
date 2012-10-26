@@ -39,7 +39,6 @@ typedef struct __attribute__((__packed__))
 typedef enum
 {
 	TCP_STATE_CLOSED,
-	TCP_STATE_BOUND,
 	TCP_STATE_LISTEN,
 	TCP_STATE_SYN_SENT,
 	TCP_STATE_SYN_RECEIVED,
@@ -55,10 +54,6 @@ typedef enum
 
 int net_tcp_input(ETH_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip);
 unsigned short net_tcp_checksum(IP_ADDR *source_ip, IP_ADDR *dest_ip, NET_MBUF *mbuf, int offset);
-
-// OBSOLETE API
-//int net_tcp_listen(TCP_PCB *pcb);
-//int net_tcp_append(TCP_PCB *pcb, NET_MBUF *mbuf, int push);
 
 #endif // NET_TCP_H
 

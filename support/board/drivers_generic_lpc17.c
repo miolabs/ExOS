@@ -4,6 +4,7 @@
 #include <kernel/machine/lpc17/comm_lpc17.h>
 
 static ETH_ADAPTER _internal_adapter = { .Driver = &__net_driver_lpc17 };
+
 static COMM_DEVICE _internal_comm_device = { .Driver = &__comm_driver_lpc17, .PortCount = 4 };
 static EXOS_TREE_DEVICE _comm_devices[] = {
 	{ .Name = "comm0", .Device = &_internal_comm_device, .Port = 0 },

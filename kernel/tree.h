@@ -35,6 +35,6 @@ typedef struct
 void __tree_initialize();
 void exos_tree_add_child(const EXOS_TREE_GROUP *group, EXOS_TREE_NODE *child);
 void exos_tree_add_device(EXOS_TREE_DEVICE *device);
-EXOS_TREE_NODE *exos_tree_find_node(EXOS_TREE_NODE *parent, const char **ppath);
+EXOS_TREE_NODE *exos_tree_find_node(EXOS_TREE_NODE *parent, const char *path);
 
 #endif // EXOS_TREE_H
