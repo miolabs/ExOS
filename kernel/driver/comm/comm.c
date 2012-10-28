@@ -34,6 +34,11 @@ void comm_io_create(COMM_IO_ENTRY *io, COMM_DEVICE *device, unsigned port, EXOS_
 
 int comm_io_open(COMM_IO_ENTRY *io, int baudrate)
 {
+#ifdef DEBUG
+	if (io == NULL) 
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+	
 	COMM_DEVICE *device = io->Device;
 	const COMM_DRIVER *driver = device->Driver;
 	io->Baudrate = baudrate;
@@ -44,6 +49,11 @@ int comm_io_open(COMM_IO_ENTRY *io, int baudrate)
 
 void comm_io_close(COMM_IO_ENTRY *io)
 {
+#ifdef DEBUG
+	if (io == NULL) 
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+
 	COMM_DEVICE *device = io->Device;
 	const COMM_DRIVER *driver = device->Driver;
 	driver->Close(io);
@@ -51,6 +61,11 @@ void comm_io_close(COMM_IO_ENTRY *io)
 
 int comm_io_set_baudrate(COMM_IO_ENTRY *io, int baudrate)
 {
+#ifdef DEBUG
+	if (io == NULL) 
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+
 	COMM_DEVICE *device = io->Device;
 	const COMM_DRIVER *driver = device->Driver;
 	io->Baudrate = baudrate;

@@ -7,7 +7,7 @@
 TCP_IO_ENTRY _socket;
 unsigned char _buffer[1024];
 
-#define TCP_BUFFER_SIZE 32
+#define TCP_BUFFER_SIZE 32 // tiny window for stress
 unsigned char _rcv_buffer[TCP_BUFFER_SIZE];
 unsigned char _snd_buffer[TCP_BUFFER_SIZE];
 
@@ -17,9 +17,14 @@ int main()
 {
 	int err;
 
+	EXOS_IO_ENTRY *comm = NULL;
 	EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/comm0");
-	comm_io_create(&_comm, dev_node->Device, dev_node->Port, EXOS_IOF_WAIT); 
-	err = comm_io_open(&_comm, 115200);
+	if (dev_node != NULL)
+	{
+		comm_io_create(&_comm, dev_node->Device, dev_node->Port, EXOS_IOF_WAIT); 
+		err = comm_io_open(&_comm, 115200);
+		if (err == 0) comm = (EXOS_IO_ENTRY *)&_comm;
+	}
 
 	net_tcp_io_create(&_socket, EXOS_IOF_WAIT, _rcv_buffer, TCP_BUFFER_SIZE, _snd_buffer, TCP_BUFFER_SIZE);
 	
@@ -36,7 +41,7 @@ int main()
 	{
 		int done = exos_io_read((EXOS_IO_ENTRY *)&_socket, _buffer, 1024); 
 
-		int done2 = exos_io_write((EXOS_IO_ENTRY *)&_comm, _buffer, done);
+		int done2 = comm != NULL ? exos_io_write(comm, _buffer, done) : done;
 
 		int done3 = exos_io_write((EXOS_IO_ENTRY *)&_socket, _buffer, done);
 

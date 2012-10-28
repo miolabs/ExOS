@@ -19,6 +19,8 @@ static unsigned long *_emac_stats = (unsigned long *)0x01D07200;
 #define EMAC_TX_BUFFERS 32
 #define EMAC_TOTAL_DESCRIPTORS (EMAC_TX_BUFFERS + EMAC_RX_BUFFERS)
 
+static const unsigned char _pad_buffer[] = "padpadpadpadpadpadpadpadpadpadpadpadpadpad";
+
 typedef struct
 {
 	volatile EMAC_Desc *Head;
@@ -206,15 +208,19 @@ void INT54_Handler()
 	while (tx_desc != NULL)
 	{
 		unsigned long flags = tx_desc->PktFlgLen;
-		if ((flags & EMAC_DSC_FLAG_OWNER) != 0) 
+		if ((flags & (EMAC_DSC_FLAG_SOP | EMAC_DSC_FLAG_OWNER)) == (EMAC_DSC_FLAG_SOP | EMAC_DSC_FLAG_OWNER)) 
 			break;
 		
 		if (flags & EMAC_DSC_FLAG_EOP)
 			_emac_ptrs->TXCP[0] = tx_desc;
-			
+		
+		if (tx_desc->Callback != NULL)
+			tx_desc->Callback(tx_desc->CallbackState);
+
 		_tx_free_chain.Tail = _tx_free_chain.Tail->Next = tx_desc;
 		tx_desc = tx_desc->Next;
-		tx_desc->Next = NULL;
+		_tx_free_chain.Tail->Next = NULL;
+		
 	}
 	_tx_chain.Head = tx_desc;
 	_emac->MACEOIVECTOR = EMAC_EOI_TXPULSE;
@@ -282,30 +288,32 @@ void *emac_get_output_buffer(unsigned long size)
 
 int emac_send_output_buffer(NET_MBUF *mbuf, ETH_CALLBACK callback, void *state)
 {
-	// TODO: setup storage for callback pointers ans states
-
 	int complete = 0;
 	if (mbuf != NULL)
 	{
+		NET_MBUF padding;
 		int packet_length = net_mbuf_length(mbuf);
+		if (packet_length < 60) // min eth payload length
+		{
+			net_mbuf_init(&padding, (void *)_pad_buffer, 0, 60 - packet_length);
+			net_mbuf_append(mbuf, &padding);
+			packet_length = 60;
+		}
+
 		if (packet_length <= EMAC_MAX_ETHERNET_PKT_SIZE)
 		{
 			EMAC_Desc *tx_desc = (EMAC_Desc *)_tx_free_chain.Head;
 			for(int count = 0; tx_desc != NULL; count++)
 			{
+				tx_desc->Callback = (count == 0) ? callback : NULL;
+				tx_desc->CallbackState = state; 
+
 				tx_desc->Buffer = mbuf->Buffer + mbuf->Offset;
 				tx_desc->BufOffLen = mbuf->Length;
 				if (mbuf->Next == NULL)
 				{
-					if (packet_length < 60) // min eth payload length
-					{
-						tx_desc->BufOffLen += (60 - packet_length);
-						packet_length = 60;
-					}
-
-					tx_desc->PktFlgLen = packet_length |
-						(count == 0 ? EMAC_DSC_FLAG_SOP : 0) |
-						EMAC_DSC_FLAG_EOP | EMAC_DSC_FLAG_OWNER;
+					tx_desc->PktFlgLen = (count != 0) ? EMAC_DSC_FLAG_EOP :
+						packet_length | EMAC_DSC_FLAG_SOP | EMAC_DSC_FLAG_OWNER | EMAC_DSC_FLAG_EOP;
 
 					// remove descriptors from free chain
 					EMAC_Desc *tx_head = (EMAC_Desc *)_tx_free_chain.Head;
@@ -321,7 +329,7 @@ int emac_send_output_buffer(NET_MBUF *mbuf, ETH_CALLBACK callback, void *state)
 					{
 						_tx_chain.Tail->Next = tx_head;
 						if (_tx_chain.Tail->PktFlgLen & EMAC_DSC_FLAG_EOQ)
-						{
+						{                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
 							_emac_ptrs->TXHDP[0] = _tx_last_load = tx_head;
 						}
 					}
@@ -330,9 +338,9 @@ int emac_send_output_buffer(NET_MBUF *mbuf, ETH_CALLBACK callback, void *state)
 					complete = 1;
 					break;
 				}
-				tx_desc->PktFlgLen = packet_length |
-					(count == 0 ? EMAC_DSC_FLAG_SOP : 0) |
-					EMAC_DSC_FLAG_OWNER;
+
+				tx_desc->PktFlgLen = (count != 0) ? 0 :
+					packet_length | EMAC_DSC_FLAG_SOP | EMAC_DSC_FLAG_OWNER;
 				tx_desc = tx_desc->Next;
 				mbuf = mbuf->Next;
 			}

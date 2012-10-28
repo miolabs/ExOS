@@ -135,21 +135,24 @@ typedef struct
 
 typedef struct _EMAC_Desc 
 {
-	struct _EMAC_Desc *Next; /* Pointer to next descriptor in chain */
-	unsigned char *Buffer; /* Pointer to data buffer */
+	struct _EMAC_Desc *Next;	// Pointer to next descriptor in chain
+	unsigned char *Buffer;		// Pointer to data buffer
 	unsigned long BufOffLen;
 	union
 	{
 		EMAC_PKT_FlagLen PktFlgLenBits;
 		unsigned long PktFlgLen;
 	};
+
+	ETH_CALLBACK Callback;
+	void *CallbackState;
 } EMAC_Desc;
 
-#define EMAC_MAX_ETHERNET_PKT_SIZE (1500 + 14 + 4 + 4)
+#define EMAC_MAX_ETHERNET_PKT_SIZE 1514
 
 typedef struct __attribute__((__aligned__(4)))
 {
-	unsigned char Bytes[EMAC_MAX_ETHERNET_PKT_SIZE];
+	unsigned char Bytes[EMAC_MAX_ETHERNET_PKT_SIZE + 4];
 } EMAC_PKT_BUFFER;
 
 /* Packet Flags */

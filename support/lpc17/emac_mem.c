@@ -1,4 +1,4 @@
-// LPC2xxx Ethernet Support (Static Memory Model)
+// LPC17xx Ethernet Support (Static Memory Model)
 // by Miguel Fides
 
 #include "emac.h"
@@ -6,8 +6,8 @@
 #include <CMSIS/LPC17xx.h>
 #include <net/mbuf.h>
 
-#define ETH_BUFFER_SIZE	1536	
-typedef unsigned char ETH_BUFFER[ETH_BUFFER_SIZE];
+#define ETH_BUFFER_SIZE	1514
+typedef unsigned char ETH_BUFFER[ETH_BUFFER_SIZE + 4];
 
 #define __eth __attribute__((section(".dma")))
 
@@ -38,7 +38,7 @@ void emac_mem_initialize()
 		_rx_desc[i].ControlBits.Interrupt = 1;
 		_rx_stat[i].Status = 0;
 	}
-	
+
 	LPC_EMAC->RxDescriptor = (unsigned long)_rx_desc;
 	LPC_EMAC->RxStatus = (unsigned long)_rx_stat;
 	LPC_EMAC->RxDescriptorNumber = ENET_LPC_RX_DESCRIPTORS - 1;

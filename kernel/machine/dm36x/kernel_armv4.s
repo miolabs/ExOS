@@ -1,10 +1,7 @@
-// CPU Dependant Code (ARMv4)
+// ExOS CPU Dependant Code (ARMv4)
 // for use with ARM7T or ARM9T cores
-//
-// part of the KIO Kernel
-// Copyright (c) 2010, 2011 Miguel Fides and Joseluis Cortes
-// All right reserved
-
+// by Miguel Fides
+ 
 	.section ".text", "ax"
 	.code 32
 	.global SWI_Handler

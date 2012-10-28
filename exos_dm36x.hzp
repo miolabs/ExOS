@@ -69,6 +69,7 @@
             <folder Name="tests">
               <file file_name="kernel/driver/net/tests/tcp_test.c"/>
             </folder>
+            <file file_name="kernel/driver/net/tcp_service.c"/>
           </folder>
         </folder>
       </folder>

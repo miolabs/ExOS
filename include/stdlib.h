@@ -19,6 +19,7 @@ void         *bsearch(const void *, const void *, size_t, size_t,
 void         *calloc(size_t, size_t);
 div_t         div(int, int);
 
+void          free(void *);
 void          exit(int);
 
 char         *getenv(const char *);
