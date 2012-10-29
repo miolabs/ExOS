@@ -3,5 +3,9 @@
 
 #include "posix.h"
 
+#ifndef EXOS_POSIX_DEFAULT_SOCKET_STREAM_SIZE
+#define EXOS_POSIX_DEFAULT_SOCKET_STREAM_SIZE 1024
+#endif
+
 #endif // EXOS_POSIX_SOCKET_H
 

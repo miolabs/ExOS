@@ -2,7 +2,7 @@
 
 #pragma GCC optimize(2)
 
-__weak void __mem_copy(void *start, void *stop, void *source)
+__weak void __mem_copy(void *start, void *stop, const void *source)
  {
 	if (source != start)
 	{

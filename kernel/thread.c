@@ -95,6 +95,7 @@ void exos_thread_create(EXOS_THREAD *thread, int pri, void *stack, unsigned stac
 		.Node.Priority = pri,
 		.SP = stack_frame,
 		.StackStart = stack,
+		.StackSize = stack_size,
 
 		.SignalsReceived = 0,
 		.SignalsWaiting = 0,

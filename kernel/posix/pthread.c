@@ -11,7 +11,7 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attrs, void *(* func
 	pthread_info_t *info = (pthread_info_t *)__running_thread;
 	
 	size_t stack_size = attrs != NULL && attrs->stack_size != 0 ? 
-		attrs->stack_size : info->stack_size;
+		attrs->stack_size : (size_t)info->thread.StackSize;
 
 	void *stack;
 	pthread_info_t *new_info;
@@ -30,9 +30,6 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attrs, void *(* func
 		stack = attrs->stack;
 	}
 	thread->info = new_info;
-	new_info->stack_size = stack_size;
-	new_info->error = 0;
-
 	exos_thread_create(&new_info->thread, 
 		attrs != NULL ? attrs->pri : info->thread.Node.Priority, 
 		stack, stack_size,

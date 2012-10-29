@@ -5,6 +5,7 @@
 #include "udp.h"
 #include "tcp_io.h"
 #include "tcp_service.h"
+#include <kernel/panic.h>
 
 static inline void _handle_input(TCP_IO_ENTRY *io, TCP_HEADER *tcp, void *data, unsigned short data_length);
 
@@ -21,8 +22,10 @@ int net_tcp_input(ETH_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip)
 		// find handler for destination port
 		unsigned short local_port = NTOH16(tcp->DestinationPort);
 		unsigned short src_port = NTOH16(tcp->SourcePort);
-		TCP_IO_ENTRY *io = __tcp_io_find_io(adapter, local_port, ip->SourceIP, src_port);
-		if (io != NULL)
+
+		TCP_IO_ENTRY *io;
+		if (NULL != (io = __tcp_io_find_io(local_port, ip->SourceIP, src_port)) ||
+			NULL != (io = __tcp_io_find_io(local_port, IP_ADDR_ANY, 0)))
 		{
 			exos_mutex_lock(&io->Mutex);
 			void *data = (void *)tcp + (tcp->DataOffset << 2);
@@ -33,21 +36,17 @@ int net_tcp_input(ETH_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip)
 				case TCP_STATE_LISTEN:
 					if (tcp->Flags.SYN && !tcp->Flags.ACK)
 					{
-						// setup remote endpoint
-						io->RemoteEP.IP = ip->SourceIP;
-						io->RemotePort = NTOH16(tcp->SourcePort);
-
-						if (net_ip_resolve(adapter, &io->RemoteEP))
-						{
-							io->Adapter = adapter;
-			
-							io->RcvNext = NTOH32(tcp->Sequence) + 1;
-							io->SndFlags = (TCP_FLAGS) { .SYN = 1, .ACK = 1 };
-							__tcp_send(io);
-							io->SndNext++;
-			
-							io->State = TCP_STATE_SYN_RECEIVED;
-						}
+						TCP_INCOMING_CONN* conn = __tcp_get_incoming_conn();
+						*conn = (TCP_INCOMING_CONN) {
+							.Adapter = adapter,
+							.RemoteEP.IP = ip->SourceIP, 
+							.RemotePort = NTOH16(tcp->SourcePort),
+							.LocalPort = io->LocalPort,
+							.Sequence = NTOH32(tcp->Sequence) };
+						
+						if (!net_ip_resolve(adapter, &conn->RemoteEP))
+							kernel_panic(KERNEL_ERROR_UNKNOWN);
+						exos_fifo_queue(&io->AcceptQueue, (EXOS_NODE *)conn);
 					}
 					break;
 				case TCP_STATE_SYN_RECEIVED:

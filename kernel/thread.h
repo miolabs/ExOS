@@ -18,11 +18,16 @@ typedef struct
 	EXOS_THREAD_STATE State;
 	void *SP;
 	void *StackStart;
+	unsigned long StackSize;
 	volatile unsigned long SignalsWaiting;
 	volatile unsigned long SignalsReceived;
 	volatile unsigned long SignalsReserved;
 	EXOS_LIST Joining;
-	void *Result;
+	union
+	{
+		void *Result;
+		int Error;
+	};
 	void *ThreadContext;
 } EXOS_THREAD;
 

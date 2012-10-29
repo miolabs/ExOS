@@ -9,25 +9,35 @@ static EXOS_THREAD _thread;
 static unsigned char _thread_stack[TCP_SERVICE_THREAD_STACK];
 static int _wakeup_signal;
 
+static EXOS_FIFO _free_incoming_connections;
+static TCP_INCOMING_CONN _connections[TCP_MAX_PENDING_CONNECTIONS];
+
 static void *_service(void *arg);
 
 void net_tcp_service_start()
 {
 	list_initialize(&_entries);
 	exos_mutex_create(&_entries_mutex);
+	
+	exos_fifo_create(&_free_incoming_connections, NULL);
+	for (int i = 0; i < TCP_MAX_PENDING_CONNECTIONS; i++)
+	{
+		exos_fifo_queue(&_free_incoming_connections, (EXOS_NODE *)&_connections[i]);
+	}
+
 	exos_thread_create(&_thread, 1, _thread_stack, TCP_SERVICE_THREAD_STACK, _service, NULL);
 }
 
-TCP_IO_ENTRY *__tcp_io_find_io(ETH_ADAPTER *adapter, unsigned short local_port, IP_ADDR src_ip, unsigned short src_port)
+TCP_IO_ENTRY *__tcp_io_find_io(unsigned short local_port, IP_ADDR remote_ip, unsigned short remote_port)
 {
 	TCP_IO_ENTRY *found = NULL;
 	exos_mutex_lock(&_entries_mutex);
 	FOREACH(node, &_entries)
 	{
 		TCP_IO_ENTRY *io = (TCP_IO_ENTRY *)node;
-		if ((io->Adapter == NULL || io->Adapter == adapter) &&
-			io->LocalPort == local_port &&
-			(io->RemoteEP.IP.Value == 0 || (io->RemoteEP.IP.Value == src_ip.Value && io->RemotePort == src_port)))
+		if (io->LocalPort == local_port &&
+			io->RemoteEP.IP.Value == remote_ip.Value && 
+			io->RemotePort == remote_port)
 			found = io;
 	}
 	exos_mutex_unlock(&_entries_mutex);
@@ -45,14 +55,19 @@ void __tcp_io_remove_io(TCP_IO_ENTRY *io)
 	exos_mutex_unlock(&_entries_mutex);
 }
 
-int net_tcp_bind(TCP_IO_ENTRY *io, unsigned short local_port, ETH_ADAPTER *adapter)
+TCP_INCOMING_CONN *__tcp_get_incoming_conn()
+{
+	return (TCP_INCOMING_CONN *)exos_fifo_dequeue(&_free_incoming_connections);
+}
+
+static int _bind(TCP_IO_ENTRY *io, unsigned short local_port, IP_ADDR remote_ip, unsigned short remote_port)
 {
 	if (local_port == 0)
 		return 0;	// FIXME: auto allocate port number?
-
+	
 	int done = 0;
 	exos_mutex_lock(&_entries_mutex);
-	TCP_IO_ENTRY *existing = __tcp_io_find_io(adapter, local_port, IP_ENDPOINT_BROADCAST->IP, 0);
+	TCP_IO_ENTRY *existing = __tcp_io_find_io(local_port, remote_ip, remote_port);
 	if (existing == NULL)
 	{
 		io->LocalPort = local_port;
@@ -62,6 +77,39 @@ int net_tcp_bind(TCP_IO_ENTRY *io, unsigned short local_port, ETH_ADAPTER *adapt
 	}
 	exos_mutex_unlock(&_entries_mutex);
 	return done;
+}
+
+int net_tcp_bind(TCP_IO_ENTRY *io, unsigned short local_port)
+{
+	return _bind(io, local_port, IP_ADDR_ANY, 0);
+}
+
+int net_tcp_accept(TCP_IO_ENTRY *io, EXOS_IO_STREAM_BUFFERS *buffers, TCP_INCOMING_CONN *conn)
+{
+	if (_bind(io, conn->LocalPort, conn->RemoteEP.IP, conn->RemotePort))
+	{
+		exos_io_buffer_create(&io->RcvBuffer, buffers->RcvBuffer, buffers->RcvBufferSize);
+		io->RcvBuffer.NotEmptyEvent = &io->InputEvent;
+	
+		exos_io_buffer_create(&io->SndBuffer, buffers->SndBuffer, buffers->SndBufferSize);
+		io->SndBuffer.NotFullEvent = &io->OutputEvent;
+
+		io->Adapter = conn->Adapter;
+		io->RemotePort = conn->RemotePort;
+		io->RemoteEP = conn->RemoteEP;
+
+		io->SndAck = io->SndNext = 0; // FIXME: use random for security
+
+		io->RcvNext = conn->Sequence + 1;
+		io->SndFlags = (TCP_FLAGS) { .SYN = 1, .ACK = 1 };
+		__tcp_send(io);
+		io->SndNext++;
+
+		io->State = TCP_STATE_SYN_RECEIVED;
+	}
+
+	exos_fifo_queue(&_free_incoming_connections, (EXOS_NODE *)conn);
+	return 1;
 }
 
 static int _send(TCP_IO_ENTRY *io)

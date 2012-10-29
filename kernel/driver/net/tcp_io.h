@@ -3,6 +3,7 @@
 
 #include "tcp.h"
 #include "net_io.h"
+#include <kernel/fifo.h>
 
 typedef struct 
 {
@@ -12,26 +13,42 @@ typedef struct
 	unsigned short RemotePort;
 	IP_ENDPOINT RemoteEP;
 
-	unsigned long RcvNext;
-	EXOS_IO_BUFFER RcvBuffer;
-
-	unsigned long SndBase;
-	unsigned long SndAck;
-	unsigned long SndNext; 
-	TCP_FLAGS SndFlags;
-	EXOS_IO_BUFFER SndBuffer;
+	union
+	{
+		struct
+		{
+			unsigned long RcvNext;
+			EXOS_IO_BUFFER RcvBuffer;
+		
+			unsigned long SndBase;
+			unsigned long SndAck;
+			unsigned long SndNext; 
+			EXOS_IO_BUFFER SndBuffer;
+			TCP_FLAGS SndFlags;
+		};
+		struct
+		{
+			EXOS_FIFO AcceptQueue;
+		};
+	};
 
 	EXOS_MUTEX Mutex;
 	unsigned long ServiceWait;
 	unsigned long ServiceTime;
 } TCP_IO_ENTRY;
 
+typedef struct
+{
+	EXOS_NODE Node;
+	ETH_ADAPTER *Adapter;
+	IP_ENDPOINT RemoteEP;
+	unsigned short RemotePort;
+	unsigned short LocalPort;
+	unsigned long Sequence;
+} TCP_INCOMING_CONN;
 
 void __tcp_io_initialize();
 
-void net_tcp_io_create(TCP_IO_ENTRY *io, EXOS_IO_FLAGS flags, void *rcv_buffer, unsigned short rcv_length, void *snd_buffer, unsigned short snd_length);
-int net_tcp_listen(TCP_IO_ENTRY *io);
-int net_tcp_accept(TCP_IO_ENTRY *io);
-int net_tcp_connect(TCP_IO_ENTRY *io, IP_PORT_ADDR *remote);
+void net_tcp_io_create(TCP_IO_ENTRY *io, EXOS_IO_FLAGS flags);
 
 #endif // NET_TCP_IO_H

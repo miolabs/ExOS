@@ -93,8 +93,7 @@ ETH_ADAPTER *net_adapter_find(IP_ADDR addr)
 			kernel_panic(KERNEL_ERROR_WRONG_NODE);
 #endif
 		IP_ADDR network = (IP_ADDR) { .Value = (adapter->IP.Value & adapter->NetMask.Value) };
-		if (network.Value == (addr.Value & adapter->NetMask.Value) ||
-			addr.Value == 0)
+		if (network.Value == (addr.Value & adapter->NetMask.Value))
 			return adapter;
 	}
 	return NULL;

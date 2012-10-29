@@ -5,6 +5,7 @@
 #include <kernel/memory.h>
 #include <kernel/panic.h>
 #include <comm/comm.h>
+#include <net/net_io.h>
 
 int close(int fd)
 {
@@ -14,6 +15,9 @@ int close(int fd)
 	{
 		case EXOS_IO_COMM:
 			comm_io_close((COMM_IO_ENTRY *)io);
+			break;
+		case EXOS_IO_SOCKET:
+			net_io_close((NET_IO_ENTRY *)io);
 			break;
 		default:
 			return posix_set_error(EBADF);

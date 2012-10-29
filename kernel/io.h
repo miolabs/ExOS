@@ -9,7 +9,7 @@ typedef enum
 {
 	EXOS_IO_COMM = 0,
 	EXOS_IO_SOCKET,
-	EXOS_IO_STREAM,
+	EXOS_IO_FILE,
 } EXOS_IO_TYPE;
 
 typedef enum
@@ -41,6 +41,14 @@ void exos_io_set_flags(EXOS_IO_ENTRY *io, EXOS_IO_FLAGS flags);
 void exos_io_set_timeout(EXOS_IO_ENTRY *io, unsigned long timeout);
 int exos_io_read(EXOS_IO_ENTRY *io, void *buffer, unsigned long length);
 int exos_io_write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length);
+
+typedef struct
+{
+	void *RcvBuffer;
+	void *SndBuffer;
+	unsigned short RcvBufferSize;
+	unsigned short SndBufferSize;
+} EXOS_IO_STREAM_BUFFERS;
 
 typedef struct
 {

@@ -38,9 +38,9 @@ UDP_IO_ENTRY *__udp_io_find_io(ETH_ADAPTER *adapter, unsigned short port)
 	return found;
 }
 
-void net_udp_create_io(UDP_IO_ENTRY *io, EXOS_IO_FLAGS flags)
+void net_udp_io_create(UDP_IO_ENTRY *io, EXOS_IO_FLAGS flags)
 {
-	exos_io_create((EXOS_IO_ENTRY *)io, EXOS_IO_SOCKET, (const EXOS_IO_DRIVER *)&_udp_driver, flags);
+	net_io_create((NET_IO_ENTRY *)io, &_udp_driver, NET_IO_DATAGRAM, flags);
 	
 	io->Adapter = NULL;
 	io->LocalPort = 0;

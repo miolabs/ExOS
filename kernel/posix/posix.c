@@ -60,5 +60,6 @@ EXOS_IO_ENTRY *posix_remove_file_descriptor(int fd)
 int inline posix_set_error(posix_err_t error)
 {
 	pthread_info_t *info = (pthread_info_t *)__running_thread;
+	info->thread.Error = error;
 	return -1;
 }
