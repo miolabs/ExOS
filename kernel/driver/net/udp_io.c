@@ -2,15 +2,16 @@
 #include <kernel/panic.h>
 #include <string.h>
 
+static int _read(EXOS_IO_ENTRY *io, void *buffer, unsigned long length);
+static int _write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length);
 static int _bind(NET_IO_ENTRY *socket, void *addr);
 static int _receive(NET_IO_ENTRY *socket, void *buffer, unsigned long length, void *addr);
 static int _send(NET_IO_ENTRY *socket, void *buffer, unsigned long length, void *addr);
-static int _read(EXOS_IO_ENTRY *io, void *buffer, unsigned long length);
-static int _write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length);
+static int _close(NET_IO_ENTRY *io);
 
 static const NET_PROTOCOL_DRIVER _udp_driver = {
 	.IO = { .Read = _read, .Write = _write },
-	.Bind = _bind, .Receive = _receive, .Send = _send };
+	.Bind = _bind, .Receive = _receive, .Send = _send, .Close = _close };
 
 static EXOS_LIST _entries;	// udp bound io entries
 static EXOS_MUTEX _entries_mutex;
@@ -171,6 +172,27 @@ static int _write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length)
 #endif
 
 	return -1;
+}
+
+static int _close(NET_IO_ENTRY *io)
+{
+	exos_mutex_lock(&_entries_mutex);
+
+	UDP_IO_ENTRY *found = NULL;
+	FOREACH(node, &_entries)
+	{
+		if (io == (NET_IO_ENTRY *)node)
+		{
+			found = (UDP_IO_ENTRY *)io;
+			break;
+		}
+	}
+	if (found != NULL)
+		list_remove((EXOS_NODE *)found);
+
+	exos_mutex_unlock(&_entries_mutex);
+
+	return 0;
 }
 
 

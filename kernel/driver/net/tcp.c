@@ -37,39 +37,83 @@ int net_tcp_input(ETH_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip)
 					if (tcp->Flags.SYN && !tcp->Flags.ACK)
 					{
 						TCP_INCOMING_CONN* conn = __tcp_get_incoming_conn();
-						*conn = (TCP_INCOMING_CONN) {
-							.Adapter = adapter,
-							.RemoteEP.IP = ip->SourceIP, 
-							.RemotePort = NTOH16(tcp->SourcePort),
-							.LocalPort = io->LocalPort,
-							.Sequence = NTOH32(tcp->Sequence) };
-						
-						if (!net_ip_resolve(adapter, &conn->RemoteEP))
-							kernel_panic(KERNEL_ERROR_UNKNOWN);
-						exos_fifo_queue(&io->AcceptQueue, (EXOS_NODE *)conn);
+						if (conn != NULL)
+						{
+							*conn = (TCP_INCOMING_CONN) {
+								.Adapter = adapter,
+								.RemoteEP.IP = ip->SourceIP, 
+								.RemotePort = NTOH16(tcp->SourcePort),
+								.LocalPort = io->LocalPort,
+								.Sequence = NTOH32(tcp->Sequence) };
+							
+							if (!net_ip_resolve(adapter, &conn->RemoteEP))
+								kernel_panic(KERNEL_ERROR_UNKNOWN);
+							exos_fifo_queue(&io->AcceptQueue, (EXOS_NODE *)conn);
+						}
+						else
+						{
+							// TODO
+						}
 					}
 					break;
 				case TCP_STATE_SYN_RECEIVED:
 					if (!tcp->Flags.SYN && tcp->Flags.ACK && NTOH32(tcp->Sequence) == io->RcvNext)
 					{
-						io->SndBase = io->SndAck = NTOH32(tcp->Ack);
-		
-						exos_event_set(&io->OutputEvent);
-		
+						io->SndAck = NTOH32(tcp->Ack);
 						io->SndFlags.SYN = 0;
+						io->SndFlags.ACK = 0;
 						io->State = TCP_STATE_ESTABLISHED;
+						exos_event_set(&io->OutputEvent);
 					}
 					break;
 				case TCP_STATE_ESTABLISHED:
 					_handle_input(io, tcp, data, data_length);
 					break;
+				case TCP_STATE_FIN_WAIT_1:
+					if (NTOH32(tcp->Sequence) == io->RcvNext)
+					{
+						if (tcp->Flags.ACK)
+						{
+							io->SndAck = NTOH32(tcp->Ack);
+							io->State = TCP_STATE_FIN_WAIT_2;
+						}
+						if (tcp->Flags.FIN)
+						{
+							io->RcvNext++;
+							io->SndFlags.ACK = 1;
+							io->State = TCP_STATE_CLOSING;
+						}
+						io->RcvNext += data_length;
+						net_tcp_service(io, 0);
+					}
+					break;
+				case TCP_STATE_FIN_WAIT_2:
+					if (NTOH32(tcp->Sequence) == io->RcvNext)
+					{
+						if (tcp->Flags.FIN)
+						{
+							io->RcvNext++;
+							io->SndFlags.ACK = 1;
+							io->State = TCP_STATE_TIME_WAIT;
+						}
+						io->RcvNext += data_length;
+						net_tcp_service(io, 0);
+					}
+					break;
+				case TCP_STATE_CLOSING:
+					if (tcp->Flags.ACK && NTOH32(tcp->Sequence) == io->RcvNext)
+					{
+						io->SndAck = NTOH32(tcp->Ack);
+						io->State = TCP_STATE_TIME_WAIT;
+						net_tcp_service(io, 10);
+					}
+					break;
 				case TCP_STATE_LAST_ACK:
 					if (tcp->Flags.ACK && NTOH32(tcp->Sequence) == io->RcvNext)
 					{
-
-						io->State = TCP_STATE_CLOSED;
 						io->SndAck = NTOH32(tcp->Ack);
-						__tcp_io_remove_io(io);
+						io->State = TCP_STATE_CLOSED;
+						net_tcp_service(io, 10);
 					}
 					break;
 			}
@@ -86,41 +130,31 @@ static void _handle_input(TCP_IO_ENTRY *io, TCP_HEADER *tcp, void *data, unsigne
 
 	if (seq == io->RcvNext)
 	{
+		// handle ACK
+		if (tcp->Flags.ACK)
+		{
+			int offset = (ack - io->SndAck);
+			if (offset > 0)
+			{
+				io->SndAck += exos_io_buffer_discard(&io->SndBuffer, offset);
+			}
+		}
+
 		// handle incoming
 		if (tcp->Flags.FIN)
 		{
-			io->State = TCP_STATE_CLOSE_WAIT;
 			io->RcvNext++;
-
        		io->SndFlags.ACK = 1;
-			__tcp_send(io);
-
-			// FIXME: we should avoid service to run now until application calls close();
+			io->State = TCP_STATE_CLOSE_WAIT;
+            net_tcp_service(io, 0);
 		}
 		else if (data_length != 0)
 		{
 			int done = exos_io_buffer_write(&io->RcvBuffer, data, data_length);
 			io->RcvNext += done;
-
 			io->SndFlags.ACK = 1;
+			net_tcp_service(io, 10);
 		}
-
-		// handle ACK
-		if (tcp->Flags.ACK)
-		{
-			if (ack > io->SndAck && ack <= io->SndNext)
-			{
-				int offset = (ack - io->SndBase);
-				if (offset > 0)
-				{
-					io->SndBase += exos_io_buffer_discard(&io->SndBuffer, offset);
-				}
-				io->SndAck = ack;
-				// TODO: reset timeout
-			}
-		}
-
-		net_tcp_service(io, 10);
 	}
 }
 

@@ -28,6 +28,7 @@ typedef struct
 	int (*Accept)(NET_IO_ENTRY *socket, NET_IO_ENTRY *conn_socket, EXOS_IO_STREAM_BUFFERS *buffers);
 	int (*Receive)(NET_IO_ENTRY *socket, void *buffer, unsigned long length, void *remote);
 	int (*Send)(NET_IO_ENTRY *socket, void *buffer, unsigned long length, void *remote);
+	int (*Close)(NET_IO_ENTRY *socket);
 } NET_PROTOCOL_DRIVER;
 
 void net_io_create(NET_IO_ENTRY *socket, const NET_PROTOCOL_DRIVER *driver, NET_IO_TYPE protocol, EXOS_IO_FLAGS flags);

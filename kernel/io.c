@@ -98,8 +98,6 @@ int exos_io_write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length)
 	}
 }
 
-
-
 void exos_io_buffer_create(EXOS_IO_BUFFER *iobuf, void *buffer, unsigned short size)
 {
 #ifdef DEBUG

@@ -1,58 +1,58 @@
 #include "net_io.h"
 #include <kernel/panic.h>
 
-void net_io_create(NET_IO_ENTRY *io, const NET_PROTOCOL_DRIVER *driver, NET_IO_TYPE protocol, EXOS_IO_FLAGS flags)
+void net_io_create(NET_IO_ENTRY *socket, const NET_PROTOCOL_DRIVER *driver, NET_IO_TYPE protocol, EXOS_IO_FLAGS flags)
 {
-	exos_io_create((EXOS_IO_ENTRY *)io, EXOS_IO_SOCKET, (const EXOS_IO_DRIVER *)driver, flags);
-	io->Adapter = NULL;
-	io->ProtocolType = protocol;
+	exos_io_create((EXOS_IO_ENTRY *)socket, EXOS_IO_SOCKET, (const EXOS_IO_DRIVER *)driver, flags);
+	socket->Adapter = NULL;
+	socket->ProtocolType = protocol;
 }
 
-int net_io_bind(NET_IO_ENTRY *io, void *local)
+int net_io_bind(NET_IO_ENTRY *socket, void *local)
 {
-	if (io->Type != EXOS_IO_SOCKET) return -1;
+	if (socket->Type != EXOS_IO_SOCKET) return -1;
 #ifdef DEBUG
-	if (io->Driver == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
+	if (socket->Driver == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
 #endif
 
-	const NET_PROTOCOL_DRIVER *protocol = (const NET_PROTOCOL_DRIVER *)io->Driver;
-	return protocol->Bind(io, local);
+	const NET_PROTOCOL_DRIVER *protocol = (const NET_PROTOCOL_DRIVER *)socket->Driver;
+	return protocol->Bind(socket, local);
 }
 
-int net_io_receive(NET_IO_ENTRY *io, void *buffer, unsigned long length, void *remote)
+int net_io_receive(NET_IO_ENTRY *socket, void *buffer, unsigned long length, void *remote)
 {
-	if (io->Type != EXOS_IO_SOCKET) return -1;
+	if (socket->Type != EXOS_IO_SOCKET) return -1;
 #ifdef DEBUG
-	if (io->Driver == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
+	if (socket->Driver == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
 #endif
 	
-	if (io->Flags & EXOS_IOF_WAIT)
-		exos_event_wait(&io->InputEvent, io->Timeout);
+	if (socket->Flags & EXOS_IOF_WAIT)
+		exos_event_wait(&socket->InputEvent, socket->Timeout);
 
-	const NET_PROTOCOL_DRIVER *protocol = (const NET_PROTOCOL_DRIVER *)io->Driver;
-	return protocol->Receive(io, buffer, length, remote);
+	const NET_PROTOCOL_DRIVER *protocol = (const NET_PROTOCOL_DRIVER *)socket->Driver;
+	return protocol->Receive(socket, buffer, length, remote);
 }
 
-int net_io_send(NET_IO_ENTRY *io, void *buffer, unsigned long length, void *remote)
+int net_io_send(NET_IO_ENTRY *socket, void *buffer, unsigned long length, void *remote)
 {
-	if (io->Type != EXOS_IO_SOCKET) return -1;
+	if (socket->Type != EXOS_IO_SOCKET) return -1;
 #ifdef DEBUG
-	if (io->Driver == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
+	if (socket->Driver == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
 #endif
 
-	const NET_PROTOCOL_DRIVER *protocol = (const NET_PROTOCOL_DRIVER *)io->Driver;
-	return protocol->Send(io, buffer, length, remote);
+	const NET_PROTOCOL_DRIVER *protocol = (const NET_PROTOCOL_DRIVER *)socket->Driver;
+	return protocol->Send(socket, buffer, length, remote);
 }
 
-int net_io_listen(NET_IO_ENTRY *io)
+int net_io_listen(NET_IO_ENTRY *socket)
 {
-	if (io->Type != EXOS_IO_SOCKET) return -1;
+	if (socket->Type != EXOS_IO_SOCKET) return -1;
 #ifdef DEBUG
-	if (io->Driver == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
+	if (socket->Driver == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
 #endif
 
-	const NET_PROTOCOL_DRIVER *protocol = (const NET_PROTOCOL_DRIVER *)io->Driver;
-	return protocol->Listen(io);
+	const NET_PROTOCOL_DRIVER *protocol = (const NET_PROTOCOL_DRIVER *)socket->Driver;
+	return protocol->Listen(socket);
 }
 
 int net_io_accept(NET_IO_ENTRY *socket, NET_IO_ENTRY *conn_socket, EXOS_IO_STREAM_BUFFERS *buffers)
@@ -71,6 +71,11 @@ int net_io_accept(NET_IO_ENTRY *socket, NET_IO_ENTRY *conn_socket, EXOS_IO_STREA
 
 int net_io_close(NET_IO_ENTRY *socket)
 {
-	// TODO
-	return 0;
+	if (socket->Type != EXOS_IO_SOCKET) return -1;
+#ifdef DEBUG
+	if (socket->Driver == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+
+	const NET_PROTOCOL_DRIVER *protocol = (const NET_PROTOCOL_DRIVER *)socket->Driver;
+	return protocol->Close(socket);
 }
