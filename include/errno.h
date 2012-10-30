@@ -87,7 +87,7 @@ typedef enum
 	EXDEV,
 } posix_err_t;
 
-#define errno ((posix_err_t)((pthread_info_t *)__running_thread)->error)
+#define errno ((posix_err_t)((pthread_info_t *)__running_thread)->thread.Error)
 
 #endif // __errno_h
 
