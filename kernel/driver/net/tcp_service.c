@@ -55,10 +55,10 @@ static int _bind(TCP_IO_ENTRY *io, TCP_STATE init_state)
 	int done = 0;
 	exos_mutex_lock(&_entries_mutex);
 	TCP_IO_ENTRY *existing = __tcp_io_find_io(io->LocalPort, io->RemoteEP.IP, io->RemotePort);
-	if (existing == NULL)
+	if (existing == NULL || existing == io)
 	{
 		io->State = init_state;
-		list_add_tail(&_entries, (EXOS_NODE *)io);
+		if (existing == NULL) list_add_tail(&_entries, (EXOS_NODE *)io);
 		done = 1;
 	}
 	exos_mutex_unlock(&_entries_mutex);
@@ -89,6 +89,11 @@ int net_tcp_listen(TCP_IO_ENTRY *io, unsigned short local_port)
 
 int net_tcp_accept(TCP_IO_ENTRY *io, EXOS_IO_STREAM_BUFFERS *buffers, TCP_INCOMING_CONN *conn)
 {
+	if (conn == NULL || buffers == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+
+	exos_mutex_lock(&io->Mutex);
+
 	exos_io_buffer_create(&io->RcvBuffer, buffers->RcvBuffer, buffers->RcvBufferSize);
 	io->RcvBuffer.NotEmptyEvent = &io->InputEvent;
 
@@ -102,14 +107,17 @@ int net_tcp_accept(TCP_IO_ENTRY *io, EXOS_IO_STREAM_BUFFERS *buffers, TCP_INCOMI
 
 	io->RcvNext = conn->Sequence + 1;
 	io->SndAck = io->SndNext = 0; // FIXME: use random for security
-	io->SndFlags = (TCP_FLAGS) { .SYN = 1, .ACK = 1 };
-	if (_bind(io, TCP_STATE_SYN_RECEIVED))
-	{
-		net_tcp_service(io, 0);
-	}
 
+	io->SndFlags = (TCP_FLAGS) { .SYN = 1, .ACK = 1 };
+	int done = _bind(io, TCP_STATE_SYN_RECEIVED);
+
+	exos_mutex_unlock(&io->Mutex);
+
+	// recycle conn
 	exos_fifo_queue(&_free_incoming_connections, (EXOS_NODE *)conn);
-	return 1;
+
+	if (done) net_tcp_service(io, 0);
+	return done;
 }
 
 int net_tcp_close(TCP_IO_ENTRY *io)

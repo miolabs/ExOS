@@ -26,30 +26,32 @@ int main()
 		if (err == 0) comm = (EXOS_IO_ENTRY *)&_comm;
 	}
 
-	net_tcp_io_create(&_socket, EXOS_IOF_WAIT, _rcv_buffer, TCP_BUFFER_SIZE, _snd_buffer, TCP_BUFFER_SIZE);
+	net_tcp_io_create(&_socket, EXOS_IOF_WAIT);
 	
-	IP_PORT_ADDR local = { .Port = 23 };
-	err = net_io_bind((NET_IO_ENTRY *)&_socket, &local);
+	IP_PORT_ADDR local = (IP_PORT_ADDR) { .Address = IP_ADDR_ANY, .Port = 23 };
+	err = net_io_bind((NET_IO_ENTRY *)&_socket, &local); 
+	err = net_io_listen((NET_IO_ENTRY *)&_socket);
 
-	err = net_tcp_listen(&_socket);
-
-	err = net_tcp_accept(&_socket);
+	EXOS_IO_STREAM_BUFFERS buffers = (EXOS_IO_STREAM_BUFFERS) {
+		.RcvBuffer = _rcv_buffer, .RcvBufferSize = TCP_BUFFER_SIZE,
+		.SndBuffer = _snd_buffer, .SndBufferSize = TCP_BUFFER_SIZE };
+	err = net_io_accept((NET_IO_ENTRY *)&_socket, (NET_IO_ENTRY *)&_socket, &buffers);
 
 	hal_led_set(0, 1);
 
 	while(1)
 	{
 		int done = exos_io_read((EXOS_IO_ENTRY *)&_socket, _buffer, 1024); 
+		if (done < 0) break;
 
-		int done2 = comm != NULL ? exos_io_write(comm, _buffer, done) : done;
+		comm != NULL ? exos_io_write(comm, _buffer, done) : done;
 
-		int done3 = exos_io_write((EXOS_IO_ENTRY *)&_socket, _buffer, done);
-
-		if (done != done2 || done != done3)
-		{
-			exos_thread_sleep(1);
-		}
+		exos_io_write((EXOS_IO_ENTRY *)&_socket, _buffer, done);
 	}
+
+	hal_led_set(0, 0);
+	net_io_close((NET_IO_ENTRY *)&_socket);
+	if (comm != NULL) comm_io_close((COMM_IO_ENTRY *)comm);
 }
 
 
