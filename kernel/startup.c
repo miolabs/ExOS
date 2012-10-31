@@ -4,6 +4,7 @@
 #include "timer.h"
 #include "io.h"
 #include "machine/hal.h"
+#include <modules/services/services.h>
 
 void main();
 
@@ -18,6 +19,7 @@ void __kernel_start()
 	__timer_init();
 	__io_initialize();
 	__posix_init();
+	__services_init();
 
 	// create the main thread
 	exos_thread_create(&_main_thread, MAIN_THREAD_PRI, 
@@ -36,3 +38,9 @@ __weak void __machine_idle()
 {
 	while(1);
 }
+
+__weak void __services_init()
+{
+	// weak initializer does nothing
+}
+
