@@ -41,12 +41,12 @@ typedef struct
 	EXOS_THREAD *Owner;
 	EXOS_SIGNAL Signal;
 	EXOS_WAIT_STATE State;
+	void *Result;
 } EXOS_WAIT_HANDLE;
 
 void __cond_add_wait_handle(EXOS_LIST *list, EXOS_WAIT_HANDLE *handle);
 void __cond_rem_wait_handle(EXOS_WAIT_HANDLE *handle, EXOS_WAIT_STATE state);
-int __cond_signal_all(EXOS_LIST *handles);
-int __cond_signal_one(EXOS_LIST *handles);
+int __cond_signal_all(EXOS_LIST *handles, void *result);
 void exos_cond_abort(EXOS_WAIT_HANDLE *handle);
 
 #endif // EXOS_SIGNAL_H

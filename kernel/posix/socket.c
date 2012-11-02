@@ -131,8 +131,8 @@ ssize_t sendto(int socket, const void *buffer, size_t length, int flags, const s
 int listen(int socket, int backlog)
 {
 	EXOS_IO_ENTRY *io = posix_get_file_descriptor(socket);
-	if (io == NULL) return EBADF;
-	if (io->Type != EXOS_IO_SOCKET) return ENOTSOCK;
+	if (io == NULL) return posix_set_error(EBADF);
+	if (io->Type != EXOS_IO_SOCKET) return posix_set_error(ENOTSOCK);
 
 	int error = net_io_listen((NET_IO_ENTRY *)io);
 	return error;	// TODO: translate error codes
@@ -141,8 +141,8 @@ int listen(int socket, int backlog)
 int accept(int sock_fd, struct sockaddr *address, socklen_t *address_len)
 {
 	EXOS_IO_ENTRY *io = posix_get_file_descriptor(sock_fd);
-	if (io == NULL) return EBADF;
-	if (io->Type != EXOS_IO_SOCKET) return ENOTSOCK;
+	if (io == NULL) return posix_set_error(EBADF);
+	if (io->Type != EXOS_IO_SOCKET) return posix_set_error(ENOTSOCK);
 
 	NET_IO_ENTRY *socket_io = (NET_IO_ENTRY *)io;
 	if (socket_io->ProtocolType == NET_IO_STREAM)
@@ -178,6 +178,27 @@ int accept(int sock_fd, struct sockaddr *address, socklen_t *address_len)
 		return -1;
 	}
 	return posix_set_error(EOPNOTSUPP);	// only supported for tcp sockets
+}
+
+int shutdown(int socket, int how)
+{
+	EXOS_IO_ENTRY *io = posix_get_file_descriptor(socket);
+	if (io == NULL) return posix_set_error(EBADF);
+	if (io->Type != EXOS_IO_SOCKET) return posix_set_error(ENOTSOCK);
+
+	EXOS_IO_STREAM_BUFFERS desc;
+	NET_IO_ENTRY *socket_io = (NET_IO_ENTRY *)io;
+	int error = net_io_close(socket_io, &desc);
+	if (error == -1) return posix_set_error(ENOTCONN);
+
+	if (socket_io->ProtocolType == NET_IO_STREAM &&
+		desc.RcvBuffer != NULL)
+	{
+		// NOTE: free both buffers at once, see accept()
+		exos_mem_free(desc.RcvBuffer);
+	}
+
+	return 0;
 }
 
 

@@ -1,13 +1,15 @@
 #include "posix.h"
 #include <errno.h>
 #include <kernel/startup.h>
-#include <kernel/thread.h>
+#include <kernel/thread_pool.h>
 
 EXOS_POSIX_CONTEXT __main_context;
+EXOS_THREAD_POOL __posix_thread_pool;
 
 void __posix_init()
 {
 	exos_mutex_create(&__main_context.Mutex);
+	exos_thread_pool_create(&__posix_thread_pool);
 
 	//TODO: fill default descriptors and other context data
 
@@ -60,6 +62,7 @@ EXOS_IO_ENTRY *posix_remove_file_descriptor(int fd)
 int inline posix_set_error(posix_err_t error)
 {
 	pthread_info_t *info = (pthread_info_t *)__running_thread;
-	info->thread.Error = error;
+	info->Error = error;
 	return -1;
 }
+

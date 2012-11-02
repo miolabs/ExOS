@@ -233,3 +233,16 @@ EXOS_MEM_REGION *exos_mem_get_region(EXOS_MEM_FLAGS flags, int index)
 	}
 	return NULL;
 }
+
+
+void exos_mem_heap_stats(EXOS_MEM_STATS *stats)
+{
+	exos_mem_stats(&_heap_region, stats);
+}
+
+unsigned long exos_mem_heap_avail()
+{
+	EXOS_MEM_STATS stats;
+	exos_mem_stats(&_heap_region, &stats);
+	return stats.Free;
+}

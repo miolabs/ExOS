@@ -7,7 +7,7 @@ static int _write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length);
 static int _bind(NET_IO_ENTRY *socket, void *addr);
 static int _receive(NET_IO_ENTRY *socket, void *buffer, unsigned long length, void *addr);
 static int _send(NET_IO_ENTRY *socket, void *buffer, unsigned long length, void *addr);
-static int _close(NET_IO_ENTRY *io);
+static int _close(NET_IO_ENTRY *io, EXOS_IO_STREAM_BUFFERS *buffers);
 
 static const NET_PROTOCOL_DRIVER _udp_driver = {
 	.IO = { .Read = _read, .Write = _write },
@@ -174,7 +174,7 @@ static int _write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length)
 	return -1;
 }
 
-static int _close(NET_IO_ENTRY *io)
+static int _close(NET_IO_ENTRY *io, EXOS_IO_STREAM_BUFFERS *buffers)
 {
 	exos_mutex_lock(&_entries_mutex);
 
@@ -191,6 +191,9 @@ static int _close(NET_IO_ENTRY *io)
 		list_remove((EXOS_NODE *)found);
 
 	exos_mutex_unlock(&_entries_mutex);
+
+	if (buffers != NULL)
+		*buffers = (EXOS_IO_STREAM_BUFFERS) { .RcvBuffer = NULL, .SndBuffer = NULL };
 
 	return 0;
 }

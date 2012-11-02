@@ -166,7 +166,7 @@ void __cond_rem_wait_handle(EXOS_WAIT_HANDLE *handle, EXOS_WAIT_STATE state)
 	}
 }
 
-int __cond_signal_all(EXOS_LIST *list)
+int __cond_signal_all(EXOS_LIST *list, void *result)
 {
 	int done = 0;
 	EXOS_NODE *node = LIST_HEAD(list)->Succ;
@@ -174,6 +174,8 @@ int __cond_signal_all(EXOS_LIST *list)
 	{
 		EXOS_WAIT_HANDLE *handle = (EXOS_WAIT_HANDLE *)node;
 		node = node->Succ;
+
+		handle->Result = result;
 		__signal_set(handle->Owner, 1 << handle->Signal);
 		__cond_rem_wait_handle(handle, EXOS_WAIT_DONE);
 		done++;

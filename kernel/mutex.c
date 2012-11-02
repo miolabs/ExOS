@@ -27,6 +27,11 @@ static int _try_lock(unsigned long *args)
 	{
 		if (mutex->Handles.Tail != NULL)	// NOTE: complete static initialization
 			list_initialize(&mutex->Handles);
+
+		if (mutex->Owner->Node.Priority < __running_thread->Node.Priority)
+		{
+			// TODO: implement priority inheritance
+		}
 		__cond_add_wait_handle(&mutex->Handles, handle);
 		__signal_wait(1 << handle->Signal);
 		return -1;
@@ -54,7 +59,7 @@ static int _unlock(unsigned long *args)
 
 	if (mutex->Count == 0)
 	{
-		if (__cond_signal_all(&mutex->Handles) != 0)
+		if (__cond_signal_all(&mutex->Handles, NULL) != 0)
 			__thread_vacate(); // NOTE: force our thread to leave if there are others of the same priority to allow them to get the lock immediately 
 		mutex->Owner = NULL;
 	}

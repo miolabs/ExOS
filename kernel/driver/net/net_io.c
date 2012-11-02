@@ -55,7 +55,7 @@ int net_io_listen(NET_IO_ENTRY *socket)
 	return protocol->Listen(socket);
 }
 
-int net_io_accept(NET_IO_ENTRY *socket, NET_IO_ENTRY *conn_socket, EXOS_IO_STREAM_BUFFERS *buffers)
+int net_io_accept(NET_IO_ENTRY *socket, NET_IO_ENTRY *conn_socket, const EXOS_IO_STREAM_BUFFERS *buffers)
 {
 	if (socket == NULL || socket->Type != EXOS_IO_SOCKET) return -1;
 	if (conn_socket == NULL || conn_socket->Type != EXOS_IO_SOCKET) return -1;
@@ -69,7 +69,7 @@ int net_io_accept(NET_IO_ENTRY *socket, NET_IO_ENTRY *conn_socket, EXOS_IO_STREA
 	return protocol->Accept(socket, conn_socket, buffers);
 }
 
-int net_io_close(NET_IO_ENTRY *socket)
+int net_io_close(NET_IO_ENTRY *socket, EXOS_IO_STREAM_BUFFERS *buffers)
 {
 	if (socket->Type != EXOS_IO_SOCKET) return -1;
 #ifdef DEBUG
@@ -77,5 +77,5 @@ int net_io_close(NET_IO_ENTRY *socket)
 #endif
 
 	const NET_PROTOCOL_DRIVER *protocol = (const NET_PROTOCOL_DRIVER *)socket->Driver;
-	return protocol->Close(socket);
+	return protocol->Close(socket, buffers);
 }

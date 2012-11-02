@@ -3,11 +3,19 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
+#include <kernel/memory.h>
+
+#include <CMSIS/LPC17xx.h>
 
 static void *_service(void *args);
 
 void main()
 {
+	ITM_Type *itm = ITM;
+	char rx = ITM_SendChar('a');
+
 	int err;
 	
 	int server = socket(AF_INET, SOCK_STREAM, 0);
@@ -29,15 +37,16 @@ void main()
 				int fd = accept(server, (struct sockaddr *)&remote, &remote_len);
 				if (fd == -1) break;
 
-				pthread_t *child = (pthread_t *)malloc(sizeof(pthread_t));
-				err = pthread_create(child, NULL, _service, &fd);
+				pthread_t child;
+				err = pthread_create(&child, NULL, _service, &fd);
 				if (err == -1)
 				{
-					free(child);
 					close(fd);
 				}
 			}
 		}
+
+		err = errno;
 		close(server);
 	}
 }
@@ -48,11 +57,16 @@ static void *_service(void *args)
 	int fd = *(int *)args;
 	unsigned char buffer[256];
 
-	write(fd, "welcome!\r", 9);
+	pthread_t thread = pthread_self();
+	int done = sprintf(buffer, "thread 0x%lx, socket %lx\r", thread.info, fd);
+	write(fd, buffer, done);
+
+	done = sprintf(buffer, "0x%lx bytes free in heap\r", exos_mem_heap_avail());
+	write(fd, buffer, done);
 
 	while(1)
 	{
-		int done = read(fd, buffer, 256);
+		done = read(fd, buffer, 256);
 		if (done == -1)
 			break;
 		

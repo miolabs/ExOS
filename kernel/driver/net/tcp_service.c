@@ -26,7 +26,7 @@ void net_tcp_service_start()
 		exos_fifo_queue(&_free_incoming_connections, (EXOS_NODE *)&_connections[i]);
 	}
 
-	exos_thread_create(&_thread, 1, _thread_stack, TCP_SERVICE_THREAD_STACK, _service, NULL);
+	exos_thread_create(&_thread, 1, _thread_stack, TCP_SERVICE_THREAD_STACK, NULL, _service, NULL);
 }
 
 TCP_IO_ENTRY *__tcp_io_find_io(unsigned short local_port, IP_ADDR remote_ip, unsigned short remote_port)
@@ -87,7 +87,7 @@ int net_tcp_listen(TCP_IO_ENTRY *io, unsigned short local_port)
 	return 1;
 }
 
-int net_tcp_accept(TCP_IO_ENTRY *io, EXOS_IO_STREAM_BUFFERS *buffers, TCP_INCOMING_CONN *conn)
+int net_tcp_accept(TCP_IO_ENTRY *io, const EXOS_IO_STREAM_BUFFERS *buffers, TCP_INCOMING_CONN *conn)
 {
 	if (conn == NULL || buffers == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);

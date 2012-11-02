@@ -5,6 +5,8 @@
 
 void *memcpy(void *restrict s1, const void *restrict s2, size_t n);
 
+
+
 char *strerror(int errnum);
 
 #endif // __posix_string_h

@@ -4,8 +4,8 @@
 
 static int _bind(NET_IO_ENTRY *socket, void *addr);
 static int _listen(NET_IO_ENTRY *socket);
-static int _accept(NET_IO_ENTRY *socket, NET_IO_ENTRY *conn_socket, EXOS_IO_STREAM_BUFFERS *buffers);
-static int _close(NET_IO_ENTRY *socket);
+static int _accept(NET_IO_ENTRY *socket, NET_IO_ENTRY *conn_socket, const EXOS_IO_STREAM_BUFFERS *buffers);
+static int _close(NET_IO_ENTRY *socket, EXOS_IO_STREAM_BUFFERS *buffers);
 static int _read(EXOS_IO_ENTRY *io, void *buffer, unsigned long length);
 static int _write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length);
 
@@ -60,7 +60,7 @@ static int _listen(NET_IO_ENTRY *socket)
 	return done ? 0 : -1;
 }
 
-static int _accept(NET_IO_ENTRY *socket, NET_IO_ENTRY *conn_socket, EXOS_IO_STREAM_BUFFERS *buffers)
+static int _accept(NET_IO_ENTRY *socket, NET_IO_ENTRY *conn_socket, const EXOS_IO_STREAM_BUFFERS *buffers)
 {
 	TCP_IO_ENTRY *io = (TCP_IO_ENTRY *)socket;
 	if (io->State == TCP_STATE_LISTEN)
@@ -83,13 +83,22 @@ static int _connect(NET_IO_ENTRY *socket, EXOS_IO_STREAM_BUFFERS *buffers, IP_PO
 	return -1;
 }
 
-static int _close(NET_IO_ENTRY *socket)
+static int _close(NET_IO_ENTRY *socket, EXOS_IO_STREAM_BUFFERS *buffers)
 {
 	TCP_IO_ENTRY *io = (TCP_IO_ENTRY *)socket;
 	if (io->State != TCP_STATE_CLOSED)
 	{
 		int done = net_tcp_close(io);
-		return done ? 0 : -1;
+		if (done)
+		{
+			if (buffers != NULL)
+			{
+				*buffers = (EXOS_IO_STREAM_BUFFERS) {
+					.RcvBuffer = io->RcvBuffer.Buffer, .RcvBufferSize = io->RcvBuffer.Size,
+					.SndBuffer = io->SndBuffer.Buffer, .SndBufferSize = io->SndBuffer.Size };
+			}
+			return 0;
+		}
 	}
 	return -1;
 }

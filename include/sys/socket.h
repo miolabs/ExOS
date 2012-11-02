@@ -102,9 +102,9 @@ enum
 
 enum
 {
-	SHUD_RD = 1,
-	SHUD_WR = 2,
-	SHUD_RDWR = (SHUD_RD | SHUD_WR),
+	SHUT_RD = 1,
+	SHUT_WR = 2,
+	SHUT_RDWR = (SHUT_RD | SHUT_WR),
 };
 
 int accept(int socket, struct sockaddr *address, socklen_t *address_len);

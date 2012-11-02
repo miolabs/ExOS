@@ -17,7 +17,7 @@ void __tcp_io_remove_io(TCP_IO_ENTRY *io);
 TCP_INCOMING_CONN *__tcp_get_incoming_conn();
 
 int net_tcp_listen(TCP_IO_ENTRY *io, unsigned short local_port);
-int net_tcp_accept(TCP_IO_ENTRY *io, EXOS_IO_STREAM_BUFFERS *buffers, TCP_INCOMING_CONN *conn);
+int net_tcp_accept(TCP_IO_ENTRY *io, const EXOS_IO_STREAM_BUFFERS *buffers, TCP_INCOMING_CONN *conn);
 int net_tcp_close(TCP_IO_ENTRY *io);
 void net_tcp_service(TCP_IO_ENTRY *io, int wait);
 

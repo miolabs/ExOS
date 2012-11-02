@@ -26,14 +26,14 @@ static int _basic_thread_test()
 
 	exos_thread_sleep(10);	// idle should run now
 
-	exos_thread_create(&_thread1, 1, _thread1_stack, TEST_THREAD_STACK, _set_shared_int, &local_int);
+	exos_thread_create(&_thread1, 1, _thread1_stack, TEST_THREAD_STACK, NULL, _set_shared_int, &local_int);
 	// we should be suspended now until thread1 finishes
 
 	if (_thread1.State != EXOS_THREAD_FINISHED) return -1;
 	if (_shared_int != 0xcafe) return -2;
 
 	local_int = 0xbeef;
-	exos_thread_create(&_thread1, -1, _thread1_stack, TEST_THREAD_STACK, _set_shared_int, &local_int);
+	exos_thread_create(&_thread1, -1, _thread1_stack, TEST_THREAD_STACK, NULL, _set_shared_int, &local_int);
 	// thread1 should be waiting now for us to sleep
 
 	if (_thread1.State != EXOS_THREAD_READY) return -3;
@@ -70,12 +70,12 @@ static int _event_test()
 	int done = exos_event_wait(&_event, 1000);
 	// should timeout
 
-	exos_thread_create(&_thread1, 1, _thread1_stack, TEST_THREAD_STACK, 
+	exos_thread_create(&_thread1, 1, _thread1_stack, TEST_THREAD_STACK, NULL,
 		_event_counter, (void *)&count1);
 	if (count1 != 1 ||
 		_thread1.State != EXOS_THREAD_WAIT) return -1;
 	
-	exos_thread_create(&_thread2, 2, _thread2_stack, TEST_THREAD_STACK, 
+	exos_thread_create(&_thread2, 2, _thread2_stack, TEST_THREAD_STACK, NULL,
 		_event_counter, (void *)&count2);
 	if (count2 != 1 ||
 		_thread2.State != EXOS_THREAD_WAIT) return -2;
@@ -129,9 +129,9 @@ static int _monitor_test()
 
 	exos_mutex_create(&_mutex);
 
-	exos_thread_create(&_thread1, -1, _thread1_stack, TEST_THREAD_STACK, 
+	exos_thread_create(&_thread1, -1, _thread1_stack, TEST_THREAD_STACK, NULL,
 		_mutex_func, (void *)0);
-	exos_thread_create(&_thread2, -1, _thread2_stack, TEST_THREAD_STACK, 
+	exos_thread_create(&_thread2, -1, _thread2_stack, TEST_THREAD_STACK, NULL,
 		_mutex_func, (void *)1);
 
 	exos_thread_join(&_thread1);

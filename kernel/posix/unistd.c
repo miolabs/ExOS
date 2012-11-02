@@ -6,6 +6,7 @@
 #include <kernel/panic.h>
 #include <comm/comm.h>
 #ifndef EXOS_NO_NET
+#include <sys/socket.h>
 #include <net/net_io.h>
 #endif
 
@@ -13,6 +14,7 @@ int close(int fd)
 {
 	EXOS_IO_ENTRY *io = posix_get_file_descriptor(fd);
 	if (io == NULL) return posix_set_error(EBADF);
+	
 	switch(io->Type)
 	{
 		case EXOS_IO_COMM:
@@ -20,7 +22,7 @@ int close(int fd)
 			break;
 #ifndef EXOS_NO_NET
 		case EXOS_IO_SOCKET:
-			net_io_close((NET_IO_ENTRY *)io);
+			shutdown(fd, SHUT_RDWR);
 			break;
 #endif
 		default:

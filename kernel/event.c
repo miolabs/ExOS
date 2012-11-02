@@ -63,7 +63,7 @@ int exos_event_wait(EXOS_EVENT *event, unsigned long timeout)
 
 void __set_event(EXOS_EVENT *event, int state)
 {
-	__cond_signal_all(&event->Handles);
+	__cond_signal_all(&event->Handles, NULL);
 	event->State = state;
 }
 
