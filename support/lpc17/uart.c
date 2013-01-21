@@ -4,46 +4,58 @@
 #include "uart.h"
 #include "cpu.h"
 
-// status bits include halt bit for CTS handshake
 static UART_CONTROL_BLOCK *_control[UART_MODULE_COUNT];
 static LPC_UART_TypeDef *_modules[] = {
 	(LPC_UART_TypeDef *)LPC_UART0, (LPC_UART_TypeDef *)LPC_UART1, LPC_UART2, LPC_UART3 };
 
-static void _initialize(LPC_UART_TypeDef *uart, unsigned long baudrate)
+static inline int _valid_module(unsigned module, LPC_UART_TypeDef **uart, UART_CONTROL_BLOCK **cb)
 {
-	int pclk = cpu_pclk(cpu_cclk(), 1);	// PCLK is fixed to CCLK/1
-
-	unsigned short divisor = pclk / (16 * baudrate);
-	uart->LCR = UART_LCR_WLEN_8BIT | UART_LCR_STOP_1BIT | UART_LCR_DLAB; // no parity
-	uart->DLL = divisor & 0xFF;
-	uart->DLM = (divisor >> 8) & 0xFF;
-	uart->SCR = 0;
-
-	int rem = pclk - (divisor * 16 * baudrate);
-	if (rem != 0)
+	if (module >= UART_MODULE_COUNT) 
 	{
-		int m = pclk / rem;
-		int mm = 15 / m;
-		int m2 = (pclk * mm) / rem;
-		int s = (rem * m2) / pclk;
-		//int badj = (clk * m) / (16 * divisor * (m + s)); 
-		uart->FDR = m << 4 | s;
+		*uart = _modules[module];
+		*cb = _control[module];
+		return (*cb != (void *)0);
 	}
-	else uart->FDR = 1 << 4;
-
-	uart->LCR &= ~UART_LCR_DLAB; // disable DLAB
-	uart->FCR = UART_FCR_FIFO_ENABLE | UART_FCR_RXFIFO_RESET | UART_FCR_TXFIFO_RESET |
-		UART_FCR_RX_TRIGGER_2; // FIFO enabled, 8 char RX trigger
-	uart->IER = UART_IER_RBR | UART_IER_THRE | UART_IER_RX;
+	return 0;
 }
 
-static inline LPC_UART_TypeDef *_module(unsigned module)
+static int _initialize(unsigned module, unsigned long baudrate)
 {
-	if (module >= UART_MODULE_COUNT) return (LPC_UART_TypeDef *)0;
-	return _modules[module];
+	LPC_UART_TypeDef *uart;
+	UART_CONTROL_BLOCK *cb;
+	if (_valid_module(module, &uart, &cb))
+	{
+		int pclk = cpu_pclk(SystemCoreClock, 1);	// PCLK is fixed to CCLK/1
+	
+		unsigned short divisor = pclk / (16 * baudrate);
+		uart->LCR = UART_LCR_WLEN_8BIT | UART_LCR_STOP_1BIT | UART_LCR_DLAB; // no parity
+		uart->DLL = divisor & 0xFF;
+		uart->DLM = (divisor >> 8) & 0xFF;
+		uart->SCR = 0;
+	
+		int rem = pclk - (divisor * 16 * baudrate);
+		if (rem != 0)
+		{
+			int m = pclk / rem;
+			int mm = 15 / m;
+			int m2 = (pclk * mm) / rem;
+			int s = (rem * m2) / pclk;
+			uart->FDR = m << 4 | s;
+			cb->Baudrate = (pclk * m) / (16 * divisor * (m + s)); 
+		}
+		else uart->FDR = 1 << 4;
+	
+		uart->LCR &= ~UART_LCR_DLAB; // disable DLAB
+		uart->FCR = UART_FCR_FIFO_ENABLE | UART_FCR_RXFIFO_RESET | UART_FCR_TXFIFO_RESET |
+			UART_FCR_RX_TRIGGER_2; // FIFO enabled, 8 char RX trigger
+		uart->IER = UART_IER_RBR | UART_IER_THRE | UART_IER_RX;
+
+		return 1;
+	}
+	return 0;
 }
 
-int uart_initialize(unsigned module, unsigned long baudrate, UART_CONTROL_BLOCK *cb)
+int uart_initialize(unsigned module, UART_CONTROL_BLOCK *cb)
 {
 	switch(module)
 	{
@@ -65,26 +77,12 @@ int uart_initialize(unsigned module, unsigned long baudrate, UART_CONTROL_BLOCK 
 			LPC_SC->PCONP |= PCONP_PCUART3;
 			NVIC_EnableIRQ(UART3_IRQn);
 			break;
+		default:
+			return 0;
 	}
-	LPC_UART_TypeDef *uart = _module(module);
-	if (uart)
-	{
-		_control[module] = cb;
-		_initialize(uart, baudrate);
-		return 1;
-	}
-    return 0;
-}
 
-int uart_set_baudrate(unsigned module, unsigned long baudrate)
-{
-	LPC_UART_TypeDef *uart = _module(module);
-	if (uart)
-	{
-		_initialize(uart, baudrate);
-		return 1;
-	}
-    return 0;
+	_control[module] = cb;
+	return _initialize(module, cb->Baudrate);
 }
 
 void uart_disable(unsigned module)
@@ -103,12 +101,11 @@ void uart_disable(unsigned module)
 		case 3:
 			NVIC_DisableIRQ(UART3_IRQn);
 			break;
+		default:
+			return;
 	}
-    LPC_UART_TypeDef *uart = _module(module);
-	if (uart)
-	{
-		_control[module] = (UART_CONTROL_BLOCK *)0;
-	}
+
+	_control[module] = (UART_CONTROL_BLOCK *)0;
 }
 
 static void _reset_receiver(LPC_UART_TypeDef *uart, UART_CONTROL_BLOCK *cb)
@@ -186,9 +183,11 @@ static void _serve_uart(int module)
 
 int uart_read(unsigned module, unsigned char *buffer, unsigned long length)
 {
-	UART_CONTROL_BLOCK *cb = _control[module];
-    UART_BUFFER *input = &cb->InputBuffer;
+    LPC_UART_TypeDef *uart;
+	UART_CONTROL_BLOCK *cb;
+	if (!_valid_module(module, &uart, &cb)) return -1;
 
+	UART_BUFFER *input = &cb->InputBuffer;
 	int done;
 	for(done = 0; done < length; done++)
 	{
@@ -207,9 +206,11 @@ int uart_read(unsigned module, unsigned char *buffer, unsigned long length)
 
 int uart_write(unsigned module, const unsigned char *buffer, unsigned long length)
 {
-	UART_CONTROL_BLOCK *cb = _control[module];
-	UART_BUFFER *output = &cb->OutputBuffer;
+    LPC_UART_TypeDef *uart;
+	UART_CONTROL_BLOCK *cb;
+	if (!_valid_module(module, &uart, &cb)) return -1;
 
+	UART_BUFFER *output = &cb->OutputBuffer;
 	int done;
 	for(done = 0; done < length; done++)
 	{
@@ -232,7 +233,6 @@ int uart_write(unsigned module, const unsigned char *buffer, unsigned long lengt
 			cb->Handler(UART_EVENT_OUTPUT_FULL, cb->HandlerState);
 	}
 
-    LPC_UART_TypeDef *uart = _module(module);
 	if (uart && (uart->LSR & UART_LSR_THRE))
 		_write_data(uart, cb, 8);
 
@@ -259,5 +259,25 @@ void UART3_IRQHandler(void)
 	_serve_uart(3);
 }
 
+void uart_set_rs485(unsigned module, UART_MODE mode, unsigned char dir_delay, unsigned char address)
+{
+    LPC_UART_TypeDef *uart;
+	UART_CONTROL_BLOCK *cb;
+	if (_valid_module(module, &uart, &cb) && 
+		module == 1)
+	{
+		LPC_UART1_TypeDef *uart1 = (LPC_UART1_TypeDef *)uart;
+		if ((mode & UART_MODE_485_DIR_ENABLE_MASK) && module == 1)
+		{
+			uart1->RS485CTRL = UART_RS485CTRL_DCTRL |
+				((mode & UART_MODE_485_DIR_DTR) ? UART_RS485CTRL_SEL : 0) |
+				((mode & UART_MODE_485_DIR_INV) ? UART_RS485CTRL_OINV : 0);
+		}
+		else
+		{
+			uart1->RS485CTRL = 0;
+		}
+	}
+}
 
 

@@ -6,7 +6,7 @@
 
 static HW_ADDR _arp_none = { 0, 0, 0, 0, 0, 0 };
 
-void net_arp_input(ETH_ADAPTER *adapter, ARP_HEADER *arp)
+void net_arp_input(NET_ADAPTER *adapter, ARP_HEADER *arp)
 {
 	ARP_PTYPE ptype = NTOH16(arp->ptype);
 	if (arp->hlen == 6 && ptype == ARP_PTYPE_IPV4 && arp->plen == 4)
@@ -20,7 +20,7 @@ void net_arp_input(ETH_ADAPTER *adapter, ARP_HEADER *arp)
 					&& arp->tpa.Value == adapter->IP.Value)
 				{
 					// broadcast -> send mac to sender
-					ETH_OUTPUT_BUFFER resp = (ETH_OUTPUT_BUFFER) { .CompletedEvent = NULL };
+					NET_OUTPUT_BUFFER resp = (NET_OUTPUT_BUFFER) { .CompletedEvent = NULL };
 					ARP_HEADER *arp_resp = net_arp_output(adapter, &resp, &arp->sha);
 					if (arp_resp != NULL)
 					{
@@ -43,7 +43,7 @@ void net_arp_input(ETH_ADAPTER *adapter, ARP_HEADER *arp)
 	}
 }
 
-ARP_HEADER *net_arp_output(ETH_ADAPTER *adapter, ETH_OUTPUT_BUFFER *output, HW_ADDR *destination)
+ARP_HEADER *net_arp_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *output, HW_ADDR *destination)
 {
 	ARP_HEADER *arp = (ARP_HEADER *)net_adapter_output(adapter, output, sizeof(ARP_HEADER), destination, ETH_TYPE_ARP);
 	if (arp != NULL)
@@ -59,7 +59,7 @@ ARP_HEADER *net_arp_output(ETH_ADAPTER *adapter, ETH_OUTPUT_BUFFER *output, HW_A
 	return arp;
 }
 
-int net_arp_send_output(ETH_ADAPTER *adapter, ETH_OUTPUT_BUFFER *output)
+int net_arp_send_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *output)
 {
 	return net_adapter_send_output(adapter, output);
 }

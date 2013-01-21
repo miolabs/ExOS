@@ -14,7 +14,7 @@ typedef enum
 typedef struct 
 {
 	EXOS_IO_ENTRY;
-	ETH_ADAPTER *Adapter;
+	NET_ADAPTER *Adapter;
 	NET_IO_TYPE ProtocolType;
 	unsigned short BufferSize;
 	unsigned short Reserved;

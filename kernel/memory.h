@@ -2,6 +2,7 @@
 #define EXOS_MEMORY_H
 
 #include <kernel/list.h>
+#include <kernel/mutex.h>
 
 typedef enum
 {
@@ -18,6 +19,7 @@ typedef struct
 	EXOS_MEM_FLAGS Flags;
 	void *StartAddress;
 	unsigned long Size;
+	EXOS_MUTEX FreeListMutex;
 	EXOS_LIST FreeList;
 } EXOS_MEM_REGION;
 

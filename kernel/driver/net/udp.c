@@ -5,7 +5,7 @@
 #include "mbuf.h"
 #include "udp_io.h"
 
-int net_udp_input(ETH_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip)
+int net_udp_input(NET_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip)
 {
 	unsigned short msg_length;
 	UDP_HEADER *udp = (UDP_HEADER *)net_ip_get_payload(ip, &msg_length);
@@ -23,7 +23,7 @@ int net_udp_input(ETH_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip)
 			UDP_IO_ENTRY *io = __udp_io_find_io(adapter, port);
 			if (io != NULL)
 			{
-				ETH_BUFFER *packet = net_adapter_alloc_buffer(adapter, buffer, (void *)udp + sizeof(UDP_HEADER), udp_length - sizeof(UDP_HEADER));
+				NET_BUFFER *packet = net_adapter_alloc_buffer(adapter, buffer, (void *)udp + sizeof(UDP_HEADER), udp_length - sizeof(UDP_HEADER));
 				exos_fifo_queue(&io->Incoming, (EXOS_NODE *)packet);
 				return 1;
 			}
@@ -32,11 +32,11 @@ int net_udp_input(ETH_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip)
 	return 0;
 }
 
-int net_udp_send(ETH_ADAPTER *adapter, IP_ENDPOINT *destination, unsigned short source_port, unsigned short dest_port, NET_MBUF *data)
+int net_udp_send(NET_ADAPTER *adapter, IP_ENDPOINT *destination, unsigned short source_port, unsigned short dest_port, NET_MBUF *data)
 {
 	EXOS_EVENT completed_event;
 	exos_event_create(&completed_event);
-	ETH_OUTPUT_BUFFER resp = (ETH_OUTPUT_BUFFER) { .CompletedEvent = &completed_event };
+	NET_OUTPUT_BUFFER resp = (NET_OUTPUT_BUFFER) { .CompletedEvent = &completed_event };
 
 	UDP_HEADER *udp = (UDP_HEADER *)net_ip_output(adapter, &resp, sizeof(UDP_HEADER), destination, IP_PROTOCOL_UDP);
 	if (udp != NULL)

@@ -22,7 +22,7 @@ void __udp_io_initialize()
 	exos_mutex_create(&_entries_mutex);
 }
 
-UDP_IO_ENTRY *__udp_io_find_io(ETH_ADAPTER *adapter, unsigned short port)
+UDP_IO_ENTRY *__udp_io_find_io(NET_ADAPTER *adapter, unsigned short port)
 {
 	UDP_IO_ENTRY *found = NULL;
 	exos_mutex_lock(&_entries_mutex);
@@ -53,7 +53,7 @@ static int _bind(NET_IO_ENTRY *socket, void *addr)
 	UDP_IO_ENTRY *io = (UDP_IO_ENTRY *)socket;
 	IP_PORT_ADDR *local = (IP_PORT_ADDR *)addr;
 
-	ETH_ADAPTER *adapter = net_adapter_find(local->Address);
+	NET_ADAPTER *adapter = net_adapter_find(local->Address);
 	if (io->Adapter != NULL && io->Adapter != adapter)
 		return -1; // already bound to another adapter
 
@@ -95,7 +95,7 @@ static int _receive(NET_IO_ENTRY *socket, void *buffer, unsigned long length, vo
 	IP_PORT_ADDR *ip = (IP_PORT_ADDR *)addr;
 	UDP_IO_ENTRY *io = (UDP_IO_ENTRY *)socket;
 
-	ETH_BUFFER *packet = (ETH_BUFFER *)exos_fifo_dequeue(&io->Incoming);
+	NET_BUFFER *packet = (NET_BUFFER *)exos_fifo_dequeue(&io->Incoming);
 	if (packet != NULL)
 	{
 		IP_HEADER *ip_hdr = (IP_HEADER *)((void *)packet->Buffer + sizeof(ETH_HEADER));
@@ -125,7 +125,7 @@ static int _send(NET_IO_ENTRY *socket, void *buffer, unsigned long length, void 
 	if (ep.IP.Value == -1)
 	{
 		net_adapter_list_lock();
-		ETH_ADAPTER *adapter = NULL;
+		NET_ADAPTER *adapter = NULL;
 		while(net_adapter_enum(&adapter))
 		{
 			if (adapter->Speed != 0)
@@ -140,7 +140,7 @@ static int _send(NET_IO_ENTRY *socket, void *buffer, unsigned long length, void 
 	}
 	else
 	{
-		ETH_ADAPTER *adapter = net_adapter_find(ip->Address);
+		NET_ADAPTER *adapter = net_adapter_find(ip->Address);
 		if (adapter != NULL)
 		{
 			if (adapter->Speed == 0) return -1;	// down

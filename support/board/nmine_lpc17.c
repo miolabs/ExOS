@@ -3,6 +3,7 @@
 
 static int _setup_i2c(int unit);
 static int _setup_ssp(int unit);
+static int _setup_usbhost(int unit);
 static int _setup_usbdev(int unit);
 static int _setup_pwm(int unit);
 static int _setup_cap(int unit);
@@ -35,6 +36,7 @@ int hal_board_init_pinmux(HAL_RESOURCE res, int unit)
 	{
 		case HAL_RESOURCE_I2C:		return _setup_i2c(unit);
 		case HAL_RESOURCE_SSP:		return _setup_ssp(unit);
+		case HAL_RESOURCE_USBHOST:	return _setup_usbhost(unit);
         case HAL_RESOURCE_USBDEV:	return _setup_usbdev(unit);
 		case HAL_RESOURCE_PWM:		return _setup_pwm(unit);
 		case HAL_RESOURCE_CAP:		return _setup_cap(unit);
@@ -82,6 +84,21 @@ static int _setup_ssp(int unit)
 			PINSEL0bits.P0_9 = 2; // MOSI1
 			return 1;
 	}
+}
+
+static int _setup_usbhost(int unit)
+{
+#if defined BOARD_LPC1766STK
+	PINSEL1bits.P0_29 = 1;		// D+
+	PINSEL1bits.P0_30 = 1;		// D-
+	PINSEL3bits.P1_18 = 1;		// USB_UP_LED
+	PINSEL3bits.P1_19 = 2;		// _USB_PPWR
+	PINSEL3bits.P1_22 = 2;		// USB_PWRD
+	PINSEL3bits.P1_27 = 2;		// _USB_OVRCR
+	return (1<<0);
+#else
+	return 0;
+#endif
 }
 
 static int _setup_usbdev(int unit)

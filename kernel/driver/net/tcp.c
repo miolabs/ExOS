@@ -9,7 +9,7 @@
 
 static inline void _handle_input(TCP_IO_ENTRY *io, TCP_HEADER *tcp, void *data, unsigned short data_length);
 
-int net_tcp_input(ETH_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip)
+int net_tcp_input(NET_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip)
 {
 	unsigned short msg_length;
 	TCP_HEADER *tcp = (TCP_HEADER *)net_ip_get_payload(ip, &msg_length);

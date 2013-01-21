@@ -29,10 +29,9 @@ void comm_io_create(COMM_IO_ENTRY *io, COMM_DEVICE *device, unsigned port, EXOS_
 	exos_io_create((EXOS_IO_ENTRY *)io, EXOS_IO_COMM, &_comm_driver, flags);
 	io->Device = device;
 	io->Port = port;
-	io->Baudrate = 0;
 }
 
-int comm_io_open(COMM_IO_ENTRY *io, int baudrate)
+int comm_io_open(COMM_IO_ENTRY *io)
 {
 #ifdef DEBUG
 	if (io == NULL) 
@@ -41,8 +40,6 @@ int comm_io_open(COMM_IO_ENTRY *io, int baudrate)
 	
 	COMM_DEVICE *device = io->Device;
 	const COMM_DRIVER *driver = device->Driver;
-	io->Baudrate = baudrate;
-
 	int done = driver->Open(io);
 	return done;
 }
@@ -59,18 +56,29 @@ void comm_io_close(COMM_IO_ENTRY *io)
 	driver->Close(io);
 }
 
-int comm_io_set_baudrate(COMM_IO_ENTRY *io, int baudrate)
+int comm_io_get_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
 {
 #ifdef DEBUG
-	if (io == NULL) 
+	if (io == NULL || value == NULL) 
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
 #endif
 
 	COMM_DEVICE *device = io->Device;
 	const COMM_DRIVER *driver = device->Driver;
-	io->Baudrate = baudrate;
+	int done = driver->GetAttr(io, attr, value);
+	return done;
+}
 
-	int done = driver->SetAttrs(io);
+int comm_io_set_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
+{
+#ifdef DEBUG
+	if (io == NULL || value == NULL) 
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+
+	COMM_DEVICE *device = io->Device;
+	const COMM_DRIVER *driver = device->Driver;
+	int done = driver->SetAttr(io, attr, value);
 	return done;
 }
 

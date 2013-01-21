@@ -28,7 +28,7 @@ void *net_ip_get_payload(IP_HEADER *ip, unsigned short *plength)
 	return (void *)ip + header_length;
 }
 
-int net_ip_input(ETH_ADAPTER *adapter, ETH_HEADER *eth, IP_HEADER *ip)
+int net_ip_input(NET_ADAPTER *adapter, ETH_HEADER *eth, IP_HEADER *ip)
 {
 	unsigned short checksum = net_ip_checksum((NET16_T *)ip, ip->HeaderLength << 2);
 	if (checksum == 0)
@@ -56,7 +56,7 @@ int net_ip_input(ETH_ADAPTER *adapter, ETH_HEADER *eth, IP_HEADER *ip)
 	return 0;
 }
 
-void *net_ip_output(ETH_ADAPTER *adapter, ETH_OUTPUT_BUFFER *output, unsigned hdr_size, IP_ENDPOINT *destination, IP_PROTOCOL protocol)
+void *net_ip_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *output, unsigned hdr_size, IP_ENDPOINT *destination, IP_PROTOCOL protocol)
 {
 	hdr_size += sizeof(IP_HEADER);
 	IP_HEADER *ip = (IP_HEADER *)net_adapter_output(adapter, output, hdr_size, &destination->MAC, ETH_TYPE_IP);
@@ -77,7 +77,7 @@ void *net_ip_output(ETH_ADAPTER *adapter, ETH_OUTPUT_BUFFER *output, unsigned hd
 	return NULL;
 }
 
-int net_ip_send_output(ETH_ADAPTER *adapter, ETH_OUTPUT_BUFFER *output, unsigned payload)
+int net_ip_send_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *output, unsigned payload)
 {
 	ETH_HEADER *eth = (ETH_HEADER *)output->Buffer.Buffer;
 
@@ -110,7 +110,7 @@ unsigned short net_ip_checksum(NET16_T *data, unsigned byte_count)
 	return (unsigned short)~sum;
 }
 
-int net_ip_resolve(ETH_ADAPTER *adapter, IP_ENDPOINT *ep)
+int net_ip_resolve(NET_ADAPTER *adapter, IP_ENDPOINT *ep)
 {
 	if (adapter == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
@@ -125,7 +125,7 @@ int net_ip_resolve(ETH_ADAPTER *adapter, IP_ENDPOINT *ep)
 	return found;
 }
 
-int net_ip_set_addr(ETH_ADAPTER *driver, IP_ADDR ip, IP_ADDR mask, IP_ADDR gateway)
+int net_ip_set_addr(NET_ADAPTER *driver, IP_ADDR ip, IP_ADDR mask, IP_ADDR gateway)
 {
 	driver->IP = ip;
 	driver->NetMask = mask;

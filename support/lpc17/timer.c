@@ -44,7 +44,7 @@ static LPC_TIM_TypeDef *_initialize(int module, int freq)
 		return (LPC_TIM_TypeDef *)0;
 	}
 
-	unsigned long pclk = cpu_pclk(cpu_cclk(), 1);
+	unsigned long pclk = cpu_pclk(SystemCoreClock, 1);
 	unsigned long prsc = (pclk + (freq / 2)) / freq;
 	timer->TCR = 0;
 	timer->PR = prsc != 0 ? prsc - 1 : 0;
@@ -63,10 +63,11 @@ int hal_cap_initialize(int module, int freq, HAL_CAP_MODE mode, HAL_CAP_HANDLER 
 {
 	int mask = hal_board_init_pinmux(HAL_RESOURCE_CAP, module);
 	LPC_TIM_TypeDef *timer = _initialize(module, freq);
-	_capture_handlers[module] = callback;
 	
 	if (timer)
 	{
+		_capture_handlers[module] = callback;
+	
 		TIMER_CAPM capm = CAPM_INT;
 		if (mode & HAL_CAP_RISING) capm |= CAPM_RISING;
 		if (mode & HAL_CAP_FALLING) capm |= CAPM_FALLING;

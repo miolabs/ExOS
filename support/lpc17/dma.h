@@ -93,24 +93,24 @@ typedef enum
 
 typedef struct
 {
-	DMA_BURST Burst:3;
-	DMA_WIDTH Width:3;
-	unsigned Increment:1;
-} DMA_CON;
-
-typedef struct
-{
 	volatile unsigned long SrcAddr;
 	volatile unsigned long DstAddr;
 	volatile unsigned long LLI;
 	union
 	{
-		volatile unsigned long Control;	// Interrupt Register
+		volatile unsigned long Control;
 		volatile _DMACCControlBits ControlBits;
 	};
+} DMA_TRANSFER;
+
+typedef void (* DMA_CALLBACK)(int channel, int tc_done);
+
+typedef struct
+{
+	DMA_TRANSFER Transfer;
 	union
 	{
-		volatile unsigned long Configuration;	// Interrupt Register
+		volatile unsigned long Configuration;
 		volatile _DMACCConfigurationBits ConfigurationBits;
 	};
 } DMA_CHANNEL;
@@ -118,12 +118,32 @@ typedef struct
 #define DMA_CHANNEL_COUNT 8
 #define DMA_CHANNEL_MASK ((1<<DMA_CHANNEL_COUNT) - 1)
 
-typedef void (* DMA_CALLBACK)(int module, int tc_done);
+typedef struct
+{
+	DMA_BURST Burst:3;
+	DMA_WIDTH Width:3;
+	unsigned Increment:1;
+} DMA_CON;
+
+typedef struct __attribute__((__packed__))
+{
+	DMA_CON Src;
+	DMA_CON Dst;
+	DMA_PERIPHERAL Peripheral;
+	DMA_FLOW Flow;
+} DMA_CONFIG;
+
+
 
 // prototypes
 void dma_initialize();
-DMA_CHANNEL *dma_init_channel(int ch, int mode, void *src_ptr, void *dst_ptr, int size, 
-	DMA_CON src, DMA_CON dst, int peripheral, DMA_CALLBACK callback);
-void dma_disable(DMA_CHANNEL *mod);
+int dma_alloc_channel(int *pch);
+void dma_free_channel(int ch);
+void dma_transfer_setup(DMA_TRANSFER *tr, void *src_ptr, void *dst_ptr, int size, 
+	const DMA_CONFIG *config, DMA_CALLBACK callback, DMA_TRANSFER *next);
+void dma_channel_enable(int ch, const DMA_TRANSFER *tr, const DMA_CONFIG *config, DMA_CALLBACK callback);
+void dma_channel_enable_fast(int ch, void *src_ptr, void *dst_ptr, int size, 
+	const DMA_CONFIG *config, DMA_CALLBACK callback);
+void dma_channel_disable(int ch);
 
 #endif // LPC17_DMA_H

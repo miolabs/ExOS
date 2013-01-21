@@ -11,8 +11,6 @@ typedef struct _NET_MBUF
 	int Length;
 } NET_MBUF;
 
-typedef void(* ETH_CALLBACK)(void *state);
-
 // prototypes
 void net_mbuf_init(NET_MBUF *buf, void *data, int offset, int length);
 int net_mbuf_append(NET_MBUF *buf, NET_MBUF *append);

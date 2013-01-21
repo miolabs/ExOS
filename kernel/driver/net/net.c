@@ -24,14 +24,14 @@ int net_equal_hw_addr(HW_ADDR *a, HW_ADDR *b)
 	return 1;
 }
 
-__weak ETH_ADAPTER *net_board_get_adapter(int index)
+__weak NET_ADAPTER *net_board_get_adapter(int index)
 {
 	return NULL;
 }
 
 static const HW_ADDR _dummy_mac = { 1, 2, 3, 4, 5, 6 };
 
-__weak void net_board_set_mac_address(ETH_ADAPTER *adapter, int index)
+__weak void net_board_set_mac_address(NET_ADAPTER *adapter, int index)
 {
 	adapter->MAC = _dummy_mac;
 	adapter->MAC.Bytes[5] += index;

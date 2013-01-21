@@ -13,7 +13,7 @@ static EXOS_LIST _adapters;
 static EXOS_FIFO _free_wrappers;
 static EXOS_EVENT _free_wrapper_event;
 #define NET_PACKET_WRAPPERS 16
-static ETH_BUFFER _wrappers[NET_PACKET_WRAPPERS];
+static NET_BUFFER _wrappers[NET_PACKET_WRAPPERS];
 
 void net_adapter_initialize()
 {
@@ -22,12 +22,12 @@ void net_adapter_initialize()
 	exos_fifo_create(&_free_wrappers, &_free_wrapper_event);
 	for(int i = 0; i < NET_PACKET_WRAPPERS; i++)
 	{
-		_wrappers[i] = (ETH_BUFFER) { .Adapter = NULL }; 
+		_wrappers[i] = (NET_BUFFER) { .Adapter = NULL }; 
 		exos_fifo_queue(&_free_wrappers, (EXOS_NODE *)&_wrappers[i]);
 	}
 
 	exos_mutex_create(&_adapters_lock);
-	ETH_ADAPTER *adapter;
+	NET_ADAPTER *adapter;
 	int index = 0;
 	while(NULL != (adapter = net_board_get_adapter(index)))
 	{
@@ -40,7 +40,7 @@ void net_adapter_initialize()
 		adapter->Speed = 0;
 		net_board_set_mac_address(adapter, index);
 
-		const ETH_DRIVER *driver = adapter->Driver;
+		const NET_DRIVER *driver = adapter->Driver;
 		if (driver->Initialize(adapter))
 		{
 			list_add_tail(&_adapters, (EXOS_NODE *)adapter);
@@ -65,9 +65,9 @@ void net_adapter_list_unlock()
 	exos_mutex_unlock(&_adapters_lock);
 }
 
-int net_adapter_enum(ETH_ADAPTER **padapter)
+int net_adapter_enum(NET_ADAPTER **padapter)
 {
-	ETH_ADAPTER *adapter = *padapter;
+	NET_ADAPTER *adapter = *padapter;
 #ifdef DEBUG
 	if (adapter != NULL &&
 		NULL == list_find_node(&_adapters, (EXOS_NODE *)adapter))
@@ -77,17 +77,17 @@ int net_adapter_enum(ETH_ADAPTER **padapter)
 	}
 #endif
 
-	adapter = (adapter == NULL) ? (!LIST_ISEMPTY(&_adapters) ? (ETH_ADAPTER *)(LIST_HEAD(&_adapters)->Succ) : NULL) : 
-		(ETH_ADAPTER *)NODE_SUCC(&_adapters, (EXOS_NODE *)adapter);
+	adapter = (adapter == NULL) ? (!LIST_ISEMPTY(&_adapters) ? (NET_ADAPTER *)(LIST_HEAD(&_adapters)->Succ) : NULL) : 
+		(NET_ADAPTER *)NODE_SUCC(&_adapters, (EXOS_NODE *)adapter);
 	*padapter = adapter;
 	return (adapter != NULL);
 }
 
-ETH_ADAPTER *net_adapter_find(IP_ADDR addr)
+NET_ADAPTER *net_adapter_find(IP_ADDR addr)
 {
 	FOREACH(node, &_adapters)
 	{
-		ETH_ADAPTER *adapter = (ETH_ADAPTER *)node;
+		NET_ADAPTER *adapter = (NET_ADAPTER *)node;
 #ifdef DEBUG
 		if (adapter->Node.Type != EXOS_NODE_IO_DEVICE)
 			kernel_panic(KERNEL_ERROR_WRONG_NODE);
@@ -99,9 +99,9 @@ ETH_ADAPTER *net_adapter_find(IP_ADDR addr)
 	return NULL;
 }
 
-void net_adapter_input(ETH_ADAPTER *adapter)
+void net_adapter_input(NET_ADAPTER *adapter)
 {
-   	const ETH_DRIVER *driver = adapter->Driver;
+   	const NET_DRIVER *driver = adapter->Driver;
 
 	while(1)
 	{
@@ -127,9 +127,9 @@ void net_adapter_input(ETH_ADAPTER *adapter)
 	}
 }
 
-void *net_adapter_output(ETH_ADAPTER *adapter, ETH_OUTPUT_BUFFER *output, unsigned hdr_size, HW_ADDR *destination, ETH_TYPE type)
+void *net_adapter_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *output, unsigned hdr_size, HW_ADDR *destination, ETH_TYPE type)
 {
-	const ETH_DRIVER *driver = adapter->Driver;
+	const NET_DRIVER *driver = adapter->Driver;
 
 	hdr_size += sizeof(ETH_HEADER);
 	ETH_HEADER *buffer = driver->GetOutputBuffer(adapter, hdr_size);
@@ -156,17 +156,17 @@ static void _send_callback(void *state)
 	exos_event_set(event);
 }
 
-int net_adapter_send_output(ETH_ADAPTER *adapter, ETH_OUTPUT_BUFFER *output)
+int net_adapter_send_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *output)
 {
-	const ETH_DRIVER *driver = adapter->Driver;
+	const NET_DRIVER *driver = adapter->Driver;
 	int done = driver->SendOutputBuffer(adapter, &output->Buffer, 
 		output->CompletedEvent != NULL ? _send_callback : NULL, output->CompletedEvent);
 	return done;
 }
 
-ETH_BUFFER *net_adapter_alloc_buffer(ETH_ADAPTER *adapter, void *buffer, void *data, unsigned long length)
+NET_BUFFER *net_adapter_alloc_buffer(NET_ADAPTER *adapter, void *buffer, void *data, unsigned long length)
 {
-	ETH_BUFFER *packet = (ETH_BUFFER *)exos_fifo_wait(&_free_wrappers, EXOS_TIMEOUT_NEVER);
+	NET_BUFFER *packet = (NET_BUFFER *)exos_fifo_wait(&_free_wrappers, EXOS_TIMEOUT_NEVER);
 #ifdef DEBUG
 	packet->Node = (EXOS_NODE) { .Type = EXOS_NODE_IO_BUFFER };
 #endif
@@ -177,10 +177,10 @@ ETH_BUFFER *net_adapter_alloc_buffer(ETH_ADAPTER *adapter, void *buffer, void *d
 	return packet;
 }
 
-void net_adapter_discard_input_buffer(ETH_BUFFER *packet)
+void net_adapter_discard_input_buffer(NET_BUFFER *packet)
 {
-	ETH_ADAPTER *adapter = packet->Adapter;
-	const ETH_DRIVER *driver = adapter->Driver;
+	NET_ADAPTER *adapter = packet->Adapter;
+	const NET_DRIVER *driver = adapter->Driver;
 	driver->DiscardInputBuffer(adapter, packet->Buffer);
 
 	exos_fifo_queue(&_free_wrappers, (EXOS_NODE *)packet);

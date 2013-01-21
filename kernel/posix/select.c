@@ -1,4 +1,3 @@
-#include <sys/select.h>
 #include "posix.h"
 #include <sys/select.h>
 #include <kernel/io.h>
@@ -8,10 +7,10 @@ static int _wait(int nfds,
 {
 	EXOS_WAIT_HANDLE handles[nfds];
 
-	unsigned long used = (readfds != NULL ? readfds->mask : 0) | 
-		(writefds != NULL ? writefds->mask : 0);
+	unsigned long used = (readfds != NULL ? readfds->mask : 0)
+		| (writefds != NULL ? writefds->mask : 0);
+	
 	int count = 0;
-
 	unsigned long wait_mask = 0;
 	for(int fd = 0; fd < nfds; fd++)
 	{
@@ -21,13 +20,18 @@ static int _wait(int nfds,
 			EXOS_IO_ENTRY *io = posix_get_file_descriptor(fd);
 			if (io == NULL) return posix_set_error(EBADF);
 
-			if (readfds->mask & fd_mask)
-				exos_event_check(&io->InputEvent, &handles[fd], &wait_mask);
+			if (readfds && (readfds->mask & fd_mask))
+			{
+				if (exos_event_check(&io->InputEvent, &handles[fd], &wait_mask))
+					count++;	// event is done already
+			}
 		}
 	}
-	if (wait_mask != 0)
+
+	if (count == 0 && wait_mask != 0)
 		exos_signal_wait(wait_mask, timeout);
 	
+	count = 0;
 	for(int fd = 0; fd < nfds; fd++)
 	{
 		unsigned long fd_mask = (1 << fd);
@@ -35,7 +39,7 @@ static int _wait(int nfds,
 		{
 			EXOS_IO_ENTRY *io = posix_get_file_descriptor(fd);
 			
-			if (readfds->mask & fd_mask)
+			if (readfds && (readfds->mask & fd_mask))
 			{
 				if (io->InputEvent.State) count++;
 				else FD_CLR(fd, readfds);

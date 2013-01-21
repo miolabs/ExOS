@@ -52,7 +52,7 @@ typedef enum
 } TCP_STATE;
 
 
-int net_tcp_input(ETH_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip);
+int net_tcp_input(NET_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip);
 unsigned short net_tcp_checksum(IP_ADDR *source_ip, IP_ADDR *dest_ip, NET_MBUF *mbuf, int offset);
 
 #endif // NET_TCP_H

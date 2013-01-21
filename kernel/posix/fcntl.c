@@ -40,7 +40,9 @@ int open(const char *path, int oflag, ...)
 	const char *dev_path = path;
 	if (*dev_path == '/') dev_path++;
 	EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, dev_path);
-	if (dev_node == NULL)
+	if (dev_node == NULL || 
+		dev_node->Type != EXOS_TREE_NODE_DEVICE ||
+		dev_node->DeviceType != EXOS_TREE_DEVICE_COMM)
 		return posix_set_error(ENODEV);
 
 	COMM_IO_ENTRY *io = (COMM_IO_ENTRY *)exos_mem_alloc(sizeof(COMM_IO_ENTRY), EXOS_MEMF_CLEAR);
@@ -48,9 +50,9 @@ int open(const char *path, int oflag, ...)
 		return posix_set_error(ENOMEM);
 	
 	EXOS_IO_FLAGS flags = oflag & O_NONBLOCK ? EXOS_IOF_NONE : EXOS_IOF_WAIT;
-	comm_io_create(io, dev_node->Device, dev_node->Port, flags);
+	comm_io_create(io, dev_node->Device, dev_node->Unit, flags);
 
-	int error = comm_io_open(io, 0);
+	int error = comm_io_open(io);
 	if (error == 0)
 	{
 		int fd = posix_add_file_descriptor((EXOS_IO_ENTRY *)io);

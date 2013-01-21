@@ -39,6 +39,7 @@
           <file file_name="kernel/posix/fcntl.c"/>
           <file file_name="kernel/posix/select.c"/>
           <file file_name="kernel/posix/printf.c"/>
+          <file file_name="kernel/posix/ioctl.c"/>
         </folder>
         <file file_name="kernel/memory.c"/>
         <file file_name="kernel/mutex.c"/>
@@ -51,6 +52,7 @@
         </folder>
         <file file_name="kernel/tree.c"/>
         <file file_name="kernel/io.c"/>
+        <file file_name="kernel/thread_pool.c"/>
       </folder>
       <folder Name="support">
         <folder Name="lpc17">

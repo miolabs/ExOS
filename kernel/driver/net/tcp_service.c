@@ -116,7 +116,11 @@ int net_tcp_accept(TCP_IO_ENTRY *io, const EXOS_IO_STREAM_BUFFERS *buffers, TCP_
 	// recycle conn
 	exos_fifo_queue(&_free_incoming_connections, (EXOS_NODE *)conn);
 
-	if (done) net_tcp_service(io, 0);
+	if (done) 
+	{
+		net_tcp_service(io, 0);
+        exos_event_wait(&io->OutputEvent, EXOS_TIMEOUT_NEVER);	// FIXME: allow timeout
+	}
 	return done;
 }
 
@@ -253,7 +257,7 @@ static int _send(TCP_IO_ENTRY *io)
 {
 	EXOS_EVENT completed_event;
 	exos_event_create(&completed_event);
-	ETH_OUTPUT_BUFFER resp = (ETH_OUTPUT_BUFFER) { .CompletedEvent = &completed_event };
+	NET_OUTPUT_BUFFER resp = (NET_OUTPUT_BUFFER) { .CompletedEvent = &completed_event };
 
 	TCP_HEADER *tcp = net_ip_output(io->Adapter, &resp, sizeof(TCP_HEADER), &io->RemoteEP, IP_PROTOCOL_TCP);
 	if (tcp != NULL)

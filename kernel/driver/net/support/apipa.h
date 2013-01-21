@@ -3,7 +3,7 @@
 
 #include <net/adapter.h>
 
-void net_apipa_set_ip_address(ETH_ADAPTER *adapter);
+void net_apipa_set_ip_address(NET_ADAPTER *adapter);
 
 
 #endif // SUPPORT_NET_APIPA_H

@@ -32,8 +32,8 @@ typedef enum
 } ARP_OPER;
 
 // prototypes
-void net_arp_input(ETH_ADAPTER *adapter, ARP_HEADER *arp);
-ARP_HEADER *net_arp_output(ETH_ADAPTER *adapter, ETH_OUTPUT_BUFFER *output, HW_ADDR *destination);
-int net_arp_send_output(ETH_ADAPTER *adapter, ETH_OUTPUT_BUFFER *output);
+void net_arp_input(NET_ADAPTER *adapter, ARP_HEADER *arp);
+ARP_HEADER *net_arp_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *output, HW_ADDR *destination);
+int net_arp_send_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *output);
 
 #endif // NET_ARP_H

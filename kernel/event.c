@@ -29,13 +29,13 @@ int exos_event_check(EXOS_EVENT *event, EXOS_WAIT_HANDLE *handle, unsigned long 
 	if (event == NULL || handle == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
 #endif
-	unsigned long mask = __kernel_do(_check_event, event, handle);
-	if (mask == 0)
+	unsigned long event_mask = __kernel_do(_check_event, event, handle);
+	if (event_mask == 0)
 	{
 		handle->State = EXOS_WAIT_DONE;
 		return 1;
 	}
-	*pmask |= mask;
+	*pmask |= event_mask;
 	return 0;
 }
 
@@ -47,11 +47,11 @@ int exos_event_wait(EXOS_EVENT *event, unsigned long timeout)
 #endif
 
 	EXOS_WAIT_HANDLE handle;
-	unsigned long mask = __kernel_do(_check_event, event, &handle);
-	if (mask != 0)
+	unsigned long event_mask = __kernel_do(_check_event, event, &handle);
+	if (event_mask != 0)
 	{
-		mask = exos_signal_wait(mask, timeout);
-		if (mask == EXOS_SIGF_ABORT)
+		event_mask = exos_signal_wait(event_mask, timeout);
+		if (event_mask == EXOS_SIGF_ABORT)
 		{
 			exos_cond_abort(&handle);
 			return -1;	// timeout
@@ -96,11 +96,14 @@ void exos_event_reset(EXOS_EVENT *event)
 int exos_event_wait_multiple(EXOS_EVENT **events, int count, unsigned long timeout)
 {
 	EXOS_WAIT_HANDLE handles[count];
+	int done = 0;
 	unsigned long mask = 0;
 	for(int i = 0; i < count; i++)
-		exos_event_check(events[i], &handles[i], &mask);
-	
-	if (mask != 0)
+	{
+		if (exos_event_check(events[i], &handles[i], &mask))
+			done++;
+	}
+	if (done == 0 && mask != 0)
 		mask = exos_signal_wait(mask, timeout);
 
 	for(int i = 0; i < count; i++)
@@ -110,4 +113,25 @@ int exos_event_wait_multiple(EXOS_EVENT **events, int count, unsigned long timeo
 			exos_cond_abort(handle);
 	}
 	return mask == EXOS_SIGF_ABORT ? -1 : 0;
+}
+
+unsigned long exos_event_wait_signals(EXOS_EVENT *event, unsigned long mask, unsigned long timeout)
+{
+#ifdef DEBUG
+	if (event == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+
+	EXOS_WAIT_HANDLE handle;
+	unsigned long event_mask = __kernel_do(_check_event, event, &handle);
+	if (event_mask != 0)
+	{
+		unsigned long rcv_mask  = exos_signal_wait(event_mask | mask, timeout);
+		if (rcv_mask != event_mask)
+		{
+			exos_cond_abort(&handle); // cancel event handle
+		}
+		return rcv_mask;
+	}
+	return 0;
 }

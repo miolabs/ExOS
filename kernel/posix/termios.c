@@ -26,7 +26,8 @@ int tcgetattr(int fd, struct termios *termios_p)
 	if (io->Type != EXOS_IO_COMM) return posix_set_error(ENOTTY);
 
 	cfmakeraw(termios_p);
-	termios_p->__baudrate = io->Baudrate;
+	unsigned long baudrate;
+	termios_p->__baudrate = comm_io_get_attr(io, COMM_ATTR_BAUDRATE, &baudrate) == 0 ? baudrate : 0;
 	termios_p->c_cc[VMIN] = 1; // currently ignored
 	termios_p->c_cc[VTIME] = _rndiv(io->Timeout, POSIX_VTIME_TICKS);
 	return 0;
@@ -47,7 +48,8 @@ int tcsetattr(int fd, int optional_actions, const struct termios *termios_p)
 			break;
 	}
 
-	int error = comm_io_set_baudrate(io, termios_p->__baudrate);
+	unsigned long baudrate = termios_p->__baudrate;
+	int error = comm_io_set_attr(io, COMM_ATTR_BAUDRATE, &baudrate);
 	if (error != 0) return posix_set_error(EINVAL);
 
 	exos_io_set_timeout((EXOS_IO_ENTRY *)io, 

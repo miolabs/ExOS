@@ -3,7 +3,7 @@
 
 #include <net/adapter.h>
 
-void net_service_start(ETH_ADAPTER *adapter);
+void net_service_start(NET_ADAPTER *adapter);
 
 
 #endif // NET_SERVICE_H

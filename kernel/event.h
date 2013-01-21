@@ -19,5 +19,6 @@ void exos_event_set(EXOS_EVENT *event);
 void exos_event_reset(EXOS_EVENT *event);
 int exos_event_wait(EXOS_EVENT *event, unsigned long timeout);
 int exos_event_wait_multiple(EXOS_EVENT **events, int count, unsigned long timeout);
+unsigned long exos_event_wait_signals(EXOS_EVENT *event, unsigned long mask, unsigned long timeout);
 
 #endif // EXOS_EVENT_H

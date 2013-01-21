@@ -3,7 +3,7 @@
 
 #include "icmp.h"
 
-void net_icmp_input(ETH_ADAPTER *adapter, ETH_HEADER *eth, IP_HEADER *ip)
+void net_icmp_input(NET_ADAPTER *adapter, ETH_HEADER *eth, IP_HEADER *ip)
 {
 	unsigned short msg_length;
 	ICMP_HEADER *icmp = net_ip_get_payload(ip, &msg_length);
@@ -11,7 +11,7 @@ void net_icmp_input(ETH_ADAPTER *adapter, ETH_HEADER *eth, IP_HEADER *ip)
 	unsigned short checksum = net_ip_checksum((NET16_T *)icmp, msg_length);
 	if (checksum == 0)
 	{
-		ETH_OUTPUT_BUFFER resp = (ETH_OUTPUT_BUFFER) { .CompletedEvent = NULL };
+		NET_OUTPUT_BUFFER resp = (NET_OUTPUT_BUFFER) { .CompletedEvent = NULL };
 
 		IP_ENDPOINT sender_ep = (IP_ENDPOINT) { 
 			.MAC = eth->Sender,

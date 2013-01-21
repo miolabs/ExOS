@@ -22,18 +22,30 @@ typedef struct _TREE_NODE
 typedef struct
 {
 	EXOS_TREE_NODE;
-	EXOS_LIST *Children;
+	EXOS_LIST Children;
+	EXOS_MUTEX Mutex;
 } EXOS_TREE_GROUP;
+
+typedef enum
+{
+	EXOS_TREE_DEVICE_COMM = 0,
+	EXOS_TREE_DEVICE_BLOCK,
+} EXOS_TREE_DEVICE_TYPE;
 
 typedef struct
 {
 	EXOS_TREE_NODE;
-	COMM_DEVICE *Device;
-	unsigned long Port;
+	EXOS_TREE_DEVICE_TYPE DeviceType;
+	union
+	{
+		COMM_DEVICE *Device;
+//		BLOCK_DEVICE *BlockDevice;
+	};
+	unsigned long Unit;
 } EXOS_TREE_DEVICE;
 
 void __tree_initialize();
-void exos_tree_add_child(const EXOS_TREE_GROUP *group, EXOS_TREE_NODE *child);
+void exos_tree_add_child(EXOS_TREE_GROUP *group, EXOS_TREE_NODE *child);
 void exos_tree_add_device(EXOS_TREE_DEVICE *device);
 EXOS_TREE_NODE *exos_tree_find_node(EXOS_TREE_NODE *parent, const char *path);
 

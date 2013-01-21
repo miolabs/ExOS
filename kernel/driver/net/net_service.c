@@ -6,17 +6,17 @@
 
 static void *_service(void *arg);
 
-void net_service_start(ETH_ADAPTER *adapter)
+void net_service_start(NET_ADAPTER *adapter)
 {
 	exos_thread_create(&adapter->Thread, 1, &adapter->Stack, NET_ADAPTER_THREAD_STACK, NULL, _service, adapter);
 }
 
 static void *_service(void *arg)
 {
-	ETH_ADAPTER *adapter = (ETH_ADAPTER *)arg;
+	NET_ADAPTER *adapter = (NET_ADAPTER *)arg;
 	adapter->InputSignal = exos_signal_alloc();
 
-	const ETH_DRIVER *driver = adapter->Driver;
+	const NET_DRIVER *driver = adapter->Driver;
 	while(1)
 	{
 		if (adapter->Speed != 0)

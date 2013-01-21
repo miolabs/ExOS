@@ -41,7 +41,7 @@ typedef struct
 typedef struct
 {
 	EXOS_NODE Node;
-	ETH_ADAPTER *Adapter;
+	NET_ADAPTER *Adapter;
 	IP_ENDPOINT RemoteEP;
 	unsigned short RemotePort;
 	unsigned short LocalPort;

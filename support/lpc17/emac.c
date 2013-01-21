@@ -7,7 +7,8 @@
 #include "cpu.h"
 #include <CMSIS/LPC17xx.h>
 
-static void (*_handler)() = (void *)0;
+static void *_handler_state;
+static void (*_handler)(void *) = (void *)0;
 
 static void _write_phy(PHYREG reg, unsigned short value);
 static unsigned short _read_phy(PHYREG reg);
@@ -18,9 +19,10 @@ void _wait(int time)
 	for (int volatile count = 0; count < time; count++);
 }
 
-int emac_initialize(ETH_MAC *mac, void (*handler)())
+int emac_initialize(ETH_MAC *mac, void (*handler)(void *), void *state)
 {
 	_handler = handler;
+	_handler_state = state;
 
 	// PCONP enable
 	LPC_SC->PCONP |= PCONP_PCENET;
@@ -153,7 +155,7 @@ void ENET_IRQHandler()
 	if (status & MAC_INT_RX_DONE)
 	{
 		LPC_EMAC->IntClear = MAC_INT_RX_DONE;
-		if (_handler) _handler();
+		if (_handler) _handler(_handler_state);
 	}
 	if (status & MAC_INT_TX_DONE)
 	{

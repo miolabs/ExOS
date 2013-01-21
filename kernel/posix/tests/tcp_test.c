@@ -7,15 +7,10 @@
 #include <errno.h>
 #include <kernel/memory.h>
 
-#include <CMSIS/LPC17xx.h>
-
 static void *_service(void *args);
 
 void main()
 {
-	ITM_Type *itm = ITM;
-	char rx = ITM_SendChar('a');
-
 	int err;
 	
 	int server = socket(AF_INET, SOCK_STREAM, 0);

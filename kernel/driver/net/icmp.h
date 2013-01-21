@@ -21,6 +21,6 @@ typedef enum
 
 
 // prototypes
-void net_icmp_input(ETH_ADAPTER *adapter, ETH_HEADER *eth, IP_HEADER *ip);
+void net_icmp_input(NET_ADAPTER *adapter, ETH_HEADER *eth, IP_HEADER *ip);
 
 #endif // NET_ICMP_H

@@ -13,7 +13,7 @@
 #include <fcntl.h>   /* File control definitions */
 #include <errno.h>   /* Error number definitions */
 #include <termios.h> /* POSIX terminal control definitions */
-//#include <sys/ioctl.h> <--- obsolete api
+#include <sys/ioctl.h>
 #include <sys/select.h>
 #include <unistd.h>
 #include <string.h>
@@ -21,11 +21,8 @@
 #ifdef __APPLE__
 #define kUARTDevice "/dev/cu.usbserial-FTB4ND9F"
 #elif defined __EXOS__
-	#if defined BOARD_NANO2
+#include <exos/serial.h>
 #define kUARTDevice "/dev/comm1"
-	#else
-#define kUARTDevice "/dev/comm0"
-	#endif
 #endif
 
 #define kBaudRate       115200
@@ -91,7 +88,16 @@ int OpenUART()
 //               kUARTDevice, strerror(errno), errno);
 //        goto error;
 //    }
-    
+
+	struct serial_rs485 rs485cfg = (struct serial_rs485) {
+		//
+		};
+	if (ioctl(fd, TIOCSRS485, &rs485cfg) == -1)
+	{
+		printf("Cannot set rs485 mode");
+		goto error;
+	}
+
     // Now that the device is open, clear the O_NONBLOCK flag so subsequent I/O will block.
     // See fcntl(2) ("man 2 fcntl") for details.
     

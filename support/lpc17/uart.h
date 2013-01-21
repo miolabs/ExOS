@@ -50,6 +50,23 @@
 #define UART_LSR_TEMT (1 << 6)
 #define UART_LSR_RXFE (1 << 7)
 
+#define UART_RS485CTRL_NMMEN (1<<0)
+#define UART_RS485CTRL_RXDIS (1<<1)
+#define UART_RS485CTRL_AADEN (1<<2)
+#define UART_RS485CTRL_SEL (1<<3)
+#define UART_RS485CTRL_DCTRL (1<<4)
+#define UART_RS485CTRL_OINV (1<<5)
+
+
+typedef enum
+{
+	UART_MODE_STANDARD = 0,
+	UART_MODE_485_DIR_RTS = 1,
+	UART_MODE_485_DIR_DTR = 2,
+	UART_MODE_485_DIR_ENABLE_MASK = (UART_MODE_485_DIR_RTS | UART_MODE_485_DIR_RTS),
+	UART_MODE_485_DIR_INV = 1<<2,
+	UART_MODE_485_ADDR_DETECT = 1<<3,
+} UART_MODE;
 
 typedef enum
 {
@@ -65,6 +82,7 @@ typedef enum
 {
 	UART_RX_IDLE = 0,
 	UART_RX_OVERRUN = 1<<0,
+	UART_RX_FLAGS = (UART_RX_OVERRUN),
 } UART_STATUS;
 
 typedef void (*UART_HANDLER)(UART_EVENT event, void *state);
@@ -79,19 +97,20 @@ typedef struct
 
 typedef struct
 {
+	unsigned long Baudrate;
+	UART_STATUS Status;
 	UART_HANDLER Handler;
 	void *HandlerState;
 	UART_BUFFER InputBuffer;
 	UART_BUFFER OutputBuffer;
-	UART_STATUS Status;
 } UART_CONTROL_BLOCK;
 
 // prototypes
-int uart_initialize(unsigned module, unsigned long baudrate, UART_CONTROL_BLOCK *cb);
+int uart_initialize(unsigned module, UART_CONTROL_BLOCK *cb);
 void uart_disable(unsigned module);
-int uart_set_baudrate(unsigned module, unsigned long baudrate);
 int uart_read(unsigned module, unsigned char *buffer, unsigned long length);
 int uart_write(unsigned module, const unsigned char *buffer, unsigned long length);
+void uart_set_rs485(unsigned module, UART_MODE mode, unsigned char dir_delay, unsigned char address);
 
 #endif // LPC_UART_H
 

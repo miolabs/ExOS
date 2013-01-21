@@ -28,12 +28,12 @@ typedef enum
 #define ETH_MAX_FRAME_SIZE 1536
 #define ETH_MAX_PAYLOAD 1500
 
-typedef struct _ETH_DRIVER ETH_DRIVER;
+typedef struct _NET_DRIVER NET_DRIVER;
 
 typedef struct
 {
 	EXOS_NODE Node;
-	const ETH_DRIVER *Driver;
+	const NET_DRIVER *Driver;
 	EXOS_MUTEX InputLock;
 	EXOS_MUTEX OutputLock;
 	HW_ADDR MAC;
@@ -45,48 +45,50 @@ typedef struct
 	unsigned long InputSignal;
 	EXOS_THREAD Thread;
 	unsigned char Stack[NET_ADAPTER_THREAD_STACK];
-} ETH_ADAPTER;
+} NET_ADAPTER;
 
 typedef struct
 {
 	EXOS_NODE Node;
-	ETH_ADAPTER *Adapter;
+	NET_ADAPTER *Adapter;
 	void *Buffer;
 	unsigned short Offset;
 	unsigned short Length;
-} ETH_BUFFER;
+} NET_BUFFER;
 
 typedef struct
 {
 	EXOS_EVENT *CompletedEvent;
 	NET_MBUF Buffer;
-} ETH_OUTPUT_BUFFER;
+} NET_OUTPUT_BUFFER;
 
-struct _ETH_DRIVER
+typedef void(* NET_CALLBACK)(void *state);
+
+struct _NET_DRIVER
 {
-	int (*Initialize)(ETH_ADAPTER *adapter);
-	void (*LinkUp)(ETH_ADAPTER *adapter);
-	void (*LinkDown)(ETH_ADAPTER *adapter);
-	ETH_HEADER *(*GetInputBuffer)(ETH_ADAPTER *adapter, unsigned long *plength);
-	void (*DiscardInputBuffer)(ETH_ADAPTER *adapter, ETH_HEADER *buffer);
-	ETH_HEADER *(*GetOutputBuffer)(ETH_ADAPTER *adapter, unsigned long size);
-	int (*SendOutputBuffer)(ETH_ADAPTER *adapter, NET_MBUF *mbuf, ETH_CALLBACK callback, void *state);
+	int (*Initialize)(NET_ADAPTER *adapter);
+	void (*LinkUp)(NET_ADAPTER *adapter);
+	void (*LinkDown)(NET_ADAPTER *adapter);
+	void *(*GetInputBuffer)(NET_ADAPTER *adapter, unsigned long *plength);
+	void (*DiscardInputBuffer)(NET_ADAPTER *adapter, void *buffer);
+	void *(*GetOutputBuffer)(NET_ADAPTER *adapter, unsigned long size);
+	int (*SendOutputBuffer)(NET_ADAPTER *adapter, NET_MBUF *mbuf, NET_CALLBACK callback, void *state);
 };
 
 // prototypes
 void net_adapter_initialize();
 void net_adapter_list_lock();
 void net_adapter_list_unlock();
-int net_adapter_enum(ETH_ADAPTER **padapter);
-ETH_ADAPTER *net_adapter_find(IP_ADDR addr);
+int net_adapter_enum(NET_ADAPTER **padapter);
+NET_ADAPTER *net_adapter_find(IP_ADDR addr);
 
-void net_adapter_input(ETH_ADAPTER *adapter);
+void net_adapter_input(NET_ADAPTER *adapter);
 
-void *net_adapter_output(ETH_ADAPTER *adapter, ETH_OUTPUT_BUFFER *buf, unsigned hdr_size, HW_ADDR *destination, ETH_TYPE type);
-int net_adapter_send_output(ETH_ADAPTER *adapter, ETH_OUTPUT_BUFFER *buf);
+void *net_adapter_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *buf, unsigned hdr_size, HW_ADDR *destination, ETH_TYPE type);
+int net_adapter_send_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *buf);
 
-ETH_BUFFER *net_adapter_alloc_buffer(ETH_ADAPTER *adapter, void *buffer, void *data, unsigned long length);
-void net_adapter_discard_input_buffer(ETH_BUFFER *packet);
+NET_BUFFER *net_adapter_alloc_buffer(NET_ADAPTER *adapter, void *buffer, void *data, unsigned long length);
+void net_adapter_discard_input_buffer(NET_BUFFER *packet);
 
 
 #endif // NET_DRIVERS_H

@@ -2,7 +2,7 @@
 #define LPC_EMAC_H
 
 #include <net/support/phy.h>
-#include <net/mbuf.h>
+#include <net/adapter.h>
 
 typedef struct __attribute__((__packed__))
 {
@@ -107,13 +107,13 @@ typedef struct __attribute__((__packed__))
 
 
 // prototypes
-int emac_initialize(ETH_MAC *mac, void (*handler)());
+int emac_initialize(ETH_MAC *mac, void (*handler)(void *), void *state);
 ETH_LINK emac_init_link();
 
 // emac_mem implemented functions
 void *emac_get_input_buffer(unsigned long *psize);
 void emac_discard_input(void *data);
 void *emac_get_output_buffer(unsigned long size);
-int emac_send_output(NET_MBUF *mbuf, ETH_CALLBACK callback, void *state);
+int emac_send_output(NET_MBUF *mbuf, NET_CALLBACK callback, void *state);
 
 #endif // LPC_EMAC_H

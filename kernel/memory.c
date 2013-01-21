@@ -1,15 +1,18 @@
 #include "memory.h"
 #include "panic.h"
 #include <kernel/machine/hal.h>
+#include <kernel/mutex.h>
 
 extern unsigned char __heap_start__, __heap_end__;
 
 static EXOS_LIST _mem_list;
+static EXOS_MUTEX _mem_lock;
 static EXOS_MEM_REGION _heap_region;
 
 void __mem_init()
 {
 	list_initialize(&_mem_list);
+	exos_mutex_create(&_mem_lock);
 
 	exos_mem_add_region(&_heap_region, &__heap_start__, &__heap_end__, -1, 0);
 }
@@ -51,8 +54,11 @@ void exos_mem_add_region(EXOS_MEM_REGION *region, void *start, void *end, int pr
 		.Size = size };
 	list_initialize(&region->FreeList);
 	list_add_tail(&region->FreeList, (EXOS_NODE *)free->Contents);
-	
+	exos_mutex_create(&region->FreeListMutex);
+
+	exos_mutex_lock(&_mem_lock);
 	list_enqueue(&_mem_list, (EXOS_NODE *)region);
+	exos_mutex_unlock(&_mem_lock);
 }
 
 static EXOS_MEM_HEADER *_find_room(EXOS_MEM_REGION *region, unsigned long size)
@@ -86,11 +92,15 @@ void *exos_mem_alloc(unsigned long size, EXOS_MEM_FLAGS flags)
     // align size
 	size = (size + 15) & ~15;
 
+	void *segment = NULL;
+
+	exos_mutex_lock(&_mem_lock);
 	FOREACH(node, &_mem_list)
 	{
 		EXOS_MEM_REGION *region = (EXOS_MEM_REGION *)node;
 		if ((region->Flags & flags) == (flags & EXOS_MEMF_REGION))
 		{
+			exos_mutex_lock(&region->FreeListMutex);
 			EXOS_MEM_HEADER *header = _find_room(region, size);
 			if (header != NULL) 
 			{
@@ -115,11 +125,15 @@ void *exos_mem_alloc(unsigned long size, EXOS_MEM_FLAGS flags)
 				list_remove((EXOS_NODE *)header->Contents);
 
 				if (flags & EXOS_MEMF_CLEAR) __mem_set(header->Contents, header->Contents + size, 0);
-				return header->Contents;
+				segment = header->Contents;
 			}
+			exos_mutex_lock(&region->FreeListMutex);
+
+			if (segment != NULL) break;
 		}
 	}
-	return NULL;
+	exos_mutex_unlock(&_mem_lock);
+	return segment;
 }
 
 void exos_mem_free(void *addr)
@@ -130,6 +144,7 @@ void exos_mem_free(void *addr)
 	if (region->Node.Type != EXOS_NODE_MEM_REGION)
 		kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
 #endif
+
 	if (header->Size < sizeof(EXOS_NODE))
 		kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
 	EXOS_MEM_FOOTER *footer = (EXOS_MEM_FOOTER *)(header->Contents + header->Size);
@@ -137,6 +152,7 @@ void exos_mem_free(void *addr)
 		kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
 
 	EXOS_NODE *pred_node = NULL;
+	// FIXME: check is coalescence causes a race condition
 
 	// coalescence to linear successor
 	EXOS_MEM_HEADER *next_header = (EXOS_MEM_HEADER *)((void *)footer + sizeof(EXOS_MEM_FOOTER));
@@ -179,6 +195,7 @@ void exos_mem_free(void *addr)
 
 	_init_block(region, header, (void *)footer + sizeof(EXOS_MEM_FOOTER));
 
+	exos_mutex_lock(&region->FreeListMutex);
 	if (pred_node != NULL)
 	{
 		list_insert(pred_node, (EXOS_NODE *)header->Contents);
@@ -187,6 +204,7 @@ void exos_mem_free(void *addr)
 	{
 		list_add_head(&region->FreeList, (EXOS_NODE *)header->Contents);
 	}
+	exos_mutex_unlock(&region->FreeListMutex);
 }
 
 void exos_mem_stats(EXOS_MEM_REGION *region, EXOS_MEM_STATS *stats)
@@ -197,6 +215,7 @@ void exos_mem_stats(EXOS_MEM_REGION *region, EXOS_MEM_STATS *stats)
 #endif
 
 	unsigned long total = 0, count = 0, largest = 0;
+	exos_mutex_lock(&region->FreeListMutex);
 	FOREACH(node, &region->FreeList)
 	{
 		EXOS_MEM_HEADER *header = (EXOS_MEM_HEADER *)((void *)node - sizeof(EXOS_MEM_HEADER));
@@ -214,24 +233,30 @@ void exos_mem_stats(EXOS_MEM_REGION *region, EXOS_MEM_STATS *stats)
 		total += header->Size;
 		count++;
 	}
+	exos_mutex_unlock(&region->FreeListMutex);
 	*stats = (EXOS_MEM_STATS) { .Free = total, .Fragments = count, .Largest = largest };
 }
 
 EXOS_MEM_REGION *exos_mem_get_region(EXOS_MEM_FLAGS flags, int index)
 {
+	EXOS_MEM_REGION *found = NULL;
 	int i = 0;
+	exos_mutex_lock(&_mem_lock);
 	FOREACH(node, &_mem_list)
 	{
 		EXOS_MEM_REGION *region = (EXOS_MEM_REGION *)node;
 		if ((region->Flags & flags) == (flags & EXOS_MEMF_REGION))
 		{
-			if (i == index) 
-				return region;
-				 
+			if (i == index)
+			{
+				found = region;
+				break;
+			}
 			i++;
 		}
 	}
-	return NULL;
+	exos_mutex_unlock(&_mem_lock);
+	return found;
 }
 
 
