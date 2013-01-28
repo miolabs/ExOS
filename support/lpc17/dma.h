@@ -137,7 +137,7 @@ typedef struct __attribute__((__packed__))
 
 // prototypes
 void dma_initialize();
-int dma_alloc_channel(int *pch);
+int dma_alloc_channels(int *array, int length);
 void dma_free_channel(int ch);
 void dma_transfer_setup(DMA_TRANSFER *tr, void *src_ptr, void *dst_ptr, int size, 
 	const DMA_CONFIG *config, DMA_CALLBACK callback, DMA_TRANSFER *next);

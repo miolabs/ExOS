@@ -46,11 +46,10 @@ typedef int(* HAL_FULLCAN_SETUP_CALLBACK)(int index, CAN_EP *ep, void *state);
 
 // prototypes
 int hal_can_initialize(int module, int bitrate);
-int hal_can_send(unsigned long ep, CAN_BUFFER *data, unsigned char length, CAN_MSG_FLAGS flags);
-int hal_can_setup_std(CAN_EP *eps, int count);
-int hal_can_read_received(int index, CAN_BUFFER *buf);
+int hal_can_send(CAN_EP ep, CAN_BUFFER *data, unsigned char length, CAN_MSG_FLAGS flags);
 
 int hal_fullcan_setup(HAL_FULLCAN_SETUP_CALLBACK callback, void *state);
+int hal_fullcan_read_msg(int index, CAN_BUFFER *buf);
 
 // callbacks
 void hal_can_received_handler(CAN_MSG *msg) __attribute__((__weak__));

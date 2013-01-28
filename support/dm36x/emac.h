@@ -3,6 +3,7 @@
 
 #include "intc.h"
 #include <net/mbuf.h>
+#include <net/adapter.h>
 #include <net/support/phy.h>
 
 typedef volatile struct
@@ -144,7 +145,7 @@ typedef struct _EMAC_Desc
 		unsigned long PktFlgLen;
 	};
 
-	ETH_CALLBACK Callback;
+	NET_CALLBACK Callback;
 	void *CallbackState;
 } EMAC_Desc;
 
@@ -182,7 +183,7 @@ ETH_LINK emac_check_link();
 void *emac_get_input_buffer(unsigned long *psize);
 void emac_discard_input_buffer(void *buffer);
 void *emac_get_output_buffer(unsigned long size);
-int emac_send_output_buffer(NET_MBUF *mbuf, ETH_CALLBACK callback, void *state);
+int emac_send_output_buffer(NET_MBUF *mbuf, NET_CALLBACK callback, void *state);
 
 void emac_dm36x_rx_handler() __attribute__((__weak__));
 

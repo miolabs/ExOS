@@ -8,7 +8,11 @@ _vectors:
 	ldr pc, [pc, #swi_handler_address - . - 8]
 	ldr pc, [pc, #pabort_handler_address - . - 8]
 	ldr pc, [pc, #dabort_handler_address - . - 8]
+#ifdef ARMV4_VECTORS_CHECKSUM
+	.word ARMV4_VECTORS_CHECKSUM
+#else
 	nop
+#endif
 	ldr pc, [pc, #irq_handler_address - . - 8]
 	ldr pc, [pc, #fiq_handler_address - . - 8]
 

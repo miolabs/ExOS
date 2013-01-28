@@ -21,8 +21,8 @@ int main()
 	EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/comm0");
 	if (dev_node != NULL)
 	{
-		comm_io_create(&_comm, dev_node->Device, dev_node->Port, EXOS_IOF_WAIT); 
-		err = comm_io_open(&_comm, 115200);
+		comm_io_create(&_comm, dev_node->Device, dev_node->Unit, EXOS_IOF_WAIT); 
+		err = comm_io_open(&_comm);	// FIXME: set baudrate to 115200
 		if (err == 0) comm = (EXOS_IO_ENTRY *)&_comm;
 	}
 
@@ -52,10 +52,10 @@ int main()
 		}
 	
 		hal_led_set(0, 0);
-		net_io_close((NET_IO_ENTRY *)&_socket);
+		net_io_close((NET_IO_ENTRY *)&_socket, &buffers);
 	}
 
-	//if (comm != NULL) comm_io_close((COMM_IO_ENTRY *)comm);
+	if (comm != NULL) comm_io_close((COMM_IO_ENTRY *)comm);
 }
 
 

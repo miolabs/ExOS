@@ -3,9 +3,9 @@
 #include <kernel/machine/dm36x/net_dm36x.h>
 //#include <kernel/machine/dm36x/comm_dm36x.h>
 
-static ETH_ADAPTER _internal_adapter = { .Driver = &__net_driver_dm36x };
+static NET_ADAPTER _internal_adapter = { .Driver = &__net_driver_dm36x };
 
-ETH_ADAPTER *net_board_get_adapter(int index)
+NET_ADAPTER *net_board_get_adapter(int index)
 {
 	switch(index)
 	{

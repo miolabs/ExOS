@@ -43,7 +43,7 @@ void main()
 			{
 				while(1)
 				{
-					int done = exos_io_read((EXOS_IO_ENTRY *)&_socket, _buffer, 1024); 
+					int done = exos_io_read((EXOS_IO_ENTRY *)&_socket, _buffer, 1024);
 					if (done < 0) break;
 			
 					done = exos_io_write((EXOS_IO_ENTRY *)&_comm, _buffer, done);

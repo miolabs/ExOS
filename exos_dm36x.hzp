@@ -25,12 +25,14 @@
           <folder Name="dm36x">
             <file file_name="kernel/machine/dm36x/startup_dm36x.s"/>
             <file file_name="kernel/machine/dm36x/time_dm36x.c"/>
-            <file file_name="kernel/machine/dm36x/vectors_dm36x.s"/>
             <file file_name="kernel/machine/dm36x/machine_dm36x.c"/>
-            <file file_name="kernel/machine/dm36x/kernel_armv4.s"/>
             <file file_name="kernel/machine/dm36x/net_dm36x.c"/>
           </folder>
           <file file_name="kernel/machine/hal.c"/>
+          <folder Name="armv4">
+            <file file_name="kernel/machine/armv4/kernel_armv4.s"/>
+            <file file_name="kernel/machine/armv4/vectors_armv4.s"/>
+          </folder>
         </folder>
         <file file_name="kernel/event.c"/>
         <file file_name="kernel/fifo.c"/>

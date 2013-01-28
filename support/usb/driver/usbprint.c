@@ -1,5 +1,6 @@
 #include "usbprint.h"
 #include <usb/enumerate.h>
+#include <kernel/machine/hal.h>
 
 static USB_HOST_FUNCTION *_check_interface(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTOR *conf_desc, USB_DESCRIPTOR_HEADER *fn_desc);
 static void _start(USB_HOST_FUNCTION *func);
@@ -20,7 +21,7 @@ static const COMM_DRIVER _comm_driver = {
     .GetAttr = _get_attr, .SetAttr = _set_attr, 
 	.Read = _read, .Write = _write };
 static COMM_DEVICE _comm_device = { .Driver = &_comm_driver, .PortCount = 1 };
-static USBPRINT_FUNCTION _func; // FIXME: support multiple instances
+static USBPRINT_FUNCTION _func __usb; // FIXME: support multiple instances
 
 void usbprint_initialize()
 {
@@ -143,6 +144,15 @@ static int _write(COMM_IO_ENTRY *io, const unsigned char *buffer, unsigned long 
 	USBPRINT_FUNCTION *func = &_func;	// FIXME: use provided usb function when opened
 	if (io->Port != 0) return -1;
 
-	int done = usb_host_bulk_transfer(&func->BulkOutputPipe, (void *)buffer, length);
-	return done ? length : -1;
+	int offset = 0;
+	do
+	{
+		int part = length - offset;
+		if (part > USBPRINT_BUFFER_SIZE) part = USBPRINT_BUFFER_SIZE;
+		__mem_copy(func->Buffer, func->Buffer + part, buffer + offset);
+		int done = usb_host_bulk_transfer(&func->BulkOutputPipe, func->Buffer, part);
+		if (!done) return -1;
+		offset += part;
+	} while(offset < length);
+	return offset;
 }

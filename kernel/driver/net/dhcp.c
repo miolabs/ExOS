@@ -20,8 +20,8 @@ static unsigned long _transaction = 0;
 static int _timeout = 0;
 static IP_ADDR _server_ip, _offered_ip;
 
-static void _dhcp_handle(ETH_DRIVER *driver, IP_HEADER *ip, UDP_HEADER *udp);
-static void _dhcp_iterate(ETH_DRIVER *driver, int elapsed);
+static void _dhcp_handle(NET_DRIVER *driver, IP_HEADER *ip, UDP_HEADER *udp);
+static void _dhcp_iterate(NET_DRIVER *driver, int elapsed);
 static UDP_HANDLER _dhcp_handler = { NULL, NET_UDP_PORT_CLIENT, 0, &_dhcp_handle };
 
 #define REQUEST_TIMEOUT 10000	// ms
@@ -36,7 +36,7 @@ void net_dhcp_iterate(int elapsed)
 //	}
 }
 
-static void _dhcp_iterate(ETH_DRIVER *driver, int elapsed)
+static void _dhcp_iterate(NET_DRIVER *driver, int elapsed)
 {
 	if (_config_state == DHCP_STATE_RESET)
 	{
@@ -170,7 +170,7 @@ static void _dhcp_iterate(ETH_DRIVER *driver, int elapsed)
 	}
 }
 
-void net_dhcp_init_header(NET_DHCP_HEADER *dhcp, ETH_DRIVER *driver, NET_DHCP_OPCODE opcode, unsigned long transaction)
+void net_dhcp_init_header(NET_DHCP_HEADER *dhcp, NET_DRIVER *driver, NET_DHCP_OPCODE opcode, unsigned long transaction)
 {
 	dhcp->Opcode = opcode;
 	dhcp->HardwareType = NET_DHCP_HW_ETHERNET;
@@ -229,7 +229,7 @@ static int _parse_options(NET_DHCP_HEADER *dhcp, int options_length, int op_sear
 	return result;
 }
 
-static void _dhcp_handle(ETH_DRIVER *driver, IP_HEADER *ip, UDP_HEADER *udp)
+static void _dhcp_handle(NET_DRIVER *driver, IP_HEADER *ip, UDP_HEADER *udp)
 {
 	NET_DHCP_HEADER *dhcp = (NET_DHCP_HEADER *)udp->Data;
 	int dhcp_length = NTOH16(udp->Length) - sizeof(UDP_HEADER);

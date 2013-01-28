@@ -49,11 +49,14 @@ static int _check_interface(USB_HOST_FUNCTION_DRIVER *driver, void *arg)
 
 static int _set_configuration(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTOR *conf_desc)
 {
-	USB_REQUEST setup = (USB_REQUEST) {
+	exos_mutex_lock(&device->ControlMutex);
+	device->ControlBuffer = (USB_REQUEST) {
 		.RequestType = USB_REQTYPE_HOST_TO_DEVICE | USB_REQTYPE_RECIPIENT_DEVICE,
 		.RequestCode = USB_REQUEST_SET_CONFIGURATION,
 		.Value = conf_desc->ConfigurationValue, .Index = 0, .Length = 0 };
-	return usb_host_ctrl_setup(device, &setup, sizeof(USB_REQUEST));
+	int done = usb_host_ctrl_setup(device, &device->ControlBuffer, sizeof(USB_REQUEST));
+    exos_mutex_unlock(&device->ControlMutex);
+	return done;
 }
 
 static int _enum_interfaces(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTOR *conf_desc)

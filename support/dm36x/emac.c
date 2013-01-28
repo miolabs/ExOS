@@ -286,7 +286,7 @@ void *emac_get_output_buffer(unsigned long size)
 	return tx_pkt;
 }
 
-int emac_send_output_buffer(NET_MBUF *mbuf, ETH_CALLBACK callback, void *state)
+int emac_send_output_buffer(NET_MBUF *mbuf, NET_CALLBACK callback, void *state)
 {
 	int complete = 0;
 	if (mbuf != NULL)

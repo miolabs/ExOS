@@ -1,7 +1,7 @@
 #ifndef NET_DHCP_H
 #define NET_DHCP_H
 
-#include "net.h"
+#include <net/adapter.h>
 
 typedef struct __attribute__((__packed__))
 {
@@ -71,7 +71,7 @@ typedef enum
 #define NET_UDP_PORT_CLIENT 68
 
 // prototypes
-void net_dhcp_init_header(NET_DHCP_HEADER *dhcp, ETH_ADAPTER *adapter, NET_DHCP_OPCODE opcode, unsigned long transaction);
+void net_dhcp_init_header(NET_DHCP_HEADER *dhcp, NET_ADAPTER *adapter, NET_DHCP_OPCODE opcode, unsigned long transaction);
 void net_dhcp_iterate(int elapsed);
 
 #endif // NET_DHCP_H

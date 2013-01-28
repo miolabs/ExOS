@@ -37,7 +37,8 @@ struct _USB_HOST_DEVICE
 	EXOS_LIST Functions;
 	USB_HOST_PIPE ControlPipe;
 	EXOS_MUTEX ControlMutex;
-	
+	USB_REQUEST	ControlBuffer;
+
 	unsigned char Port;
 	unsigned char Speed;
 	unsigned char Address;

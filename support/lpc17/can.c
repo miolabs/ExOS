@@ -1,5 +1,6 @@
 #include "can.h"
 #include "cpu.h"
+#include <support/board_hal.h>
 #include <CMSIS/LPC17xx.h>
 #include <kernel/panic.h>
 
@@ -25,6 +26,9 @@ void CAN_IRQHandler(void)
 
 int hal_can_initialize(int module, int bitrate)
 {
+	if (!hal_board_init_pinmux(HAL_RESOURCE_CAN, module))
+		return 0;
+
 	unsigned long btr;
 	int cdiv;
 	int pclk, pclk_div;
@@ -47,6 +51,7 @@ int hal_can_initialize(int module, int bitrate)
 	// NOTE: PCLK_CAN1 and PCLK_CAN2 must have the same PCLK divide value when the CAN function is used
 	PCLKSEL0bits.PCLK_CAN1 = pclk_div;
 	PCLKSEL0bits.PCLK_CAN2 = pclk_div;
+	
 	switch(module)
 	{
 		case 0:
@@ -169,9 +174,9 @@ void can_reset(int module)
 	can->MOD = 4;	// STM = self test mode
 }
 
-int hal_can_send(unsigned long ep, CAN_BUFFER *data, unsigned char length, CAN_MSG_FLAGS flags)
+int hal_can_send(CAN_EP ep, CAN_BUFFER *data, unsigned char length, CAN_MSG_FLAGS flags)
 {
-	int module = ((CAN_EP)ep).Bus;
+	int module = ep.Bus;
 	if (_can_modules_enabled & (1<<module))
 	{
 		CAN_MODULE *can = _can_table[module];
@@ -213,7 +218,7 @@ int hal_can_send(unsigned long ep, CAN_BUFFER *data, unsigned char length, CAN_M
 		
 			// Write DLC, RTR and FF
 			tb->TFI = length << 16;
-			tb->TID = ((CAN_EP)ep).Id;
+			tb->TID = ep.Id & 0x7FF;
 			tb->TDA = data->u32[0];
 			tb->TDB = data->u32[1];
 		
@@ -275,23 +280,24 @@ int hal_fullcan_setup(HAL_FULLCAN_SETUP_CALLBACK callback, void *state)
 	return count;
 }
 
-int fcan_read_msg(int index, CAN_BUFFER *buf)
+int hal_fullcan_read_msg(int index, CAN_BUFFER *buf)
 {
 	FCAN_MSG *msg = (FCAN_MSG *)(_af_ram + _fcan->ENDofTable);
-	while(msg[index].StatusBits.SEM == 1);
-	int done = 0;
-	unsigned long status = msg[index].Status;
-	if ((status & FCAN_MSG_SEM_MASK) == (3 << FCAN_MSG_SEM_BIT))
+	while(1)
 	{
-		msg[index].Status = status & ~FCAN_MSG_SEM_MASK;
-		FCAN_MSG temp = msg[index];
-		if (msg[index].StatusBits.SEM == 0)
+		unsigned long status = msg[index].Status;
+		int sem = (status & FCAN_MSG_SEM_MASK) >> FCAN_MSG_SEM_BIT;
+		if (sem != 1)
 		{
-			*buf = temp.Data;
-			done = 1;
+			msg[index].Status = status & ~FCAN_MSG_SEM_MASK;
+			FCAN_MSG temp = msg[index];
+			if (msg[index].StatusBits.SEM == 0)
+			{
+				*buf = temp.Data;
+				return (sem == 3);
+			}
 		}
 	}
-	return done;
 }
 
 

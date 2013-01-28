@@ -181,7 +181,7 @@ OHCI_STD_RESULT ohci_process_std(USB_HOST_PIPE *pipe, OHCI_TD_PID pid, OHCI_TD_T
 	OHCI_STD *std = ohci_add_std(pipe, NULL, pid, toggle, data, length);
 	if (std != NULL)
 	{
-		exos_event_wait(&pipe->Event, EXOS_TIMEOUT_NEVER);
+		exos_event_wait(&pipe->Event, EXOS_TIMEOUT_NEVER);	// FIXME: support timeouts
 		if (std->Status == OHCI_STD_STA_COMPLETED &&
 			std->HCTD.ControlBits.ConditionCode == OHCI_TD_CC_NO_ERROR)
 		{

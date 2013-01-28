@@ -72,7 +72,7 @@ void usb_host_create_function(USB_HOST_FUNCTION *func, USB_HOST_DEVICE *device, 
 
 void usb_host_init_pipe_from_descriptor(USB_HOST_DEVICE *device, USB_HOST_PIPE *pipe, USB_ENDPOINT_DESCRIPTOR *ep_desc)
 {
-	*pipe= (USB_HOST_PIPE) {
+	*pipe = (USB_HOST_PIPE) {
 		.Device = device,
 		.EndpointType = ep_desc->AttributesBits.TransferType,
 		.Direction = ep_desc->AddressBits.Input ? USB_DEVICE_TO_HOST : USB_HOST_TO_DEVICE,
@@ -131,29 +131,38 @@ int usb_host_ctrl_setup(USB_HOST_DEVICE *device, void *setup_data, int setup_len
 
 int usb_host_read_descriptor(USB_HOST_DEVICE *device, int desc_type, int desc_index, void *data, int length)
 {
-	USB_REQUEST setup = (USB_REQUEST) {
+	exos_mutex_lock(&device->ControlMutex);
+	device->ControlBuffer = (USB_REQUEST) {
 		.RequestType = USB_REQTYPE_DEVICE_TO_HOST | USB_REQTYPE_RECIPIENT_DEVICE,
 		.RequestCode = USB_REQUEST_GET_DESCRIPTOR,
 		.Value = (desc_type << 8) | desc_index, .Index = 0, .Length = length };
-	return usb_host_ctrl_setup_read(device, &setup, sizeof(USB_REQUEST), data, length);
+	int done = usb_host_ctrl_setup_read(device, &device->ControlBuffer, sizeof(USB_REQUEST), data, length);
+	exos_mutex_unlock(&device->ControlMutex);
+	return done;
 }
 
 int usb_host_set_address(USB_HOST_DEVICE *device, int addr)
 {
-	USB_REQUEST setup = (USB_REQUEST) {
+	exos_mutex_lock(&device->ControlMutex);
+	device->ControlBuffer = (USB_REQUEST) {
 		.RequestType = USB_REQTYPE_HOST_TO_DEVICE | USB_REQTYPE_RECIPIENT_DEVICE,
 		.RequestCode = USB_REQUEST_SET_ADDRESS,
 		.Value = addr, .Index = 0, .Length = 0 };
-	return usb_host_ctrl_setup(device, &setup, sizeof(USB_REQUEST));
+	int done = usb_host_ctrl_setup(device, &device->ControlBuffer, sizeof(USB_REQUEST));
+	exos_mutex_unlock(&device->ControlMutex);
+	return done;
 }
 
 int usb_host_set_interface(USB_HOST_DEVICE *device, int interface, int alternate_setting)
 {
-	USB_REQUEST setup = (USB_REQUEST) {
+	exos_mutex_lock(&device->ControlMutex);
+	device->ControlBuffer = (USB_REQUEST) {
 		.RequestType = USB_REQTYPE_HOST_TO_DEVICE | USB_REQTYPE_RECIPIENT_INTERFACE,
 		.RequestCode = USB_REQUEST_SET_INTERFACE,
 		.Value = alternate_setting, .Index = interface, .Length = 0 };
-	return usb_host_ctrl_setup(device, &setup, sizeof(USB_REQUEST));
+	int done = usb_host_ctrl_setup(device, &device->ControlBuffer, sizeof(USB_REQUEST));
+	exos_mutex_unlock(&device->ControlMutex);
+	return done;
 }
 
 

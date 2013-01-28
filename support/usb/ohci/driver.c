@@ -15,7 +15,7 @@ const USB_HOST_CONTROLLER_DRIVER __ohci_driver = {
 	_start_pipe, _bulk_transfer,
 	};
 
-static USB_HOST_DEVICE _devices[2];	// FIXME: allow virtual devices
+static USB_HOST_DEVICE _devices[2] __usb;	// FIXME: allow more devices (each port can generate more than one)
 
 void ohci_driver_initialize()
 {

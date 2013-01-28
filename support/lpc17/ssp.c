@@ -23,19 +23,18 @@ static inline SSP_MODULE *_get_module(int module)
 void hal_ssp_initialize(int module, int bitrate, HAL_SSP_MODE mode, HAL_SSP_FLAGS flags)
 {
 	SSP_MODULE *ssp = _get_module(module);
-	switch(module)
+	if (ssp && hal_board_init_pinmux(HAL_RESOURCE_SSP, module))
 	{
-		case 0:
-			PCLKSEL1bits.PCLK_SSP0 = 1;	// PCLK = CCLK
-			break;
-		case 1:
-            PCLKSEL0bits.PCLK_SSP1 = 1;	// PCLK = CCLK
-			break;
-	}
+		switch(module)
+		{
+			case 0:
+				PCLKSEL1bits.PCLK_SSP0 = 1;	// PCLK = CCLK
+				break;
+			case 1:
+				PCLKSEL0bits.PCLK_SSP1 = 1;	// PCLK = CCLK
+				break;
+		}
 
-	if (ssp)
-	{
-		hal_board_init_pinmux(HAL_RESOURCE_SSP, module);
 		SSP_CLK_MODE mode = flags & HAL_SSP_CLK_IDLE_HIGH ? 
 			(flags & HAL_SSP_CLK_PHASE_NEG ? SSP_CLK_POL1_PHA0 : SSP_CLK_POL1_PHA1) : // clk negative
 			(flags & HAL_SSP_CLK_PHASE_NEG ? SSP_CLK_POL0_PHA1 : SSP_CLK_POL0_PHA0 ); // clk positive
@@ -96,40 +95,37 @@ void hal_ssp_transmit(int module, unsigned char *outbuf, unsigned char *inbuf, i
 	SSP_MODULE *ssp = _get_module(module);
 	if (ssp)
 	{
-		int dma_rx, dma_tx;
-		if (dma_alloc_channel(&dma_rx))
+		int dma[2];
+		if (dma_alloc_channels(dma, 2))
 		{
-			if (dma_alloc_channel(&dma_tx))
+			_dma_begin(module);
+			if (inbuf)
 			{
-				_dma_begin(module);
-				if (inbuf)
-				{
-					dma_channel_enable_fast(dma_rx, (void *)&ssp->DR, inbuf, length, 
-						&_dma_rx, _dma_complete);
-				}
-				else
-				{
-					dma_channel_enable_fast(dma_rx, (void *)&ssp->DR, &dummy, length, 
-						&_dma_rx_dummy, _dma_complete);
-				}
-				if (outbuf)
-				{
-					dma_channel_enable_fast(dma_tx, outbuf, (void *)&ssp->DR, length, 
-						&_dma_tx, 0);
-				}
-				else
-				{
-					dummy = 0;
-					dma_channel_enable_fast(dma_tx, &dummy, (void *)&ssp->DR, length, 
-						&_dma_tx_dummy, 0);
-				}
-				ssp->DMACR |= SSP_DMA_RXDMAE | SSP_DMA_TXDMAE;
-				_dma_wait(module);
-				ssp->DMACR = 0;
-
-				dma_free_channel(dma_tx);
+				dma_channel_enable_fast(dma[0], (void *)&ssp->DR, inbuf, length, 
+					&_dma_rx, _dma_complete);
 			}
-			dma_free_channel(dma_rx);
+			else
+			{
+				dma_channel_enable_fast(dma[0], (void *)&ssp->DR, &dummy, length, 
+					&_dma_rx_dummy, _dma_complete);
+			}
+			if (outbuf)
+			{
+				dma_channel_enable_fast(dma[1], outbuf, (void *)&ssp->DR, length, 
+					&_dma_tx, 0);
+			}
+			else
+			{
+				dummy = 0;
+				dma_channel_enable_fast(dma[1], &dummy, (void *)&ssp->DR, length, 
+					&_dma_tx_dummy, 0);
+			}
+			ssp->DMACR |= SSP_DMA_RXDMAE | SSP_DMA_TXDMAE;
+			_dma_wait(module);
+			ssp->DMACR = 0;
+
+			dma_free_channel(dma[1]);
+			dma_free_channel(dma[0]);
 		}
 	}
 }
