@@ -4,8 +4,7 @@
 #include <kernel/panic.h>
 #include <kernel/syscall.h>
 #include <support/board_hal.h>
-#include <support/dm36x/system.h>
-#include <support/dm36x/emif.h>
+#include <support/lpc2k/cpu.h>
 
 #if OSCILLATOR_CLOCK_FREQUENCY == 12000000
 
@@ -39,6 +38,8 @@ void __machine_init()
 	// initialize bss sections
 	__mem_set(&__bss_start__, &__bss_end__, 0);
 
+	LPC_SC->PCONP = 0;		// Disable all peripheral power
+	LPC_VIC->IntEnClr = -1; // Disable all interrupts
 	hal_board_initialize();
 
 	// setup PLL
@@ -48,7 +49,6 @@ void __machine_init()
 	// connect PLL
 
 	// initialize MAM
-
 
 
 

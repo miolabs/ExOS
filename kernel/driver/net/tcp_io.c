@@ -111,8 +111,12 @@ static int _read(EXOS_IO_ENTRY *io, void *buffer, unsigned long length)
 #endif
 	
 	TCP_IO_ENTRY *tcp_io = (TCP_IO_ENTRY *)io;
-	return (tcp_io->State != TCP_STATE_ESTABLISHED) ? -1 :
+	int done = (tcp_io->State != TCP_STATE_ESTABLISHED) ? -1 :
 		exos_io_buffer_read(&tcp_io->RcvBuffer, buffer, length);
+
+//	if (done > 0) 
+//		net_tcp_service(tcp_io, 0);
+	return done;
 }
 
 static int _write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length)

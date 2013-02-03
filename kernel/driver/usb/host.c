@@ -102,67 +102,44 @@ int usb_host_bulk_transfer(USB_HOST_PIPE *pipe, void *data, int length)
 	return done;
 }
 
-int usb_host_ctrl_setup_read(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *data, int length)
+int usb_host_ctrl_setup(USB_HOST_DEVICE *device, const USB_REQUEST *request, void *data, int length)
 {
 	exos_mutex_lock(&device->ControlMutex);
 	const USB_HOST_CONTROLLER_DRIVER *hcd = device->Controller;
-	int done = hcd->CtrlSetupRead(device, setup_data, setup_length, data, length);
-	exos_mutex_unlock(&device->ControlMutex);
-    return done;
-}
-
-int usb_host_ctrl_setup_write(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *data, int length)
-{
-	exos_mutex_lock(&device->ControlMutex);
-	const USB_HOST_CONTROLLER_DRIVER *hcd = device->Controller;
-	int done = hcd->CtrlSetupWrite(device, setup_data, setup_length, data, length);
-	exos_mutex_unlock(&device->ControlMutex);
-    return done;
-}
-
-int usb_host_ctrl_setup(USB_HOST_DEVICE *device, void *setup_data, int setup_length)
-{
-	exos_mutex_lock(&device->ControlMutex);
-	const USB_HOST_CONTROLLER_DRIVER *hcd = device->Controller;
-	int done = hcd->CtrlSetup(device, setup_data, setup_length);
+	device->ControlBuffer = *request;
+	int done = (length != 0 &&
+		(request->RequestType & USB_REQTYPE_DIRECTION_MASK) == USB_REQTYPE_DEVICE_TO_HOST) ?
+		hcd->CtrlSetupRead(device, &device->ControlBuffer, sizeof(USB_REQUEST), data, length) :
+		hcd->CtrlSetupWrite(device, &device->ControlBuffer, sizeof(USB_REQUEST), data, length);
 	exos_mutex_unlock(&device->ControlMutex);
     return done;
 }
 
 int usb_host_read_descriptor(USB_HOST_DEVICE *device, int desc_type, int desc_index, void *data, int length)
 {
-	exos_mutex_lock(&device->ControlMutex);
-	device->ControlBuffer = (USB_REQUEST) {
+	USB_REQUEST req = (USB_REQUEST) {
 		.RequestType = USB_REQTYPE_DEVICE_TO_HOST | USB_REQTYPE_RECIPIENT_DEVICE,
 		.RequestCode = USB_REQUEST_GET_DESCRIPTOR,
 		.Value = (desc_type << 8) | desc_index, .Index = 0, .Length = length };
-	int done = usb_host_ctrl_setup_read(device, &device->ControlBuffer, sizeof(USB_REQUEST), data, length);
-	exos_mutex_unlock(&device->ControlMutex);
-	return done;
+	return usb_host_ctrl_setup(device, &req, data, length);
 }
 
 int usb_host_set_address(USB_HOST_DEVICE *device, int addr)
 {
-	exos_mutex_lock(&device->ControlMutex);
-	device->ControlBuffer = (USB_REQUEST) {
+	USB_REQUEST req = (USB_REQUEST) {
 		.RequestType = USB_REQTYPE_HOST_TO_DEVICE | USB_REQTYPE_RECIPIENT_DEVICE,
 		.RequestCode = USB_REQUEST_SET_ADDRESS,
 		.Value = addr, .Index = 0, .Length = 0 };
-	int done = usb_host_ctrl_setup(device, &device->ControlBuffer, sizeof(USB_REQUEST));
-	exos_mutex_unlock(&device->ControlMutex);
-	return done;
+	return usb_host_ctrl_setup(device, &req, NULL, 0);
 }
 
 int usb_host_set_interface(USB_HOST_DEVICE *device, int interface, int alternate_setting)
 {
-	exos_mutex_lock(&device->ControlMutex);
-	device->ControlBuffer = (USB_REQUEST) {
+	USB_REQUEST req = (USB_REQUEST) {
 		.RequestType = USB_REQTYPE_HOST_TO_DEVICE | USB_REQTYPE_RECIPIENT_INTERFACE,
 		.RequestCode = USB_REQUEST_SET_INTERFACE,
 		.Value = alternate_setting, .Index = interface, .Length = 0 };
-	int done = usb_host_ctrl_setup(device, &device->ControlBuffer, sizeof(USB_REQUEST));
-	exos_mutex_unlock(&device->ControlMutex);
-	return done;
+	return usb_host_ctrl_setup(device, &req, NULL, 0);
 }
 
 

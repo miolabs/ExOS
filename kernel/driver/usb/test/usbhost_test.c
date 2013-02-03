@@ -1,5 +1,6 @@
 #include <usb/host.h>
 #include <support/usb/driver/usbprint.h>
+#include <support/usb/driver/ftdi.h>
 #include <net/tcp_io.h>
 #include <comm/comm.h>
 #include <kernel/tree.h>
@@ -10,14 +11,14 @@ COMM_IO_ENTRY _comm;
 TCP_IO_ENTRY _socket;
 unsigned char _buffer[1024];
 
-#define TCP_BUFFER_SIZE 32 // tiny window for stress
+#define TCP_BUFFER_SIZE 256 // tiny window for stress
 unsigned char _rcv_buffer[TCP_BUFFER_SIZE];
 unsigned char _snd_buffer[TCP_BUFFER_SIZE];
 
 void main()
 {
 	usb_host_initialize();
-	int err;
+	int err = 0;
 
 	while(1)
 	{
@@ -35,6 +36,9 @@ void main()
 		hal_led_set(0, 1);
 
 		EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/usbprint");
+		if (dev_node == NULL)
+			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/usbftdi");
+
 		if (dev_node != NULL)
 		{
 			comm_io_create(&_comm, dev_node->Device, dev_node->Unit, EXOS_IOF_WAIT); 
@@ -43,10 +47,12 @@ void main()
 			{
 				while(1)
 				{
+
 					int done = exos_io_read((EXOS_IO_ENTRY *)&_socket, _buffer, 1024);
 					if (done < 0) break;
-			
+hal_led_set(1, 1);
 					done = exos_io_write((EXOS_IO_ENTRY *)&_comm, _buffer, done);
+hal_led_set(1, 0);
 					if (done < 0) break;
 				}
 			}
@@ -60,4 +66,5 @@ void main()
 void usb_host_add_drivers()
 {
     usbprint_initialize();
+	ftdi_initialize();
 }
