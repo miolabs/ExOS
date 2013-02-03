@@ -6,12 +6,11 @@
 
 static int _ctrl_setup_read(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *in_data, int in_length);
 static int _ctrl_setup_write(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *out_data, int out_length);
-static int _ctrl_setup(USB_HOST_DEVICE *device, void *setup_data, int setup_length);
 static int _start_pipe(USB_HOST_PIPE *pipe);
 static int _bulk_transfer(USB_HOST_PIPE *pipe, void *data, int length);
 
 const USB_HOST_CONTROLLER_DRIVER __ohci_driver = {
-	_ctrl_setup_read, _ctrl_setup_write, _ctrl_setup,
+	_ctrl_setup_read, _ctrl_setup_write, 
 	_start_pipe, _bulk_transfer,
 	};
 
@@ -122,16 +121,6 @@ static int _ctrl_setup_write(USB_HOST_DEVICE *device, void *setup_data, int setu
     return done;
 }
 
-static int _ctrl_setup(USB_HOST_DEVICE *device, void *setup_data, int setup_length)
-{
-	USB_HOST_PIPE *pipe = &device->ControlPipe;
-	int done = ohci_process_std(pipe, OHCI_TD_SETUP, OHCI_TD_TOGGLE_0, setup_data, setup_length);
-    if (done) 
-	{
-		done = ohci_process_std(pipe, OHCI_TD_DIR_IN, OHCI_TD_TOGGLE_1, NULL, 0);
-    }
-    return done;
-}
 
 
 

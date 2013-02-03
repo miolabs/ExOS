@@ -7,7 +7,7 @@
 #define THREAD_STACK 1024
 static EXOS_THREAD _thread;
 static unsigned char _stack[THREAD_STACK] __attribute__((aligned(16)));
-static int _hub_signal = 0;
+static int _hub_sigmask = 0;
 
 static USB_DEVICE_DESCRIPTOR _dev_desc __usb;	// buffer for descriptors
 static volatile int _last_device = 0;
@@ -24,7 +24,7 @@ void ohci_hub_initialize()
 
 void ohci_hub_signal()
 {
-	exos_signal_set(&_thread, 1 << _hub_signal);
+	exos_signal_set(&_thread, _hub_sigmask);
 }
 
 static int _enumerate(int port, USB_HOST_DEVICE_SPEED speed)
@@ -69,39 +69,41 @@ static int _enumerate(int port, USB_HOST_DEVICE_SPEED speed)
 
 static void *_service(void *arg)
 {
-	_hub_signal = exos_signal_alloc();
+	_hub_sigmask = 1 << exos_signal_alloc();
 	exos_event_set((EXOS_EVENT *)arg);	// notify of service ready
 
 	while(1)
 	{
+		exos_signal_wait(_hub_sigmask, EXOS_TIMEOUT_NEVER);
+
 		for(int port = 0; port < USB_HOST_ROOT_HUB_NDP; port++)
 		{
 			int status = _hc->RhPortStatus[port];
 			if (status & OHCIR_RH_PORT_CSC)	// status changed
 			{
+				_hc->RhPortStatus[port] = OHCIR_RH_PORT_CSC;
 				if (status & OHCIR_RH_PORT_CCS) 
 				{
                 	exos_thread_sleep(50);	// at least 50ms before reset as of USB 2.0 spec
-					_hc->RhPortStatus[port] |= OHCIR_RH_PORT_PRS;	// assert reset
+					_hc->RhPortStatus[port] = OHCIR_RH_PORT_PRS;	// assert reset
 				}
 				else 
 				{
 					// TODO: remove
 				}
-				_hc->RhPortStatus[port] = OHCIR_RH_PORT_CSC;
 			}
 			if (status & OHCIR_RH_PORT_PRSC)
 			{
+				_hc->RhPortStatus[port] = OHCIR_RH_PORT_PRSC;
 				if (status & OHCIR_RH_PORT_CCS) 
 				{
 					USB_HOST_DEVICE_SPEED speed = (_hc->RhPortStatus[port] & OHCIR_RH_PORT_LSDA) ? 
 						USB_HOST_DEVICE_LOW_SPEED : USB_HOST_DEVICE_FULL_SPEED;
+					
+					exos_thread_sleep(100);	// some devices need up to 100 ms after port reset
 					_enumerate(port, speed);
 				}
-				_hc->RhPortStatus[port] = OHCIR_RH_PORT_PRSC;
 			}
 		}
-
-		exos_signal_wait(1 << _hub_signal, EXOS_TIMEOUT_NEVER);
 	}
 }

@@ -10,7 +10,7 @@ typedef unsigned char ETH_BUFFER[ETH_BUFFER_SIZE + 4];
 
 #define __eth __attribute__((section(".eth")))
 
-#define ENET_LPC_RX_DESCRIPTORS (4)   // RX Fragments = RX packet buffers
+#define ENET_LPC_RX_DESCRIPTORS (8)   // RX Fragments = RX packet buffers
 static ETH_RX_DESC _rx_desc[ENET_LPC_RX_DESCRIPTORS] __eth;
 static ETH_RX_STATUS _rx_stat[ENET_LPC_RX_DESCRIPTORS] __eth;
 static ETH_BUFFER _rx_buffers[ENET_LPC_RX_DESCRIPTORS] __eth;

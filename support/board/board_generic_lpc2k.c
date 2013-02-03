@@ -85,7 +85,7 @@ static int _setup_ssp(int unit)
 
 static int _setup_usbhost(int unit)
 {
-#if defined BOARD_E2468
+#if defined BOARD_E2468 || defined BOARD_EA2478_MOD
 	PINSEL1bits.P0_29 = 1;	// P0.29 = USB_D+1
 	PINSEL1bits.P0_30 = 1;	// P0.30 = USB_D-1
 	PINSEL1bits.P0_31 = 1;	// P0.31 = USB_D+2
@@ -95,10 +95,10 @@ static int _setup_usbhost(int unit)
 	PINSEL0bits.P0_12 = 1;	// P0.12 = _USB_PPWR2
 	PINSEL3bits.P1_30 = 1;	// P1.30 = USB_PWRD2
 	PINSEL3bits.P1_31 = 1;	// P1.31 = _USB_OVRCR2
-#ifndef USB_HOST_NO_LEDS
+	#ifndef USB_HOST_NO_LEDS
 	PINSEL3bits.P1_18 = 1;	// P1.18 = USB_UP_LED1 __opt
 	PINSEL0bits.P0_13 = 1;	// P0.13 = USB_UP_LED2 __opt
-#endif
+	#endif
 	return (1<<0) | (1<<1);
 #else
 	return 0;
@@ -211,15 +211,15 @@ void hal_led_set(HAL_LED led, int state)
 	{
 		case 0:
 			if (state) 
-				LPC_GPIO1->FIOCLR = (1<<25);
+				LPC_GPIO2->FIOCLR = (1<<6);	// LED_GPS
 			else
-				LPC_GPIO1->FIOSET = (1<<25);
+				LPC_GPIO2->FIOSET = (1<<6);	// LED_GPS
 			break;
 		case 1:
 			if (state)
-				LPC_GPIO0->FIOCLR = (1<<4);
+				LPC_GPIO2->FIOCLR = (1<<9); // LED_SD
 			else
-				LPC_GPIO0->FIOSET = (1<<4);
+				LPC_GPIO2->FIOSET = (1<<9); // LED_SD
 			break;
 	}
 }
@@ -245,6 +245,8 @@ void hal_led_set(HAL_LED led, int state)
 	}
 }
 #endif
+
+
 
 
 

@@ -19,6 +19,7 @@ void usb_otg_initialize_host()
 	// enable USB Host clock
 	LPC_USB->OTGClkCtrl = OTGClkCtrl_HOST_CLK_EN;
     while ((LPC_USB->OTGClkSt & OTGClkSt_HOST_CLK_ON) == 0);
+	LPC_USB->HcCommandStatus = 1;	// keep the ohci in reset until initialized
 
 	// configure OTG features
 	OTGClkCtrlBits.OTG_CLK = 1;

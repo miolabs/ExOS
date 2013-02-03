@@ -103,7 +103,7 @@ int usbd_msc_get_max_lun(MSC_FUNCTION *func, int *max_lun)
 		.RequestType = USB_REQTYPE_DEVICE_TO_HOST | USB_REQTYPE_CLASS | USB_REQTYPE_RECIPIENT_INTERFACE,
 		.RequestCode = USB_MSC_REQ_GML,
 		.Value = 0, .Index = func->Interface, .Length = 1 };
-	int done = usb_host_ctrl_setup_read(func->Device, &setup, sizeof(USB_REQUEST), func->Buffer, 1);
+	int done = usb_host_ctrl_setup(func->Device, &setup, func->Buffer, 1);
 	*max_lun = done ? (int)func->Buffer[0] : -1;
 	return done;
 }
@@ -114,7 +114,7 @@ int usbd_msc_boms_reset(MSC_FUNCTION *func)
 		.RequestType = USB_REQTYPE_HOST_TO_DEVICE | USB_REQTYPE_CLASS | USB_REQTYPE_RECIPIENT_INTERFACE,
 		.RequestCode = USB_MSC_REQ_BOMSR,
 		.Value = 0, .Index = func->Interface, .Length = 0 };
-	int done = usb_host_ctrl_setup_read(func->Device, &setup, sizeof(USB_REQUEST), NULL, 0);
+	int done = usb_host_ctrl_setup(func->Device, &setup, NULL, 0);
 	return done;
 }
 
@@ -195,7 +195,7 @@ static void _reset_recovery(MSC_FUNCTION *func)
 			.Value = USB_FEATURE_ENDPOINT_HALT, 
 			.Index = func->BulkInputPipe.EndpointNumber | USB_REQ_INDEX_EP_INPUT, 
 			.Length = 0 };
-		done = usb_host_ctrl_setup_read(device, &setup, sizeof(USB_REQUEST), NULL, 0);
+		done = usb_host_ctrl_setup(device, &setup, NULL, 0);
 
 		// clear feature HALT to bulk-out ep
 		setup = (USB_REQUEST) {
@@ -204,7 +204,7 @@ static void _reset_recovery(MSC_FUNCTION *func)
 			.Value = USB_FEATURE_ENDPOINT_HALT, 
 			.Index = func->BulkOutputPipe.EndpointNumber, 
 			.Length = 0 };
-		done = usb_host_ctrl_setup_read(device, &setup, sizeof(USB_REQUEST), NULL, 0);
+		done = usb_host_ctrl_setup(device, &setup, NULL, 0);
 	}
 }
 

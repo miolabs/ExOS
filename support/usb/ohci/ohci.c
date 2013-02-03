@@ -11,27 +11,16 @@ static void _soft_reset();
 
 int ohci_initialize()
 {
-	_hc->Control = 0; // hw reset
-	_hc->ControlHeadED = NULL; // initialize Control list Head
-	_hc->BulkHeadED = NULL; // initialize Bulk list Head
-
 	ohci_hub_initialize();
 
 	_soft_reset();
-}
 
-static void _soft_reset()
-{
-	// sw reset
-	_hc->CommandStatus = OHCIR_CMD_STATUS_HCR;
-    
+	_hc->Control = 0;
+	_hc->ControlBits.HCFS = OHCI_OP_CONTROL_FS_OPERATIONAL;
+
 	int fi = 12000 - 1;
 	_hc->FmInterval = (((fi - 210) * 6 / 7) << 16) | fi;
 	_hc->PeriodicStart = (fi * 90 / 100);	// 10% of bandwidth reserved
-
-	_hc->ControlBits.HCFS = OHCI_OP_CONTROL_FS_OPERATIONAL;
-	_hc->RhStatus = OHCIR_RH_STATUS_LPSC;  // Set Global Power
-
 
 	// initialize HCCA
 	for (int i = 0; i < 32; i++) _hcca.IntTable[i] = 0;
@@ -39,24 +28,24 @@ static void _soft_reset()
 	_hcca.DoneHead = 0;
 
     _hc->HCCA = &_hcca;
-    _hc->InterruptStatus = -1;
-
-	// initialize device lists
-//    ohci_devices_initialize();
-
-	// initialize class drivers
-//	ohci_msc_initialize();
-//	ohci_hid_initialize();
-//	ohci_uvc_initialize();
-//	ohci_ptp_initialize();
 
 	// enable list processing
 	_hc->Control |= OHCIR_CONTROL_CLE | OHCIR_CONTROL_BLE | OHCIR_CONTROL_PLE | OHCIR_CONTROL_IE;
+
+	// Set Global Power
+	_hc->RhStatus = OHCIR_RH_STATUS_LPSC;
 
 	// enable interrupts
     _hc->InterruptEnable = OHCIR_INTR_ENABLE_MIE | OHCIR_INTR_ENABLE_UE | OHCIR_INTR_ENABLE_SO |
                          OHCIR_INTR_ENABLE_WDH |
                          OHCIR_INTR_ENABLE_RHSC;
+}
+
+static void _soft_reset()
+{
+	// sw reset
+	_hc->CommandStatus = OHCIR_CMD_STATUS_HCR;
+    while(_hc->CommandStatus & OHCIR_CMD_STATUS_HCR);
 }
 
 OHCI_HCED **ohci_get_periodic_ep(int index)

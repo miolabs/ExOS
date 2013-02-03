@@ -111,8 +111,9 @@ typedef struct
 #define  OHCIR_INTR_ENABLE_RHSC		0x00000040
 #define  OHCIR_INTR_ENABLE_MIE		0x80000000
 
-// HcRhDescriptorA Register
-#define  OHCIR_RH_STATUS_LPSC              0x00010000
+// HcRhStatus Register
+#define  OHCIR_RH_STATUS_LPS		0x00000001
+#define  OHCIR_RH_STATUS_LPSC		0x00010000
 
 // HcRhPortStatus Registers
 #define OHCIR_RH_PORT_CCS	0x00000001
