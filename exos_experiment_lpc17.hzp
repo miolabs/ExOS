@@ -115,6 +115,7 @@
           <folder Name="driver">
             <file file_name="support/usb/driver/msc.c"/>
             <file file_name="support/usb/driver/usbprint.c"/>
+            <file file_name="support/usb/driver/ftdi.c"/>
           </folder>
         </folder>
       </folder>

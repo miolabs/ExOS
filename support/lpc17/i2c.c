@@ -20,20 +20,20 @@ static I2C_MODULE *_get_module(int module);
 void hal_i2c_initialize(int module, int bitrate)
 {
 	I2C_MODULE *i2c = _get_module(module);
-	
+	int pclk_div;
 	switch(module)
 	{
 		case 0:
 			LPC_SC->PCONP |= PCONP_PCI2C0;
-			PCLKSEL0bits.PCLK_I2C0 = 0; // CCLK/4
+			pclk_div = PCLKSEL0bits.PCLK_I2C0;
 			break;
 		case 1:
 			LPC_SC->PCONP |= PCONP_PCI2C1;
-			PCLKSEL1bits.PCLK_I2C1 = 0; // CCLK/4
+			pclk_div = PCLKSEL1bits.PCLK_I2C1;
 			break;
 		case 2:
 			LPC_SC->PCONP |= PCONP_PCI2C2;
-			PCLKSEL1bits.PCLK_I2C2 = 0; // CCLK/4
+			pclk_div = PCLKSEL1bits.PCLK_I2C2;
 			break;
 	}
 
@@ -41,7 +41,7 @@ void hal_i2c_initialize(int module, int bitrate)
 	{
 		hal_board_init_pinmux(HAL_RESOURCE_I2C, module);
 		i2c->I2CONCLR = 0xFF;
-		int pclk = SystemCoreClock / 4;
+		int pclk = cpu_pclk(SystemCoreClock, pclk_div);
 		int third_divider = pclk / (bitrate * 3);
 		i2c->I2SCLH = third_divider;
 		i2c->I2SCLL = third_divider * 2;

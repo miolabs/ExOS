@@ -103,7 +103,7 @@ typedef struct
 	};
 } DMA_TRANSFER;
 
-typedef void (* DMA_CALLBACK)(int channel, int tc_done);
+typedef void (* DMA_CALLBACK)(int channel, int tc_done, void *state);
 
 typedef struct
 {
@@ -118,7 +118,7 @@ typedef struct
 #define DMA_CHANNEL_COUNT 8
 #define DMA_CHANNEL_MASK ((1<<DMA_CHANNEL_COUNT) - 1)
 
-typedef struct
+typedef struct __attribute__((__packed__))
 {
 	DMA_BURST Burst:3;
 	DMA_WIDTH Width:3;
@@ -129,8 +129,8 @@ typedef struct __attribute__((__packed__))
 {
 	DMA_CON Src;
 	DMA_CON Dst;
-	DMA_PERIPHERAL Peripheral;
-	DMA_FLOW Flow;
+	DMA_PERIPHERAL Peripheral:8;
+	DMA_FLOW Flow:8;
 } DMA_CONFIG;
 
 
@@ -141,9 +141,9 @@ int dma_alloc_channels(int *array, int length);
 void dma_free_channel(int ch);
 void dma_transfer_setup(DMA_TRANSFER *tr, void *src_ptr, void *dst_ptr, int size, 
 	const DMA_CONFIG *config, DMA_CALLBACK callback, DMA_TRANSFER *next);
-void dma_channel_enable(int ch, const DMA_TRANSFER *tr, const DMA_CONFIG *config, DMA_CALLBACK callback);
+void dma_channel_enable(int ch, const DMA_TRANSFER *tr, const DMA_CONFIG *config, DMA_CALLBACK callback, void *state);
 void dma_channel_enable_fast(int ch, void *src_ptr, void *dst_ptr, int size, 
-	const DMA_CONFIG *config, DMA_CALLBACK callback);
+	const DMA_CONFIG *config, DMA_CALLBACK callback, void *state);
 void dma_channel_disable(int ch);
 
 #endif // LPC17_DMA_H

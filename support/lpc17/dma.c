@@ -10,6 +10,7 @@ static DMA_CHANNEL *_channels[DMA_CHANNEL_COUNT] = {
 	(DMA_CHANNEL *)0x50004180, (DMA_CHANNEL *)0x500041A0, 
 	(DMA_CHANNEL *)0x500041C0, (DMA_CHANNEL *)0x500041E0};
 static DMA_CALLBACK _callbacks[DMA_CHANNEL_COUNT];
+static void *_callback_states[DMA_CHANNEL_COUNT];
 static unsigned char _allocated[DMA_CHANNEL_COUNT];
 
 void dma_initialize()
@@ -72,7 +73,7 @@ void GPDMA_IRQHandler()
 			{
 				DMA_CHANNEL *mod = _channels[ch];
 				int tc_done = LPC_GPDMA->DMACIntTCStat & ch_mask ? 1 : 0;
-				callback(ch, tc_done);
+				callback(ch, tc_done, _callback_states[ch]);
 			}
 			LPC_GPDMA->DMACIntTCClear = ch_mask;
 			LPC_GPDMA->DMACIntErrClr = ch_mask;
@@ -98,7 +99,7 @@ void dma_transfer_setup(DMA_TRANSFER *tr, void *src_ptr, void *dst_ptr, int size
 }
 
 void dma_channel_enable(int ch, const DMA_TRANSFER *tr, 
-	const DMA_CONFIG *config, DMA_CALLBACK callback)
+	const DMA_CONFIG *config, DMA_CALLBACK callback, void *state)
 {
 	if (ch < DMA_CHANNEL_COUNT)
 	{
@@ -107,6 +108,7 @@ void dma_channel_enable(int ch, const DMA_TRANSFER *tr,
 		LPC_GPDMA->DMACIntTCClear |= mask;
 		LPC_GPDMA->DMACIntErrClr |= mask;
 		_callbacks[ch] = callback;
+		_callback_states[ch] = state;
 
 		dma_ch->Transfer = *tr;
 		dma_ch->Configuration = 1 // enable
@@ -118,7 +120,7 @@ void dma_channel_enable(int ch, const DMA_TRANSFER *tr,
 }
 
 void dma_channel_enable_fast(int ch, void *src_ptr, void *dst_ptr, int size, 
-	const DMA_CONFIG *config, DMA_CALLBACK callback)
+	const DMA_CONFIG *config, DMA_CALLBACK callback, void *state)
 {
 	if (ch < DMA_CHANNEL_COUNT)
 	{
@@ -127,6 +129,7 @@ void dma_channel_enable_fast(int ch, void *src_ptr, void *dst_ptr, int size,
 		LPC_GPDMA->DMACIntTCClear |= mask;
 		LPC_GPDMA->DMACIntErrClr |= mask;
 		_callbacks[ch] = callback;
+		_callback_states[ch] = state;
 
 		dma_transfer_setup(&dma_ch->Transfer, src_ptr, dst_ptr, size, 
 			config, callback, (DMA_TRANSFER *)0);

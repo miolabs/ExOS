@@ -8,34 +8,35 @@
 #include <CMSIS/LPC17xx.h>
 
 static HAL_CAP_HANDLER _capture_handlers[4];
-//static TIMER_EVENT_HANDLER _match_handlers[4]
+static TIMER_MAT_HANDLER _match_handlers[4];
 
-static LPC_TIM_TypeDef *_initialize(int module, int freq)
+static LPC_TIM_TypeDef *_initialize(int module, unsigned long freq, TIMER_MAT_HANDLER callback)
 {
 	LPC_TIM_TypeDef *timer;
     IRQn_Type irq;
+	int pclk_div;
 	switch(module)
 	{
 	case 0:
-		PCLKSEL0bits.PCLK_TIMER0 = 1; // CCLK / 1
+		pclk_div = PCLKSEL0bits.PCLK_TIMER0;
 		LPC_SC->PCONP |= PCONP_PCTIM0;
 		timer = LPC_TIM0;
 		irq = TIMER0_IRQn;
 		break;
 	case 1:
-		PCLKSEL0bits.PCLK_TIMER1 = 1; // CCLK / 1
+		pclk_div = PCLKSEL0bits.PCLK_TIMER1;
 		LPC_SC->PCONP |= PCONP_PCTIM1;
 		timer = LPC_TIM1;
 		irq = TIMER1_IRQn;
 		break;
 	case 2:
-		PCLKSEL1bits.PCLK_TIMER2 = 1; // CCLK / 1
+		pclk_div = PCLKSEL1bits.PCLK_TIMER2;
 		LPC_SC->PCONP |= PCONP_PCTIM2;
 		timer = LPC_TIM2;
 		irq = TIMER2_IRQn;
 		break;
 	case 3:
-   		PCLKSEL1bits.PCLK_TIMER3 = 1; // CCLK / 1
+		pclk_div = PCLKSEL1bits.PCLK_TIMER3;
 		LPC_SC->PCONP |= PCONP_PCTIM3;
 		timer = LPC_TIM3;
 		irq = TIMER3_IRQn;
@@ -44,7 +45,7 @@ static LPC_TIM_TypeDef *_initialize(int module, int freq)
 		return (LPC_TIM_TypeDef *)0;
 	}
 
-	unsigned long pclk = cpu_pclk(SystemCoreClock, 1);
+	unsigned long pclk = cpu_pclk(SystemCoreClock, pclk_div);
 	unsigned long prsc = (pclk + (freq / 2)) / freq;
 	timer->TCR = 0;
 	timer->PR = prsc != 0 ? prsc - 1 : 0;
@@ -53,16 +54,23 @@ static LPC_TIM_TypeDef *_initialize(int module, int freq)
 	timer->TC = 0;
 
 	_capture_handlers[module] = (HAL_CAP_HANDLER)0;
-//	_match_handlers[module] = (TIMER_EVENT_HANDLER)0;
+	_match_handlers[module] = callback;
 
 	NVIC_EnableIRQ(irq);
 	return timer;
 }
 
-int hal_cap_initialize(int module, int freq, HAL_CAP_MODE mode, HAL_CAP_HANDLER callback)
+int timer_initialize(int module, unsigned long freq, TIMER_MAT_HANDLER callback)
+{
+	int mask = hal_board_init_pinmux(HAL_RESOURCE_MAT, module);
+	_initialize(module, freq, callback);
+	return mask;
+}
+
+int hal_cap_initialize(int module, unsigned long freq, HAL_CAP_MODE mode, HAL_CAP_HANDLER callback)
 {
 	int mask = hal_board_init_pinmux(HAL_RESOURCE_CAP, module);
-	LPC_TIM_TypeDef *timer = _initialize(module, freq);
+	LPC_TIM_TypeDef *timer = _initialize(module, freq, 0);
 	
 	if (timer)
 	{

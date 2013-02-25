@@ -12,6 +12,6 @@ typedef enum
 } HAL_CAP_MODE;
 
 // prototypes
-int hal_cap_initialize(int module, int freq, HAL_CAP_MODE mode, HAL_CAP_HANDLER callback);
+int hal_cap_initialize(int module, unsigned long freq, HAL_CAP_MODE mode, HAL_CAP_HANDLER callback);
 
 #endif // HAL_CAP_HAL_H

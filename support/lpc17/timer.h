@@ -1,6 +1,8 @@
 #ifndef LPC_TIMER_H
 #define LPC_TIMER_H
 
+#include <CMSIS/LPC17xx.h>
+
 typedef enum
 {
 	CAPM_RISING = 1,
@@ -20,6 +22,10 @@ typedef struct
 #define TIMER_IR_MR3 (1<<3)
 #define TIMER_IR_CR0 (1<<4)
 #define TIMER_IR_CR1 (1<<5)
+
+typedef void (*TIMER_MAT_HANDLER)(LPC_TIM_TypeDef *timer, int channel, unsigned long time);
+
+int timer_initialize(int module, unsigned long freq, TIMER_MAT_HANDLER callback);
 
 #endif // LPC_TIMER_H
 

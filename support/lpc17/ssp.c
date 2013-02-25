@@ -25,19 +25,19 @@ void hal_ssp_initialize(int module, int bitrate, HAL_SSP_MODE mode, HAL_SSP_FLAG
 	SSP_MODULE *ssp = _get_module(module);
 	if (ssp && hal_board_init_pinmux(HAL_RESOURCE_SSP, module))
 	{
+		int pclk_div;
 		switch(module)
 		{
 			case 0:
-				PCLKSEL1bits.PCLK_SSP0 = 1;	// PCLK = CCLK
+				pclk_div = PCLKSEL1bits.PCLK_SSP0;
 				break;
 			case 1:
-				PCLKSEL0bits.PCLK_SSP1 = 1;	// PCLK = CCLK
+				pclk_div = PCLKSEL0bits.PCLK_SSP1;
 				break;
 		}
-
 		SSP_CLK_MODE mode = flags & HAL_SSP_CLK_IDLE_HIGH ? 
 			(flags & HAL_SSP_CLK_PHASE_NEG ? SSP_CLK_POL1_PHA0 : SSP_CLK_POL1_PHA1) : // clk negative
-			(flags & HAL_SSP_CLK_PHASE_NEG ? SSP_CLK_POL0_PHA1 : SSP_CLK_POL0_PHA0 ); // clk positive
+			(flags & HAL_SSP_CLK_PHASE_NEG ? SSP_CLK_POL0_PHA1 : SSP_CLK_POL0_PHA0); // clk positive
 
 		ssp->CR1 = 0;	// disable module
 		ssp->CPSR = 2;	// prescaler
@@ -47,15 +47,17 @@ void hal_ssp_initialize(int module, int bitrate, HAL_SSP_MODE mode, HAL_SSP_FLAG
 			(mode << SSPCR0_CLKMODE_BIT);
 		ssp->CR1 = SSPCR1_SSE;	// master mode, enable module
 	
-		unsigned long pclk = cpu_pclk(SystemCoreClock, 1);	// required PCLK = CCLK
-		unsigned long clock_rate = (pclk / (bitrate * ssp->CPSR)) - 1;
+		unsigned long pclk = cpu_pclk(SystemCoreClock, pclk_div);	// required PCLK = CCLK
+		unsigned long scr = (pclk / (ssp->CPSR * bitrate)) - 1;
 		ssp->CR0 = (ssp->CR0 & ~(0xFF << SSPCR0_SCR_BIT)) | 
-			((clock_rate & 0xFF) << SSPCR0_SCR_BIT);
+			((scr & 0xFF) << SSPCR0_SCR_BIT);
+
 	}
 }
 
-static inline void _dma_complete(int module, int tc_done)
+static inline void _dma_complete(int ch, int tc_done, void *state)
 {
+	int module = (int)state;
 	_dma_busy[module] = 0;
 	ssp_dma_set_event(module);
 }
@@ -72,22 +74,8 @@ static inline void _dma_wait(int module)
 		ssp_dma_wait(module);
 }
 
-static const DMA_CONFIG _dma_rx = {
-	.Src = { .Burst = DMA_BURST_4, .Width = DMA_WIDTH_8BIT },
-	.Dst = { .Burst = DMA_BURST_4, .Width = DMA_WIDTH_32BIT, .Increment = 1 },
-	.Peripheral = DMA_P_SSP0_RX, .Flow = DMA_FLOW_P2M_DMA };
-static const DMA_CONFIG _dma_rx_dummy = {
-	.Src = { .Burst = DMA_BURST_4, .Width = DMA_WIDTH_8BIT },
-	.Dst = { .Burst = DMA_BURST_4, .Width = DMA_WIDTH_32BIT },
-	.Peripheral = DMA_P_SSP0_RX, .Flow = DMA_FLOW_P2M_DMA };
-static const DMA_CONFIG _dma_tx = {
-	.Src = { .Burst = DMA_BURST_4, .Width = DMA_WIDTH_32BIT, .Increment = 1 },	// NOTE: DMA_WIDTH_32BIT untested, was DMA_WIDTH_8BIT
-	.Dst = { .Burst = DMA_BURST_4, .Width = DMA_WIDTH_8BIT },
-	.Peripheral = DMA_P_SSP0_TX, .Flow = DMA_FLOW_M2P_DMA };
-static const DMA_CONFIG _dma_tx_dummy = {
-	.Src = { .Burst = DMA_BURST_4, .Width = DMA_WIDTH_32BIT },	// NOTE: DMA_WIDTH_32BIT untested, was DMA_WIDTH_8BIT
-	.Dst = { .Burst = DMA_BURST_4, .Width = DMA_WIDTH_8BIT },
-	.Peripheral = DMA_P_SSP0_TX, .Flow = DMA_FLOW_M2P_DMA };
+static const unsigned char _rx_periph[] = { DMA_P_SSP0_RX, DMA_P_SSP1_RX };
+static const unsigned char _tx_periph[] = { DMA_P_SSP0_TX, DMA_P_SSP1_TX };
 
 void hal_ssp_transmit(int module, unsigned char *outbuf, unsigned char *inbuf, int length)
 {
@@ -99,27 +87,52 @@ void hal_ssp_transmit(int module, unsigned char *outbuf, unsigned char *inbuf, i
 		if (dma_alloc_channels(dma, 2))
 		{
 			_dma_begin(module);
+			
+			DMA_CONFIG rx_config;
 			if (inbuf)
 			{
+				rx_config = (DMA_CONFIG) {
+					.Src = { .Burst = DMA_BURST_4, .Width = DMA_WIDTH_8BIT },
+					.Dst = { .Burst = DMA_BURST_4, .Width = DMA_WIDTH_8BIT, .Increment = 1 },
+					.Peripheral = _rx_periph[module], 
+					.Flow = DMA_FLOW_P2M_DMA };
 				dma_channel_enable_fast(dma[0], (void *)&ssp->DR, inbuf, length, 
-					&_dma_rx, _dma_complete);
+					&rx_config, _dma_complete, (void *)module);
 			}
 			else
 			{
+				rx_config = (DMA_CONFIG) {
+					.Src = { .Burst = DMA_BURST_4, .Width = DMA_WIDTH_8BIT },
+					.Dst = { .Burst = DMA_BURST_4, .Width = DMA_WIDTH_8BIT },
+					.Peripheral = _rx_periph[module], 
+					.Flow = DMA_FLOW_P2M_DMA };
 				dma_channel_enable_fast(dma[0], (void *)&ssp->DR, &dummy, length, 
-					&_dma_rx_dummy, _dma_complete);
+					&rx_config, _dma_complete, (void *)module);
 			}
+
+            DMA_CONFIG tx_config;
 			if (outbuf)
 			{
+				tx_config = (DMA_CONFIG) {
+					.Src = { .Burst = DMA_BURST_4, .Width = DMA_WIDTH_8BIT, .Increment = 1 },
+					.Dst = { .Burst = DMA_BURST_4, .Width = DMA_WIDTH_8BIT },
+					.Peripheral = _tx_periph[module], 
+					.Flow = DMA_FLOW_M2P_DMA };
 				dma_channel_enable_fast(dma[1], outbuf, (void *)&ssp->DR, length, 
-					&_dma_tx, 0);
+					&tx_config, 0, 0);
 			}
 			else
 			{
+				tx_config = (DMA_CONFIG) {
+					.Src = { .Burst = DMA_BURST_4, .Width = DMA_WIDTH_8BIT },
+					.Dst = { .Burst = DMA_BURST_4, .Width = DMA_WIDTH_8BIT },
+					.Peripheral = _tx_periph[module], 
+					.Flow = DMA_FLOW_M2P_DMA };
 				dummy = 0;
 				dma_channel_enable_fast(dma[1], &dummy, (void *)&ssp->DR, length, 
-					&_dma_tx_dummy, 0);
+					&tx_config, 0, 0);
 			}
+
 			ssp->DMACR |= SSP_DMA_RXDMAE | SSP_DMA_TXDMAE;
 			_dma_wait(module);
 			ssp->DMACR = 0;

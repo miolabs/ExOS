@@ -26,21 +26,19 @@ int cpu_pclk(int cclk, int setting)
 	}
 }
 
+__attribute__((naked))
 int cpu_trylock(unsigned char *lock, unsigned char value)
 {
-	int done;
 	__asm__ volatile (
-		"ldrexb %0, [%2]\n\t"
-		"cmp %0, %1\n\t"
+		"ldrexb r2, [r0]\n\t"
+		"cmp r2, r1\n\t"
 		"itt ne\n\t"
-		"strexbne %0, %1, [%2]\n\t"
-		"cmpne %0, #1\n\t"
+		"strexbne r2, r1, [r0]\n\t"
+		"cmpne r2, #0\n\t"
 		"ite eq\n\t"
-		"moveq %0, #0\n\t"
-		"movne %0, #1\n\t"
-		: "=r" (done)
-		: "r" (value), "r" (lock));
-	return done;
+		"moveq r0, #1\n\t"
+		"movne r0, #0\n\t"
+		"bx lr\n\t");
 }
 
 void cpu_unlock(unsigned char *lock)
