@@ -86,4 +86,26 @@ static void *_service(void *arg)
 	exos_event_set(&instance->ExitEvent);
 }
 
+int service_stop(const char *inst_name)
+{
+	// NOTE: use this as an example to send request to service
+
+	// create local port, can be reused
+	EXOS_PORT local_port;
+	exos_port_create(&local_port, NULL);
+	
+	// find service port, can be reused, with limits
+	EXOS_PORT *port = exos_port_find("ExampleService");
+	if (port != NULL)
+	{
+		// send request
+		EXAMPLE_SERVICE_REQUEST req = (EXAMPLE_SERVICE_REQUEST) { .Message.ReplyPort = &local_port };
+		req.ReqType = EXAMPLE_SERVICE_REQ_QUIT;
+		exos_port_send_message(port, (EXOS_MESSAGE *)&req);
+
+		// wait for completion
+		EXOS_MESSAGE *msg = exos_port_get_message(&local_port, EXOS_TIMEOUT_NEVER);
+		// msg should be == &req 
+	}
+}
 
