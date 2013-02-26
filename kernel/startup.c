@@ -3,6 +3,7 @@
 #include "thread.h"
 #include "timer.h"
 #include "io.h"
+#include "port.h"
 #include "machine/hal.h"
 #include <modules/services/services.h>
 
@@ -15,6 +16,7 @@ void __kernel_start()
 {
 	__machine_init();
 	__mem_init();
+	__port_init();
 	__thread_init();
 	__timer_init();
 	__io_initialize();

@@ -13,7 +13,8 @@ void *__machine_init_thread_stack(void *stack_end, unsigned long arg, unsigned l
 void __mem_copy(void *start, void *stop, const void *source);
 void __mem_set(void *start, void *stop, unsigned char stuff_byte); 
 
-unsigned int __str_copy(char *dst, char *src, unsigned int max_length);
+unsigned int __str_copy(char *dst, const char *src, unsigned int max_length);
+int __str_comp(const char *str1, const char *str2);
 unsigned int __uint32_hexl(char *dst, unsigned long v);
 
 #endif // EXOS_MACHINE_HAL_H
