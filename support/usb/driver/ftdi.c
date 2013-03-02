@@ -2,6 +2,10 @@
 #include <usb/enumerate.h>
 #include <kernel/machine/hal.h>
 
+#ifndef FTDI_BAUDRATE
+#define FTDI_BAUDRATE 9600
+#endif
+
 static USB_HOST_FUNCTION *_check_interface(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTOR *conf_desc, USB_DESCRIPTOR_HEADER *fn_desc);
 static void _start(USB_HOST_FUNCTION *func);
 static void _stop(USB_HOST_FUNCTION *func);
@@ -109,7 +113,7 @@ static void _start(USB_HOST_FUNCTION *usb_func)
 	usb_host_start_pipe(&func->BulkOutputPipe);
 	usb_host_start_pipe(&func->BulkInputPipe);
 
-	_setup(func, 9600, FTDI_MODE_UART);
+	_setup(func, FTDI_BAUDRATE, FTDI_MODE_UART);
 
 //	unsigned char latency = 0;
 //	_get_latency(func, &latency);

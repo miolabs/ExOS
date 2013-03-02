@@ -11,14 +11,27 @@ COMM_IO_ENTRY _comm;
 TCP_IO_ENTRY _socket;
 unsigned char _buffer[1024];
 
-#define TCP_BUFFER_SIZE 256 // tiny window for stress
+#define TCP_BUFFER_SIZE 32768 // tiny window for stress
 unsigned char _rcv_buffer[TCP_BUFFER_SIZE];
 unsigned char _snd_buffer[TCP_BUFFER_SIZE];
+
+// NOTE: hook called by net stack
+void net_board_set_mac_address(NET_ADAPTER *adapter, int index)
+{
+	adapter->MAC = (HW_ADDR) { 0x00, 0x18, 0x1b, 0x05, 0x1c, 0x13 };
+}
 
 void main()
 {
 	usb_host_initialize();
 	int err = 0;
+
+	NET_ADAPTER *adapter = NULL;
+	if (net_adapter_enum(&adapter))
+	{
+		adapter->IP = (IP_ADDR) { 10, 0, 1, 10 };
+		adapter->NetMask = (IP_ADDR) { 255, 255, 255, 0 };
+	}
 
 	while(1)
 	{
@@ -27,7 +40,7 @@ void main()
 			.SndBuffer = _snd_buffer, .SndBufferSize = TCP_BUFFER_SIZE };
 
 		net_tcp_io_create(&_socket, EXOS_IOF_WAIT);
-	
+
 		IP_PORT_ADDR local = (IP_PORT_ADDR) { .Address = IP_ADDR_ANY, .Port = 23 };
 		err = net_io_bind((NET_IO_ENTRY *)&_socket, &local); 
 		err = net_io_listen((NET_IO_ENTRY *)&_socket);

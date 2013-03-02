@@ -66,7 +66,7 @@ void exos_port_remove(const char *name)
 
 	exos_mutex_lock(&_port_mutex);
 	EXOS_PORT *port = _find_port(name);
-	if (port != NULL) list_remove(port);
+	if (port != NULL) list_remove((EXOS_NODE *)port);
 	exos_mutex_unlock(&_port_mutex);
 }
 
