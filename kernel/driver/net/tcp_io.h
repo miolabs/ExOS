@@ -9,7 +9,6 @@ typedef struct
 {
 	NET_IO_ENTRY;
     TCP_STATE State;
-	EXOS_EVENT *CloseEvent;
    	unsigned short LocalPort;
 	unsigned short RemotePort;
 	IP_ENDPOINT RemoteEP;
@@ -21,7 +20,6 @@ typedef struct
 			unsigned long RcvNext;
 			EXOS_IO_BUFFER RcvBuffer;
 		
-			//unsigned long Sequence;
 			unsigned long SndAck;
 			unsigned long SndNext; 
 			EXOS_IO_BUFFER SndBuffer;
@@ -34,8 +32,10 @@ typedef struct
 	};
 
 	EXOS_MUTEX Mutex;
-	unsigned long ServiceWait;
+	unsigned short ServiceWait;
+	unsigned short ServiceRetry;
 	unsigned long ServiceTime;
+	EXOS_EVENT CloseEvent;
 } TCP_IO_ENTRY;
 
 typedef struct

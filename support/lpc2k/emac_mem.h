@@ -1,6 +1,8 @@
 #ifndef LPC_EMAC24_MEM_H
 #define LPC_EMAC24_MEM_H
 
+#include <net/adapter.h>
+
 typedef struct _ETH_RX_DESC
 {
 	void *Data;
@@ -91,6 +93,15 @@ typedef struct _ETH_TX_STATUS
 		unsigned long Status;
 	};
 } ETH_TX_STATUS;
+
+#define ETH_TX_REQ_HEADER_BUFFER (1<<0)
+
+typedef struct
+{
+	NET_CALLBACK Callback;
+	void *CallbackState;
+	unsigned long Flags;
+} ETH_TX_REQUEST;
 
 // prototypes
 void emac_mem_initialize();

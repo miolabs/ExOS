@@ -126,31 +126,30 @@ int net_tcp_accept(TCP_IO_ENTRY *io, const EXOS_IO_STREAM_BUFFERS *buffers, TCP_
 
 int net_tcp_close(TCP_IO_ENTRY *io)
 {
-	EXOS_EVENT event;
-	exos_event_create(&event);
-	io->CloseEvent = &event;
-
+	int run_service = 0;
 	exos_mutex_lock(&io->Mutex);
-	switch(io->State)
+	if (io->State != TCP_STATE_CLOSED)
 	{
-		case TCP_STATE_CLOSE_WAIT:
-			io->SndFlags.FIN = 1;
-			io->State = TCP_STATE_LAST_ACK;
-			break;
-		case TCP_STATE_SYN_RECEIVED:
-		case TCP_STATE_ESTABLISHED:
-			io->SndFlags.FIN = 1;
-			io->State = TCP_STATE_FIN_WAIT_1;
-			break;
-		case TCP_STATE_LISTEN:
-			io->State = TCP_STATE_CLOSED;
-			break;
+		switch(io->State)
+		{
+			case TCP_STATE_CLOSE_WAIT:
+				io->State = TCP_STATE_LAST_ACK;
+				break;
+			case TCP_STATE_SYN_RECEIVED:
+			case TCP_STATE_ESTABLISHED:
+				io->State = TCP_STATE_FIN_WAIT_1;
+				break;
+			case TCP_STATE_LISTEN:
+				io->State = TCP_STATE_CLOSED;
+				break;
+		}
+		run_service = 1;
 	}
 	exos_mutex_unlock(&io->Mutex);
 
-	net_tcp_service(io, 0);
+	if (run_service) net_tcp_service(io, 0);
 
-	exos_event_wait(io->CloseEvent, EXOS_TIMEOUT_NEVER);
+	exos_event_wait(&io->CloseEvent, EXOS_TIMEOUT_NEVER);
 
 #ifdef DEBUG
 	if (io->State != TCP_STATE_CLOSED)
@@ -169,10 +168,14 @@ static void _handle(TCP_IO_ENTRY *io)
 		case TCP_STATE_ESTABLISHED:
 			remaining = exos_io_buffer_avail(&io->SndBuffer);
 			remaining -= (io->SndNext - io->SndAck);
-       		if (remaining >= 1) // FIXME: use equiv. to SO_SNDLOWAT 
+			if (remaining >= 1) // FIXME: use equiv. to SO_SNDLOWAT 
 				io->SndFlags.ACK = 1;
+			
+            io->ServiceWait = 100;	// FIXME: use adaptive retransmit time
 			break;
 		case TCP_STATE_CLOSE_WAIT:
+			io->SndFlags.FIN = 1;
+			io->ServiceWait = 1000;
 			exos_event_set(&io->InputEvent);
 			exos_event_set(&io->OutputEvent);
 			break;
@@ -180,22 +183,41 @@ static void _handle(TCP_IO_ENTRY *io)
 			// NOTE: do nothing
 			io->State = TCP_STATE_CLOSED;
 			break;
+		case TCP_STATE_FIN_WAIT_1:
+		case TCP_STATE_LAST_ACK:
+			if (io->ServiceRetry < 3)
+			{
+				io->SndFlags.FIN = 1;
+				io->ServiceWait = 1000;
+			}
+			else io->State = TCP_STATE_CLOSED;
+			break;
+		default:
+			io->ServiceWait = 30000;
+			break;
 	}
 
-	if (io->SndFlags.PSH || io->SndFlags.SYN || io->SndFlags.FIN ||
-		io->SndFlags.ACK) 
+	if (io->State != TCP_STATE_CLOSED)
 	{
-		io->SndFlags.ACK = 1;
-		int done = _send(io);
-		if (done >= 0)
+		io->ServiceTime = exos_timer_time();
+		
+		if (io->SndFlags.PSH || io->SndFlags.SYN || io->SndFlags.FIN || 
+			io->SndFlags.ACK)
 		{
-			io->SndNext += done;
-			io->SndFlags.ACK = 0;
-            io->SndFlags.SYN = 0;
-			io->SndFlags.FIN = 0;
-			if (done == remaining) io->SndFlags.PSH = 0;
+			io->SndFlags.ACK = 1;
+			int done = _send(io);
+			if (done >= 0)
+			{
+				io->SndNext += done;
+				io->SndFlags.ACK = 0;
+				io->SndFlags.SYN = 0;
+				io->SndFlags.FIN = 0;
+				if (done == remaining) io->SndFlags.PSH = 0;
+			}
 		}
 	}
+
+	io->ServiceRetry++;
 	exos_mutex_unlock(&io->Mutex);
 }
 
@@ -208,18 +230,15 @@ static void *_service(void *arg)
 	{
 		exos_mutex_lock(&_entries_mutex);
 		
-		unsigned long rem_min = 0x7fffffff;
+		unsigned long rem_min = 0x7fffffff;	// max signed int
 		FOREACH(node, &_entries)
 		{
 			TCP_IO_ENTRY *io = (TCP_IO_ENTRY *)node;
 			if (io->State != TCP_STATE_CLOSED)
 			{
-				int rem = io->ServiceWait - exos_timer_elapsed(io->ServiceTime);
+				int rem = (unsigned long)io->ServiceWait - exos_timer_elapsed(io->ServiceTime);
 				if (rem <= 0)
 				{
-					io->ServiceTime = exos_timer_time();
-					io->ServiceWait = 0x7fffffff;
-
 					_handle(io);
 
 					rem = io->ServiceWait; 
@@ -234,7 +253,7 @@ static void *_service(void *arg)
 				node = node->Pred;
 				list_remove(node->Succ);
 
-				exos_event_set(io->CloseEvent);
+				exos_event_set(&io->CloseEvent);
 			}
 		}
 		exos_mutex_unlock(&_entries_mutex);
@@ -250,6 +269,7 @@ void net_tcp_service(TCP_IO_ENTRY *io, int wait)
 {
 	io->ServiceTime = exos_timer_time();
 	io->ServiceWait = wait;
+	io->ServiceRetry = 0;
 	exos_signal_set(&_thread, 1 << _wakeup_signal);
 }
 
@@ -322,6 +342,12 @@ static int _send(TCP_IO_ENTRY *io)
 		if (io->SndFlags.SYN || io->SndFlags.FIN) payload++;
 		return payload;
 	}
+#ifdef DEBUG
+	else
+	{
+		// TODO: take action on dropped output message
+	}
+#endif
 	return -1;
 }
 

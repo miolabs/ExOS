@@ -4,6 +4,7 @@
 #include "udp.h"
 #include "mbuf.h"
 #include "udp_io.h"
+#include <kernel/panic.h>
 
 int net_udp_input(NET_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip)
 {
@@ -58,8 +59,14 @@ int net_udp_send(NET_ADAPTER *adapter, IP_ENDPOINT *destination, unsigned short 
 
 		int done = net_ip_send_output(adapter, &resp, udp_length);
 		if (done)
+		{
+#ifdef DEBUG
+			if (exos_event_wait(&completed_event, 1000) != 0)
+				kernel_panic(KERNEL_ERROR_UNKNOWN);
+#else			
 			exos_event_wait(&completed_event, EXOS_TIMEOUT_NEVER);
-
+#endif
+		}
 		return udp_payload;
 	}
 	return -1;

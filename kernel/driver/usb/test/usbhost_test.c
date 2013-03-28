@@ -11,7 +11,7 @@ COMM_IO_ENTRY _comm;
 TCP_IO_ENTRY _socket;
 unsigned char _buffer[1024];
 
-#define TCP_BUFFER_SIZE 32768 // tiny window for stress
+#define TCP_BUFFER_SIZE 16384 // tiny window for stress
 unsigned char _rcv_buffer[TCP_BUFFER_SIZE];
 unsigned char _snd_buffer[TCP_BUFFER_SIZE];
 
@@ -26,12 +26,12 @@ void main()
 	usb_host_initialize();
 	int err = 0;
 
-	NET_ADAPTER *adapter = NULL;
-	if (net_adapter_enum(&adapter))
-	{
-		adapter->IP = (IP_ADDR) { 10, 0, 1, 10 };
-		adapter->NetMask = (IP_ADDR) { 255, 255, 255, 0 };
-	}
+//	NET_ADAPTER *adapter = NULL;
+//	if (net_adapter_enum(&adapter))
+//	{
+//		adapter->IP = (IP_ADDR) { 10, 0, 1, 10 };
+//		adapter->NetMask = (IP_ADDR) { 255, 255, 255, 0 };
+//	}
 
 	while(1)
 	{

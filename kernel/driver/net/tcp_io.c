@@ -28,9 +28,10 @@ void net_tcp_io_create(TCP_IO_ENTRY *io, EXOS_IO_FLAGS flags)
 
 	io->BufferSize = 32;	// FIXME
 
-	io->CloseEvent = NULL;
 	io->State = TCP_STATE_CLOSED;
+
 	exos_mutex_create(&io->Mutex);
+	exos_event_create(&io->CloseEvent);
 }
 
 static int _bind(NET_IO_ENTRY *socket, void *addr)
@@ -86,19 +87,16 @@ static int _connect(NET_IO_ENTRY *socket, EXOS_IO_STREAM_BUFFERS *buffers, IP_PO
 static int _close(NET_IO_ENTRY *socket, EXOS_IO_STREAM_BUFFERS *buffers)
 {
 	TCP_IO_ENTRY *io = (TCP_IO_ENTRY *)socket;
-	if (io->State != TCP_STATE_CLOSED)
+	int done = net_tcp_close(io);
+	if (done)
 	{
-		int done = net_tcp_close(io);
-		if (done)
+		if (buffers != NULL)
 		{
-			if (buffers != NULL)
-			{
-				*buffers = (EXOS_IO_STREAM_BUFFERS) {
-					.RcvBuffer = io->RcvBuffer.Buffer, .RcvBufferSize = io->RcvBuffer.Size,
-					.SndBuffer = io->SndBuffer.Buffer, .SndBufferSize = io->SndBuffer.Size };
-			}
-			return 0;
+			*buffers = (EXOS_IO_STREAM_BUFFERS) {
+				.RcvBuffer = io->RcvBuffer.Buffer, .RcvBufferSize = io->RcvBuffer.Size,
+				.SndBuffer = io->SndBuffer.Buffer, .SndBufferSize = io->SndBuffer.Size };
 		}
+		return 0;
 	}
 	return -1;
 }
