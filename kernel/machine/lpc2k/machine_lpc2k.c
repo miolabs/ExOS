@@ -38,19 +38,13 @@ void __machine_init()
 	// initialize bss sections
 	__mem_set(&__bss_start__, &__bss_end__, 0);
 
+#if OSCILLATOR_CLOCK_FREQUENCY==12000000
+	SystemCoreClock = 72000000;
+#endif
+
 	LPC_SC->PCONP = 0;		// Disable all peripheral power
 	LPC_VIC->IntEnClr = -1; // Disable all interrupts
 	hal_board_initialize();
-
-	// setup PLL
-
-	// setup CCLK, USBCLK
-
-	// connect PLL
-
-	// initialize MAM
-
-
 
 	// enable interrupts
 	__asm__ volatile (

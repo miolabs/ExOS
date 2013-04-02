@@ -48,20 +48,20 @@ int net_tcp_input(NET_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip)
 							
 							if (!net_ip_resolve(adapter, &conn->RemoteEP))
 								kernel_panic(KERNEL_ERROR_UNKNOWN);
+
 							exos_fifo_queue(&io->AcceptQueue, (EXOS_NODE *)conn);
 						}
 						else
 						{
-							// TODO
+							// TODO: cannot queue incoming connection
 						}
 					}
 					break;
 				case TCP_STATE_SYN_RECEIVED:
 					if (!tcp->Flags.SYN && tcp->Flags.ACK && NTOH32(tcp->Sequence) == io->RcvNext)
 					{
-						io->SndAck = NTOH32(tcp->Ack);
-						io->SndFlags.SYN = 0;
-						io->SndFlags.ACK = 0;
+						io->SndSeq = NTOH32(tcp->Ack);
+						io->SndFlags = (TCP_FLAGS) { };
 						io->State = TCP_STATE_ESTABLISHED;
 						exos_event_set(&io->OutputEvent);
 					}
@@ -74,14 +74,18 @@ int net_tcp_input(NET_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip)
 					{
 						if (tcp->Flags.ACK)
 						{
-							io->SndAck = NTOH32(tcp->Ack);
-							io->State = TCP_STATE_FIN_WAIT_2;
-						}
-						if (tcp->Flags.FIN)
-						{
-							io->RcvNext++;
-							io->SndFlags.ACK = 1;
-							io->State = TCP_STATE_CLOSING;
+							io->SndSeq = NTOH32(tcp->Ack);
+							if (tcp->Flags.FIN)
+							{
+								io->RcvNext++;
+								io->SndFlags = (TCP_FLAGS) { .ACK = 1 };
+								io->State = TCP_STATE_CLOSING;
+							}
+							else
+							{
+								io->SndFlags = (TCP_FLAGS) { .ACK = 0 };
+								io->State = TCP_STATE_FIN_WAIT_2;
+							}
 						}
 						io->RcvNext += data_length;
 						net_tcp_service(io, 0);
@@ -93,7 +97,7 @@ int net_tcp_input(NET_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip)
 						if (tcp->Flags.FIN)
 						{
 							io->RcvNext++;
-							io->SndFlags.ACK = 1;
+							io->SndFlags = (TCP_FLAGS) { .ACK = 1 };
 							io->State = TCP_STATE_TIME_WAIT;
 						}
 						io->RcvNext += data_length;
@@ -103,7 +107,7 @@ int net_tcp_input(NET_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip)
 				case TCP_STATE_CLOSING:
 					if (tcp->Flags.ACK && NTOH32(tcp->Sequence) == io->RcvNext)
 					{
-						io->SndAck = NTOH32(tcp->Ack);
+						io->SndSeq = NTOH32(tcp->Ack);
 						io->State = TCP_STATE_TIME_WAIT;
 						net_tcp_service(io, 10);
 					}
@@ -111,7 +115,7 @@ int net_tcp_input(NET_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip)
 				case TCP_STATE_LAST_ACK:
 					if (tcp->Flags.ACK && NTOH32(tcp->Sequence) == io->RcvNext)
 					{
-						io->SndAck = NTOH32(tcp->Ack);
+						io->SndSeq = NTOH32(tcp->Ack);
 						io->State = TCP_STATE_CLOSED;
 						net_tcp_service(io, 10);
 					}
@@ -133,10 +137,16 @@ static void _handle_input(TCP_IO_ENTRY *io, TCP_HEADER *tcp, void *data, unsigne
 		// handle ACK
 		if (tcp->Flags.ACK)
 		{
-			int offset = (ack - io->SndAck);
+			int offset = (ack - io->SndSeq);
 			if (offset > 0)
 			{
-				io->SndAck += exos_io_buffer_discard(&io->SndBuffer, offset);
+				io->SndSeq += exos_io_buffer_discard(&io->SndBuffer, offset);
+
+				int rem = exos_io_buffer_avail(&io->SndBuffer);
+				if (rem == 0)
+				{
+					io->SndFlags.PSH = 0;
+				}
 			}
 		}
 
@@ -162,6 +172,10 @@ static void _handle_input(TCP_IO_ENTRY *io, TCP_HEADER *tcp, void *data, unsigne
 				io->SndFlags.ACK = 1;
 				net_tcp_service(io, 10);	// FIXME: make time clearance configurable
 				// NOTE: this time is to allow our application to send some (reply) data and save and empty (no-data) ack
+			}
+			else
+			{
+				io->SndFlags.ACK = 0;
 			}
 		}
 	}

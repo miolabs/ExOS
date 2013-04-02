@@ -4,6 +4,7 @@
 #include "emac.h"
 #include "emac_mem.h"
 #include <net/adapter.h>
+#include <kernel/machine/hal.h>
 
 #define ETH_BUFFER_SIZE	1514
 typedef unsigned char ETH_BUFFER[ETH_BUFFER_SIZE + 4];
@@ -98,6 +99,7 @@ void *emac_get_output_buffer(unsigned long size)
 int emac_send_output(NET_MBUF *mbuf, NET_CALLBACK callback, void *state)
 {
 	int done = 0;
+	void *ptr;
 	unsigned long next = LPC_EMAC->TxProduceIndex;
 	while(mbuf != NULL)
 	{
@@ -108,7 +110,18 @@ int emac_send_output(NET_MBUF *mbuf, NET_CALLBACK callback, void *state)
 			break;
 		
 		// setup fragment
-		_tx_desc[index].Data = mbuf->Buffer + mbuf->Offset;
+		unsigned char *data = mbuf->Buffer + mbuf->Offset;
+		if (!done)
+		{
+			ptr = data + mbuf->Length;
+		}
+		else
+		{
+			__mem_copy(ptr, ptr + mbuf->Length, data);
+			data = ptr;
+			ptr += mbuf->Length;
+		}
+        _tx_desc[index].Data = data;
 		_tx_desc[index].Control = ((mbuf->Length - 1) & ETH_TX_DESC_CONTROL_SIZE_MASK)
 			| ETH_TX_DESC_CONTROL_OVERRIDE
 			| ETH_TX_DESC_CONTROL_PAD | ETH_TX_DESC_CONTROL_CRC 

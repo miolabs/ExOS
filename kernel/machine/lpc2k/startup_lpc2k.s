@@ -203,8 +203,10 @@ IRQ_Handler:
 	ldr r2, [r3, #VICADDR]
 
 	// call interrupt handler
+	stmfd sp!, {r12}
 	mov lr, pc
 	bx r2
+	ldmfd sp!, {r12}
 
 	ldr r3, =VIC_BASE
 	mov r1, #0

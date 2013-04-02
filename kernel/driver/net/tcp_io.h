@@ -19,9 +19,10 @@ typedef struct
 		{
 			unsigned long RcvNext;
 			EXOS_IO_BUFFER RcvBuffer;
-		
-			unsigned long SndAck;
-			unsigned long SndNext; 
+
+			unsigned long SndSeq;
+//			unsigned long SndAck;
+//			unsigned long SndNext; 
 			EXOS_IO_BUFFER SndBuffer;
 			TCP_FLAGS SndFlags;
 		};

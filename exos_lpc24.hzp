@@ -29,6 +29,7 @@
             <file file_name="kernel/machine/lpc2k/startup_lpc2k.s"/>
             <file file_name="kernel/machine/lpc2k/time_lpc2k.c"/>
             <file file_name="kernel/machine/lpc2k/net_lpc2k.c"/>
+            <file file_name="kernel/machine/lpc2k/comm_lpc2k.c"/>
           </folder>
           <file file_name="kernel/machine/hal.c"/>
         </folder>
@@ -52,7 +53,6 @@
               <file file_name="kernel/driver/net/support/apipa.c"/>
               <file file_name="kernel/driver/net/support/phy.c"/>
             </folder>
-            <folder Name="tests"/>
           </folder>
           <folder Name="comm">
             <file file_name="kernel/driver/comm/comm.c"/>
@@ -80,6 +80,8 @@
           <file file_name="support/lpc2k/timer.c"/>
           <file file_name="support/lpc2k/usb_host.c"/>
           <file file_name="support/lpc2k/usb_otg.c"/>
+          <file file_name="support/lpc2k/i2c.c"/>
+          <file file_name="support/lpc2k/uart.c"/>
         </folder>
         <configuration Name="Common" build_intermediate_directory=".output/$(Configuration)/support" build_output_directory=".output/$(Configuration)/support"/>
         <folder Name="board">
@@ -100,6 +102,9 @@
             <file file_name="support/usb/driver/msc.c"/>
           </folder>
         </folder>
+        <folder Name="misc">
+          <file file_name="support/misc/eeprom.c"/>
+        </folder>
       </folder>
     </folder>
     <folder Name="System Files">
@@ -115,7 +120,7 @@
   <configuration Name="EA2478-Mod" c_preprocessor_definitions="BOARD_EA2478_MOD" hidden="Yes"/>
   <configuration Name="EA2478-Mod Release" inherited_configurations="EA2478-Mod;Flash;Release"/>
   <configuration Name="EA2478-Mod Debug" inherited_configurations="Debug;EA2478-Mod;Flash"/>
-  <configuration Name="Olimex-E2468" c_preprocessor_definitions="BOARD_E2468" hidden="Yes"/>
+  <configuration Name="Olimex-E2468" c_preprocessor_definitions="BOARD_E2468;EEPROM_SIZE=32768;EEPROM_I2C_MODULE=0" hidden="Yes"/>
   <configuration Name="Olimex-E2468 Debug" inherited_configurations="Debug;Flash;Olimex-E2468"/>
   <configuration Name="Olimex-E2468 Release" inherited_configurations="Flash;Olimex-E2468;Release"/>
 </solution>

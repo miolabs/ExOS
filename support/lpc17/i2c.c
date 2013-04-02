@@ -15,7 +15,10 @@ static I2C_MODULE *_modules[] = {
 	(I2C_MODULE *)0x4005C000, 
 	(I2C_MODULE *)0x400A0000 };
 
-static I2C_MODULE *_get_module(int module);
+static inline I2C_MODULE *_get_module(int module)
+{
+	return (module < I2C_MODULE_COUNT) ? _modules[module] : (void *)0;
+}
 
 void hal_i2c_initialize(int module, int bitrate)
 {
@@ -140,15 +143,4 @@ int hal_i2c_master_frame(int module, unsigned char slave,
 	return error;
 }
 
-static I2C_MODULE *_get_module(int module)
-{
-	if (module < I2C_MODULE_COUNT)
-	{
-		return _modules[module];
-	}
-	else
-	{
-		return (void *)0;
-	}
-}
 

@@ -128,7 +128,7 @@ static int _write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length)
 	int done = (tcp_io->State != TCP_STATE_ESTABLISHED) ? -1 :
 		exos_io_buffer_write(&tcp_io->SndBuffer, (void *)buffer, length);
 
-	tcp_io->SndFlags.PSH = 1;
+	tcp_io->SndFlags.PSH = 1;	// FIXME: use when needed (requested or buffer full)
 	net_tcp_service(tcp_io, 0);
 
 	return done;

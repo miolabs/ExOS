@@ -8,15 +8,16 @@
 
 typedef struct __attribute__((__packed__))
 {
-   		unsigned FIN:1;
-		unsigned SYN:1;
-		unsigned RST:1;
-		unsigned PSH:1;
-		unsigned ACK:1;
-		unsigned URG:1;
-		unsigned ECE:1;
-		unsigned CWR:1;
+	unsigned FIN:1;
+	unsigned SYN:1;
+	unsigned RST:1;
+	unsigned PSH:1;
+	unsigned ACK:1;
+	unsigned URG:1;
+	unsigned ECE:1;
+	unsigned CWR:1;
 } TCP_FLAGS;
+
 
 typedef struct __attribute__((__packed__))
 {

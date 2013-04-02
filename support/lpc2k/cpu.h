@@ -164,10 +164,14 @@ typedef enum
 {
 	TIMER0_IRQn = 4,
     TIMER1_IRQn = 5,
+	UART0_IRQn = 6,
+	UART1_IRQn = 7,
     ENET_IRQn = 21,
 	USB_IRQn = 22,
     TIMER2_IRQn = 26,
     TIMER3_IRQn = 27,
+	UART2_IRQn = 28,
+	UART3_IRQn = 29,
 } IRQn_Type;
 
 

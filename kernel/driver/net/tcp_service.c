@@ -13,7 +13,6 @@ static EXOS_FIFO _free_incoming_connections;
 static TCP_INCOMING_CONN _connections[TCP_MAX_PENDING_CONNECTIONS];
 
 static void *_service(void *arg);
-static int _send(TCP_IO_ENTRY *io);
 
 void net_tcp_service_start()
 {
@@ -39,7 +38,10 @@ TCP_IO_ENTRY *__tcp_io_find_io(unsigned short local_port, IP_ADDR remote_ip, uns
 		if (io->LocalPort == local_port &&
 			io->RemoteEP.IP.Value == remote_ip.Value && 
 			io->RemotePort == remote_port)
+		{
 			found = io;
+			break;
+		}
 	}
 	exos_mutex_unlock(&_entries_mutex);
 	return found;
@@ -84,7 +86,7 @@ int net_tcp_listen(TCP_IO_ENTRY *io, unsigned short local_port)
 	}
 
 	exos_mutex_unlock(&io->Mutex);
-	return 1;
+	return done;
 }
 
 int net_tcp_accept(TCP_IO_ENTRY *io, const EXOS_IO_STREAM_BUFFERS *buffers, TCP_INCOMING_CONN *conn)
@@ -106,7 +108,7 @@ int net_tcp_accept(TCP_IO_ENTRY *io, const EXOS_IO_STREAM_BUFFERS *buffers, TCP_
 	io->RemoteEP = conn->RemoteEP;
 
 	io->RcvNext = conn->Sequence + 1;
-	io->SndAck = io->SndNext = 0; // FIXME: use random for security
+	io->SndSeq = 0; // FIXME: use random for security
 
 	io->SndFlags = (TCP_FLAGS) { .SYN = 1, .ACK = 1 };
 	int done = _bind(io, TCP_STATE_SYN_RECEIVED);
@@ -133,10 +135,12 @@ int net_tcp_close(TCP_IO_ENTRY *io)
 		switch(io->State)
 		{
 			case TCP_STATE_CLOSE_WAIT:
+				io->SndFlags = (TCP_FLAGS) { .FIN = 1, .ACK = 1 };
 				io->State = TCP_STATE_LAST_ACK;
 				break;
 			case TCP_STATE_SYN_RECEIVED:
 			case TCP_STATE_ESTABLISHED:
+				io->SndFlags = (TCP_FLAGS) { .FIN = 1, .ACK = 1 };
 				io->State = TCP_STATE_FIN_WAIT_1;
 				break;
 			case TCP_STATE_LISTEN:
@@ -158,40 +162,119 @@ int net_tcp_close(TCP_IO_ENTRY *io)
 	return 1;
 }
 
+void net_tcp_service(TCP_IO_ENTRY *io, int wait)
+{
+	io->ServiceTime = exos_timer_time();
+	io->ServiceWait = wait;
+	io->ServiceRetry = 0;
+	exos_signal_set(&_thread, 1 << _wakeup_signal);
+}
+
+static int _send(TCP_IO_ENTRY *io)
+{
+	EXOS_EVENT completed_event;
+	exos_event_create(&completed_event);
+	NET_OUTPUT_BUFFER resp = (NET_OUTPUT_BUFFER) { .CompletedEvent = &completed_event };
+
+	TCP_HEADER *tcp = net_ip_output(io->Adapter, &resp, sizeof(TCP_HEADER), &io->RemoteEP, IP_PROTOCOL_TCP);
+	if (tcp != NULL)
+	{
+		tcp->SourcePort = HTON16(io->LocalPort);
+		tcp->DestinationPort = HTON16(io->RemotePort);
+
+		NET_MBUF mbuf1;
+		NET_MBUF mbuf2;
+		int offset = 0; //FIXME: for send ahead (io->SndNext - io->SndAck);
+		void *buffer;
+		int payload = exos_io_buffer_peek(&io->SndBuffer, offset, &buffer);
+		if (payload != 0)
+		{
+			int max_payload = ETH_MAX_PAYLOAD - ((void *)tcp - resp.Buffer.Buffer);
+
+			if (payload > max_payload)
+			{
+				payload = max_payload;
+				net_mbuf_init(&mbuf1, buffer, 0, payload);
+				net_mbuf_append(&resp.Buffer, &mbuf1);
+			}
+			else
+			{
+				net_mbuf_init(&mbuf1, buffer, 0, payload);
+				net_mbuf_append(&resp.Buffer, &mbuf1);
+
+				int payload2 = exos_io_buffer_peek(&io->SndBuffer, offset + payload, &buffer);
+				if (payload2 != 0)
+				{
+					payload += payload2;
+					if (payload > max_payload)
+						payload2 -= (payload - max_payload);
+
+					net_mbuf_init(&mbuf2, buffer, 0, payload2);
+					net_mbuf_append(&resp.Buffer, &mbuf2);
+				}
+			}
+		}
+
+		tcp->Sequence = HTON32(io->SndSeq);
+
+		tcp->Ack = io->SndFlags.ACK ? HTON32(io->RcvNext) : HTON32(0);
+		tcp->DataOffset = sizeof(TCP_HEADER) >> 2;
+		tcp->Reserved = 0;
+		tcp->Flags = io->SndFlags;
+
+		unsigned short rcv_free = (io->RcvBuffer.Size - 1) - exos_io_buffer_avail(&io->RcvBuffer);
+		tcp->WindowSize = HTON16(rcv_free);
+		tcp->Checksum = HTON16(0);
+		tcp->UrgentPtr = HTON16(0);
+
+		int tcp_length = sizeof(TCP_HEADER) + payload;
+		int tcp_offset = (unsigned char *)tcp - (unsigned char *)resp.Buffer.Buffer; 
+		unsigned short checksum = net_tcp_checksum(&io->Adapter->IP, &io->RemoteEP.IP, &resp.Buffer, tcp_offset);
+		tcp->Checksum = HTON16(checksum);
+		int done = net_ip_send_output(io->Adapter, &resp, tcp_length);
+		
+		if (done)
+			exos_event_wait(&completed_event, EXOS_TIMEOUT_NEVER);
+
+		if (io->SndFlags.SYN || io->SndFlags.FIN) payload++;
+		return payload;
+	}
+
+#ifdef DEBUG
+	// TODO: take action on dropped output message
+#endif
+	return -1;
+}
+
 static void _handle(TCP_IO_ENTRY *io)
 {
 	exos_mutex_lock(&io->Mutex);
 
-	int remaining = 0;
 	switch(io->State)
 	{
 		case TCP_STATE_ESTABLISHED:
-			remaining = exos_io_buffer_avail(&io->SndBuffer);
-			remaining -= (io->SndNext - io->SndAck);
-			if (remaining >= 1) // FIXME: use equiv. to SO_SNDLOWAT 
-				io->SndFlags.ACK = 1;
-			
-            io->ServiceWait = 100;	// FIXME: use adaptive retransmit time
+			io->ServiceWait = io->SndFlags.PSH ? 100 : 30000; // FIXME: use adaptive retransmit time
 			break;
 		case TCP_STATE_CLOSE_WAIT:
-			io->SndFlags.FIN = 1;
 			io->ServiceWait = 1000;
 			exos_event_set(&io->InputEvent);
 			exos_event_set(&io->OutputEvent);
 			break;
 		case TCP_STATE_TIME_WAIT:
-			// NOTE: do nothing
-			io->State = TCP_STATE_CLOSED;
-			break;
-		case TCP_STATE_FIN_WAIT_1:
-		case TCP_STATE_LAST_ACK:
-			if (io->ServiceRetry < 3)
-			{
-				io->SndFlags.FIN = 1;
-				io->ServiceWait = 1000;
-			}
+			if (io->SndFlags.ACK && io->ServiceRetry == 0)	// NOTE: send pending ack when coming from TIME_WAIT_2
+				io->ServiceWait = 2000;	// FIXME: should be 2MSL
 			else io->State = TCP_STATE_CLOSED;
 			break;
+		case TCP_STATE_LAST_ACK:
+			if (io->ServiceRetry < 3)
+				io->ServiceWait = 1000;
+			else io->State = TCP_STATE_CLOSED;
+			break;
+		case TCP_STATE_FIN_WAIT_1:
+		case TCP_STATE_FIN_WAIT_2:
+			if (io->ServiceRetry < 1) 
+				io->ServiceWait = 5000;
+			else io->State = TCP_STATE_CLOSED;
 		default:
 			io->ServiceWait = 30000;
 			break;
@@ -204,23 +287,13 @@ static void _handle(TCP_IO_ENTRY *io)
 		if (io->SndFlags.PSH || io->SndFlags.SYN || io->SndFlags.FIN || 
 			io->SndFlags.ACK)
 		{
-			io->SndFlags.ACK = 1;
 			int done = _send(io);
-			if (done >= 0)
-			{
-				io->SndNext += done;
-				io->SndFlags.ACK = 0;
-				io->SndFlags.SYN = 0;
-				io->SndFlags.FIN = 0;
-				if (done == remaining) io->SndFlags.PSH = 0;
-			}
 		}
 	}
 
 	io->ServiceRetry++;
 	exos_mutex_unlock(&io->Mutex);
 }
-
 
 static void *_service(void *arg)
 {
@@ -265,91 +338,6 @@ static void *_service(void *arg)
 	}
 }
 
-void net_tcp_service(TCP_IO_ENTRY *io, int wait)
-{
-	io->ServiceTime = exos_timer_time();
-	io->ServiceWait = wait;
-	io->ServiceRetry = 0;
-	exos_signal_set(&_thread, 1 << _wakeup_signal);
-}
-
-static int _send(TCP_IO_ENTRY *io)
-{
-	EXOS_EVENT completed_event;
-	exos_event_create(&completed_event);
-	NET_OUTPUT_BUFFER resp = (NET_OUTPUT_BUFFER) { .CompletedEvent = &completed_event };
-
-	TCP_HEADER *tcp = net_ip_output(io->Adapter, &resp, sizeof(TCP_HEADER), &io->RemoteEP, IP_PROTOCOL_TCP);
-	if (tcp != NULL)
-	{
-		tcp->SourcePort = HTON16(io->LocalPort);
-		tcp->DestinationPort = HTON16(io->RemotePort);
-
-		NET_MBUF mbuf1;
-		NET_MBUF mbuf2;
-		int offset = (io->SndNext - io->SndAck);
-		void *buffer;
-		int payload = exos_io_buffer_peek(&io->SndBuffer, offset, &buffer);
-		if (payload != 0)
-		{
-			int max_payload = ETH_MAX_PAYLOAD - ((void *)tcp - resp.Buffer.Buffer);
-
-			if (payload > max_payload)
-			{
-				payload = max_payload;
-				net_mbuf_init(&mbuf1, buffer, 0, payload);
-				net_mbuf_append(&resp.Buffer, &mbuf1);
-			}
-			else
-			{
-				net_mbuf_init(&mbuf1, buffer, 0, payload);
-				net_mbuf_append(&resp.Buffer, &mbuf1);
-
-				int payload2 = exos_io_buffer_peek(&io->SndBuffer, offset + payload, &buffer);
-				if (payload2 != 0)
-				{
-					if (payload2 > max_payload)
-						payload2 = max_payload;
-
-					net_mbuf_init(&mbuf2, buffer, 0, payload2);
-					net_mbuf_append(&resp.Buffer, &mbuf2);
-					payload += payload2;
-				}
-			}
-		}
-
-		tcp->Sequence = HTON32(io->SndNext);
-		
-		tcp->Ack = HTON32(io->RcvNext);
-		tcp->DataOffset = sizeof(TCP_HEADER) >> 2;
-		tcp->Reserved = 0;
-		tcp->Flags = io->SndFlags;
-
-		unsigned short rcv_free = (io->RcvBuffer.Size - 1) - exos_io_buffer_avail(&io->RcvBuffer);
-		tcp->WindowSize = HTON16(rcv_free);
-		tcp->Checksum = HTON16(0);
-		tcp->UrgentPtr = HTON16(0);
-
-		int tcp_length = sizeof(TCP_HEADER) + payload;
-		int tcp_offset = (unsigned char *)tcp - (unsigned char *)resp.Buffer.Buffer; 
-		unsigned short checksum = net_tcp_checksum(&io->Adapter->IP, &io->RemoteEP.IP, &resp.Buffer, tcp_offset);
-		tcp->Checksum = HTON16(checksum);
-		int done = net_ip_send_output(io->Adapter, &resp, tcp_length);
-		
-		if (done)
-			exos_event_wait(&completed_event, EXOS_TIMEOUT_NEVER);
-
-		if (io->SndFlags.SYN || io->SndFlags.FIN) payload++;
-		return payload;
-	}
-#ifdef DEBUG
-	else
-	{
-		// TODO: take action on dropped output message
-	}
-#endif
-	return -1;
-}
 
 
 

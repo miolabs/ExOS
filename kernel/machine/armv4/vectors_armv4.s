@@ -47,6 +47,7 @@ PAbort_Handler:
 
 DAbort_Handler:
 	b .  /* Endless loop */
+	subs pc, r14, #8	// return from dabort exception
 
 IRQ_Handler:
 	b .  /* Endless loop */

@@ -18,7 +18,7 @@ unsigned char _snd_buffer[TCP_BUFFER_SIZE];
 // NOTE: hook called by net stack
 void net_board_set_mac_address(NET_ADAPTER *adapter, int index)
 {
-	adapter->MAC = (HW_ADDR) { 0x00, 0x18, 0x1b, 0x05, 0x1c, 0x13 };
+	adapter->MAC = (HW_ADDR) { 0x00, 0x18, 0x1b, 0x05, 0x05, 0x06 };
 }
 
 void main()
@@ -26,12 +26,12 @@ void main()
 	usb_host_initialize();
 	int err = 0;
 
-//	NET_ADAPTER *adapter = NULL;
-//	if (net_adapter_enum(&adapter))
-//	{
+	NET_ADAPTER *adapter = NULL;
+	if (net_adapter_enum(&adapter))
+	{
 //		adapter->IP = (IP_ADDR) { 10, 0, 1, 10 };
 //		adapter->NetMask = (IP_ADDR) { 255, 255, 255, 0 };
-//	}
+	}
 
 	while(1)
 	{
@@ -51,6 +51,8 @@ void main()
 		EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/usbprint");
 		if (dev_node == NULL)
 			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/usbftdi");
+		if (dev_node == NULL)
+			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/comm0");
 
 		if (dev_node != NULL)
 		{
@@ -63,11 +65,15 @@ void main()
 
 					int done = exos_io_read((EXOS_IO_ENTRY *)&_socket, _buffer, 1024);
 					if (done < 0) break;
+
 hal_led_set(1, 1);
-					done = exos_io_write((EXOS_IO_ENTRY *)&_comm, _buffer, done);
+					done = exos_io_write((EXOS_IO_ENTRY *)&_socket, _buffer, done);
+//					done = exos_io_write((EXOS_IO_ENTRY *)&_comm, _buffer, done);
 hal_led_set(1, 0);
 					if (done < 0) break;
 				}
+
+				comm_io_close(&_comm);
 			}
 		}
 			
