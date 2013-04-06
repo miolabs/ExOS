@@ -253,7 +253,12 @@ static void _handle(TCP_IO_ENTRY *io)
 	switch(io->State)
 	{
 		case TCP_STATE_ESTABLISHED:
-			io->ServiceWait = io->SndFlags.PSH ? 100 : 30000; // FIXME: use adaptive retransmit time
+			if (io->SndFlags.PSH)
+			{
+				io->SndFlags.ACK = 1;
+				io->ServiceWait = 100; // FIXME: use adaptive retransmit time
+			}
+			else io->ServiceWait = 30000; // FIXME: use configurable keep-alive time
 			break;
 		case TCP_STATE_CLOSE_WAIT:
 			io->ServiceWait = 1000;
@@ -261,8 +266,11 @@ static void _handle(TCP_IO_ENTRY *io)
 			exos_event_set(&io->OutputEvent);
 			break;
 		case TCP_STATE_TIME_WAIT:
-			if (io->SndFlags.ACK && io->ServiceRetry == 0)	// NOTE: send pending ack when coming from TIME_WAIT_2
+			if (io->SndFlags.ACK && io->ServiceRetry == 0)	
+			{
+				// NOTE: send pending ack when coming from TIME_WAIT_2
 				io->ServiceWait = 2000;	// FIXME: should be 2MSL
+			}
 			else io->State = TCP_STATE_CLOSED;
 			break;
 		case TCP_STATE_LAST_ACK:
@@ -307,6 +315,10 @@ static void *_service(void *arg)
 		FOREACH(node, &_entries)
 		{
 			TCP_IO_ENTRY *io = (TCP_IO_ENTRY *)node;
+
+			if (io->State == TCP_STATE_LISTEN) 
+				continue;	// FIXME: this should not happen, check service setup on listen state
+			
 			if (io->State != TCP_STATE_CLOSED)
 			{
 				int rem = (unsigned long)io->ServiceWait - exos_timer_elapsed(io->ServiceTime);

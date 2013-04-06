@@ -224,6 +224,4 @@ typedef struct
 #define PINSEL9bits (*(_PINSEL9bits *) &LPC_PINCON->PINSEL9)
 
 
-
-
 #endif // LPC17_PINCON_H

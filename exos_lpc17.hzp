@@ -53,6 +53,7 @@
         <file file_name="kernel/tree.c"/>
         <file file_name="kernel/io.c"/>
         <file file_name="kernel/thread_pool.c"/>
+        <file file_name="kernel/port.c"/>
       </folder>
       <folder Name="support">
         <folder Name="lpc17">

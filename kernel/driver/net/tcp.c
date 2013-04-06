@@ -185,10 +185,10 @@ unsigned short net_tcp_checksum(IP_ADDR *source_ip, IP_ADDR *dest_ip, NET_MBUF *
 {
 	int total_length = 0;
 	unsigned long sum = 0;
+	NET_MBUF local;
 
 	if (mbuf != NULL && offset != 0)
 	{
-		NET_MBUF local;
 		mbuf = net_mbuf_seek(&local, mbuf, offset) ? &local : NULL;
 	}
 
@@ -224,7 +224,9 @@ unsigned short net_tcp_checksum(IP_ADDR *source_ip, IP_ADDR *dest_ip, NET_MBUF *
 	{
 		sum += NTOH16(pseudo_words[i]);
 	}
-	sum += (sum >> 16);	// add carry to do 1's complement sum
+    // add carry to do 1's complement sum
+	sum = (sum & 0xFFFF) + (sum >> 16);
+	sum += (sum >> 16);	
 	return (unsigned short)~sum;
 }
 

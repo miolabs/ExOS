@@ -101,6 +101,10 @@ NET_ADAPTER *net_adapter_find(IP_ADDR addr)
 
 void net_adapter_input(NET_ADAPTER *adapter)
 {
+#ifdef DEBUG
+	if (adapter == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
    	const NET_DRIVER *driver = adapter->Driver;
 
 	while(1)
@@ -129,6 +133,10 @@ void net_adapter_input(NET_ADAPTER *adapter)
 
 void *net_adapter_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *output, unsigned hdr_size, HW_ADDR *destination, ETH_TYPE type)
 {
+#ifdef DEBUG
+	if (adapter == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
 	const NET_DRIVER *driver = adapter->Driver;
 
 	hdr_size += sizeof(ETH_HEADER);
