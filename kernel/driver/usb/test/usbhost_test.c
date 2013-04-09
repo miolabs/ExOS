@@ -11,7 +11,7 @@ COMM_IO_ENTRY _comm;
 TCP_IO_ENTRY _socket;
 unsigned char _buffer[1024];
 
-#define TCP_BUFFER_SIZE 16384 // tiny window for stress
+#define TCP_BUFFER_SIZE 8192 // tiny window for stress
 unsigned char _rcv_buffer[TCP_BUFFER_SIZE];
 unsigned char _snd_buffer[TCP_BUFFER_SIZE];
 
@@ -62,7 +62,6 @@ void main()
 			{
 				while(1)
 				{
-
 					int done = exos_io_read((EXOS_IO_ENTRY *)&_socket, _buffer, 1024);
 					if (done < 0) break;
 
