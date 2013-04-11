@@ -40,7 +40,7 @@ void lcdcon_initialize(LCD_PROPERTIES *lcd)
 
 		for(int i = 0; i < 48; i++)
 		{
-			unsigned char data[] = { 0x55, 0xAA, 0x55, 0xAA }; // {0xCC, 0xCC, 0x33, 0x33 };
+			unsigned char data[] = {0xf0,0xf0,0x0f,0x0f };
 			_write_data(data, sizeof(data));
 		}
 	}
@@ -73,4 +73,21 @@ static void _write_data(unsigned char data[], int length)
 	lcdcon_gpo(LCDCON_GPO_CS);
 	hal_ssp_transmit(LCD_SSP_MODULE, data, 0, length);
 	lcdcon_gpo(LCDCON_GPO_IDLE);
+}
+
+void lcd_dump_screen ( char* pixels)
+{
+	lcdcon_gpo(LCDCON_GPO_CS);
+
+    for(int page = 0; page < 8; page++)
+    {
+        _write_cmd(0xb0 | page); // select page
+        _write_cmd2(0x10, 0x00);
+
+        _write_data( pixels, 128);
+        //_write_data( pixels, 192 - 128);    // Stride?
+        pixels += 128;
+    }
+
+   	lcdcon_gpo(LCDCON_GPO_IDLE);
 }
