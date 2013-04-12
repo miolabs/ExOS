@@ -171,6 +171,14 @@ void _xkuty_effect_bilevel ( int t)
 	}
 }
 
+static inline int sensor_scale ( int in, int base, int top)
+{
+	int len = top - base;
+	int pos = in  - base;
+	_saturate ( &pos, 0, len);
+	return (pos * 0x100) / len;
+}
+
 
 static void _clean_bilevel ( char* scr) { for (int i=0; i<(128*64/8); i++) scr [i] = 0; }
 
@@ -226,15 +234,15 @@ void main()
             case ST_DASH:
                 screen_mode = SCR_BILEVEL;
                 _clean_bilevel ( linear);
-                _bitmap_bar ( _bmp_bar, 48, 16, ain[0] >> 8, 8, 8);
-                _bitmap_bar ( _bmp_bar, 48, 16, ain[1] >> 8, 8, 24);
-                _bitmap_bar ( _bmp_bar, 48, 16, ain[2] >> 8, 8, 40);
-				if (( ain[4]) < 0x8000)
+                _bitmap_bar ( _bmp_bar, 48, 16, sensor_scale( ain[0], 0x1000, 0xa000), 8, 8);
+                _bitmap_bar ( _bmp_bar, 48, 16, sensor_scale( ain[1], 0x6800, 0xa2d0), 8, 24);
+                _bitmap_bar ( _bmp_bar, 48, 16, sensor_scale( ain[2], 0x6900, 0x89e0), 8, 40);
+				if (( ain[3]) < 0x8000)
 					_bitmap_bar ( _bmp_switch_on, 24, 24, 0x100, 88, 8);
 				else
 					_bitmap_bar ( _bmp_switch_off, 24, 24, 0x100, 88, 8);
 
-				if (( ain[5]) < 0x8000)
+				if (( ain[4]) < 0x8000)
 					_bitmap_bar ( _bmp_switch_on, 24, 24, 0x100, 88, 32);
 				else
 					_bitmap_bar ( _bmp_switch_off, 24, 24, 0x100, 88, 32);
