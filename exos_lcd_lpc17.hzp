@@ -94,7 +94,7 @@
   </project>
   <configuration Name="Debug" build_debug_information="Yes" c_preprocessor_definitions="DEBUG;__THUMB" gcc_optimization_level="None" hidden="Yes" link_include_startup_code="No"/>
   <configuration Name="Release" build_debug_information="No" c_additional_options="-g1" c_preprocessor_definitions="NDEBUG" gcc_optimization_level="Level 1" hidden="Yes" link_include_startup_code="No"/>
-  <configuration Name="Common" c_preprocessor_definitions="__EXOS__;MAIN_THREAD_STACK=1024;MAIN_THREAD_PRI=0;EXOS_NO_NET;LCD_DPI=100" linker_section_placement_file="$(ProjectDir)/support/lpc17/lpc1769_flash_placement.xml"/>
+  <configuration Name="Common" c_preprocessor_definitions="__EXOS__;MAIN_THREAD_STACK=1024;MAIN_THREAD_PRI=0;EXOS_NO_NET;LCD_DPI=100;ADC_BURST_MODE" linker_section_placement_file="$(ProjectDir)/support/lpc17/lpc1769_flash_placement.xml"/>
   <configuration Name="LandTiger" c_preprocessor_definitions="BOARD_LANDTIGER" hidden="Yes"/>
   <configuration Name="LandTiger Debug" inherited_configurations="Debug;LandTiger"/>
   <configuration Name="LandTiger Release" inherited_configurations="LandTiger;Release"/>

@@ -213,18 +213,18 @@ static int _setup_adc(int unit)
 {
 	unsigned char ch_mask = 0;
 #if defined BOARD_MINILCD
-	PINSEL1bits.P0_25 = 2; // AN2
-	PINSEL1bits.P0_26 = 2; // AN3
+	PINSEL1bits.P0_25 = 1; // AN2
+	PINSEL1bits.P0_26 = 1; // AN3
 	PINSEL3bits.P1_30 = 3; // AN4
-	PINSEL3bits.P1_31 = 3; // AN5
-	PINSEL0bits.P0_2 = 1; // AN6
-	PINSEL0bits.P0_3 = 1; // AN7
-	ch_mask = 0xfc; // six inputs
+	//PINSEL3bits.P1_31 = 3; // AN5
+	PINSEL0bits.P0_2 = 2; // AN6
+	PINSEL0bits.P0_3 = 2; // AN7
+	ch_mask = 0xdc; // six inputs
 #elif defined BOARD_LANDTIGER
 	PINSEL3bits.P1_31 = 3; // AN5
 	ch_mask = (1<<5);
 #elif defined BOARD_LPC1766STK
-	return 0;
+	c_hmask = 0;
 #else
 #error "Unsupported board"
 #endif
