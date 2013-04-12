@@ -5,7 +5,7 @@
 
 extern void lcd_dump_screen ( char* pixels);
 
-static unsigned char screen [(128*64)/8];
+ static unsigned char screen [(128*64)/8];
 
 
 static char doh [128*64];
