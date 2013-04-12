@@ -22,8 +22,8 @@ typedef struct
 {
 	unsigned char Depth;
 	unsigned char BufferType;
-	unsigned char Flags;
-	unsigned char Reserved;
+	unsigned short Stride;
+	LCD_BUFFER_FLAGS Flags;
 } LCD_BUFFER_PROPERTIES;
 
 typedef enum
@@ -47,6 +47,8 @@ typedef struct
 	unsigned short Width;
 	unsigned short Height;
 } LCD_PROPERTIES;
+
+
 
 // prototypes
 void lcd_initialize();

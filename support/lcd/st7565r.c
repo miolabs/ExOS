@@ -10,7 +10,7 @@ static void _write_data(unsigned char data[], int length);
 void lcdcon_initialize(LCD_PROPERTIES *lcd)
 {
 	lcd->Buffer = (LCD_BUFFER_PROPERTIES) {
-		.Depth = 1, .BufferType = LCD_BUFFER_STRIPE };
+		.Depth = 1, .Stride = 128, .BufferType = LCD_BUFFER_STRIPE };
 	lcd->Width = 128;
 	lcd->Height = 64;
 

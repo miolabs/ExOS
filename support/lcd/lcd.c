@@ -17,7 +17,7 @@ void lcd_initialize()
 	lcdcon_initialize(&_properties);	
 }
 
-void lcd_update(LCD_RECT *region)
+void lcd_lock_bitmap(LCD_RECT *region)
 {
 	
 }
