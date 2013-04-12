@@ -34,3 +34,9 @@ void lcd_set_offset(int offset)
 {
 	//splc501c_set_offset(offset);
 }
+
+__attribute__((__weak__))
+void lcdcon_gpo_backlight(int enable)
+{
+	// do nothing
+}

@@ -1,3 +1,4 @@
+#ifdef LCD_SPLC501C
 #include "splc501c.h"
 #include <kernel/thread.h>
 #include <support/ssp_hal.h>
@@ -13,7 +14,7 @@ void lcdcon_initialize(LCD_PROPERTIES *lcd)
 	lcd->Width = 128;
 	lcd->Height = 64;
 
-	hal_ssp_initialize(LCD_SSP_MODULE, 2000000, HAL_SSP_MODE_SPI, HAL_SSP_CLK_IDLE_HIGH);
+	hal_ssp_initialize(LCD_SSP_MODULE, 4000000, HAL_SSP_MODE_SPI, HAL_SSP_CLK_IDLE_HIGH);
 	lcdcon_gpo_initialize();
 
 	lcdcon_gpo(LCDCON_GPO_CS);
@@ -91,3 +92,5 @@ void lcd_dump_screen ( char* pixels)
 
    	lcdcon_gpo(LCDCON_GPO_IDLE);
 }
+
+#endif // SPC501C

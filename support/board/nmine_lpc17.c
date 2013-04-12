@@ -17,10 +17,9 @@ void hal_board_initialize()
 {
 	dma_initialize();
 
-#if defined BOARD_NANO10
-    LPC_GPIO2->FIODIR |= (1<<6); // STATUS_LED
+#if defined BOARD_MINILCD
+	LPC_GPIO1->FIOSET = (1<<18);
 	LPC_GPIO1->FIODIR |= (1<<18); // USB_LED
-	LPC_GPIO3->FIODIR |= (1<<25); // GPS_LED
 #elif defined BOARD_LPC1766STK
 	LPC_GPIO1->FIODIR |= (1<<25);	// LED1
 	LPC_GPIO0->FIODIR |= (1<<4);	// LED2
@@ -75,10 +74,17 @@ static int _setup_ssp(int unit)
 	switch(unit)
 	{
 		case 0:
+#if defined BOARD_MINILCD
+			PINSEL0bits.P0_15 = 2; // SCK0
+			PINSEL1bits.P0_16 = 2; // SSEL0
+			PINSEL1bits.P0_17 = 2; // MISO0
+			PINSEL1bits.P0_18 = 2; // MOSI0
+#else
 			PINSEL3bits.P1_20 = 3; // SCK0
 			PINSEL3bits.P1_21 = 3; // SSEL0
 			PINSEL3bits.P1_23 = 3; // MISO0
 			PINSEL3bits.P1_24 = 3; // MOSI0
+#endif
 			return 1;
 		case 1:
 			PINSEL0bits.P0_6 = 2; // SSEL1
@@ -114,7 +120,7 @@ static int _setup_usbdev(int unit)
 
 static int _setup_pwm(int unit)
 {
-#if defined BOARD_NANO10 
+#if defined BOARD_MINILCD 
 	PINSEL4bits.P2_0 = 1; // PWM1.1
 	PINSEL4bits.P2_1 = 1; // PWM1.2
 	PINSEL4bits.P2_2 = 1; // PWM1.3
@@ -131,12 +137,8 @@ static int _setup_pwm(int unit)
 
 static int _setup_cap(int unit)
 {
-#if defined BOARD_NANO10
-	if (unit == 0)
-	{
-		PINSEL3bits.P1_26 = 3; // CAP0.0
-		return 1;
-	}
+#if defined BOARD_MINILCD
+	return 0;	// no cap
 #elif defined BOARD_LANDTIGER || defined BOARD_LPC1766STK
 	return 0;	// no cap
 #else
@@ -147,13 +149,8 @@ static int _setup_cap(int unit)
 
 static int _setup_mat(int unit)
 {
-#if defined BOARD_NANO10
-	if (unit == 2)
-	{
-		PINSEL9bits.P4_28 = 2; // MAT2.0
-		PINSEL9bits.P4_29 = 2; // MAT2.1
-		return 3;
-	}
+#if defined BOARD_MINILCD
+	return 0;	// no pwm
 #elif defined BOARD_LANDTIGER || defined BOARD_LPC1766STK
 	return 0;	// no pwm
 #else
@@ -164,12 +161,12 @@ static int _setup_mat(int unit)
 
 static int _setup_can(int unit)
 {
-#if defined BOARD_NANO10 
+#if defined BOARD_MINILCD 
 	switch(unit)
 	{
 		case 1:
-			PINSEL0bits.P0_4 = 2;	// RD2
-			PINSEL0bits.P0_5 = 2;	// TD2
+			PINSEL4bits.P2_7 = 1;	// RD2
+			PINSEL4bits.P2_8 = 1;	// TD2
 			return 1;
 	}
 #elif defined BOARD_LANDTIGER 
@@ -194,18 +191,8 @@ static int _setup_can(int unit)
 
 static int _setup_uart(int unit)
 {
-#if defined BOARD_NANO10
-	switch(unit)
-	{
-		case 0:
-			PINSEL0bits.P0_2 = 1; // select TXD0
-			PINSEL0bits.P0_3 = 1; // select RXD0
-			return 1;
-		case 1:
-			PINSEL0bits.P0_15 = 1; // select TXD1
-			PINSEL1bits.P0_16 = 1; // select RXD1
-			return 1;
-	}
+#if defined BOARD_MINILCD
+	return 0;
 #elif defined BOARD_LPC1766STK
 	return 0;
 #elif defined BOARD_LANDTIGER 
@@ -225,14 +212,14 @@ static int _setup_uart(int unit)
 static int _setup_adc(int unit)
 {
 	unsigned char ch_mask = 0;
-#if defined BOARD_NANO10
-	PINSEL1bits.P0_23 = 1; // AN0
-	PINSEL1bits.P0_24 = 1; // AN1
-	PINSEL1bits.P0_25 = 1; // AN2
-	PINSEL1bits.P0_26 = 1; // AN3
+#if defined BOARD_MINILCD
+	PINSEL1bits.P0_25 = 2; // AN2
+	PINSEL1bits.P0_26 = 2; // AN3
 	PINSEL3bits.P1_30 = 3; // AN4
 	PINSEL3bits.P1_31 = 3; // AN5
-	ch_mask = 0x3f; // six inputs
+	PINSEL0bits.P0_2 = 1; // AN6
+	PINSEL0bits.P0_3 = 1; // AN7
+	ch_mask = 0xfc; // six inputs
 #elif defined BOARD_LANDTIGER
 	PINSEL3bits.P1_31 = 3; // AN5
 	ch_mask = (1<<5);
@@ -335,7 +322,7 @@ void hal_led_set(HAL_LED led, int state)
 #endif
 
 
-#if defined(BOARD_NANO10)
+#if defined(BOARD_MINILCD)
 
 void hal_led_set(HAL_LED led, int state)
 {
@@ -343,29 +330,65 @@ void hal_led_set(HAL_LED led, int state)
 	{
 		case LED_STATUS:
 		case 0:
-			if (state) 
-				LPC_GPIO2->FIOSET = (1<<6);	// STATUS_LED
-			else
-				LPC_GPIO2->FIOCLR = (1<<6);	// STATUS_LED
-			break;
-		case LED_SDCARD:
-		case 1:
 			if (state)
 				LPC_GPIO1->FIOSET = (1<<18); // USB_LED
 			else
 				LPC_GPIO1->FIOCLR = (1<<18); // USB_LED
 			break;
-		case LED_GPS:
-		case 2:
-			if (state)
-				LPC_GPIO3->FIOSET = (1<<25); // GPS_LED 
-			else
-				LPC_GPIO3->FIOCLR = (1<<25); // GPS_LED 
-			break;
+	}
+}
+
+#include <support/lcd/lcd.h>
+#define LCD_CS_PORT LPC_GPIO0	// LCD_CS = P0.16
+#define LCD_CS_MASK (1<<16)
+#define LCD_A0_PORT LPC_GPIO2	// LCD_A0 = P2.9
+#define LCD_A0_MASK (1<<9)
+#define LCD_RESET_PORT LPC_GPIO0	// LCD_RST = P0.22
+#define LCD_RESET_MASK (1<<22)
+#define LCD_BL_PORT LPC_GPIO2	// LCD_BL = P2.0
+#define LCD_BL_MASK (1<<0)
+
+void lcdcon_gpo_initialize()
+{
+	PINSEL1bits.P0_16 = 0;
+	PINSEL4bits.P2_9 = 0;
+	PINSEL1bits.P0_22 = 0;
+	PINSEL4bits.P2_0 = 0;
+
+	LCD_CS_PORT->FIOSET = LCD_CS_MASK;
+	LCD_CS_PORT->FIODIR |= LCD_CS_MASK;
+	LCD_A0_PORT->FIOSET = LCD_A0_MASK;
+	LCD_A0_PORT->FIODIR |= LCD_A0_MASK;
+	LCD_RESET_PORT->FIOSET = LCD_RESET_MASK;
+	LCD_RESET_PORT->FIODIR |= LCD_RESET_MASK;
+	LCD_BL_PORT->FIOCLR = LCD_BL_MASK;
+	LCD_BL_PORT->FIODIR |= LCD_BL_MASK;
+}
+
+void lcdcon_gpo(LCDCON_GPO gpo)
+{
+	if (gpo & LCDCON_GPO_CS) LCD_CS_PORT->FIOCLR = LCD_CS_MASK;
+	else LCD_CS_PORT->FIOSET = LCD_CS_MASK;
+	if (gpo & LCDCON_GPO_A0) LCD_A0_PORT->FIOCLR = LCD_A0_MASK;
+	else LCD_A0_PORT->FIOSET = LCD_A0_MASK;
+	if (gpo & LCDCON_GPO_RESET) LCD_RESET_PORT->FIOCLR = LCD_RESET_MASK;
+	else LCD_RESET_PORT->FIOSET = LCD_RESET_MASK;
+}
+
+void lcdcon_gpo_backlight(int enable)
+{
+	if (enable)
+	{
+		LCD_BL_PORT->FIOSET = LCD_BL_MASK;
+	}
+	else
+	{
+		LCD_BL_PORT->FIOCLR = LCD_BL_MASK;
 	}
 }
 
 #endif
+
 
 #if defined(SDCARD_POWER_PORT) && defined(SDCARD_POWER_MASK)
 

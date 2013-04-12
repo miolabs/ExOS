@@ -24,6 +24,8 @@
   <ProjectSessionItem path="exos_lcd_lpc17" name="unnamed" />
   <ProjectSessionItem path="exos_lcd_lpc17;exos_lcd_lpc17" name="unnamed" />
   <ProjectSessionItem path="exos_lcd_lpc17;exos_lcd_lpc17;Source Files" name="unnamed" />
+  <ProjectSessionItem path="exos_lcd_lpc17;exos_lcd_lpc17;Source Files;kernel" name="unnamed" />
+  <ProjectSessionItem path="exos_lcd_lpc17;exos_lcd_lpc17;Source Files;kernel;machine" name="unnamed" />
   <ProjectSessionItem path="exos_lcd_lpc17;exos_lcd_lpc17;Source Files;support" name="unnamed" />
   <ProjectSessionItem path="exos_lcd_lpc17;exos_lcd_lpc17;Source Files;support;lcd" name="unnamed" />
  </Project>
@@ -56,9 +58,16 @@
   <Watches active="0" update="Never" />
  </Watch4>
  <Files>
-  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="C:\Users\Mich\Dropbox\current\exos\support\lcd\lcd.c" y="8" path="C:\Users\Mich\Dropbox\current\exos\support\lcd\lcd.c" left="0" selected="0" name="unnamed" top="0" />
-  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="21" debugPath="C:\Users\Mich\Dropbox\current\exos\support\lcd\lcd.h" y="46" path="C:\Users\Mich\Dropbox\current\exos\support\lcd\lcd.h" left="0" selected="0" name="unnamed" top="24" />
-  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="22" debugPath="C:\Users\Mich\Dropbox\current\exos\support\lcd\splc501c.c" y="40" path="C:\Users\Mich\Dropbox\current\exos\support\lcd\splc501c.c" left="0" selected="1" name="unnamed" top="0" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="1" debugPath="X:\Dropbox\current\exos\kernel\io.c" y="36" path="X:\Dropbox\current\exos\kernel\io.c" left="0" selected="0" name="unnamed" top="0" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="1" debugPath="X:\Dropbox\current\exos\support\board\nmine_lpc17.c" y="358" path="X:\Dropbox\current\exos\support\board\nmine_lpc17.c" left="0" selected="0" name="unnamed" top="323" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="X:\Dropbox\current\exos\support\lcd\test\lcd_test.c" y="6" path="X:\Dropbox\current\exos\support\lcd\test\lcd_test.c" left="0" selected="0" name="unnamed" top="0" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="25" debugPath="X:\Dropbox\current\exos\support\lcd\lcd.h" y="67" path="X:\Dropbox\current\exos\support\lcd\lcd.h" left="0" selected="0" name="unnamed" top="27" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="1" debugPath="X:\Dropbox\current\exos\support\lcd\lcd.c" y="16" path="X:\Dropbox\current\exos\support\lcd\lcd.c" left="0" selected="0" name="unnamed" top="0" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="X:\Dropbox\current\exos\kernel\thread.c" y="130" path="X:\Dropbox\current\exos\kernel\thread.c" left="0" selected="0" name="unnamed" top="109" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="27" debugPath="X:\Dropbox\current\exos\support\lcd\st7565r.c" y="19" path="X:\Dropbox\current\exos\support\lcd\st7565r.c" left="0" selected="1" name="unnamed" top="0" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="X:\Dropbox\current\exos\support\lcd\st7565r.h" y="8" path="X:\Dropbox\current\exos\support\lcd\st7565r.h" left="0" selected="0" name="unnamed" top="0" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="37" debugPath="X:\Dropbox\current\exos\support\lcd\splc501c.c" y="16" path="X:\Dropbox\current\exos\support\lcd\splc501c.c" left="0" selected="0" name="unnamed" top="0" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="X:\Dropbox\current\exos\support\lcd\splc501c.h" y="0" path="X:\Dropbox\current\exos\support\lcd\splc501c.h" left="0" selected="0" name="unnamed" top="0" />
  </Files>
- <ARMCrossStudioWindow activeProject="exos_lcd_lpc17" autoConnectTarget="Olimex FTDI driver" debugSearchFileMap="" fileDialogInitialDirectory="C:\Users\Mich\Dropbox\current\exos\support\lpc17" fileDialogDefaultFilter="*.c" autoConnectCapabilities="388991" debugSearchPath="" buildConfiguration="LPC1766-STK Debug" />
+ <ARMCrossStudioWindow activeProject="exos_lcd_lpc17" autoConnectTarget="Olimex ARM-USB-OCD" debugSearchFileMap="" fileDialogInitialDirectory="C:\Users\Mich\Dropbox\current\exos\support\lpc17" fileDialogDefaultFilter="*.c" autoConnectCapabilities="388991" debugSearchPath="" buildConfiguration="MINILCD Debug" />
 </session>

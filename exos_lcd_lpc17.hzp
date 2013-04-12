@@ -74,6 +74,7 @@
           <folder Name="test">
             <file file_name="support/lcd/test/lcd_test.c"/>
           </folder>
+          <file file_name="support/lcd/st7565r.c"/>
         </folder>
       </folder>
     </folder>
@@ -88,17 +89,18 @@
       <file file_name="$(TargetsDir)/LPC1000/include/CMSIS/system_LPC17xx.c"/>
     </folder>
     <configuration Name="Flash" arm_target_flash_loader_file_path="$(TargetsDir)/LPC1000/Release/Loader_rpc.elf"/>
+    <configuration Name="MINILCD" Target="LPC1758" arm_simulator_memory_simulation_parameter="LPC17;0x80000;0x8000;0x8000" linker_memory_map_file="$(TargetsDir)/LPC1000/LPC1758_MemoryMap.xml"/>
   </project>
   <configuration Name="Debug" build_debug_information="Yes" c_preprocessor_definitions="DEBUG;__THUMB" gcc_optimization_level="None" hidden="Yes" link_include_startup_code="No"/>
   <configuration Name="Release" build_debug_information="No" c_additional_options="-g1" c_preprocessor_definitions="NDEBUG" gcc_optimization_level="Level 1" hidden="Yes" link_include_startup_code="No"/>
-  <configuration Name="Common" c_preprocessor_definitions="__EXOS__;MAIN_THREAD_STACK=1024;MAIN_THREAD_PRI=0;EXOS_NO_NET;LCD_SPLC501C;LCD_DPI=100" linker_section_placement_file="$(ProjectDir)/support/lpc17/lpc1769_flash_placement.xml"/>
-  <configuration Name="NANO2 Debug" inherited_configurations="Debug;NANO2"/>
-  <configuration Name="NANO2 Release" inherited_configurations="NANO2;Release"/>
-  <configuration Name="NANO2" c_preprocessor_definitions="BOARD_NANO10" hidden="Yes"/>
+  <configuration Name="Common" c_preprocessor_definitions="__EXOS__;MAIN_THREAD_STACK=1024;MAIN_THREAD_PRI=0;EXOS_NO_NET;LCD_DPI=100" linker_section_placement_file="$(ProjectDir)/support/lpc17/lpc1769_flash_placement.xml"/>
   <configuration Name="LandTiger" c_preprocessor_definitions="BOARD_LANDTIGER" hidden="Yes"/>
   <configuration Name="LandTiger Debug" inherited_configurations="Debug;LandTiger"/>
   <configuration Name="LandTiger Release" inherited_configurations="LandTiger;Release"/>
-  <configuration Name="LPC1766-STK" c_preprocessor_definitions="BOARD_LPC1766STK;LCD_SSP_MODULE=1" hidden="Yes"/>
+  <configuration Name="LPC1766-STK" c_preprocessor_definitions="BOARD_LPC1766STK;LCD_SSP_MODULE=1;LCD_SPLC501C" hidden="Yes"/>
   <configuration Name="LPC1766-STK Debug" inherited_configurations="Debug;LPC1766-STK"/>
   <configuration Name="LPC1766-STK Release" inherited_configurations="LPC1766-STK;Release"/>
+  <configuration Name="MINILCD" c_preprocessor_definitions="BOARD_MINILCD;LCD_SSP_MODULE=0;LCD_ST7565R" hidden="Yes"/>
+  <configuration Name="MINILCD Debug" inherited_configurations="Debug;MINILCD"/>
+  <configuration Name="MINILCD Release" inherited_configurations="MINILCD;Release"/>
 </solution>
