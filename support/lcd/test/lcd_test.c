@@ -38,20 +38,27 @@ enum
 
 static void _bar ( int fix8, int x, int y)
 {
-    int barlen = (30 * fix8) >> 8
+    if ( fix8 < 0) fix8 = 0;
+    if ( fix8 > 0x100) fix8 = 0x100;
+
+    int barhei = 10;
+    int barlen = (30 * fix8) >> 8;
     int px, py;
     int xi = x >> 3;
     int lastx = x + barlen;
     int xe = lastx >> 3;
-    int tail = (-1 << (lastx & 7)) & 0xff;
-    for ( py=0; py<8; py++)
+    int tail = (-1 << (8 - (lastx & 7))) & 0xff;
+
+    for ( py=y; py<(y+barhei); py++)
     {
-        unsigned char* ptr = linear + (x >> 3) + y * (128 >> 3);
+        unsigned char* ptr = linear + xi + py * (128 >> 3);
         for ( px=xi; px<xe; px++)
             ptr [ px] = 0xff;
         ptr [ px] = tail;
     }
 }
+
+static void _clean_bilevel ( char* scr) { for (int i=0; i<(128*64/8); i++) scr [i] = 0; }
 
 void main()
 {
@@ -110,17 +117,15 @@ void main()
                 }
                 factor--; 
                 if ( factor == 0)
-                {
-                   for (i=0; i<(128*64/8); i++) screen [i] = 0;
                    status = ST_DASH;
-                }
                 break;
 
             case ST_DASH:
                 screen_mode = SCR_BILEVEL;
-                bar ( ain [ 0] >> 8, 8, 16);
-                bar ( ain [ 1] >> 8, 8, 32);
-                bar ( ain [ 2] >> 8, 8, 48);
+                _clean_bilevel ( linear);
+                _bar ( ain [ 0] >> 8, 8, 16);
+                _bar ( ain [ 1] >> 8, 8, 32);
+                _bar ( ain [ 2] >> 8, 8, 48);
                 break;
          }
 
@@ -165,20 +170,20 @@ static inline void _tile_rotate ( unsigned char* dst, unsigned long* src, int sr
     d6 = *src; src += src_stride;
     d7 = *src; src += src_stride;
 
-    bit_exchange ( &d0, &d4, 0x0f0f0f0f, 4);
-    bit_exchange ( &d1, &d5, 0x0f0f0f0f, 4);
-    bit_exchange ( &d2, &d6, 0x0f0f0f0f, 4);
-    bit_exchange ( &d3, &d7, 0x0f0f0f0f, 4);
+    _bit_exchange ( &d0, &d4, 0x0f0f0f0f, 4);
+    _bit_exchange ( &d1, &d5, 0x0f0f0f0f, 4);
+    _bit_exchange ( &d2, &d6, 0x0f0f0f0f, 4);
+    _bit_exchange ( &d3, &d7, 0x0f0f0f0f, 4);
 
-    bit_exchange ( &d0, &d2, 0x33333333, 2);
-    bit_exchange ( &d1, &d3, 0x33333333, 2);
-    bit_exchange ( &d4, &d6, 0x33333333, 2);
-    bit_exchange ( &d5, &d7, 0x33333333, 2);
+    _bit_exchange ( &d0, &d2, 0x33333333, 2);
+    _bit_exchange ( &d1, &d3, 0x33333333, 2);
+    _bit_exchange ( &d4, &d6, 0x33333333, 2);
+    _bit_exchange ( &d5, &d7, 0x33333333, 2);
 
-    bit_exchange ( &d0, &d1, 0x55555555, 1);
-    bit_exchange ( &d2, &d3, 0x55555555, 1);
-    bit_exchange ( &d4, &d5, 0x55555555, 1);
-    bit_exchange ( &d6, &d7, 0x55555555, 1);
+    _bit_exchange ( &d0, &d1, 0x55555555, 1);
+    _bit_exchange ( &d2, &d3, 0x55555555, 1);
+    _bit_exchange ( &d4, &d5, 0x55555555, 1);
+    _bit_exchange ( &d6, &d7, 0x55555555, 1);
 
     dst [0]  = d7;       dst [1] = d6;        dst [2] = d5;        dst [3] = d4;
     dst [4]  = d3;       dst [5] = d2;        dst [6] = d1;        dst [7] = d0;
@@ -199,7 +204,7 @@ static void _bilevel_linear_2_lcd ( unsigned char* dst, unsigned char* src, int 
         unsigned char* dst_bar_ptr = &dst [ bar * w];
         unsigned char* src_bar_ptr = &src [ bar * 8 * (w>>3)];
         for (x=0; x<w; x+=32)
-            tile_rotate ( &dst_bar_ptr[x], 
+            _tile_rotate ( &dst_bar_ptr[x], 
                           (unsigned long*) &src_bar_ptr[ x >> 3], w >> 5);
     }
 }
@@ -212,22 +217,21 @@ static void _gray8_2_lcdbits ( unsigned char* dst, unsigned char* src, int w, in
     const static unsigned char dither_tab [ 8 * 8] = 
     {
 //Color 0    1    2    3    4    5    6    7
-        /*0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01, // Frame 0
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01, // Frame 0
         0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01, // Frame 1
         0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01, // Frame 2
         0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x01, // Frame 3
         0x00,0x00,0x00,0x00,0x01,0x01,0x01,0x01, // Frame 4
         0x00,0x00,0x00,0x01,0x01,0x01,0x01,0x01, // Frame 5
         0x00,0x00,0x01,0x01,0x01,0x01,0x01,0x01, // Frame 6
-        0x00,0x00,0x01,0x01,0x01,0x01,0x01,0x01  // frame 7 */
-        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01, // Frame 0
-        0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x01, // Frame 1
+        0x00,0x00,0x01,0x01,0x01,0x01,0x01,0x01  // frame 7         0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01, // Frame 0
+        /*0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x01, // Frame 1
         0x00,0x00,0x00,0x00,0x01,0x01,0x01,0x01, // Frame 2
         0x00,0x00,0x00,0x01,0x01,0x01,0x01,0x01, // Frame 3
         0x00,0x00,0x01,0x01,0x01,0x01,0x01,0x01, // Frame 4
         0x00,0x01,0x01,0x01,0x01,0x01,0x01,0x01, // Frame 5
         0x00,0x01,0x01,0x01,0x01,0x01,0x01,0x01, // Frame 6
-        0x00,0x01,0x01,0x01,0x01,0x01,0x01,0x01  // frame 7 
+        0x00,0x01,0x01,0x01,0x01,0x01,0x01,0x01  // frame 7 */
     };
 
     const unsigned char* dither = &dither_tab [ (frame & 0x7) << 3];
