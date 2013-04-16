@@ -224,7 +224,7 @@ static int _setup_adc(int unit)
 	PINSEL3bits.P1_31 = 3; // AN5
 	ch_mask = (1<<5);
 #elif defined BOARD_LPC1766STK
-	c_hmask = 0;
+	ch_mask = 0;
 #else
 #error "Unsupported board"
 #endif
