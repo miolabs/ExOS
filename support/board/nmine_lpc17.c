@@ -222,9 +222,10 @@ static int _setup_adc(int unit)
 	ch_mask = 0xdc; // six inputs
 #elif defined BOARD_LANDTIGER
 	PINSEL3bits.P1_31 = 3; // AN5
-	ch_mask = (1<<5);
+	ch_mask = 1<<5;
 #elif defined BOARD_LPC1766STK
-	ch_mask = 0;
+	PINSEL3bits.P1_31 = 3; // AN5
+	ch_mask = 1<<5;
 #else
 #error "Unsupported board"
 #endif

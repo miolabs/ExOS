@@ -1,5 +1,5 @@
 #include <kernel/machine/hal.h>
-#include <CMSIS/LPC17xx.h>
+#include <CMSIS/LPC11xx.h>
 #include <support/board_hal.h>
 
 void __machine_init()

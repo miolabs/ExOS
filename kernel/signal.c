@@ -100,7 +100,7 @@ EXOS_SIGNAL __signal_alloc()
 	kernel_panic(KERNEL_ERROR_NO_SIGNALS_AVAILABLE);
 }
 
-static EXOS_SIGNAL _sig_alloc(unsigned long *args)
+static int _sig_alloc(unsigned long *args)
 {
 	return __signal_alloc();
 }
