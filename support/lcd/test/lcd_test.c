@@ -1,17 +1,17 @@
 
 #include <support/lcd/lcd.h>
+#include <support/lcd/mono.h>
 #include <kernel/thread.h>
 #include <support/adc_hal.h>
+#include <assert.h>
 #include "kernel/timer.h"
 
 extern void lcd_dump_screen ( char* pixels);
 
-static unsigned char screen [(128*64)/8];
-static unsigned char linear [(128*64)/8];
+static unsigned char scrrot [(128*64)/8];
+static unsigned int  screen [(128*64)/32];
 
-static const unsigned char xkuty_bw [];
-
-static void _bilevel_linear_2_lcd ( unsigned char* dst, unsigned char* src, int w, int h);
+static void _bilevel_linear_2_lcd ( unsigned char* dst, unsigned int* src, int w, int h);
 
 enum
 {
@@ -20,6 +20,8 @@ enum
     ST_LOGO_OUT,
     ST_DASH
 };
+
+static const unsigned char xkuty_bw [];
 
 const static unsigned char _bmp_bar [];
 
@@ -35,7 +37,7 @@ static inline int _saturate ( int* v, int min, int max)
 
 static void _bar (  int w, int h, int fx8, int x, int y)
 {
-    int px, py;
+    /*int px, py;
     int xi = x >> 3;
     _saturate ( &fx8, 0, 0x100);
     int barlen = ((w * fx8) + 0xff) >> 8;
@@ -45,15 +47,16 @@ static void _bar (  int w, int h, int fx8, int x, int y)
 
     for ( py=y; py<(y+h); py++)
     {
-        unsigned char* ptr = linear + xi + py * (128 >> 3);
+        unsigned char* ptr = screen + xi + py * (128 >> 3);
         for ( px=xi; px<xe; px++)
             ptr [ px] = 0xff;
         ptr [ px] = tail;
-    }
+    }*/
 }
 
 static void _bitmap_bar ( const unsigned char* bits, int w, int h, int fx8, int x, int y)
 {
+/*
     int px, py;
     int xi = x >> 3;
     _saturate ( &fx8, 0, 0x100);
@@ -63,12 +66,13 @@ static void _bitmap_bar ( const unsigned char* bits, int w, int h, int fx8, int 
 
     for ( py=0; py < h; py++)
     {
-        unsigned char* wr = &linear [ xi + ((py + y ) * (128>>3))];
+        unsigned char* wr = &screen [ xi + ((py + y ) * (128>>3))];
         const unsigned char* rd = bits + py * (w >> 3);
         for ( px=0; px < (barlen >> 3); px++)
             wr [ px] = rd [ px];
         wr [ px] = rd [ px] & tail;
     }
+*/
 }
 
 static inline int _xkutybit ( int x, int y, int t)
@@ -77,23 +81,23 @@ static inline int _xkutybit ( int x, int y, int t)
 	int r = xx*xx + yy*yy;
 	return ( r < t) ? 1 : 0;
 }
+
 void _xkuty_effect ( int t)
 {
-    int i = 0, x = 0, y = 0;
+    int i=0, x=0, y=0, sx=0;
     for (y=0; y<64; y++)
 	{
-        for ( x=0; x<128; x+=8)
+        for ( x=0; x<128; x+=32)
         {
-        	int bits;
-			bits = _xkutybit ( x+0, y, t) << 7;
-			bits |= _xkutybit ( x+1, y, t) << 6;
-			bits |= _xkutybit ( x+2, y, t) << 5;
-			bits |= _xkutybit ( x+3, y, t) << 4;
-			bits |= _xkutybit ( x+4, y, t) << 3;
-			bits |= _xkutybit ( x+5, y, t) << 2;
-			bits |= _xkutybit ( x+6, y, t) << 1;
-			bits |= _xkutybit ( x+7, y, t) << 0;
-			linear [i] = bits & xkuty_bw [i];
+			const unsigned char* tmp = &xkuty_bw [i << 2];
+			unsigned int pic = (tmp[0]<<24) | (tmp[1]<<16) | (tmp[2]<<8) | tmp[3];
+        	int bits = _xkutybit ( x+0, y, t);
+			for (sx=0; sx<32; sx++)
+			{
+				bits <<= 1;
+				bits |= _xkutybit ( x+sx, y, t);
+			}
+			screen [i] = bits & pic;
             i++;
         }
 	}
@@ -108,11 +112,12 @@ static inline int sensor_scale ( int in, int base, int top)
 }
 
 
-static void _clean_bilevel ( char* scr) 
+static void _clean_bilevel ( unsigned int* scr, int w, int h) 
 { 
-	unsigned long* ptr = (unsigned long*) scr;
-	for (int i=0; i<(128*64/32); i++) ptr [i] = 0; 
+	for (int i=0; i<((w*h)/32); i++) scr [i] = 0; 
 }
+
+void test_poly ();
 
 void main()
 {
@@ -125,13 +130,15 @@ void main()
 
     hal_adc_initialize(1000, 16);
 
-    _clean_bilevel ( screen);
-
     int frame = 0;
     unsigned long time = exos_timer_time();
+
     while (1)
     {
         volatile unsigned long time_c, time_b, time_a = exos_timer_time();
+
+        _clean_bilevel ( screen, 128, 64);
+
         unsigned short ain[6];
 
         // 0 - Throtle  (16 bits)
@@ -151,6 +158,7 @@ void main()
                 break;
 
             case ST_LOGO_SHOW:
+                _xkuty_effect ( 100*100);
                 if ( frame == 2*80)
                     status = ST_LOGO_OUT;
                 break;
@@ -163,7 +171,6 @@ void main()
                 break;
 
             case ST_DASH:
-                _clean_bilevel ( linear);
                 _bitmap_bar ( _bmp_bar, 48, 16, sensor_scale( ain[0], 0x1000, 0xa000), 8, 8);
                 _bitmap_bar ( _bmp_bar, 48, 16, sensor_scale( ain[1], 0x6800, 0xa2d0), 8, 24);
                 _bitmap_bar ( _bmp_bar, 48, 16, sensor_scale( ain[2], 0x6900, 0x89e0), 8, 40);
@@ -180,21 +187,24 @@ void main()
                  break;
          }
 
-        _bilevel_linear_2_lcd ( screen, linear, 128, 64);
+		test_poly ();
 
-        time_b = exos_timer_time();
+		// Screen conversion
+		_bilevel_linear_2_lcd ( scrrot, screen, 128, 64);
 
-        lcd_dump_screen ( screen);
+		time_b = exos_timer_time();
 
-        time_c = exos_timer_time();
+		lcd_dump_screen ( scrrot);
 
-        frame++;
+		time_c = exos_timer_time();
 
-        int elap = exos_timer_elapsed( time);
-        time = exos_timer_time();
-        int rem = 16 - elap;
-        if ( rem > 0)
-            exos_thread_sleep( rem);
+		frame++;
+
+		int elap = exos_timer_elapsed( time);
+		time = exos_timer_time();
+		int rem = 16 - elap;
+		if ( rem > 0)
+			exos_thread_sleep( rem);
     }
 }
 
@@ -206,7 +216,7 @@ static inline void _bit_exchange ( unsigned * a, unsigned * b, unsigned mask, in
     *a = r;
 }
 
-static inline void _tile_rotate ( unsigned char* dst, unsigned long* src, int src_stride)
+static inline void _tile_rotate ( unsigned char* dst, unsigned int* src, int src_stride)
 {
     unsigned d0, d1, d2, d3, d4, d5, d6, d7;
     d0 = *src; src += src_stride;
@@ -233,27 +243,27 @@ static inline void _tile_rotate ( unsigned char* dst, unsigned long* src, int sr
     _bit_exchange ( &d4, &d5, 0x55555555, 1);
     _bit_exchange ( &d6, &d7, 0x55555555, 1);
 
-    dst [0]  = d7;       dst [1] = d6;        dst [2] = d5;        dst [3] = d4;
-    dst [4]  = d3;       dst [5] = d2;        dst [6] = d1;        dst [7] = d0;
-    dst [8]  = d7 >> 8;  dst [9]  = d6 >> 8;  dst [10] = d5 >> 8;  dst [11] = d4 >> 8;
-    dst [12] = d3 >> 8;  dst [13] = d2 >> 8;  dst [14] = d1 >> 8;  dst [15] = d0 >> 8;
-    dst [16] = d7 >> 16; dst [17] = d6 >> 16; dst [18] = d5 >> 16; dst [19] = d4 >> 16;
-    dst [20] = d3 >> 16; dst [21] = d2 >> 16; dst [22] = d1 >> 16; dst [23] = d0 >> 16;
-    dst [24] = d7 >> 24; dst [25] = d6 >> 24; dst [26] = d5 >> 24; dst [27] = d4 >> 24;
-    dst [28] = d3 >> 24; dst [29] = d2 >> 24; dst [30] = d1 >> 24; dst [31] = d0 >> 24;
+    dst [0]  = d7 >> 24;  dst [1] = d6 >> 24;   dst [2] = d5 >> 24;   dst [3] = d4 >> 24;
+    dst [4]  = d3 >> 24;  dst [5] = d2 >> 24;   dst [6] = d1 >> 24;   dst [7] = d0 >> 24;
+    dst [8]  = d7 >> 16;  dst [9]  = d6 >> 16;  dst [10] = d5 >> 16;  dst [11] = d4 >> 16;
+    dst [12] = d3 >> 16;  dst [13] = d2 >> 16;  dst [14] = d1 >> 16;  dst [15] = d0 >> 16;
+    dst [16] = d7 >> 8;   dst [17] = d6 >> 8;   dst [18] = d5 >> 8;   dst [19] = d4 >> 8;
+    dst [20] = d3 >> 8;   dst [21] = d2 >> 8;   dst [22] = d1 >> 8;   dst [23] = d0 >> 8;
+    dst [24] = d7 >> 0;   dst [25] = d6 >> 0;   dst [26] = d5 >> 0;   dst [27] = d4 >> 0;
+    dst [28] = d3 >> 0;   dst [29] = d2 >> 0;   dst [30] = d1 >> 0;   dst [31] = d0 >> 0;
 }
 
-static void _bilevel_linear_2_lcd ( unsigned char* dst, unsigned char* src, int w, int h)
+static void _bilevel_linear_2_lcd ( unsigned char* dst, unsigned int* src, int w, int h)
 {
     int bar, x;
     const int bars = h >> 3;
     for (bar=0; bar<bars; bar++)
     {
         unsigned char* dst_bar_ptr = &dst [ bar * w];
-        unsigned char* src_bar_ptr = &src [ bar * 8 * (w>>3)];
+        unsigned int*  src_bar_ptr = &src [ bar * 8 * (w>>5)];
         for (x=0; x<w; x+=32)
             _tile_rotate ( &dst_bar_ptr[x], 
-                          (unsigned long*) &src_bar_ptr[ x >> 3], w >> 5);
+                           &src_bar_ptr[x>>5], w >> 5);
     }
 }
 
@@ -428,3 +438,148 @@ static const unsigned char xkuty_bw [] = { 0x0,
 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 
 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0 };
 
+const short tabsin [512] = {
+0, 201, 402, 603, 803, 1004, 1205, 1405, 
+1605, 1805, 2005, 2204, 2404, 2602, 2801, 2998, 
+3196, 3393, 3589, 3785, 3980, 4175, 4369, 4563, 
+4756, 4948, 5139, 5329, 5519, 5708, 5896, 6083, 
+6269, 6455, 6639, 6822, 7005, 7186, 7366, 7545, 
+7723, 7900, 8075, 8249, 8423, 8594, 8765, 8934, 
+9102, 9268, 9434, 9597, 9759, 9920, 10079, 10237, 
+10393, 10548, 10701, 10853, 11002, 11150, 11297, 11442, 
+11585, 11726, 11866, 12003, 12139, 12273, 12406, 12536, 
+12665, 12791, 12916, 13038, 13159, 13278, 13395, 13510, 
+13622, 13733, 13842, 13948, 14053, 14155, 14255, 14353, 
+14449, 14543, 14634, 14723, 14810, 14895, 14978, 15058, 
+15136, 15212, 15286, 15357, 15426, 15492, 15557, 15618, 
+15678, 15735, 15790, 15842, 15892, 15940, 15985, 16028, 
+16069, 16107, 16142, 16175, 16206, 16234, 16260, 16284, 
+16305, 16323, 16339, 16353, 16364, 16372, 16379, 16382, 
+16383, 16382, 16379, 16372, 16364, 16353, 16339, 16323, 
+16305, 16284, 16260, 16234, 16206, 16175, 16142, 16107, 
+16069, 16028, 15985, 15940, 15892, 15842, 15790, 15735, 
+15678, 15618, 15557, 15492, 15426, 15357, 15286, 15212, 
+15136, 15058, 14978, 14895, 14810, 14723, 14634, 14543, 
+14449, 14353, 14255, 14155, 14053, 13948, 13842, 13733, 
+13622, 13510, 13395, 13278, 13159, 13038, 12916, 12791, 
+12665, 12536, 12406, 12273, 12139, 12003, 11866, 11726, 
+11585, 11442, 11297, 11150, 11002, 10853, 10701, 10548, 
+10393, 10237, 10079, 9920, 9759, 9597, 9434, 9268, 
+9102, 8934, 8765, 8594, 8423, 8249, 8075, 7900, 
+7723, 7545, 7366, 7186, 7005, 6822, 6639, 6455, 
+6269, 6083, 5896, 5708, 5519, 5329, 5139, 4948, 
+4756, 4563, 4369, 4175, 3980, 3785, 3589, 3393, 
+3196, 2998, 2801, 2602, 2404, 2204, 2005, 1805, 
+1605, 1405, 1205, 1004, 803, 603, 402, 201, 
+0, -201, -402, -603, -803, -1004, -1205, -1405, 
+-1605, -1805, -2005, -2204, -2404, -2602, -2801, -2998, 
+-3196, -3393, -3589, -3785, -3980, -4175, -4369, -4563, 
+-4756, -4948, -5139, -5329, -5519, -5708, -5896, -6083, 
+-6269, -6455, -6639, -6822, -7005, -7186, -7366, -7545, 
+-7723, -7900, -8075, -8249, -8423, -8594, -8765, -8934, 
+-9102, -9268, -9434, -9597, -9759, -9920, -10079, -10237, 
+-10393, -10548, -10701, -10853, -11002, -11150, -11297, -11442, 
+-11585, -11726, -11866, -12003, -12139, -12273, -12406, -12536, 
+-12665, -12791, -12916, -13038, -13159, -13278, -13395, -13510, 
+-13622, -13733, -13842, -13948, -14053, -14155, -14255, -14353, 
+-14449, -14543, -14634, -14723, -14810, -14895, -14978, -15058, 
+-15136, -15212, -15286, -15357, -15426, -15492, -15557, -15618, 
+-15678, -15735, -15790, -15842, -15892, -15940, -15985, -16028, 
+-16069, -16107, -16142, -16175, -16206, -16234, -16260, -16284, 
+-16305, -16323, -16339, -16353, -16364, -16372, -16379, -16382, 
+-16383, -16382, -16379, -16372, -16364, -16353, -16339, -16323, 
+-16305, -16284, -16260, -16234, -16206, -16175, -16142, -16107, 
+-16069, -16028, -15985, -15940, -15892, -15842, -15790, -15735, 
+-15678, -15618, -15557, -15492, -15426, -15357, -15286, -15212, 
+-15136, -15058, -14978, -14895, -14810, -14723, -14634, -14543, 
+-14449, -14353, -14255, -14155, -14053, -13948, -13842, -13733, 
+-13622, -13510, -13395, -13278, -13159, -13038, -12916, -12791, 
+-12665, -12536, -12406, -12273, -12139, -12003, -11866, -11726, 
+-11585, -11442, -11297, -11150, -11002, -10853, -10701, -10548, 
+-10393, -10237, -10079, -9920, -9759, -9597, -9434, -9268, 
+-9102, -8934, -8765, -8594, -8423, -8249, -8075, -7900, 
+-7723, -7545, -7366, -7186, -7005, -6822, -6639, -6455, 
+-6269, -6083, -5896, -5708, -5519, -5329, -5139, -4948, 
+-4756, -4563, -4369, -4175, -3980, -3785, -3589, -3393, 
+-3196, -2998, -2801, -2602, -2404, -2204, -2005, -1805, 
+-1605, -1405, -1205, -1004, -803, -603, -402, -201};
+
+#if 1
+#define PHI  ((1.0f+2.23f)/2.0f)
+#define BB  (short)((1.0f/PHI)*30.0f) 
+#define CC  (short)((2.0f-PHI)*30.0f)
+#define ONE (short)(30.0f)
+static const short dode [ 12 * 5 * 3] =
+{
+ CC,  0,  ONE,   BB,  BB,  BB,  0,  ONE,  CC, -BB,  BB,  BB, -CC,  0,  ONE,
+-CC,  0,  ONE,  -BB, -BB,  BB,  0, -ONE,  CC,  BB, -BB,  BB,  CC,  0,  ONE,
+ CC,  0, -ONE,   BB, -BB, -BB,  0, -ONE, -CC, -BB, -BB, -BB, -CC,  0, -ONE,
+-CC,  0, -ONE,  -BB,  BB, -BB,  0,  ONE, -CC,  BB,  BB, -BB,  CC,  0, -ONE,
+ 0,  ONE, -CC,   0,  ONE,  CC,  BB,  BB,  BB,  ONE,  CC,  0,  BB,  BB, -BB,
+ 0,  ONE,  CC,   0,  ONE, -CC, -BB,  BB, -BB, -ONE,  CC,  0, -BB,  BB,  BB,
+ 0, -ONE, -CC,   0, -ONE,  CC, -BB, -BB,  BB, -ONE, -CC,  0, -BB, -BB, -BB,
+ 0, -ONE,  CC,   0, -ONE, -CC,  BB, -BB, -BB,  ONE, -CC,  0,  BB, -BB,  BB,
+ ONE,  CC,  0,   BB,  BB,  BB,  CC,  0,  ONE,  BB, -BB,  BB,  ONE, -CC,  0, 
+ ONE, -CC,  0,   BB, -BB, -BB,  CC,  0, -ONE,  BB,  BB, -BB,  ONE,  CC,  0,
+-ONE,  CC,  0,  -BB,  BB, -BB,  -CC,  0, -ONE, -BB, -BB, -BB, -ONE, -CC, 0,
+-ONE, -CC,  0,  -BB, -BB,  BB, -CC,  0,  ONE, -BB,  BB,  BB, -ONE,  CC,  0
+};
+
+
+static const unsigned int pattern1 [8] = { 0xaaaaaaaa, 0x55555555, 0xaaaaaaaa, 0x55555555, 0xaaaaaaaa, 0x55555555, 0xaaaaaaaa,0x55555555};
+static const unsigned int pattern0 [8] = { 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,0xffffffff};
+
+
+static inline void spin2d ( int* x, int *y, int sn, int cs)
+{
+	int xx = (*x * cs - *y * sn) >> 12;
+	    *y = (*x * sn + *y * cs) >> 12;
+		*x = xx;
+}
+
+static inline void spin3d ( int* x, int* y, int* z, int* trig)
+{
+	spin2d ( y, z, trig[0], trig[1]);
+	spin2d ( x, z, trig[2], trig[3]);
+	spin2d ( x, y, trig[4], trig[5]);
+}
+
+static int axis_x = 0, axis_y = 0, axis_z = 0;
+static int zoom = 0;
+
+static MONO_POLY_COORDS penta[] = {{0, 30}, {28, 9}, {17, -24}, {-17, -24}, {-28, 9}};
+
+static int poly_init = 0;
+static MONO_POLY polygon;
+static MONO_POLY_COORDS coords[] = {{64,2},{104,32},{84,52},{44,52},{24,32}};
+
+void test_poly ()
+{
+	int trig [6] = { tabsin[axis_x & 511] >> 2, tabsin[ (axis_x+128) & 511] >> 2,
+	                 tabsin[axis_y & 511] >> 2, tabsin[ (axis_y+128) & 511] >> 2,
+					 tabsin[axis_z & 511] >> 2, tabsin[ (axis_z+128) & 511] >> 2};
+
+	if ( poly_init == 0)
+		mono_filled_polygon_create ( &polygon, 128, 64), poly_init = 1;
+
+	int sc = 0x1800 + ( tabsin[zoom & 511]>>4);
+	for ( int j=0; j<12; j++) 
+		for ( int i=0; i<5; i++)
+		{
+			int x = dode[j*5*3+i*3+0];//penta[i].x;
+			int y = dode[j*5*3+i*3+1];//penta[i].y;
+			int z = dode[j*5*3+i*3+2];//0;
+			spin3d(&x,&y,&z, trig);
+			coords[i].x = 64 + ((x * sc) >> 12);
+			coords[i].y = 32 + ((y * sc) >> 12);
+
+			mono_filled_polygon ( &polygon, screen, (j&1) ? pattern0 : pattern0, 
+								  coords, sizeof(coords)/sizeof(MONO_POLY_COORDS));
+		}
+
+	axis_x += 1;
+	axis_y += 2;
+	axis_z += 3;
+	zoom   += 10;
+}
+#endif
