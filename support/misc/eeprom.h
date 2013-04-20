@@ -13,4 +13,7 @@ int eeprom_read_geometry(int *psize, int *ppagesize);
 EEPROM_RESULT eeprom_read(unsigned char *buf, int offset, int length);
 EEPROM_RESULT eeprom_write(unsigned char *buf, int offset, int length);
 
+void eeprom_lock_i2c();
+void eeprom_unlock_i2c();
+
 #endif

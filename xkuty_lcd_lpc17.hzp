@@ -14,6 +14,9 @@
             <file file_name="kernel/machine/lpc17/comm_lpc17.c"/>
           </folder>
           <file file_name="kernel/machine/hal.c"/>
+          <folder Name="armv7m">
+            <file file_name="kernel/machine/armv7m/kernel_armv7m.c"/>
+          </folder>
         </folder>
         <file file_name="kernel/startup.c"/>
         <file file_name="kernel/list.c"/>
@@ -63,9 +66,9 @@
           <file file_name="support/lpc17/uart.c"/>
           <file file_name="support/lpc17/ssp.c"/>
           <file file_name="support/lpc17/adc.c"/>
+          <file file_name="support/lpc17/can.c"/>
         </folder>
         <folder Name="board">
-          <file file_name="support/board/nmine_lpc17.c"/>
           <file file_name="support/board/drivers_generic_lpc17.c"/>
         </folder>
         <configuration Name="Common" build_intermediate_directory=".output/$(Configuration)/support" build_output_directory=".output/$(Configuration)/support"/>
@@ -77,7 +80,10 @@
         </folder>
       </folder>
       <folder Name="xkuty">
-        <file file_name="xkuty/main.c"/>
+        <folder Name="board">
+          <file file_name="xkuty/board/board_lcd_lpc17.c"/>
+        </folder>
+        <file file_name="xkuty/main_lcd.c"/>
       </folder>
     </folder>
     <folder Name="System Files">
@@ -102,7 +108,7 @@
   <configuration Name="LPC1766-STK" c_preprocessor_definitions="BOARD_LPC1766STK;LCD_SSP_MODULE=1;LCD_SPLC501C" hidden="Yes"/>
   <configuration Name="LPC1766-STK Debug" inherited_configurations="Debug;LPC1766-STK"/>
   <configuration Name="LPC1766-STK Release" inherited_configurations="LPC1766-STK;Release"/>
-  <configuration Name="MINILCD" c_preprocessor_definitions="BOARD_MINILCD;LCD_SSP_MODULE=0;LCD_ST7565R" hidden="Yes"/>
+  <configuration Name="MINILCD" c_preprocessor_definitions="BOARD_MINILCD;LCD_SSP_MODULE=0;LCD_ST7565R;LCD_CAN_BUS=1" hidden="Yes"/>
   <configuration Name="MINILCD Debug" inherited_configurations="Debug;MINILCD"/>
   <configuration Name="MINILCD Release" inherited_configurations="MINILCD;Release"/>
 </solution>

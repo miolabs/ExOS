@@ -22,6 +22,30 @@ void CAN_IRQHandler(void)
 {
 	if (_can_modules_enabled & (1<<0)) _can_interrupt(0);
     if (_can_modules_enabled & (1<<1)) _can_interrupt(1);
+	if (_fcan->FCANIE & 1)
+	{
+		CAN_MSG msg;
+		unsigned long mask = _fcan->FCANIC0;
+		if (mask != 0) 
+		{
+			for(int i = 0; i < 32; i++)
+			{
+				if ((mask & (1 << i)) &&
+					hal_fullcan_read_msg(i, &msg))
+					hal_can_received_handler(i, &msg);
+			}
+		}
+		mask = _fcan->FCANIC1;
+		if (mask != 0) 
+		{
+			for(int i = 0; i < 32; i++)
+			{
+				if ((mask & (1 << i)) &&
+					hal_fullcan_read_msg(32 + i, &msg))
+					hal_can_received_handler(32 + i, &msg);
+			}
+		}
+	}
 }
 
 int hal_can_initialize(int module, int bitrate)
@@ -100,11 +124,11 @@ static void _can_interrupt(int module)
 		CAN_MSG msg;
 		msg.Data.u32[0] = can->RDA;
 		msg.Data.u32[1] = can->RDB;
-		msg.EP.Value = CAN_EP_FROM_ID(module, can->RID);
+		msg.EP = (CAN_EP) { .Id = can->RID, .Bus = module };
 		msg.Length = can->RFSbits.DLC;
 		msg.Flags = can->RFSbits.RTR;
 		can->CMR = CAN_CMR_RRB; // Release Receive Buffer
-		hal_can_received_handler(&msg);
+		hal_can_received_handler(-1, &msg);
 	}
 
 	if (icr.DOI)
@@ -276,24 +300,28 @@ int hal_fullcan_setup(HAL_FULLCAN_SETUP_CALLBACK callback, void *state)
 		msg++;
 	}
 
+	_fcan->FCANIE = 1;
 	_fcan->AFMR = AFMR_eFCAN;
 	return count;
 }
 
-int hal_fullcan_read_msg(int index, CAN_BUFFER *buf)
+int hal_fullcan_read_msg(int index, CAN_MSG *msg)
 {
-	FCAN_MSG *msg = (FCAN_MSG *)(_af_ram + _fcan->ENDofTable);
+	FCAN_MSG *msg_table = (FCAN_MSG *)(_af_ram + _fcan->ENDofTable);
 	while(1)
 	{
-		unsigned long status = msg[index].Status;
+		unsigned long status = msg_table[index].Status;
 		int sem = (status & FCAN_MSG_SEM_MASK) >> FCAN_MSG_SEM_BIT;
 		if (sem != 1)
 		{
-			msg[index].Status = status & ~FCAN_MSG_SEM_MASK;
-			FCAN_MSG temp = msg[index];
-			if (msg[index].StatusBits.SEM == 0)
+			msg_table[index].Status = status & ~FCAN_MSG_SEM_MASK;
+			FCAN_MSG temp = msg_table[index];
+			if (msg_table[index].StatusBits.SEM == 0)
 			{
-				*buf = temp.Data;
+				msg->EP = (CAN_EP) { .Id = temp.StatusBits.ID_High, .Bus = temp.StatusBits.SCC };
+				msg->Length = temp.StatusBits.DLC;
+				msg->Data = temp.Data;
+				msg->Flags = 0;
 				return (sem == 3);
 			}
 		}
