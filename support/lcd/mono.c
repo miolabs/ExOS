@@ -167,21 +167,111 @@ static inline int _box_intersection ( MONO_BOX* res, MONO_BOX* a, MONO_BOX* b)
 void mono_draw_sprite ( unsigned int* canvas, int w, int h,
                         const MONO_SPR* spr, int x, int y)
 {
-	MONO_BOX scr = { -x,-y,-x+w-1,-y+h-1};
-	MONO_BOX sub = { 0,0,spr->w-1,spr->h-1};
+	MONO_BOX scr = { -x, -x+w-1,  -y, -y+h-1};
+	MONO_BOX sub = { 0,  spr->w-1, 0, spr->h-1};
 	MONO_BOX res;
 
-	int did = _box_intersection ( &res, &scr, &sub);
-/*
-	if ( sprspan_i == sprspan_e)
+	if ( !_box_intersection ( &res, &scr, &sub))
+		return;
+
+	int spr_1st_line = res.yi;
+	int sprspan_x    = res.xi >> 5;
+	int shift        = x & 0x1f;
+	// On screen result
+	res.xi += x;
+	res.xe += x;
+	res.yi += y;
+	res.ye += y;
+
+#define SPAN_HEAD    (1<<1)
+#define SPAN_TAIL    (1<<2)
+#define SPAN_HEAD_TAIL (SPAN_HEAD | SPAN_TAIL)
+
+	const unsigned int ones = 0xffffffff;
+	int scrspan_i = res.xi >> 5;
+	int scrspan_e = res.xe >> 5;
+	int mod_i     = res.xi & 0x1f;
+	int mod_e     = res.xe & 0x1f;
+	
+	int span_flags = 0;
+	if ( mod_i != 0)
+		span_flags |= SPAN_HEAD;
+	if ( mod_e != 0x1f)
+		span_flags |= SPAN_TAIL;
+
+	unsigned int* scrline  = canvas + (w >> 5) * res.yi;
+	const unsigned int* sprline  = spr->bitmap + spr->stride_bitmap * spr_1st_line;
+	const unsigned int* maskline = spr->mask   + spr->stride_mask   * spr_1st_line;
+	unsigned int mask_i = ones >> mod_i;
+	unsigned int mask_e = ones << (31 - mod_e);
+
+	if ((( span_flags & SPAN_HEAD_TAIL) == SPAN_HEAD_TAIL)  && ( scrspan_i == scrspan_e))
 	{
+		// Narrow sprite special case     			 
+		for ( y=res.yi;y<=res.ye;  y++)
+		{
+			unsigned int sprmask = maskline [sprspan_x] >> shift;
+			unsigned int sprpix  = sprline  [sprspan_x] >> shift;
+			unsigned int mask = mask_i & mask_e & sprmask;
+			scrline[scrspan_i] = ( sprpix & mask) | ( scrline[scrspan_i] & (~mask));
+			scrline  += (w >> 5);
+			sprline  += spr->stride_bitmap;
+			maskline += spr->stride_mask;
+		}
 	}
 	else
 	{
+		// General blit case
+		for ( y=res.yi; y<=res.ye; y++)
+		{
+			int tscrx = scrspan_i;
+			int tsprx = sprspan_x;
+			unsigned int sprpix, sprmask, mask;
+			if (( span_flags & SPAN_HEAD) != 0)
+			{
+				sprpix  = sprline  [tsprx] >> shift;
+				sprmask = maskline [tsprx] >> shift;
+				mask = mask_i & sprmask;
+				scrline[ tscrx ] = ( sprpix & mask) | ( scrline[tscrx] & (~mask));
+                tscrx++;
+			}
+			
+			// Central spans
+			if ( shift != 0)
+				while ( tscrx < scrspan_e)
+				{ 
+					sprpix  = (sprline  [tsprx] >> shift) | (sprline  [tsprx+1] << (32-shift));
+					sprmask = (maskline [tsprx] >> shift) | (maskline [tsprx+1] << (32-shift));
+					scrline[tscrx] = ( sprpix & sprmask) | ( scrline[tscrx] & (~sprmask));
+					tscrx++, tsprx++;
+				}
+			else
+				while ( tscrx < scrspan_e)
+				{ 
+					sprpix = sprline  [tsprx], sprmask = maskline [tsprx];
+					scrline[tscrx] = ( sprpix & sprmask) | ( scrline[tscrx] & (~sprmask));
+					tscrx++, tsprx++;
+				}
 
+			if (( span_flags & SPAN_TAIL) != 0)
+			{
+				sprpix  = sprline  [tsprx];
+				sprmask = maskline [tsprx];
+				if ( shift) 
+					sprpix <<= (32-shift), sprmask <<= (32-shift);
+				mask =  mask_e & sprmask;
+				scrline[tscrx] = ( sprpix & mask) | ( scrline[tscrx] & (~mask));
+			}
+
+			// Next line
+            scrline  += (w >> 5);
+			sprline  += spr->stride_bitmap;
+			maskline += spr->stride_mask;
+		}	// for ( y...)
 	}
-*/
+
 }
+
 
 
 
