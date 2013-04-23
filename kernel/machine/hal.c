@@ -57,7 +57,7 @@ __weak int _str_comp(const char *str1, const char *str2)
 	return (a < b) ? - 1 : 1;
 }
 
-static inline _reverse_str ( char* str, int len)
+static inline void _reverse_str ( char* str, int len)
 {
 	int p = 0;
 	int q = len-1;
