@@ -77,5 +77,14 @@ EEPROM_RESULT eeprom_write(unsigned char *buf, int offset, int length)
 	return error;
 }
 
+__attribute__((__weak__))
+void eeprom_lock_i2c()
+{
+}
+
+__attribute__((__weak__))
+void eeprom_unlock_i2c()
+{
+}
 
 
