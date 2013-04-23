@@ -3,12 +3,27 @@
 #include <kernel/event.h>
 #include <support/can_hal.h>
 
-#define RELAY_PORT LPC_GPIO2
-#define RELAY1 (1<<6)
-#define RELAY2 (1<<7)
+#if defined BOARD_MIORELAY1
+
+#define OUTPUT_PORT LPC_GPIO2
+#define HEADL_MASK (1<<6)
+#define TAILL_MASK (1<<7)
 
 #define LED_PORT LPC_GPIO3
 #define LED_MASK (1<<0)
+
+#elif defined BOARD_XKUTYCPU1
+
+#define OUTPUT_PORT LPC_GPIO2
+#define HEADL_MASK (1<<7)
+#define TAILL_MASK (1<<0)
+
+#define LED_PORT LPC_GPIO3
+#define LED_MASK (1<<0)
+
+#else
+#error "Unsupported board"
+#endif
 
 static const CAN_EP _eps[] = { {0x200, 0}, {0x201, 0} };
 
@@ -24,18 +39,20 @@ void main()
 	hal_can_initialize(0, 250000);
 	hal_fullcan_setup(_can_setup, NULL);
 
+#if defined BOARD_MIORELAY1
 	// enable CAN term
 	LPC_GPIO2->DIR |= 1<<8;
 	LPC_GPIO2->MASKED_ACCESS[1<<8] = 1<<8;
+#endif
 
 	LED_PORT->DIR |= LED_MASK;
-	LED_PORT->MASKED_ACCESS[LED_MASK] = LED_MASK;	// led off
+	LED_PORT->MASKED_ACCESS[LED_MASK] = 0;	// led on
 
-	RELAY_PORT->DIR |= RELAY1 | RELAY2;
-	RELAY_PORT->MASKED_ACCESS[RELAY1 | RELAY2] = 0;
+	OUTPUT_PORT->DIR |= HEADL_MASK | TAILL_MASK;
+	OUTPUT_PORT->MASKED_ACCESS[HEADL_MASK | TAILL_MASK] = 0;	// FIXME: HEADL should be left active
 	while(1)
 	{
-		if (0 == exos_event_wait(&_can_event, 1000))
+		if (0 == exos_event_wait(&_can_event, 100))
 		{
 			// TODO
 		}
@@ -48,8 +65,8 @@ void main()
 			hal_can_send((CAN_EP) { .Id = 0x300 }, &buf, 8, CANF_NONE);
 		}
 
-		RELAY_PORT->MASKED_ACCESS[RELAY1] = (_relay_state & (1<<0)) ? RELAY1 : 0;
-		RELAY_PORT->MASKED_ACCESS[RELAY2] = (_relay_state & (1<<1)) ? RELAY2 : 0;
+		OUTPUT_PORT->MASKED_ACCESS[HEADL_MASK] = (_relay_state & (1<<0)) ? HEADL_MASK : 0;
+		OUTPUT_PORT->MASKED_ACCESS[TAILL_MASK] = (_relay_state & (1<<1)) ? TAILL_MASK : 0;
 	}
 }
 
