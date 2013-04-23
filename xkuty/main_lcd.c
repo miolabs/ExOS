@@ -16,7 +16,6 @@ static const CAN_EP _eps[] = {
 
 static EXOS_EVENT _can_event;
 
-
 static unsigned char scrrot [(128*64)/8];
 static unsigned int  screen [(128*64)/32];
 
@@ -32,7 +31,8 @@ enum
     ST_LOGO_IN = 1,
     ST_LOGO_SHOW,
     ST_LOGO_OUT,
-    ST_DASH
+    ST_DASH,
+	ST_DEBUG,
 };
 
 static const unsigned int xkuty_bw [];
@@ -96,7 +96,6 @@ static inline int _sensor_scale ( int in, int base, int top)
 	return (pos * 0x100) / len;
 }
 
-
 static char _tmp [20];
 
 static void _draw_text ( const char* text, const MONO_SPR* font, int x, int y)
@@ -150,6 +149,23 @@ static void _battery_bar ( int level_fx8)
 }
 
 
+typedef struct
+{
+	unsigned short curr;				// Analogic inputs, 12 bits
+    unsigned short scaled;				// Input re-escaled to def_min/def_max
+	unsigned short max, min;			// Run time register
+	unsigned short def_min, def_max;	// Factory registered min and max
+} ANALOGIC;
+
+static ANALOGIC _ain[6]=
+{
+	{0,0,0,0xffff, 587, 3109},	// 0 - Throtle  (16 bits)
+	{0,0,0,0xffff, 1765,2400},	// 1 - Brake left (16 bits)
+	{0,0,0,0xffff, 1765,2730},	// 2 - Brake right (16 bits)
+	{0,0,0,0,0,0},				// 3 - NOT USED
+	{0,0,0,0xffff, 0,4095},		// 4 - Start (bool)
+	{0,0,0,0xffff, 0,4095},		// 5 - Horn  (bool)
+};
 
 void main()
 {
@@ -183,18 +199,17 @@ void main()
 			unsigned int time = exos_timer_time();
 			time -= time_base;
 
-			unsigned short ain[6];
-			// 0 - Throtle  (16 bits)
-			// 1 - Brake left (16 bits)
-			// 2 - Brake right (16 bits)
-			// 4 - Start (bool)
-			// 5 - Horn  (bool)
-			for(int i = 0; i < 6; i++)
-				ain[i] = hal_adc_read(i);
+			for(int i=0; i<6; i++)
+			{
+				_ain[i].curr   = hal_adc_read(i) >> 4;	// 12 bit resolution
+                _ain[i].scaled = _sensor_scale ( _ain[i].curr, _ain[i].def_min, _ain[i].def_max);
+				if ( _ain[i].curr > _ain[i].max) _ain[i].max = _ain[i].curr;
+				if ( _ain[i].curr < _ain[i].min) _ain[i].min = _ain[i].curr;
+			}
 
 			unsigned char relays = 0;
-			if (ain[3] < 0x8000) relays |= (1<<0);
-			if (ain[4] < 0x8000) relays |= (1<<1);
+			if (_ain[3].curr < 0x800) relays |= (1<<0);
+			if (_ain[4].curr < 0x800) relays |= (1<<1);
 
 			CAN_BUFFER buf = (CAN_BUFFER) { relays, 2, 3, 4, 5, 6, 7, 8 };
 			hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
@@ -225,7 +240,7 @@ void main()
 					break;
 
 				case ST_DASH:
-					speed       = frame & 0xff;
+					speed       = _ain[0].curr >> 3; //frame & 0xff;
 					distance_hi = frame;
 					distance_lo = 7;
 					int l = sprintf ( _tmp, "%d", speed);
@@ -241,6 +256,21 @@ void main()
 					mono_draw_sprite ( screen, 128, 64, &_kmh_spr, 100,4);
 					mono_draw_sprite ( screen, 128, 64, &_km_spr, 108,41);
 					break;
+
+				case ST_DEBUG:
+					for (i=0; i<6; i++)
+					{
+						int y=12*((i<3)?i:i-1);
+						if(i!=3)
+						{
+							if(( frame>>4) & 1)
+								sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].max);
+							else
+								sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].min);
+							_draw_text ( _tmp, &_font_spr_small, 0, y);
+						}
+					}
+					break;					
 			 }
 
 			//test_mono ();
