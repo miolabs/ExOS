@@ -68,5 +68,6 @@ void lcdcon_initialize(LCD_PROPERTIES *lcd);
 void lcdcon_gpo_initialize();
 void lcdcon_gpo(LCDCON_GPO gpo);
 void lcdcon_gpo_backlight(int enable);
+void lcd_dump_screen(unsigned char* pixels);
 
 #endif // LCD_LCD_H

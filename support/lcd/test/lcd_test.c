@@ -7,7 +7,7 @@
 #include <assert.h>
 #include "kernel/timer.h"
 
-extern void lcd_dump_screen ( char* pixels);
+//void lcd_dump_screen ( char* pixels);
 
 static unsigned char scrrot [(128*64)/8];
 static unsigned int  screen [(128*64)/32];
@@ -229,7 +229,7 @@ void main()
 
 		time_b = exos_timer_time();
 
-		lcd_dump_screen ( scrrot);
+		lcd_dump_screen ((unsigned char*) scrrot);
 
 		time_c = exos_timer_time();
 

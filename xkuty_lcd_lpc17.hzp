@@ -105,7 +105,7 @@
   <configuration Name="LandTiger" c_preprocessor_definitions="BOARD_LANDTIGER" hidden="Yes"/>
   <configuration Name="LandTiger Debug" inherited_configurations="Debug;LandTiger"/>
   <configuration Name="LandTiger Release" inherited_configurations="LandTiger;Release"/>
-  <configuration Name="LPC1766-STK" c_preprocessor_definitions="BOARD_LPC1766STK;LCD_SSP_MODULE=1;LCD_SPLC501C" hidden="Yes"/>
+  <configuration Name="LPC1766-STK" c_preprocessor_definitions="BOARD_LPC1766STK;LCD_SSP_MODULE=1;LCD_SPLC501C;LCD_CAN_BUS=0" hidden="Yes"/>
   <configuration Name="LPC1766-STK Debug" inherited_configurations="Debug;LPC1766-STK"/>
   <configuration Name="LPC1766-STK Release" inherited_configurations="LPC1766-STK;Release"/>
   <configuration Name="MINILCD" c_preprocessor_definitions="BOARD_MINILCD;LCD_SSP_MODULE=0;LCD_ST7565R;LCD_CAN_BUS=1" hidden="Yes"/>

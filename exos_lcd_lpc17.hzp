@@ -14,6 +14,9 @@
             <file file_name="kernel/machine/lpc17/comm_lpc17.c"/>
           </folder>
           <file file_name="kernel/machine/hal.c"/>
+          <folder Name="armv7m" file_name="">
+            <file file_name="kernel/machine/armv7m/kernel_armv7m.c"/>
+          </folder>
         </folder>
         <file file_name="kernel/startup.c"/>
         <file file_name="kernel/list.c"/>
@@ -69,13 +72,14 @@
           <file file_name="support/board/drivers_generic_lpc17.c"/>
         </folder>
         <configuration Name="Common" build_intermediate_directory=".output/$(Configuration)/support" build_output_directory=".output/$(Configuration)/support"/>
-        <folder Name="lcd">
+        <folder Name="lcd" file_name="">
           <file file_name="support/lcd/lcd.c"/>
           <file file_name="support/lcd/splc501c.c"/>
           <folder Name="test">
             <file file_name="support/lcd/test/lcd_test.c"/>
           </folder>
           <file file_name="support/lcd/st7565r.c"/>
+          <file file_name="support/lcd/mono.c"/>
         </folder>
       </folder>
     </folder>
