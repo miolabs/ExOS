@@ -24,7 +24,7 @@ static void _bilevel_linear_2_lcd ( unsigned char* dst, unsigned int* src, int w
 
 static void _clean_bilevel ( unsigned int* scr, int w, int h) 
 { 
-	for (int i=0; i<((w*h)/32); i++) scr [i] = 0x55555555; 
+	for (int i=0; i<((w*h)/32); i++) scr [i] = 0; 
 }
 
 enum
@@ -172,8 +172,7 @@ void main()
 
 	hal_adc_initialize(1000, 16);
 
-    unsigned long time = exos_timer_time();
-
+    unsigned int time_base = exos_timer_time();
 	while(1)
 	{
 		if (0 == exos_event_wait(&_can_event, 100))
@@ -181,6 +180,9 @@ void main()
 		}
 		else
 		{
+			unsigned int time = exos_timer_time();
+			time -= time_base;
+
 			unsigned short ain[6];
 			// 0 - Throtle  (16 bits)
 			// 1 - Brake left (16 bits)
@@ -196,70 +198,60 @@ void main()
 
 			CAN_BUFFER buf = (CAN_BUFFER) { relays, 2, 3, 4, 5, 6, 7, 8 };
 			hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
-		}
 
-		// Show inputs
-        _clean_bilevel ( screen, 128, 64);
+			// Show inputs
+			_clean_bilevel ( screen, 128, 64);
 
-		// General switch; insert new screens here
-        switch ( status)
-        {
-            case ST_LOGO_IN:
-                _xkuty_effect ( factor * factor);
-                factor++; if ( factor > 75) status = ST_LOGO_SHOW;
-                break;
+			// General switch; insert new screens here
+			switch ( status)
+			{
+				case ST_LOGO_IN:
+					factor = time/16;
+					_xkuty_effect ( factor * factor);
+					if ( factor > 75) status = ST_LOGO_SHOW;
+					break;
 
-            case ST_LOGO_SHOW:
-                _xkuty_effect ( 100*100);
-                if ( frame == 2*80)
-                    status = ST_LOGO_OUT;
-                break;
+				case ST_LOGO_SHOW:
+					_xkuty_effect ( 100*100);
+					if ( time >= 1000*2)
+						status = ST_LOGO_OUT;
+					break;
 
-            case ST_LOGO_OUT:
-                _xkuty_effect ( factor * factor);
-                factor--; 
-                if ( factor == 0)
-                   status = ST_DASH, frame = 0;
-                break;
+				case ST_LOGO_OUT:
+                	factor = 75-((time-1000*2)/16);
+					_xkuty_effect ( factor * factor);
+					if ( factor == 0)
+					   status = ST_DASH, frame = 0;
+					break;
 
-            case ST_DASH:
-
-				speed       = frame & 0xff;
-				distance_hi = frame;
-				distance_lo = 7;
-				int l = sprintf ( _tmp, "%d", speed);
-				_draw_text ( _tmp, &_font_spr_big,   124 - (24*l), 13);
-				l = sprintf ( _tmp, "%d", distance_hi);
-				_tmp[l] = '.', l++;
-				l += sprintf ( &_tmp[l], "%d", distance_lo);
-				_draw_text ( _tmp, &_font_spr_small, 130 - (_font_spr_small.w * l), 50);
+				case ST_DASH:
+					speed       = frame & 0xff;
+					distance_hi = frame;
+					distance_lo = 7;
+					int l = sprintf ( _tmp, "%d", speed);
+					_draw_text ( _tmp, &_font_spr_big,   124 - (24*l), 13);
+					l = sprintf ( _tmp, "%d", distance_hi);
+					_tmp[l] = '.', l++;
+					l += sprintf ( &_tmp[l], "%d", distance_lo);
+					_draw_text ( _tmp, &_font_spr_small, 130 - (_font_spr_small.w * l), 50);
 	
-				battery_level_fx8 = frame & 0xff;
-				_battery_bar ( battery_level_fx8);
+					battery_level_fx8 = frame & 0xff;
+					_battery_bar ( battery_level_fx8);
 
-                mono_draw_sprite ( screen, 128, 64, &_kmh_spr, 100,4);
-                mono_draw_sprite ( screen, 128, 64, &_km_spr, 108,41);
+					mono_draw_sprite ( screen, 128, 64, &_kmh_spr, 100,4);
+					mono_draw_sprite ( screen, 128, 64, &_km_spr, 108,41);
+					break;
+			 }
 
-                break;
-         }
+			//test_mono ();
 
-		//test_mono ();
+			// Screen conversion & dump
+			_bilevel_linear_2_lcd ( scrrot, screen, 128, 64);
+			lcd_dump_screen ( scrrot);
 
-		// Screen conversion
-        _clean_bilevel ( screen, 128, 64);
-
-		_bilevel_linear_2_lcd ( scrrot, screen, 128, 64);
-
-		lcd_dump_screen ( scrrot);
-
-		frame++;
-
-		int elap = exos_timer_elapsed( time);
-		time = exos_timer_time();
-		int rem = 32 - elap;
-		if ( rem > 0)
-			exos_thread_sleep( rem);
-	}
+			frame++;
+		}	// if (0 == exos_event_wait(&_can_event, 100))
+	}	// while (1)
 }
 
 void hal_can_received_handler(int index, CAN_MSG *msg)
