@@ -67,4 +67,7 @@
   <configuration Name="MioRelay1 Release" inherited_configurations="Flash;MioRelay1;Release;THUMB"/>
   <configuration Name="MioRelay1 Debug" inherited_configurations="Debug;Flash;MioRelay1;THUMB"/>
   <configuration Name="Common" c_preprocessor_definitions="__EXOS__;EXOS_NO_NET;MAIN_THREAD_STACK=512;MAIN_THREAD_PRI=0"/>
+  <configuration Name="Xkuty-cpu1" c_preprocessor_definitions="BOARD_XKUTYCPU1" hidden="Yes"/>
+  <configuration Name="Xkuty-cpu1 Debug" inherited_configurations="Debug;Flash;THUMB;Xkuty-cpu1"/>
+  <configuration Name="Xkuty-cpu1 Release" inherited_configurations="Flash;Release;THUMB;Xkuty-cpu1"/>
 </solution>
