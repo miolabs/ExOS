@@ -3,6 +3,24 @@
 
 #include "cpu.h"
 
+typedef struct                          /* Common Registers                   */
+{
+	volatile unsigned long IntStat;
+	volatile unsigned long IntTCStat;
+	volatile unsigned long IntTCClear;
+	volatile unsigned long IntErrStat;
+	volatile unsigned long IntErrClr;
+	volatile unsigned long RawIntTCStat;
+	volatile unsigned long RawIntErrStat;
+	volatile unsigned long EnbldChns;
+	volatile unsigned long SoftBReq;
+	volatile unsigned long SoftSReq;
+	volatile unsigned long SoftLBReq;
+	volatile unsigned long SoftLSReq;
+	volatile unsigned long Config;
+	volatile unsigned long Sync;
+} DMA_MODULE;
+
 #define DMACConfig_E 1
 
 typedef struct

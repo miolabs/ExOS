@@ -1,7 +1,6 @@
 #include "usb_otg.h"
 #include "cpu.h"
 #include <support/board_hal.h>
-#include <CMSIS/LPC17xx.h>
 
 void ohci_isr() __attribute__((__weak__));
 void usb_device_isr() __attribute__((__weak__));

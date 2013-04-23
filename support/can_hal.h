@@ -15,17 +15,18 @@ typedef struct
 	unsigned Bus : 2;
 } CAN_EP;
 
-#define CAN_EP_FROM_ID(bus, id) (((bus) << 29) | ((id) & 0x3FFFFFFF))
+#define CAN_EP_FROM_ID(bus, id) (((bus) << 29) | ((id) & 0x3FFFFFFF) | ()
 
 typedef enum
 {
 	CANF_NONE = 0,
 	CANF_RTR = 1<<0,
+	CANF_EXTID = 1<<1,
 	CANF_PRI_LOW = 1<<4,
 	CANF_PRI_MED = 1<<5,
 	CANF_PRI_HIGH = 1<<6,
 	CANF_PRI_ANY = (CANF_PRI_LOW | CANF_PRI_MED | CANF_PRI_LOW),
-	CANF_EXTID = 1<<7,
+	CANF_RXINT = 1<<7,
 } CAN_MSG_FLAGS;
 
 typedef struct
@@ -38,7 +39,7 @@ typedef struct
 
 typedef void (* HAL_CAN_HANDLER)(int module);
 
-typedef int(* HAL_FULLCAN_SETUP_CALLBACK)(int index, CAN_EP *ep, void *state);
+typedef int(* HAL_FULLCAN_SETUP_CALLBACK)(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
 
 // prototypes
 int hal_can_initialize(int module, int bitrate);

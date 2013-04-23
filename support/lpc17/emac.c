@@ -4,8 +4,6 @@
 #include "emac.h"
 #include "emac_mem.h"
 #include "pincon.h"
-#include "cpu.h"
-#include <CMSIS/LPC17xx.h>
 
 static void *_handler_state;
 static void (*_handler)(void *) = (void *)0;
@@ -31,24 +29,24 @@ int emac_initialize(ETH_MAC *mac, void (*handler)(void *), void *state)
 	// clock selection
 	
 	// pinsel for RMII
-	PINSEL2bits.P1_0 = 1;	// ENET_TXD0
-	PINSEL2bits.P1_1 = 1;	// ENET_TXD1
-	PINSEL2bits.P1_4 = 1;	// ENET_TX_EN
+	pincon_setfunc(1, 0, 1);	// 1_0 = ENET_TXD0
+	pincon_setfunc(1, 1, 1);	// 1_1 = ENET_TXD1
+	pincon_setfunc(1, 4, 1);	// 1_4 = ENET_TX_EN
 
 	if (LPC_EMAC->Module_ID == OLD_EMAC_MODULE_ID)
 	{
 		// On Rev '-' P1.6 MUST BE SET (See ERRATA Ethernet.1)
-		PINSEL2bits.P1_6 = 1;	// ENET_TX_CLK
+		pincon_setfunc(1, 6, 1);	// 1_6 = ENET_TX_CLK
 	}
 
-	PINSEL2bits.P1_8 = 1;	// ENET_CRS
-	PINSEL2bits.P1_9 = 1;	// ENET_RXD0
-	PINSEL2bits.P1_10 = 1;	// ENET_RXD1
-	PINSEL2bits.P1_14 = 1;	// ENET_RX_ER
-	PINSEL2bits.P1_15 = 1;	// ENET_REF_CLK
+	pincon_setfunc(1, 8, 1);	//PINSEL2bits.P1_8 = 1;	// ENET_CRS
+	pincon_setfunc(1, 9, 1);	//PINSEL2bits.P1_9 = 1;	// ENET_RXD0
+	pincon_setfunc(1, 10, 1);	//PINSEL2bits.P1_10 = 1;	// ENET_RXD1
+	pincon_setfunc(1, 14, 1);	//PINSEL2bits.P1_14 = 1;	// ENET_RX_ER
+	pincon_setfunc(1, 15, 1);	//PINSEL2bits.P1_15 = 1;	// ENET_REF_CLK
 
-	PINSEL3bits.P1_16 = 1;	// ENET_MDC
-	PINSEL3bits.P1_17 = 1;	// ENET_MDIO
+	pincon_setfunc(1, 16, 1);	//PINSEL3bits.P1_16 = 1;	// ENET_MDC
+	pincon_setfunc(1, 17, 1);	//PINSEL3bits.P1_17 = 1;	// ENET_MDIO
 
 	// module initialization
 	LPC_EMAC->MAC1 = MAC1_RESET_TX | MAC1_RESET_MCS_TX | 

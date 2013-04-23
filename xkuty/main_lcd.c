@@ -4,7 +4,7 @@
 #include <kernel/event.h>
 #include <support/can_hal.h>
 
-static int _can_setup(int index, CAN_EP *ep, void *state);
+static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
 
 static const CAN_EP _eps[] = {
 	{0x300, LCD_CAN_BUS}, {0x301, LCD_CAN_BUS} };
@@ -58,11 +58,12 @@ void hal_can_received_handler(int index, CAN_MSG *msg)
 	exos_event_reset(&_can_event);
 }
 
-static int _can_setup(int index, CAN_EP *ep, void *state)
+static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state)
 {
 	int count = sizeof(_eps) / sizeof(CAN_EP);
 	if (index < count)
 	{
+		*pflags = CANF_RXINT;
 		*ep = _eps[index];
 		return 1;
 	}

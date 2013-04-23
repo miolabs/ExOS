@@ -1,7 +1,7 @@
 #ifndef LPC17_USB_OTG_H
 #define LPC17_USB_OTG_H
 
-#include <CMSIS/LPC17xx.h>
+#include "cpu.h"
 
 #define USBIntSt_USB_INT_REQ_LP 0x1
 #define USBIntSt_USB_INT_REQ_HP 0x2
@@ -80,6 +80,10 @@ typedef struct _OTG_CLK_BITS
 #define OTGClkSt_OTG_CLK_ON 0x8
 #define OTGClkSt_AHB_CLK_ON 0x10
 
+
+#if (__TARGET_PROCESSOR >= 1770)
+#define OTGStCtrl StCtrl
+#endif
 
 // prototypes
 void usb_otg_initialize_host();

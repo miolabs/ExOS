@@ -171,7 +171,7 @@ typedef struct
 
 #define FCAN_DISABLE (1<<12)
 #define FCAN_INTEN (1<<11)
-#define FCAN_MAKE_ID(scc, id) (((scc) << 13) | ((id) & 0x7FF) | (1<<27))
+#define FCAN_MAKE_ID(scc, id, inten) (((scc) << 13) | ((id) & 0x7FF) | ((inten) ? 1<<27 : 0))
 
 typedef struct
 {

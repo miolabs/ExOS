@@ -60,20 +60,16 @@ int uart_initialize(unsigned module, UART_CONTROL_BLOCK *cb)
 	switch(module)
 	{
 		case 0:
-			PCLKSEL0bits.PCLK_UART0 = 1; // PCLK = CCLK
 			NVIC_EnableIRQ(UART0_IRQn);
 			break;
 		case 1:
-			PCLKSEL0bits.PCLK_UART1 = 1; // PCLK = CCLK
 			NVIC_EnableIRQ(UART1_IRQn);
 			break;
 		case 2:
-			PCLKSEL1bits.PCLK_UART2 = 1; // PCLK = CCLK
 			LPC_SC->PCONP |= PCONP_PCUART2;
 			NVIC_EnableIRQ(UART2_IRQn);
 			break;
 		case 3:
-			PCLKSEL1bits.PCLK_UART3 = 1; // PCLK = CCLK
 			LPC_SC->PCONP |= PCONP_PCUART3;
 			NVIC_EnableIRQ(UART3_IRQn);
 			break;

@@ -40,10 +40,9 @@
       </folder>
       <file file_name="main.c"/>
       <folder Name="support">
-        <folder Name="lpc11">
+        <folder Name="lpc11" file_name="">
           <file file_name="support/lpc11/c_can.c"/>
           <file file_name="support/lpc11/ssp.c"/>
-          <file file_name="support/lpc11/timer32.c"/>
         </folder>
       </folder>
     </folder>

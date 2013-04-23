@@ -12,8 +12,8 @@ TCP_IO_ENTRY _socket;
 unsigned char _buffer[1024];
 
 #define TCP_BUFFER_SIZE 8192 // tiny window for stress
-unsigned char _rcv_buffer[TCP_BUFFER_SIZE];
-unsigned char _snd_buffer[TCP_BUFFER_SIZE];
+unsigned char _rcv_buffer[TCP_BUFFER_SIZE]; 
+unsigned char _snd_buffer[TCP_BUFFER_SIZE] __attribute__((section(".dma")));
 
 // NOTE: hook called by net stack
 void net_board_set_mac_address(NET_ADAPTER *adapter, int index)

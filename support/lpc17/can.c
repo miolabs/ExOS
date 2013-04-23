@@ -273,20 +273,23 @@ int hal_fullcan_setup(HAL_FULLCAN_SETUP_CALLBACK callback, void *state)
 	while(count < 64)
 	{
 		CAN_EP ep1, ep2;
-		if (!callback(count, &ep1, state))
+		CAN_MSG_FLAGS flags1 = CANF_NONE;
+		CAN_MSG_FLAGS flags2 = CANF_NONE;
+
+		if (!callback(count, &ep1, &flags1, state))
 			break;
 		count++;
 
-		if (!callback(count, &ep2, state))
+		if (!callback(count, &ep2, &flags2, state))
 		{
-			*id_ptr++ = (FCAN_MAKE_ID(ep1.Bus, ep1.Id) << 16)
+			*id_ptr++ = (FCAN_MAKE_ID(ep1.Bus, ep1.Id, flags1 & CANF_RXINT) << 16)
 				| FCAN_DISABLE;
 			break;
 		}
 		else
 		{
-			*id_ptr++ = (FCAN_MAKE_ID(ep1.Bus, ep1.Id) << 16) 
-				| FCAN_MAKE_ID(ep2.Bus, ep2.Id);
+			*id_ptr++ = (FCAN_MAKE_ID(ep1.Bus, ep1.Id, flags1 & CANF_RXINT) << 16) 
+				| FCAN_MAKE_ID(ep2.Bus, ep2.Id, flags2 & CANF_RXINT);
 			count++;
 		}
 	}

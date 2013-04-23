@@ -2,7 +2,6 @@
 // by Miguel Fides
 
 #include "cpu.h"
-#include <CMSIS/LPC17xx.h>
 
 // for pre-CMSIS compatibility
 int cpu_cclk()

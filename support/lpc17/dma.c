@@ -2,16 +2,16 @@
 // by Miguel Fides
 
 #include "dma.h"
-#include <CMSIS/LPC17xx.h>
 
 static DMA_CHANNEL *_channels[DMA_CHANNEL_COUNT] = { 
-	(DMA_CHANNEL *)0x50004100, (DMA_CHANNEL *)0x50004120, 
-	(DMA_CHANNEL *)0x50004140, (DMA_CHANNEL *)0x50004160, 
-	(DMA_CHANNEL *)0x50004180, (DMA_CHANNEL *)0x500041A0, 
-	(DMA_CHANNEL *)0x500041C0, (DMA_CHANNEL *)0x500041E0};
+	(DMA_CHANNEL *)LPC_GPDMACH0_BASE, (DMA_CHANNEL *)LPC_GPDMACH1_BASE, 
+	(DMA_CHANNEL *)LPC_GPDMACH2_BASE, (DMA_CHANNEL *)LPC_GPDMACH3_BASE, 
+	(DMA_CHANNEL *)LPC_GPDMACH4_BASE, (DMA_CHANNEL *)LPC_GPDMACH5_BASE, 
+	(DMA_CHANNEL *)LPC_GPDMACH6_BASE, (DMA_CHANNEL *)LPC_GPDMACH7_BASE};
 static DMA_CALLBACK _callbacks[DMA_CHANNEL_COUNT];
 static void *_callback_states[DMA_CHANNEL_COUNT];
 static unsigned char _allocated[DMA_CHANNEL_COUNT];
+static DMA_MODULE *const _dma = (DMA_MODULE *)LPC_GPDMA;
 
 void dma_initialize()
 {
@@ -19,9 +19,9 @@ void dma_initialize()
 	LPC_SC->PCONP |= PCONP_PCGPDMA;	// power enable module
 
 	// clear all interrupt flags
-	LPC_GPDMA->DMACIntTCClear = DMA_CHANNEL_MASK;
-	LPC_GPDMA->DMACIntErrClr = DMA_CHANNEL_MASK;
-	LPC_GPDMA->DMACConfig = DMACConfig_E; // enable module, little endian mode
+	_dma->IntTCClear = DMA_CHANNEL_MASK;
+	_dma->IntErrClr = DMA_CHANNEL_MASK;
+	_dma->Config = DMACConfig_E; // enable module, little endian mode
 	for (int ch = 0; ch < DMA_CHANNEL_COUNT; ch++) 
 	{
 		_callbacks[ch] = (void *)0;
@@ -62,7 +62,7 @@ void dma_free_channel(int ch)
 
 void GPDMA_IRQHandler()
 {
-	int int_mask = LPC_GPDMA->DMACIntStat;
+	int int_mask = _dma->IntStat;
 	for(int ch = 0; ch < DMA_CHANNEL_COUNT; ch++)
 	{
 		int ch_mask = (1 << ch);
@@ -72,11 +72,11 @@ void GPDMA_IRQHandler()
 			if (callback)
 			{
 				DMA_CHANNEL *mod = _channels[ch];
-				int tc_done = LPC_GPDMA->DMACIntTCStat & ch_mask ? 1 : 0;
+				int tc_done = _dma->IntTCStat & ch_mask ? 1 : 0;
 				callback(ch, tc_done, _callback_states[ch]);
 			}
-			LPC_GPDMA->DMACIntTCClear = ch_mask;
-			LPC_GPDMA->DMACIntErrClr = ch_mask;
+			_dma->IntTCClear = ch_mask;
+			_dma->IntErrClr = ch_mask;
 		}
 	}
 }
@@ -105,8 +105,8 @@ void dma_channel_enable(int ch, const DMA_TRANSFER *tr,
 	{
 		DMA_CHANNEL *dma_ch = _channels[ch];
 		int mask = (1 << ch);
-		LPC_GPDMA->DMACIntTCClear |= mask;
-		LPC_GPDMA->DMACIntErrClr |= mask;
+		_dma->IntTCClear |= mask;
+		_dma->IntErrClr |= mask;
 		_callbacks[ch] = callback;
 		_callback_states[ch] = state;
 
@@ -126,8 +126,8 @@ void dma_channel_enable_fast(int ch, void *src_ptr, void *dst_ptr, int size,
 	{
 		DMA_CHANNEL *dma_ch = _channels[ch];
 		int mask = (1 << ch);
-		LPC_GPDMA->DMACIntTCClear |= mask;
-		LPC_GPDMA->DMACIntErrClr |= mask;
+		_dma->IntTCClear |= mask;
+		_dma->IntErrClr |= mask;
 		_callbacks[ch] = callback;
 		_callback_states[ch] = state;
 

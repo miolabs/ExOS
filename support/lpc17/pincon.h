@@ -1,7 +1,9 @@
 #ifndef LPC17_PINCON_H
 #define LPC17_PINCON_H
 
-#include <CMSIS/LPC17xx.h>
+#include "cpu.h"
+
+#if (__TARGET_PROCESSOR < 1770)
 
 typedef struct
 {
@@ -222,6 +224,32 @@ typedef struct
 } _PINSEL9bits;
 
 #define PINSEL9bits (*(_PINSEL9bits *) &LPC_PINCON->PINSEL9)
+
+#else
+
+typedef struct
+{
+	unsigned Func:3;
+	unsigned Mode:2;
+	unsigned Hys:1;
+	unsigned Inv:1;
+	unsigned ADMode:1;	// only A/D pins
+	unsigned Filter:1;	// 
+	unsigned Slew:1;
+	unsigned OD:1;
+	unsigned :4;
+	unsigned DACEn:1;
+} _IOCONbits;
+
+#define IOCON_MODE_NOPULL	0
+#define IOCON_MODE_PULL_DOWN	1
+#define IOCON_MODE_PULL_UP	2
+#define IOCON_MODE_REPEATER	3
+
+#endif
+
+// prototypes
+void pincon_setfunc(int port, int pin, int func);
 
 
 #endif // LPC17_PINCON_H

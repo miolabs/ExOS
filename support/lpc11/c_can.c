@@ -138,7 +138,8 @@ int hal_fullcan_setup(HAL_FULLCAN_SETUP_CALLBACK callback, void *state)
 	while(count < C_CAN_MESSAGES)
 	{
 		CAN_EP ep;
-		if (!callback(count, &ep, state))
+		CAN_MSG_FLAGS flags = CANF_NONE;
+		if (!callback(count, &ep, &flags, state))
 			break;
 		
 		count++;
@@ -166,7 +167,7 @@ int hal_fullcan_setup(HAL_FULLCAN_SETUP_CALLBACK callback, void *state)
 			fn->ARB2 = (id >> 16) | C_CAN_ARB2_MSGVAL;
 //		}
 		fn->MCTRL = (8 & C_CAN_MCTRL_DLC_MASK) 
-			| C_CAN_MCTRL_EOB
+			| ((flags & CANF_RXINT) ? C_CAN_MCTRL_EOB : 0)
 			| C_CAN_MCTRL_RXIE;
 	
 		fn->CMDREQ = count; // make transfer

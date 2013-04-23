@@ -3,7 +3,7 @@
 
 #include "emac.h"
 #include "emac_mem.h"
-#include <CMSIS/LPC17xx.h>
+#include "cpu.h"
 #include <net/adapter.h>
 
 #define ETH_BUFFER_SIZE	1514

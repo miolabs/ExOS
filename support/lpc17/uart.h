@@ -1,8 +1,6 @@
 #ifndef LPC_UART_H
 #define LPC_UART_H
 
-#include <CMSIS/LPC17xx.h>
-
 #define UART_MODULE_COUNT 4
 
 #define UART_LCR_WLEN_5BIT (0 << 0)

@@ -12,7 +12,7 @@
 
 static const CAN_EP _eps[] = { {0x200, 0}, {0x201, 0} };
 
-static int _can_setup(int index, CAN_EP *ep, void *state);
+static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
 static EXOS_EVENT _can_event;
 static unsigned char _relay_state = 0;
 
@@ -68,12 +68,13 @@ void hal_can_received_handler(int index, CAN_MSG *msg)
 	exos_event_reset(&_can_event);
 }
 
-static int _can_setup(int index, CAN_EP *ep, void *state)
+static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state)
 {
 	int count = sizeof(_eps) / sizeof(CAN_EP);
 	if (index < count)
 	{
 		*ep = _eps[index];
+		*pflags = CANF_RXINT;
 		return 1;
 	}
 	return 0;
