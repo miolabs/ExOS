@@ -29,10 +29,10 @@ void mono_filled_polygon ( const MONO_POLY* poly, unsigned int* bitmap, const un
 
 typedef struct
 {
-	short         w, h;
+	short          w, h;
 	const unsigned int* bitmap;
 	const unsigned int* mask;
-	short         stride_bitmap, stride_mask;	// Stride in words of uint32
+	short          stride_bitmap, stride_mask;	// Stride in words of uint32
 } MONO_SPR;
 
 void mono_draw_sprite ( unsigned int* canvas, int w, int h,
