@@ -136,6 +136,10 @@ void mono_filled_polygon ( const MONO_POLY* poly, unsigned int* bitmap,
 
 // ---------------------------------------------------------------------------
 
+#define SPAN_HEAD    (1<<1)
+#define SPAN_TAIL    (1<<2)
+#define SPAN_HEAD_TAIL (SPAN_HEAD | SPAN_TAIL)
+
 typedef struct { int xi, xe, yi, ye; } MONO_BOX;
 
 static inline void _swapi ( int* a, int* b)  { int aux=*b; *b=*a; *a=aux; }
@@ -182,10 +186,6 @@ void mono_draw_sprite ( unsigned int* canvas, int w, int h,
 	res.xe += x;
 	res.yi += y;
 	res.ye += y;
-
-#define SPAN_HEAD    (1<<1)
-#define SPAN_TAIL    (1<<2)
-#define SPAN_HEAD_TAIL (SPAN_HEAD | SPAN_TAIL)
 
 	const unsigned int ones = 0xffffffff;
 	int scrspan_i = res.xi >> 5;

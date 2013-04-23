@@ -57,18 +57,56 @@ __weak int _str_comp(const char *str1, const char *str2)
 	return (a < b) ? - 1 : 1;
 }
 
+static inline _reverse_str ( char* str, int len)
+{
+	int p = 0;
+	int q = len-1;
+    while ( p < q)
+	{
+        char c = str[p];
+		str[p] = str[q];
+		str[q] = c;
+        ++p, --q;
+	}
+}
+
 unsigned int __uint32_hexl(char *dst, unsigned long v)
 {
-	char buf[8];
 	unsigned int length = 0;
 	do
 	{
 		int digit = v & 0xF;
 		v >>= 4;
-		buf[length++] = (digit >= 10) ? digit + 'a' - 10 : digit + '0';
+		dst[length++] = (digit >= 10) ? digit + 'a' - 10 : digit + '0';
 	} while(v != 0);
 
-	for (int i = 0; i < length; i++) dst[i] = buf[length - i - 1];
+	_reverse_str ( dst, length);
 	return length;
+}
+
+unsigned int __int32_decl ( char* str, int value) 
+{
+    const static char dig[] = "0123456789abcdefghijklmnopqrstuvwxyz";	// Support radix > 10
+	int radix = 10;
+    int n = 0, neg = 0;
+    unsigned int v;
+    int p, q;
+    if (radix == 10 && value < 0) 
+	{
+        value = -value;
+        neg = 1;
+    }
+    v = value;
+    do 
+	{
+		str[n++] = dig[v%radix];
+		v /= radix;
+    } while (v);
+    if (neg)
+        str[n++] = '-';
+    //str[n] = '\0';
+
+	_reverse_str ( str, n);
+    return n;
 }
 
