@@ -1,15 +1,18 @@
 #ifndef LPC17_CPU_H
 #define LPC17_CPU_H
 
+#define LPC1758 1758
 #define LPC1768 1768
 #define LPC1769 1769
 #define LPC1778 1778
 #define LPC1788 1788
 
-#if (__TARGET_PROCESSOR == LPC1768 || __TARGET_PROCESSOR == LPC1769)
+#if (__TARGET_PROCESSOR == LPC1768 || __TARGET_PROCESSOR == LPC1769 || __TARGET_PROCESSOR == LPC1758 )
 #include <CMSIS/LPC17xx.h>
 #elif (__TARGET_PROCESSOR == LPC1778 || __TARGET_PROCESSOR == LPC1788)
 #include <CMSIS/LPC177x_8x.h>
+#else
+#error "Target processor not listed"
 #endif
 
 #define PCONP_PCTIM0	0x00000002
