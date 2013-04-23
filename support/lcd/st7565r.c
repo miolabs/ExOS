@@ -78,7 +78,7 @@ static void _write_data(unsigned char data[], int length)
 	lcdcon_gpo(LCDCON_GPO_IDLE);
 }
 
-void lcd_dump_screen ( char* pixels)
+void lcd_dump_screen ( unsigned char* pixels)
 {
 	lcdcon_gpo(LCDCON_GPO_CS);
 

@@ -182,6 +182,13 @@ static int _setup_can(int unit)
 			return 1;
 	}
 #elif defined BOARD_LPC1766STK
+	switch(unit)
+	{
+		case 0:
+			PINSEL0bits.P0_0 = 1; // RD1
+			PINSEL0bits.P0_1 = 1; // TD1
+			return 1;
+	}
 	return 0;
 #else
 #error "Unsupported board"
