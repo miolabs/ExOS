@@ -165,14 +165,14 @@ typedef struct
 	unsigned short def_min, def_max;	// Factory registered min and max
 } ANALOGIC;
 
-static ANALOGIC _ain[6]=
+#define NUM_ADC_INPUTS (5)
+static ANALOGIC _ain[NUM_ADC_INPUTS]=
 {
 	{0,0,0,0xffff, 587, 3109},	// 0 - Throtle  (16 bits)
 	{0,0,0,0xffff, 1765,2400},	// 1 - Brake left (16 bits)
 	{0,0,0,0xffff, 1765,2730},	// 2 - Brake right (16 bits)
-	{0,0,0,0,0,0},				// 3 - NOT USED
-	{0,0,0,0xffff, 0,4095},		// 4 - Start (bool)
-	{0,0,0,0xffff, 0,4095},		// 5 - Horn  (bool)
+	{0,0,0,0xffff, 0,4095},		// 3 - Start (bool)
+	{0,0,0,0xffff, 0,4095},		// 4 - Horn  (bool)
 };
 
 #define INTRO_BMP1 xkuty_bw
@@ -254,13 +254,10 @@ void main()
 	int distance_lo       = 0;
 	int battery_level_fx8 = 0;
 
-    //int factor = 0;
-    //int i;
-
 	lcd_initialize();
 	lcdcon_gpo_backlight(1);
 
-	_intro ();
+	//_intro ();
 
 	exos_port_create(&_can_rx_port, NULL);
 	exos_fifo_create(&_can_free_msgs, NULL);
@@ -270,19 +267,25 @@ void main()
 	hal_fullcan_setup(_can_setup, NULL);
 	hal_adc_initialize(1000, 16);
 
-    int status = ST_DASH;
+    int status = ST_DASH; //ST_DEBUG;
 	while(1)
 	{
-		XCPU_MSG *xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 100);
+		XCPU_MSG *xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 50);
 		if (xmsg != NULL)
 		{
 			switch(xmsg->CanMsg.EP.Id)
 			{
+				case 0x300:
+					speed = xmsg->CanMsg.Data.u32[0];
+				    distance_hi = xmsg->CanMsg.Data.u32[1] / 10;
+                    distance_lo = xmsg->CanMsg.Data.u32[1] % 10;
+					break;
 			}
+			exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
 		}
 		else
 		{
-			for(int i=0; i<6; i++)
+			for(int i=0; i<NUM_ADC_INPUTS; i++)
 			{
 				_ain[i].curr   = hal_adc_read(i) >> 4;	// 12 bit resolution
                 _ain[i].scaled = _sensor_scale ( _ain[i].curr, _ain[i].def_min, _ain[i].def_max);
@@ -290,9 +293,11 @@ void main()
 				if ( _ain[i].curr < _ain[i].min) _ain[i].min = _ain[i].curr;
 			}
 			unsigned char relays = 0;
-			if (_ain[3].curr < 0x800) relays |= (1<<0);
-			if (_ain[4].curr < 0x800) relays |= (1<<1);
-			CAN_BUFFER buf = (CAN_BUFFER) { relays, 2, 3, 4, 5, 6, 7, 8 };
+			if (_ain[3].curr < 0x800) 
+				relays |= (1<<0);
+			if (_ain[4].curr < 0x800) 
+				relays |= (1<<1);
+			CAN_BUFFER buf = (CAN_BUFFER) { relays, _ain[0].scaled, _ain[1].scaled, _ain[2].scaled, 5, 6, 7, 8 };
 			hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
 
 			// Show inputs
@@ -302,35 +307,34 @@ void main()
 			switch ( status)
 			{
 				case ST_DASH:
-					speed       = _ain[0].curr >> 3; //frame & 0xff;
-					distance_hi = frame;
-					distance_lo = 7;
-					int l = sprintf ( _tmp, "%d", speed);
-					_draw_text ( _tmp, &_font_spr_big,   124 - (24*l), 13);
-					l = sprintf ( _tmp, "%d", distance_hi);
-					_tmp[l] = '.', l++;
-					l += sprintf ( &_tmp[l], "%d", distance_lo);
-					_draw_text ( _tmp, &_font_spr_small, 130 - (_font_spr_small.w * l), 50);
+					{
+						//speed       = frame & 0xff;
+						//distance_hi = frame, distance_lo = 0;
+						int l = sprintf ( _tmp, "%d", speed);
+						_draw_text ( _tmp, &_font_spr_big,   124 - (24*l), 13);
+						l = sprintf ( _tmp, "%d", distance_hi);
+						_tmp[l] = '.', l++;
+						l += sprintf ( &_tmp[l], "%d", distance_lo);
+						_draw_text ( _tmp, &_font_spr_small, 130 - (_font_spr_small.w * l), 50);
 	
-					battery_level_fx8 = frame & 0xff;
-					_battery_bar ( battery_level_fx8);
+						battery_level_fx8 = frame & 0xff;
+						_battery_bar ( battery_level_fx8);
 
-					mono_draw_sprite ( screen, 128, 64, &_kmh_spr, 100,4);
-					mono_draw_sprite ( screen, 128, 64, &_km_spr, 108,41);
+						mono_draw_sprite ( screen, 128, 64, &_kmh_spr, 100,4);
+						mono_draw_sprite ( screen, 128, 64, &_km_spr, 108,41);
+					}
 					break;
 
 				case ST_DEBUG:
-					for (int i=0; i<6; i++)
+					for (int i=0; i<NUM_ADC_INPUTS; i++)
 					{
-						int y=12*((i<3)?i:i-1);
-						if(i!=3)
-						{
-							if(( frame>>4) & 1)
-								sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].max);
-							else
-								sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].min);
-							_draw_text ( _tmp, &_font_spr_small, 0, y);
-						}
+						int y=12*i;
+						/*if(( frame>>4) & 1)
+							sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].max);
+						else
+							sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].min);*/
+						sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].scaled);
+						_draw_text ( _tmp, &_font_spr_small, 0, y);
 					}
 					break;					
 			 }
@@ -341,7 +345,7 @@ void main()
 			lcd_dump_screen ( scrrot);
 
 			frame++;
-		}	// if (0 == exos_event_wait(&_can_event, 100))
+		}	// if (xmsg != NULL)
 	}	// while (1)
 }
 
