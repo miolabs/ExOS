@@ -69,14 +69,14 @@ static inline void _limit ( int* v, int min, int max)
     if ( *v > max) *v = max;
 }
 
-static inline int _xkutybit ( int x, int y, int t)
+static inline int _xkutybit ( int x, int y, int t, int cx, int cy)
 {
-	int xx = x - 64; int yy = y - 32;
+	int xx = x - cx; int yy = y - cy;
 	int r = xx*xx + yy*yy;
 	return ( r < t) ? 1 : 0;
 }
 
-void _xkuty_effect ( const unsigned int* bitmap, int t)
+void _xkuty_effect ( const unsigned int* bitmap, int t, int cx, int cy)
 {
     int i=0, x=0, y=0, sx=0;
     for (y=0; y<64; y++)
@@ -84,11 +84,11 @@ void _xkuty_effect ( const unsigned int* bitmap, int t)
         for ( x=0; x<128; x+=32)
         {
 			unsigned int pic = bitmap [i];
-        	int bits = _xkutybit ( x+0, y, t);
+        	int bits = _xkutybit ( x+0, y, t, cx, cy);
 			for (sx=0; sx<32; sx++)
 			{
 				bits <<= 1;
-				bits |= _xkutybit ( x+sx, y, t);
+				bits |= _xkutybit ( x+sx, y, t, cx, cy);
 			}
 			screen [i] = bits & pic;
             i++;
@@ -176,50 +176,57 @@ static ANALOGIC _ain[6]=
 };
 
 #define INTRO_BMP1 xkuty_bw
-#define INTRO_BMP2 xkuty2_bw
-//#define INTRO_BMP2 exos_bw
+//#define INTRO_BMP2 xkuty2_bw
+#define INTRO_BMP2 exos_bw
 
-void _intro ()
+static EXOS_TIMER _timer_update;	// Could be local?
+
+static void _intro ()
 {
 	int status = ST_LOGO_IN;
 	int factor = 0;
 	int done = 0;
+
+	//EXOS_SIGNAL timer_sig = exos_signal_alloc();
+	//exos_timer_create(&_timer_update, 20, 20, timer_sig);
+
 	int st_time_base = 0;
     unsigned int time_base = exos_timer_time();
     st_time_base = 0;
 	while (!done)
 	{
+		//exos_signal_wait(timer_sig, EXOS_TIMEOUT_NEVER);
 		unsigned int time = exos_timer_time();
 		time -= time_base;
 		switch ( status)
         {
 			case ST_LOGO_IN:
 				factor = time/16;
-				_xkuty_effect ( INTRO_BMP1, factor * factor);
+				_xkuty_effect ( INTRO_BMP1, factor * factor, 64, 32);
 				if ( factor > 75) status = ST_LOGO_SHOW, st_time_base = time;
 				break;
 			case ST_LOGO_SHOW:
-				_xkuty_effect ( INTRO_BMP1, 100*100);
+				_xkuty_effect ( INTRO_BMP1, 100*100, 64, 32);
 				if ( time >= (st_time_base+1000)) 
 					status = ST_LOGO_OUT, st_time_base = time;
 				break;
 			case ST_LOGO_OUT:
 				factor = 75-((time - st_time_base) / 16);
-				_xkuty_effect ( INTRO_BMP1, factor * factor);
+				_xkuty_effect ( INTRO_BMP1, factor * factor, 64, 32);
 				if ( factor <= 0) status = ST_EXOS_IN, st_time_base = time;
 				break;
 			case ST_EXOS_IN:
-				factor = ((time - st_time_base)/16);
-				_xkuty_effect ( INTRO_BMP2, factor * factor);
-				if ( factor > 75) status = ST_EXOS_SHOW, st_time_base = time;
+				factor = ((time - st_time_base)/8);
+				_xkuty_effect ( INTRO_BMP2, factor * factor, 0, 64);
+				if ( factor > 140) status = ST_EXOS_SHOW, st_time_base = time;
 				break;
 			case ST_EXOS_SHOW:
-				_xkuty_effect ( INTRO_BMP2, 100*100);
+				_xkuty_effect ( INTRO_BMP2, factor*factor, 0, 64);
 				if ( time >= (st_time_base+1000)) status = ST_EXOS_OUT, st_time_base = time;
 				break;
 			case ST_EXOS_OUT:
-				factor = 75-((time - st_time_base)/16);
-				_xkuty_effect ( INTRO_BMP2, factor * factor);
+				factor = 140-((time - st_time_base)/8);
+				_xkuty_effect ( INTRO_BMP2, factor * factor, 127, 64);
 				if ( factor <= 0)
 				   done = 1;
 				break;
@@ -230,6 +237,8 @@ void _intro ()
 		lcd_dump_screen ( scrrot);
 		exos_thread_sleep( 15);
 	}
+
+	//exos_timer_abort(&_timer_update);
 }
 
 static EXOS_PORT _can_rx_port;
