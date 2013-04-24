@@ -7,14 +7,16 @@
 #include <support/can_hal.h>
 #include <stdio.h>
 #include <assert.h>
+#include "xcpu.h"
 
 
 static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
 
+
 static const CAN_EP _eps[] = {
+
 	{0x300, LCD_CAN_BUS}, {0x301, LCD_CAN_BUS} };
 
-static EXOS_EVENT _can_event;
 
 static unsigned char scrrot [(128*64)/8];
 static unsigned int  screen [(128*64)/32];
@@ -174,8 +176,8 @@ static ANALOGIC _ain[6]=
 };
 
 #define INTRO_BMP1 xkuty_bw
-//#define INTRO_BMP2 xkuty2_bw
-#define INTRO_BMP2 exos_bw
+#define INTRO_BMP2 xkuty2_bw
+//#define INTRO_BMP2 exos_bw
 
 void _intro ()
 {
@@ -230,6 +232,11 @@ void _intro ()
 	}
 }
 
+static EXOS_PORT _can_rx_port;
+static EXOS_FIFO _can_free_msgs;
+#define CAN_MSG_QUEUE 10
+static XCPU_MSG _can_msg[CAN_MSG_QUEUE];
+
 void main()
 {
 	int frame = 0;
@@ -246,7 +253,10 @@ void main()
 
 	_intro ();
 
-	exos_event_create(&_can_event);
+	exos_port_create(&_can_rx_port, NULL);
+	exos_fifo_create(&_can_free_msgs, NULL);
+	for(int i = 0; i < CAN_MSG_QUEUE; i++) exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)&_can_msg[i]);
+
 	hal_can_initialize(LCD_CAN_BUS, 250000);
 	hal_fullcan_setup(_can_setup, NULL);
 	hal_adc_initialize(1000, 16);
@@ -254,8 +264,12 @@ void main()
     int status = ST_DASH;
 	while(1)
 	{
-		if (0 == exos_event_wait(&_can_event, 100))
+		XCPU_MSG *xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 100);
+		if (xmsg != NULL)
 		{
+			switch(xmsg->CanMsg.EP.Id)
+			{
+			}
 		}
 		else
 		{
@@ -266,11 +280,9 @@ void main()
 				if ( _ain[i].curr > _ain[i].max) _ain[i].max = _ain[i].curr;
 				if ( _ain[i].curr < _ain[i].min) _ain[i].min = _ain[i].curr;
 			}
-
 			unsigned char relays = 0;
 			if (_ain[3].curr < 0x800) relays |= (1<<0);
 			if (_ain[4].curr < 0x800) relays |= (1<<1);
-
 			CAN_BUFFER buf = (CAN_BUFFER) { relays, 2, 3, 4, 5, 6, 7, 8 };
 			hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
 
@@ -324,18 +336,27 @@ void main()
 	}	// while (1)
 }
 
+#ifdef DEBUG
+static int _lost_msgs = 0;
+#endif
+
 void hal_can_received_handler(int index, CAN_MSG *msg)
-{
-	// TODO: process msg
+{ 
+	XCPU_MSG *xmsg;
 	switch(msg->EP.Id)
 	{
 		case 0x300:
-//			RELAY_PORT->MASKED_ACCESS[RELAY1] = (msg->Data.u8[0] & (1<<0)) ? RELAY1 : 0;
-//			RELAY_PORT->MASKED_ACCESS[RELAY2] = (msg->Data.u8[0] & (1<<1)) ? RELAY2 : 0;
+			xmsg = (XCPU_MSG *)exos_fifo_dequeue(&_can_free_msgs);
+			if (xmsg != NULL)
+			{
+				xmsg->CanMsg = *msg;
+				exos_port_send_message(&_can_rx_port, (EXOS_MESSAGE *)xmsg);
+			}
+#ifdef DEBUG
+			else _lost_msgs++;
+#endif
 			break;
 	}
-
-	exos_event_reset(&_can_event);
 }
 
 static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state)
@@ -349,6 +370,7 @@ static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state)
 	}
 	return 0;
 }
+
 
 
 static inline void _bit_exchange ( unsigned * a, unsigned * b, unsigned mask, int shift)

@@ -57,6 +57,7 @@
         <file file_name="kernel/io.c"/>
         <file file_name="kernel/thread_pool.c"/>
         <file file_name="kernel/port.c"/>
+        <file file_name="kernel/fifo.c"/>
       </folder>
       <folder Name="support">
         <folder Name="lpc17">
@@ -79,11 +80,12 @@
           <file file_name="support/lcd/mono.c"/>
         </folder>
       </folder>
-      <folder Name="xkuty">
+      <folder Name="xkuty" file_name="">
         <folder Name="board">
           <file file_name="xkuty/board/board_lcd_lpc17.c"/>
         </folder>
         <file file_name="xkuty/main_lcd.c"/>
+        <file file_name="xkuty/xcpu.c"/>
       </folder>
     </folder>
     <folder Name="System Files">
