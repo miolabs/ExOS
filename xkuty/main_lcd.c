@@ -55,6 +55,7 @@ const static unsigned int _bmp_mph [];
 const static unsigned int _bmp_lock [];
 const static unsigned int _bmp_warning [];
 const static unsigned int _bmp_fatal_error [];
+const static unsigned int _bmp_cruisin [];
 
 static unsigned int _dummy_mask[] = {0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff};
 static MONO_SPR _font_spr_big   = { 24, 21, _bmp_nums_speed, _dummy_mask, 1,0};
@@ -67,6 +68,7 @@ static MONO_SPR _mph_spr =  { 21, 10, _bmp_mph, _dummy_mask, 1,0};
 static MONO_SPR _lock_spr =  { 22,21, _bmp_lock, _dummy_mask, 1,0};
 static MONO_SPR _warning_spr =  { 32,30, _bmp_warning, _dummy_mask, 1,0};
 static MONO_SPR _fatal_error_spr =  { 32,24, _bmp_fatal_error, _dummy_mask, 1,0};
+static MONO_SPR _cruisin_spr =  { 24,23, _bmp_cruisin, _dummy_mask, 1,0};
 
 
 static inline void _limit ( int* v, int min, int max)
@@ -257,6 +259,7 @@ static XCPU_MSG _can_msg[CAN_MSG_QUEUE];
 void main()
 {
 	int frame = 0;
+	int dash_status       = 0;
 	int speed             = 0;
 	int distance_hi       = 0;
 	int distance_lo       = 0;
@@ -286,6 +289,7 @@ void main()
 				case 0x300:
 					speed             = xmsg->CanMsg.Data.u8[0];
                     battery_level_fx8 = xmsg->CanMsg.Data.u8[1];
+					dash_status       = xmsg->CanMsg.Data.u8[2];
 				    distance_hi       = xmsg->CanMsg.Data.u32[1] / 10;
                     distance_lo       = xmsg->CanMsg.Data.u32[1] % 10;
 					break;
@@ -317,17 +321,18 @@ void main()
 			{
 				case ST_DASH:
 					{
+						//dash_status |= XCPU_STATE_CRUISE_ON;
 						int l;
-						//speed       = frame & 0xff;
-						//distance_hi = frame, distance_lo = 0;
-						//battery_level_fx8 = frame & 0xff;
-						if (0)
+						l = sprintf ( _tmp, "%d", speed);
+						if ( dash_status & (XCPU_STATE_NEUTRAL | XCPU_STATE_ERROR))
 						{
-							l = sprintf ( _tmp, "%d", speed);
-							_draw_text ( _tmp, &_font_spr_big,   124 - (24*l), 13);
+							if ( dash_status & XCPU_STATE_NEUTRAL)
+								mono_draw_sprite ( screen, 128, 64, &_lock_spr, 100,9);
+                            if ( dash_status & XCPU_STATE_ERROR)
+								mono_draw_sprite ( screen, 128, 64, &_fatal_error_spr, 60,9);
 						}
 						else
-							mono_draw_sprite ( screen, 128, 64, &_lock_spr, 100,9);
+							_draw_text ( _tmp, &_font_spr_big,   124 - (24*l), 9);
 
 						l = sprintf ( _tmp, "%d", distance_hi);
 						_tmp[l] = '.', l++;
@@ -335,6 +340,11 @@ void main()
 						_draw_text ( _tmp, &_font_spr_small, 130 - (_font_spr_small.w * l), 50);
 	
 						_battery_bar ( battery_level_fx8);
+
+						if ( dash_status & XCPU_STATE_CRUISE_ON)
+							mono_draw_sprite ( screen, 128, 64, &_cruisin_spr, 32,9);
+                        if ( dash_status & XCPU_STATE_WARNING)
+							mono_draw_sprite ( screen, 128, 64, &_warning_spr, 32,9);
 
 						//mono_draw_sprite ( screen, 128, 64, &_kmh_spr, 100,4);
 						mono_draw_sprite ( screen, 128, 64, &_km_spr, 108,41);
@@ -546,7 +556,7 @@ const static unsigned int _bmp_warning []  =
 0x0, 0x0
 };
 
-const static unsigned int _bmp_fatal_error []  = 
+const static unsigned int _bmp_fatal_error [] = 
 { 
 0x0, 0xffff00, 0xffff00, 0x1c000, 
 0x1c000, 0xfff800, 0x3fffc00, 0x47800f80, 
@@ -554,6 +564,16 @@ const static unsigned int _bmp_fatal_error []  =
 0x6c000006, 0x7c000006, 0x7c000006, 0x6c000006, 
 0x6c000006, 0x6c000006, 0x6e0001f6, 0x6fc001f6, 
 0x47f001be, 0x3c01be, 0x1fff80, 0x7ff80
+};
+
+const static unsigned int _bmp_cruisin [] = 
+{
+0x0, 0x0, 0x20000000, 0x30000000, 
+0x14000000, 0xc7f8000, 0x1cedc000, 0x38c6000, 
+0x3807000, 0x6c05800, 0x4601800, 0xc3e0800, 
+0xc3e0c00, 0xe323c00, 0xc3e0c00, 0xc1c0800, 
+0x4001800, 0x6805800, 0x3807000, 0x3002000, 
+0x0, 0x0, 0x0
 };
 
 const static unsigned int _bmp_nums_speed [] = 

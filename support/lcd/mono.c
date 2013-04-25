@@ -246,12 +246,15 @@ void mono_draw_sprite ( unsigned int* canvas, int w, int h,
 					tscrx++, tsprx++;
 				}
 			else
-				while ( tscrx < scrspan_e)
-				{ 
+			{
+				int central_e = ( span_flags & SPAN_TAIL) ? scrspan_e : scrspan_e+1;
+				while ( tscrx < central_e)
+				{
 					sprpix = sprline  [tsprx], sprmask = maskline [tsprx];
 					scrline[tscrx] = ( sprpix & sprmask) | ( scrline[tscrx] & (~sprmask));
 					tscrx++, tsprx++;
 				}
+			}
 
 			if (( span_flags & SPAN_TAIL) != 0)
 			{
