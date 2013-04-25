@@ -251,19 +251,44 @@ static void _intro ()
 	//exos_timer_abort(&_timer_update);
 }
 
+typedef struct {
+	int status;
+	int speed;
+	int distance_hi;
+	int distance_lo;
+	int battery_level_fx8;
+} DASH_DATA;
+
+static DASH_DATA _dash;
+
 static EXOS_PORT _can_rx_port;
 static EXOS_FIFO _can_free_msgs;
 #define CAN_MSG_QUEUE 10
 static XCPU_MSG _can_msg[CAN_MSG_QUEUE];
 
+static void _get_can_messages ()
+{
+	XCPU_MSG *xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0);
+	while (xmsg != NULL)
+	{
+		switch(xmsg->CanMsg.EP.Id)
+		{
+			case 0x300:
+				_dash.speed             = xmsg->CanMsg.Data.u8[0];
+				_dash.battery_level_fx8 = xmsg->CanMsg.Data.u8[1];
+				_dash.status       = xmsg->CanMsg.Data.u8[2];
+				_dash.distance_hi       = xmsg->CanMsg.Data.u32[1] / 10;
+				_dash.distance_lo       = xmsg->CanMsg.Data.u32[1] % 10;
+				break;
+		}
+		exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
+        xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 50);
+	}
+}
+
 void main()
 {
 	int frame = 0;
-	int dash_status       = 0;
-	int speed             = 0;
-	int distance_hi       = 0;
-	int distance_lo       = 0;
-	int battery_level_fx8 = 0;
 
 	lcd_initialize();
 	lcdcon_gpo_backlight(1);
@@ -281,97 +306,82 @@ void main()
     int status = ST_DASH; //ST_DEBUG;
 	while(1)
 	{
-		XCPU_MSG *xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 50);
-		if (xmsg != NULL)
+		_get_can_messages ();
+
+
+		for(int i=0; i<NUM_ADC_INPUTS; i++)
 		{
-			switch(xmsg->CanMsg.EP.Id)
-			{
-				case 0x300:
-					speed             = xmsg->CanMsg.Data.u8[0];
-                    battery_level_fx8 = xmsg->CanMsg.Data.u8[1];
-					dash_status       = xmsg->CanMsg.Data.u8[2];
-				    distance_hi       = xmsg->CanMsg.Data.u32[1] / 10;
-                    distance_lo       = xmsg->CanMsg.Data.u32[1] % 10;
-					break;
-			}
-			exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
+			_ain[i].curr   = hal_adc_read(i) >> 4;	// 12 bit resolution
+			_ain[i].scaled = _sensor_scale ( _ain[i].curr, _ain[i].def_min, _ain[i].def_max);
+			if ( _ain[i].curr > _ain[i].max) _ain[i].max = _ain[i].curr;
+			if ( _ain[i].curr < _ain[i].min) _ain[i].min = _ain[i].curr;
 		}
-		else
+		unsigned char relays = 0;
+		if (_ain[3].curr < 0x800) 
+			relays |= (1<<0);
+		if (_ain[4].curr < 0x800) 
+			relays |= (1<<1);
+		CAN_BUFFER buf = (CAN_BUFFER) { relays, _ain[0].scaled, _ain[1].scaled, _ain[2].scaled, 5, 6, 7, 8 };
+		hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
+
+		// Show inputs
+		_clean_bilevel ( screen, 128, 64);
+
+		// General switch; insert new screens here
+		switch ( status)
 		{
-			for(int i=0; i<NUM_ADC_INPUTS; i++)
-			{
-				_ain[i].curr   = hal_adc_read(i) >> 4;	// 12 bit resolution
-                _ain[i].scaled = _sensor_scale ( _ain[i].curr, _ain[i].def_min, _ain[i].def_max);
-				if ( _ain[i].curr > _ain[i].max) _ain[i].max = _ain[i].curr;
-				if ( _ain[i].curr < _ain[i].min) _ain[i].min = _ain[i].curr;
-			}
-			unsigned char relays = 0;
-			if (_ain[3].curr < 0x800) 
-				relays |= (1<<0);
-			if (_ain[4].curr < 0x800) 
-				relays |= (1<<1);
-			CAN_BUFFER buf = (CAN_BUFFER) { relays, _ain[0].scaled, _ain[1].scaled, _ain[2].scaled, 5, 6, 7, 8 };
-			hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
-
-			// Show inputs
-			_clean_bilevel ( screen, 128, 64);
-
-			// General switch; insert new screens here
-			switch ( status)
-			{
-				case ST_DASH:
+			case ST_DASH:
+				{
+					_dash.status |= XCPU_STATE_CRUISE_ON;
+					int l;
+					l = sprintf ( _tmp, "%d", _dash.speed);
+					if ( _dash.status & (XCPU_STATE_NEUTRAL | XCPU_STATE_ERROR))
 					{
-						//dash_status |= XCPU_STATE_CRUISE_ON;
-						int l;
-						l = sprintf ( _tmp, "%d", speed);
-						if ( dash_status & (XCPU_STATE_NEUTRAL | XCPU_STATE_ERROR))
-						{
-							if ( dash_status & XCPU_STATE_NEUTRAL)
-								mono_draw_sprite ( screen, 128, 64, &_lock_spr, 100,9);
-                            if ( dash_status & XCPU_STATE_ERROR)
-								mono_draw_sprite ( screen, 128, 64, &_fatal_error_spr, 60,9);
-						}
-						else
-							_draw_text ( _tmp, &_font_spr_big,   124 - (24*l), 9);
-
-						l = sprintf ( _tmp, "%d", distance_hi);
-						_tmp[l] = '.', l++;
-						l += sprintf ( &_tmp[l], "%d", distance_lo);
-						_draw_text ( _tmp, &_font_spr_small, 130 - (_font_spr_small.w * l), 50);
-	
-						_battery_bar ( battery_level_fx8);
-
-						if ( dash_status & XCPU_STATE_CRUISE_ON)
-							mono_draw_sprite ( screen, 128, 64, &_cruisin_spr, 32,9);
-                        if ( dash_status & XCPU_STATE_WARNING)
-							mono_draw_sprite ( screen, 128, 64, &_warning_spr, 32,9);
-
-						//mono_draw_sprite ( screen, 128, 64, &_kmh_spr, 100,4);
-						mono_draw_sprite ( screen, 128, 64, &_km_spr, 108,41);
+						if ( _dash.status & XCPU_STATE_NEUTRAL)
+							mono_draw_sprite ( screen, 128, 64, &_lock_spr, 100,9);
+						if ( _dash.status & XCPU_STATE_ERROR)
+							mono_draw_sprite ( screen, 128, 64, &_fatal_error_spr, 60,9);
 					}
-					break;
+					else
+						_draw_text ( _tmp, &_font_spr_big,   124 - (24*l), 9);
 
-				case ST_DEBUG:
-					for (int i=0; i<NUM_ADC_INPUTS; i++)
-					{
-						int y=12*i;
-						/*if(( frame>>4) & 1)
-							sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].max);
-						else
-							sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].min);*/
-						sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].scaled);
-						_draw_text ( _tmp, &_font_spr_small, 0, y);
-					}
-					break;					
-			 }
-			//test_mono ();
+					l = sprintf ( _tmp, "%d", _dash.distance_hi);
+					_tmp[l] = '.', l++;
+					l += sprintf ( &_tmp[l], "%d", _dash.distance_lo);
+					_draw_text ( _tmp, &_font_spr_small, 130 - (_font_spr_small.w * l), 50);
 
-			// Screen conversion & dump
-			_bilevel_linear_2_lcd ( scrrot, screen, 128, 64);
-			lcd_dump_screen ( scrrot);
+					_battery_bar ( _dash.battery_level_fx8);
 
-			frame++;
-		}	// if (xmsg != NULL)
+					if ( _dash.status & XCPU_STATE_CRUISE_ON)
+						mono_draw_sprite ( screen, 128, 64, &_cruisin_spr, 32,9);
+					if ( _dash.status & XCPU_STATE_WARNING)
+						mono_draw_sprite ( screen, 128, 64, &_warning_spr, 32,9);
+
+					//mono_draw_sprite ( screen, 128, 64, &_kmh_spr, 100,4);
+					mono_draw_sprite ( screen, 128, 64, &_km_spr, 108,41);
+				}
+				break;
+
+			case ST_DEBUG:
+				for (int i=0; i<NUM_ADC_INPUTS; i++)
+				{
+					int y=12*i;
+					/*if(( frame>>4) & 1)
+						sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].max);
+					else
+						sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].min);*/
+					sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].scaled);
+					_draw_text ( _tmp, &_font_spr_small, 0, y);
+				}
+				break;					
+		 }
+		//test_mono ();
+
+		// Screen conversion & dump
+		_bilevel_linear_2_lcd ( scrrot, screen, 128, 64);
+		lcd_dump_screen ( scrrot);
+
+		frame++;
 	}	// while (1)
 }
 
