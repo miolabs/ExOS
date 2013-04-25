@@ -41,7 +41,7 @@ __weak unsigned int __str_copy(char *dst, const char *src, unsigned int max_leng
 	return done;  
 }
 
-__weak int _str_comp(const char *str1, const char *str2)
+__weak int __str_comp(const char *str1, const char *str2)
 {
 	if (str1 == NULL || str2 == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
 	if (str1 == str2) return 0;

@@ -2,20 +2,17 @@
 #include <support/lcd/mono.h>
 #include <support/adc_hal.h>
 #include <kernel/thread.h>
-#include <kernel/event.h>
+#include <kernel/port.h>
 #include <kernel/timer.h>
 #include <support/can_hal.h>
 #include <stdio.h>
 #include <assert.h>
-
+#include "xcpu.h"
 
 static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
 
 static const CAN_EP _eps[] = {
 	{0x300, LCD_CAN_BUS}, {0x301, LCD_CAN_BUS} };
-
-static EXOS_EVENT _can_event;
-
 
 static unsigned char scrrot [(128*64)/8];
 static unsigned int  screen [(128*64)/32];
@@ -149,57 +146,26 @@ static void _battery_bar ( int level_fx8)
 	_vertical_sprite_comb ( &_battery_full, &_battery_empty, level_fx8, 5, 4);
 }
 
-
+static EXOS_TIMER _timer_update;
+static EXOS_PORT _can_rx_port;
+static EXOS_FIFO _can_free_msgs;
+#define CAN_MSG_QUEUE 10
+static XCPU_MSG _can_msg[CAN_MSG_QUEUE];
 
 void main()
 {
-	int frame = 0;
-	int speed             = 0;
-	int distance_hi       = 0;
-	int distance_lo       = 0;
-	int battery_level_fx8 = 0;
-
-    int status = ST_LOGO_IN;
-    int factor = 0;
-    int i;
-
-	exos_event_create(&_can_event);
-	hal_can_initialize(LCD_CAN_BUS, 250000);
-	hal_fullcan_setup(_can_setup, NULL);
-
 	lcd_initialize();
 	lcdcon_gpo_backlight(1);
 
-	hal_adc_initialize(1000, 16);
+	int frame = 0;
+    int status = ST_LOGO_IN;
+    int factor = 0;
 
-    unsigned long time = exos_timer_time();
-
-	while(1)
+	EXOS_SIGNAL timer_sig = exos_signal_alloc();
+	exos_timer_create(&_timer_update, 20, 20, timer_sig);
+	while(status != ST_DASH)
 	{
-		if (0 == exos_event_wait(&_can_event, 100))
-		{
-		}
-		else
-		{
-			unsigned short ain[6];
-			// 0 - Throtle  (16 bits)
-			// 1 - Brake left (16 bits)
-			// 2 - Brake right (16 bits)
-			// 4 - Start (bool)
-			// 5 - Horn  (bool)
-			for(int i = 0; i < 6; i++)
-				ain[i] = hal_adc_read(i);
-
-			unsigned char relays = 0;
-			if (ain[3] < 0x8000) relays |= (1<<0);
-			if (ain[4] < 0x8000) relays |= (1<<1);
-
-			CAN_BUFFER buf = (CAN_BUFFER) { relays, 2, 3, 4, 5, 6, 7, 8 };
-			hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
-		}
-
-		// Show inputs
-        _clean_bilevel ( screen, 128, 64);
+		exos_signal_wait(timer_sig, EXOS_TIMEOUT_NEVER);
 
 		// General switch; insert new screens here
         switch ( status)
@@ -221,59 +187,113 @@ void main()
                 if ( factor == 0)
                    status = ST_DASH, frame = 0;
                 break;
-
-            case ST_DASH:
-
-				speed       = frame & 0xff;
-				distance_hi = frame;
-				distance_lo = 7;
-				int l = sprintf ( _tmp, "%d", speed);
-				_draw_text ( _tmp, &_font_spr_big,   124 - (24*l), 13);
-				l = sprintf ( _tmp, "%d", distance_hi);
-				_tmp[l] = '.', l++;
-				l += sprintf ( &_tmp[l], "%d", distance_lo);
-				_draw_text ( _tmp, &_font_spr_small, 130 - (_font_spr_small.w * l), 50);
-	
-				battery_level_fx8 = frame & 0xff;
-				_battery_bar ( battery_level_fx8);
-
-                mono_draw_sprite ( screen, 128, 64, &_kmh_spr, 100,4);
-                mono_draw_sprite ( screen, 128, 64, &_km_spr, 108,41);
-
-                break;
-         }
-
-		//test_mono ();
-
-		// Screen conversion
-        _clean_bilevel ( screen, 128, 64);
+		}
 
 		_bilevel_linear_2_lcd ( scrrot, screen, 128, 64);
 
 		lcd_dump_screen ( scrrot);
 
 		frame++;
+	}
+	exos_timer_abort(&_timer_update);
 
-		int elap = exos_timer_elapsed( time);
-		time = exos_timer_time();
-		int rem = 32 - elap;
-		if ( rem > 0)
-			exos_thread_sleep( rem);
+	int speed             = 0;
+	int distance_hi       = 0;
+	int distance_lo       = 0;
+	int battery_level_fx8 = 0;
+
+	exos_port_create(&_can_rx_port, NULL);
+	exos_fifo_create(&_can_free_msgs, NULL);
+	for(int i = 0; i < CAN_MSG_QUEUE; i++) exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)&_can_msg[i]);
+
+	hal_can_initialize(LCD_CAN_BUS, 250000);
+	hal_fullcan_setup(_can_setup, NULL);
+
+	hal_adc_initialize(1000, 16);
+
+	while(1)
+	{
+		XCPU_MSG *xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 100);
+		if (xmsg != NULL)
+		{
+			switch(xmsg->CanMsg.EP.Id)
+			{
+			}
+		}
+		else
+		{
+			unsigned short ain[6];
+			// 0 - Throtle  (16 bits)
+			// 1 - Brake left (16 bits)
+			// 2 - Brake right (16 bits)
+			// 4 - Start (bool)
+			// 5 - Horn  (bool)
+			for(int i = 0; i < 6; i++)
+				ain[i] = hal_adc_read(i);
+
+			unsigned char relays = 0;
+			if (ain[3] < 0x8000) relays |= (1<<0);
+			if (ain[4] < 0x8000) relays |= (1<<1);
+
+			CAN_BUFFER buf = (CAN_BUFFER) { relays, 2, 3, 4, 5, 6, 7, 8 };
+			hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
+
+			// Show inputs
+			_clean_bilevel ( screen, 128, 64);
+
+			// General switch; insert new screens here
+			switch ( status)
+			{
+				case ST_DASH:
+					speed       = frame & 0xff;
+					distance_hi = frame;
+					distance_lo = 7;
+					int l = sprintf ( _tmp, "%d", speed);
+					_draw_text ( _tmp, &_font_spr_big,   124 - (24*l), 13);
+					l = sprintf ( _tmp, "%d", distance_hi);
+					_tmp[l] = '.', l++;
+					l += sprintf ( &_tmp[l], "%d", distance_lo);
+					_draw_text ( _tmp, &_font_spr_small, 130 - (_font_spr_small.w * l), 50);
+		
+					battery_level_fx8 = frame & 0xff;
+					_battery_bar ( battery_level_fx8);
+	
+					mono_draw_sprite ( screen, 128, 64, &_kmh_spr, 100,4);
+					mono_draw_sprite ( screen, 128, 64, &_km_spr, 108,41);
+	
+					break;
+			 }
+
+			_bilevel_linear_2_lcd ( scrrot, screen, 128, 64);
+	
+			lcd_dump_screen ( scrrot);
+	
+			frame++;
+		}
 	}
 }
 
+#ifdef DEBUG
+static int _lost_msgs = 0;
+#endif
+
 void hal_can_received_handler(int index, CAN_MSG *msg)
-{
-	// TODO: process msg
+{ 
+	XCPU_MSG *xmsg;
 	switch(msg->EP.Id)
 	{
 		case 0x300:
-//			RELAY_PORT->MASKED_ACCESS[RELAY1] = (msg->Data.u8[0] & (1<<0)) ? RELAY1 : 0;
-//			RELAY_PORT->MASKED_ACCESS[RELAY2] = (msg->Data.u8[0] & (1<<1)) ? RELAY2 : 0;
+			xmsg = (XCPU_MSG *)exos_fifo_dequeue(&_can_free_msgs);
+			if (xmsg != NULL)
+			{
+				xmsg->CanMsg = *msg;
+				exos_port_send_message(&_can_rx_port, (EXOS_MESSAGE *)xmsg);
+			}
+#ifdef DEBUG
+			else _lost_msgs++;
+#endif
 			break;
 	}
-
-	exos_event_reset(&_can_event);
 }
 
 static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state)
