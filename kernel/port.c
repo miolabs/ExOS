@@ -72,7 +72,9 @@ void exos_port_remove(const char *name)
 
 EXOS_MESSAGE *exos_port_get_message(EXOS_PORT *port, int timeout)
 {
-	EXOS_NODE *node = exos_fifo_wait(&port->Fifo, timeout);
+	EXOS_NODE *node = timeout != 0 ?
+		exos_fifo_wait(&port->Fifo, timeout) :
+		exos_fifo_dequeue(&port->Fifo);
 	if (node != NULL)
 	{
 #ifdef DEBUG
