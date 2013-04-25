@@ -1,24 +1,21 @@
-#include <CMSIS/LPC11xx.h>
-
-#include <lpc1000.h>
+#include "cpu.h"
 #include "ssp.h"
 
-static SSP_MODULE *_modules[] = { (SSP_MODULE *)0x40040000,
-	(SSP_MODULE *)0x40058000 };
+static SSP_MODULE *_modules[] = { (SSP_MODULE *)LPC_SSP0_BASE, (SSP_MODULE *)LPC_SSP1_BASE };
 
 SSP_MODULE *ssp_initialize(int module, int freq, int bit_width)
 {
 	switch(module)
 	{
 		case 0:
-			SSP0CLKDIV = 1;
-			SYSAHBCLKCTRL |= SYSAHBCLKCTRL_SSP0;
-			PRESETCTRL |= PRESETCTRL_SSP0_RST_N;
+			LPC_SYSCON->SSP0CLKDIV = 1;
+			LPC_SYSCON->SYSAHBCLKCTRL |= SYSAHBCLKCTRL_SSP0;
+			LPC_SYSCON->PRESETCTRL |= PRESETCTRL_SSP0_RST_N;
 			break;
 		case 1:
-			SSP1CLKDIV = 1;
-			SYSAHBCLKCTRL |= SYSAHBCLKCTRL_SSP1;
-			PRESETCTRL |= PRESETCTRL_SSP1_RST_N;
+			LPC_SYSCON->SSP1CLKDIV = 1;
+			LPC_SYSCON->SYSAHBCLKCTRL |= SYSAHBCLKCTRL_SSP1;
+			LPC_SYSCON->PRESETCTRL |= PRESETCTRL_SSP1_RST_N;
 			break;
 		default:
 			return 0;
