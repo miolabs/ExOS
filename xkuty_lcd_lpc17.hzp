@@ -80,7 +80,7 @@
           <file file_name="support/lcd/mono.c"/>
         </folder>
       </folder>
-      <folder Name="xkuty">
+      <folder Name="xkuty" file_name="">
         <folder Name="board">
           <file file_name="xkuty/board/board_lcd_lpc17.c"/>
         </folder>

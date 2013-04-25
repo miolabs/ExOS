@@ -2,17 +2,21 @@
 #include <support/lcd/mono.h>
 #include <support/adc_hal.h>
 #include <kernel/thread.h>
-#include <kernel/port.h>
+#include <kernel/event.h>
 #include <kernel/timer.h>
 #include <support/can_hal.h>
 #include <stdio.h>
 #include <assert.h>
 #include "xcpu.h"
 
+
 static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
 
+
 static const CAN_EP _eps[] = {
+
 	{0x300, LCD_CAN_BUS}, {0x301, LCD_CAN_BUS} };
+
 
 static unsigned char scrrot [(128*64)/8];
 static unsigned int  screen [(128*64)/32];
@@ -21,7 +25,7 @@ static void _bilevel_linear_2_lcd ( unsigned char* dst, unsigned int* src, int w
 
 static void _clean_bilevel ( unsigned int* scr, int w, int h) 
 { 
-	for (int i=0; i<((w*h)/32); i++) scr [i] = 0x55555555; 
+	for (int i=0; i<((w*h)/32); i++) scr [i] = 0; 
 }
 
 enum
@@ -29,10 +33,17 @@ enum
     ST_LOGO_IN = 1,
     ST_LOGO_SHOW,
     ST_LOGO_OUT,
-    ST_DASH
+    ST_EXOS_IN,
+    ST_EXOS_SHOW,
+    ST_EXOS_OUT,
+	//
+    ST_DASH,
+	ST_DEBUG,
 };
 
 static const unsigned int xkuty_bw [];
+static const unsigned int xkuty2_bw [];
+static const unsigned int exos_bw [];
 const static unsigned int _bmp_battery [];
 const static unsigned int _bmp_battery_empty [];
 const static unsigned int _bmp_nums_distance []; 
@@ -58,26 +69,26 @@ static inline void _limit ( int* v, int min, int max)
     if ( *v > max) *v = max;
 }
 
-static inline int _xkutybit ( int x, int y, int t)
+static inline int _xkutybit ( int x, int y, int t, int cx, int cy)
 {
-	int xx = x - 64; int yy = y - 32;
+	int xx = x - cx; int yy = y - cy;
 	int r = xx*xx + yy*yy;
 	return ( r < t) ? 1 : 0;
 }
 
-void _xkuty_effect ( int t)
+void _xkuty_effect ( const unsigned int* bitmap, int t, int cx, int cy)
 {
     int i=0, x=0, y=0, sx=0;
     for (y=0; y<64; y++)
 	{
         for ( x=0; x<128; x+=32)
         {
-			unsigned int pic = xkuty_bw [i];
-        	int bits = _xkutybit ( x+0, y, t);
+			unsigned int pic = bitmap [i];
+        	int bits = _xkutybit ( x+0, y, t, cx, cy);
 			for (sx=0; sx<32; sx++)
 			{
 				bits <<= 1;
-				bits |= _xkutybit ( x+sx, y, t);
+				bits |= _xkutybit ( x+sx, y, t, cx, cy);
 			}
 			screen [i] = bits & pic;
             i++;
@@ -92,7 +103,6 @@ static inline int _sensor_scale ( int in, int base, int top)
 	_limit ( &pos, 0, len);
 	return (pos * 0x100) / len;
 }
-
 
 static char _tmp [20];
 
@@ -146,7 +156,91 @@ static void _battery_bar ( int level_fx8)
 	_vertical_sprite_comb ( &_battery_full, &_battery_empty, level_fx8, 5, 4);
 }
 
-static EXOS_TIMER _timer_update;
+
+typedef struct
+{
+	unsigned short curr;				// Analogic inputs, 12 bits
+    unsigned short scaled;				// Input re-escaled to def_min/def_max
+	unsigned short max, min;			// Run time register
+	unsigned short def_min, def_max;	// Factory registered min and max
+} ANALOGIC;
+
+#define NUM_ADC_INPUTS (5)
+static ANALOGIC _ain[NUM_ADC_INPUTS]=
+{
+	{0,0,0,0xffff, 587, 3109},	// 0 - Throtle  (16 bits)
+	{0,0,0,0xffff, 1765,2400},	// 1 - Brake left (16 bits)
+	{0,0,0,0xffff, 1765,2730},	// 2 - Brake right (16 bits)
+	{0,0,0,0xffff, 0,4095},		// 3 - Start (bool)
+	{0,0,0,0xffff, 0,4095},		// 4 - Horn  (bool)
+};
+
+#define INTRO_BMP1 xkuty_bw
+//#define INTRO_BMP2 xkuty2_bw
+#define INTRO_BMP2 exos_bw
+
+static EXOS_TIMER _timer_update;	// Could be local?
+
+static void _intro ()
+{
+	int status = ST_LOGO_IN;
+	int factor = 0;
+	int done = 0;
+
+	//EXOS_SIGNAL timer_sig = exos_signal_alloc();
+	//exos_timer_create(&_timer_update, 20, 20, timer_sig);
+
+	int st_time_base = 0;
+    unsigned int time_base = exos_timer_time();
+    st_time_base = 0;
+	while (!done)
+	{
+		//exos_signal_wait(timer_sig, EXOS_TIMEOUT_NEVER);
+		unsigned int time = exos_timer_time();
+		time -= time_base;
+		switch ( status)
+        {
+			case ST_LOGO_IN:
+				factor = time/16;
+				_xkuty_effect ( INTRO_BMP1, factor * factor, 64, 32);
+				if ( factor > 75) status = ST_LOGO_SHOW, st_time_base = time;
+				break;
+			case ST_LOGO_SHOW:
+				_xkuty_effect ( INTRO_BMP1, 100*100, 64, 32);
+				if ( time >= (st_time_base+1000)) 
+					status = ST_LOGO_OUT, st_time_base = time;
+				break;
+			case ST_LOGO_OUT:
+				factor = 75-((time - st_time_base) / 16);
+				_xkuty_effect ( INTRO_BMP1, factor * factor, 64, 32);
+				if ( factor <= 0) status = ST_EXOS_IN, st_time_base = time;
+				break;
+			case ST_EXOS_IN:
+				factor = ((time - st_time_base)/8);
+				_xkuty_effect ( INTRO_BMP2, factor * factor, 0, 64);
+				if ( factor > 140) status = ST_EXOS_SHOW, st_time_base = time;
+				break;
+			case ST_EXOS_SHOW:
+				_xkuty_effect ( INTRO_BMP2, factor*factor, 0, 64);
+				if ( time >= (st_time_base+1000)) status = ST_EXOS_OUT, st_time_base = time;
+				break;
+			case ST_EXOS_OUT:
+				factor = 140-((time - st_time_base)/8);
+				_xkuty_effect ( INTRO_BMP2, factor * factor, 127, 64);
+				if ( factor <= 0)
+				   done = 1;
+				break;
+		}
+
+		// Screen conversion & dump
+		_bilevel_linear_2_lcd ( scrrot, screen, 128, 64);
+		lcd_dump_screen ( scrrot);
+		exos_thread_sleep( 15);
+	}
+
+	//exos_timer_abort(&_timer_update);
+}
+
 static EXOS_PORT _can_rx_port;
 static EXOS_FIFO _can_free_msgs;
 #define CAN_MSG_QUEUE 10
@@ -154,53 +248,16 @@ static XCPU_MSG _can_msg[CAN_MSG_QUEUE];
 
 void main()
 {
-	lcd_initialize();
-	lcdcon_gpo_backlight(1);
-
 	int frame = 0;
-    int status = ST_LOGO_IN;
-    int factor = 0;
-
-	EXOS_SIGNAL timer_sig = exos_signal_alloc();
-	exos_timer_create(&_timer_update, 20, 20, timer_sig);
-	while(status != ST_DASH)
-	{
-		exos_signal_wait(timer_sig, EXOS_TIMEOUT_NEVER);
-
-		// General switch; insert new screens here
-        switch ( status)
-        {
-            case ST_LOGO_IN:
-                _xkuty_effect ( factor * factor);
-                factor++; if ( factor > 75) status = ST_LOGO_SHOW;
-                break;
-
-            case ST_LOGO_SHOW:
-                _xkuty_effect ( 100*100);
-                if ( frame == 2*80)
-                    status = ST_LOGO_OUT;
-                break;
-
-            case ST_LOGO_OUT:
-                _xkuty_effect ( factor * factor);
-                factor--; 
-                if ( factor == 0)
-                   status = ST_DASH, frame = 0;
-                break;
-		}
-
-		_bilevel_linear_2_lcd ( scrrot, screen, 128, 64);
-
-		lcd_dump_screen ( scrrot);
-
-		frame++;
-	}
-	exos_timer_abort(&_timer_update);
-
 	int speed             = 0;
 	int distance_hi       = 0;
 	int distance_lo       = 0;
 	int battery_level_fx8 = 0;
+
+	lcd_initialize();
+	lcdcon_gpo_backlight(1);
+
+	//_intro ();
 
 	exos_port_create(&_can_rx_port, NULL);
 	exos_fifo_create(&_can_free_msgs, NULL);
@@ -208,34 +265,39 @@ void main()
 
 	hal_can_initialize(LCD_CAN_BUS, 250000);
 	hal_fullcan_setup(_can_setup, NULL);
-
 	hal_adc_initialize(1000, 16);
 
+    int status = ST_DASH; //ST_DEBUG;
 	while(1)
 	{
-		XCPU_MSG *xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 100);
+		XCPU_MSG *xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 50);
 		if (xmsg != NULL)
 		{
 			switch(xmsg->CanMsg.EP.Id)
 			{
+				case 0x300:
+					speed = xmsg->CanMsg.Data.u32[0];
+				    distance_hi = xmsg->CanMsg.Data.u32[1] / 10;
+                    distance_lo = xmsg->CanMsg.Data.u32[1] % 10;
+					break;
 			}
+			exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
 		}
 		else
 		{
-			unsigned short ain[6];
-			// 0 - Throtle  (16 bits)
-			// 1 - Brake left (16 bits)
-			// 2 - Brake right (16 bits)
-			// 4 - Start (bool)
-			// 5 - Horn  (bool)
-			for(int i = 0; i < 6; i++)
-				ain[i] = hal_adc_read(i);
-
+			for(int i=0; i<NUM_ADC_INPUTS; i++)
+			{
+				_ain[i].curr   = hal_adc_read(i) >> 4;	// 12 bit resolution
+                _ain[i].scaled = _sensor_scale ( _ain[i].curr, _ain[i].def_min, _ain[i].def_max);
+				if ( _ain[i].curr > _ain[i].max) _ain[i].max = _ain[i].curr;
+				if ( _ain[i].curr < _ain[i].min) _ain[i].min = _ain[i].curr;
+			}
 			unsigned char relays = 0;
-			if (ain[3] < 0x8000) relays |= (1<<0);
-			if (ain[4] < 0x8000) relays |= (1<<1);
-
-			CAN_BUFFER buf = (CAN_BUFFER) { relays, 2, 3, 4, 5, 6, 7, 8 };
+			if (_ain[3].curr < 0x800) 
+				relays |= (1<<0);
+			if (_ain[4].curr < 0x800) 
+				relays |= (1<<1);
+			CAN_BUFFER buf = (CAN_BUFFER) { relays, _ain[0].scaled, _ain[1].scaled, _ain[2].scaled, 5, 6, 7, 8 };
 			hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
 
 			// Show inputs
@@ -245,32 +307,46 @@ void main()
 			switch ( status)
 			{
 				case ST_DASH:
-					speed       = frame & 0xff;
-					distance_hi = frame;
-					distance_lo = 7;
-					int l = sprintf ( _tmp, "%d", speed);
-					_draw_text ( _tmp, &_font_spr_big,   124 - (24*l), 13);
-					l = sprintf ( _tmp, "%d", distance_hi);
-					_tmp[l] = '.', l++;
-					l += sprintf ( &_tmp[l], "%d", distance_lo);
-					_draw_text ( _tmp, &_font_spr_small, 130 - (_font_spr_small.w * l), 50);
-		
-					battery_level_fx8 = frame & 0xff;
-					_battery_bar ( battery_level_fx8);
+					{
+						//speed       = frame & 0xff;
+						//distance_hi = frame, distance_lo = 0;
+						int l = sprintf ( _tmp, "%d", speed);
+						_draw_text ( _tmp, &_font_spr_big,   124 - (24*l), 13);
+						l = sprintf ( _tmp, "%d", distance_hi);
+						_tmp[l] = '.', l++;
+						l += sprintf ( &_tmp[l], "%d", distance_lo);
+						_draw_text ( _tmp, &_font_spr_small, 130 - (_font_spr_small.w * l), 50);
 	
-					mono_draw_sprite ( screen, 128, 64, &_kmh_spr, 100,4);
-					mono_draw_sprite ( screen, 128, 64, &_km_spr, 108,41);
-	
-					break;
-			 }
+						battery_level_fx8 = frame & 0xff;
+						_battery_bar ( battery_level_fx8);
 
+						mono_draw_sprite ( screen, 128, 64, &_kmh_spr, 100,4);
+						mono_draw_sprite ( screen, 128, 64, &_km_spr, 108,41);
+					}
+					break;
+
+				case ST_DEBUG:
+					for (int i=0; i<NUM_ADC_INPUTS; i++)
+					{
+						int y=12*i;
+						/*if(( frame>>4) & 1)
+							sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].max);
+						else
+							sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].min);*/
+						sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].scaled);
+						_draw_text ( _tmp, &_font_spr_small, 0, y);
+					}
+					break;					
+			 }
+			//test_mono ();
+
+			// Screen conversion & dump
 			_bilevel_linear_2_lcd ( scrrot, screen, 128, 64);
-	
 			lcd_dump_screen ( scrrot);
-	
+
 			frame++;
-		}
-	}
+		}	// if (xmsg != NULL)
+	}	// while (1)
 }
 
 #ifdef DEBUG
@@ -307,6 +383,7 @@ static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state)
 	}
 	return 0;
 }
+
 
 
 static inline void _bit_exchange ( unsigned * a, unsigned * b, unsigned mask, int shift)
@@ -518,7 +595,6 @@ const static unsigned int _bmp_nums_distance [] =
 };
 
 
-
 static const unsigned int xkuty_bw [] = 
 { 
 0x0, 0x0, 0x0, 0x0, 
@@ -536,41 +612,41 @@ static const unsigned int xkuty_bw [] =
 0x0, 0x0, 0x0, 0x0, 
 0x0, 0x0, 0x0, 0x0, 
 0x0, 0x0, 0x0, 0x0, 
+0xff00, 0x0, 0x0, 0x0, 
+0x7ffe0, 0x0, 0x0, 0x60000000, 
+0x7fff0, 0x0, 0x0, 0xf0000000, 
+0x3fffc, 0x0, 0x0, 0xf0000000, 
+0x61fffe, 0x0, 0x0, 0xf0000000, 
+0xf001ff, 0x700e0c, 0x3830061, 0xff1e00f0, 
+0x1f8007f, 0x80f81f1e, 0x7c780f3, 0xff9f01f0, 
+0x1f8001f, 0x807c3e1e, 0xf8780f3, 0xff8f01e0, 
+0x3f0000f, 0xc07c3e1e, 0x1f0780f1, 0xff0f83e0, 
+0x7e03c07, 0xe03e7c1e, 0x3e0780f0, 0xf00f83e0, 
+0x7e03f07, 0xe01e781e, 0x7c0780f0, 0xf00783c0, 
+0x7c31f83, 0xe01ff81e, 0xf80780f0, 0xf007c7c0, 
+0xfc38783, 0xf00ff01f, 0xf80780f0, 0xf003c7c0, 
+0xf8783c1, 0xf007e01f, 0xfc0780f0, 0xf003ef80, 
+0xf8701c1, 0xf00ff01f, 0xfc0780f0, 0xf003ef80, 
+0xf8701c1, 0xf00ff01f, 0xfe0780f0, 0xf001ff80, 
+0xf8701c1, 0xf01ff81f, 0xbf0781f0, 0xf001ff00, 
+0xf8783c1, 0xf03e7c1f, 0x1f87c3f0, 0xf800ff00, 
+0xf83c781, 0xf03c3c1e, 0xfc7fff0, 0xfcc0ff00, 
+0xfc3ff83, 0xf07c3e1e, 0x7e7fff0, 0xffc0fe00, 
+0x7c1ff03, 0xe0fc3f1e, 0x3e3fcf0, 0x7fc07e00, 
+0x7e07c07, 0xe0781e0c, 0x1c1f860, 0x3f807e00, 
+0x7e00007, 0xe0000000, 0x0, 0x3c00, 
+0x3f0000f, 0xc0000000, 0x0, 0x3c00, 
+0x3f8001f, 0x80020002, 0x2004120, 0x3c00, 
+0x1fe007f, 0x80020002, 0x4020, 0x7800, 
+0xff81ff, 0x3a1c77, 0x3a387124, 0x61c0f800, 
+0x7ffffe, 0x4a2482, 0x22404928, 0x9207f000, 
+0x3ffffc, 0xfa7c82, 0x22404930, 0xf3cfe000, 
+0x1ffff0, 0x422082, 0x22404928, 0x804fc000, 
+0x7ffe0, 0x399c71, 0xa2387124, 0x73878000, 
+0xff00, 0x0, 0x0, 0x0, 
 0x0, 0x0, 0x0, 0x0, 
 0x0, 0x0, 0x0, 0x0, 
 0x0, 0x0, 0x0, 0x0, 
-0x0, 0x0, 0x0, 0x0, 
-0x400, 0x0, 0x0, 0x0, 
-0xffe0, 0x0, 0x0, 0x7c000000, 
-0xfff8, 0x0, 0x0, 0x7c000000, 
-0x8fffe, 0x0, 0x0, 0x7c000000, 
-0x1c7fff, 0x0, 0x0, 0x7c000000, 
-0x3c7fff, 0x803c078f, 0x3c780f1, 0xff9e01f0, 
-0x7e007f, 0xc03e0f9f, 0x7c7c1f3, 0xffdf01f0, 
-0xfe001f, 0xc01e1f1f, 0xf87c1f3, 0xffdf03e0, 
-0xfc0007, 0xe01f1f1f, 0x1f07c1f3, 0xffcf83e0, 
-0x1f80003, 0xf00fbe1f, 0x1e07c1f0, 0x7c0f83e0, 
-0x1f80703, 0xf00fbc1f, 0x3e07c1f0, 0x7c07c7c0, 
-0x3f00781, 0xf007fc1f, 0x7c07c1f0, 0x7c07c7c0, 
-0x3f043c1, 0xf803f81f, 0xf807c1f0, 0x7c07c780, 
-0x3e0c1e0, 0xf803f81f, 0xfc07c1f0, 0x7c03ef80, 
-0x3e0c0e0, 0xf803f81f, 0xfe07c1f0, 0x7c03ef80, 
-0x3e0c0e0, 0xf807fc1f, 0xfe07c1f0, 0x7c01ff00, 
-0x3e0c060, 0xf807fc1f, 0x9f07c1f0, 0x7c01ff00, 
-0x3e0e0e0, 0xf80fbe1f, 0xf87c1f0, 0x7c01ff00, 
-0x3e0f1e0, 0xf80f1e1f, 0xf87e7f0, 0x7e00fe00, 
-0x3f07fc1, 0xf81f1f1f, 0x7c3fff0, 0x7fc0fe00, 
-0x3f03f81, 0xf03e0f9f, 0x3e3fef0, 0x3fc07e00, 
-0x1f80c03, 0xf03e0f9f, 0x3e1fcf0, 0x1fc07c00, 
-0x1f80007, 0xf0000000, 0x6000, 0x7807c00, 
-0xfc000f, 0xe0000000, 0x0, 0x7c00, 
-0xff001f, 0xc0000000, 0x0, 0xf800, 
-0x7fc07f, 0xc0000000, 0x0, 0xf800, 
-0x3fffff, 0x80000000, 0x0, 0x1f000, 
-0x1fffff, 0x0, 0x0, 0xff000, 
-0xffffc, 0x0, 0x0, 0x1fe000, 
-0x3fff8, 0x0, 0x0, 0x1fc000, 
-0xffe0, 0x0, 0x0, 0x1f8000, 
 0x0, 0x0, 0x0, 0x0, 
 0x0, 0x0, 0x0, 0x0, 
 0x0, 0x0, 0x0, 0x0, 
@@ -587,4 +663,138 @@ static const unsigned int xkuty_bw [] =
 0x0, 0x0, 0x0, 0x0
 };
 
+static const unsigned int xkuty2_bw [] = 
+{ 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0xff00, 0x0, 0x0, 0x0, 
+0x7ffe0, 0x0, 0x0, 0xf0000000, 
+0x7fff0, 0x0, 0x0, 0xf0000000, 
+0x3fffc, 0x0, 0x0, 0xf0000000, 
+0x61fffe, 0x0, 0x0, 0xf0000000, 
+0xf001ff, 0x781e1e, 0x3c780f3, 0xff9e00f0, 
+0x1f8007f, 0x80781e1e, 0x7c780f3, 0xff9f01f0, 
+0x1f8001f, 0x807c3e1e, 0xf8780f3, 0xff8f01e0, 
+0x3f0000f, 0xc07c3e1e, 0x1f0780f3, 0xff8f83e0, 
+0x7e07c07, 0xe03e7c1e, 0x3e0780f0, 0xf00f83e0, 
+0x7e03f07, 0xe01e781e, 0x7c0780f0, 0xf00783c0, 
+0x7c31f83, 0xe01ff81e, 0xf80780f0, 0xf007c7c0, 
+0xfc38783, 0xf00ff01f, 0xf80780f0, 0xf003c7c0, 
+0xf8783c1, 0xf007e01f, 0xfc0780f0, 0xf003ef80, 
+0xf8701c1, 0xf00ff01f, 0xfc0780f0, 0xf003ef80, 
+0xf8701c1, 0xf00ff01f, 0xfe0780f0, 0xf001ff80, 
+0xf8701c1, 0xf01ff81f, 0xbf0781f0, 0xf001ff00, 
+0xf8783c1, 0xf03e7c1f, 0x1f87c3f0, 0xf800ff00, 
+0xf83c781, 0xf03c3c1e, 0xfc7fff0, 0xfcc0ff00, 
+0xfc3ff83, 0xf07c3e1e, 0x7e7fff0, 0xffc0fe00, 
+0x7c1ff03, 0xe07c3e1e, 0x3e3fcf0, 0x7fc07e00, 
+0x7e07c07, 0xe07c3e1e, 0x1e1f8f0, 0x3fc07e00, 
+0x7e00007, 0xe0000000, 0x0, 0x3c00, 
+0x3f0000f, 0xc0000000, 0x0, 0x3c00, 
+0x3f8001f, 0x80002000, 0x40401048, 0x3c00, 
+0x1fe007f, 0x80002000, 0x40001008, 0x7800, 
+0xff81ff, 0x3a1ce, 0xe74e1c49, 0x31c0f800, 
+0x7ffffe, 0x4a250, 0x4450124a, 0x4a0ff000, 
+0x3ffffc, 0xfa7d0, 0x4450124c, 0x7bcfe000, 
+0x1ffff0, 0x42210, 0x4450124a, 0x404fc000, 
+0x7ffe0, 0x399ce, 0x344e1c49, 0x3b8f8000, 
+0xff00, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0
+};
 
+static const unsigned int exos_bw [] = 
+{ 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x80, 0x40000000, 
+0x0, 0x0, 0x80, 0x40000000, 
+0x0, 0x0, 0x80, 0x40000000, 
+0xb807, 0x811103c1, 0x60f00e80, 0x5c104000, 
+0xc408, 0x41110421, 0x81081180, 0x62088000, 
+0x8210, 0x21290811, 0x2042080, 0x41088000, 
+0x8210, 0x21290811, 0x2042080, 0x41088000, 
+0x8210, 0x20aa0ff1, 0x3fc2080, 0x41050000, 
+0x8210, 0x20aa0801, 0x2002080, 0x41050000, 
+0x8210, 0x20aa0811, 0x2042080, 0x41050000, 
+0xc408, 0x40440421, 0x1081180, 0x62050000, 
+0xb807, 0x804403c1, 0xf00e80, 0x5c020000, 
+0x8000, 0x0, 0x0, 0x20000, 
+0x8000, 0x0, 0x0, 0x40000, 
+0x8000, 0x0, 0x0, 0x180000, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0xff, 0xffc00003, 0xffff0000, 0x7f800000, 
+0x3ff, 0xfff0000f, 0xffffc001, 0xffe00000, 
+0x7ff, 0xfffc003f, 0xffffe003, 0xfff80000, 
+0xfff, 0xfffe007f, 0xfffff007, 0xfffc0000, 
+0x1fff, 0xffff00ff, 0xfffff80f, 0xfffc0000, 
+0x3f80, 0x3f81fc, 0x3f81fc1f, 0xc0780000, 
+0x7e00, 0x1fc3f8, 0x7f00fe3f, 0x80300000, 
+0x7c00, 0xfe7f0, 0x7e007e3f, 0x0, 
+0xf800, 0x7ffe0, 0xfc003f7e, 0x0, 
+0xf800, 0x3ffc0, 0xf8001f7e, 0x0, 
+0xffff, 0xfe01ff80, 0xf8001f7f, 0xffff8000, 
+0xffff, 0xfc00ff00, 0xf8001f7f, 0xffff8000, 
+0xffff, 0xf800ff00, 0xf8001f7f, 0xffff8000, 
+0xffff, 0xf001ff80, 0xf8001f3f, 0xffff8000, 
+0xf800, 0x3ffc0, 0xf8001f00, 0x1f8000, 
+0xf800, 0x7ffe0, 0xfc003f00, 0x1f8000, 
+0x7c00, 0xfe7f0, 0x7e007e00, 0x1f8000, 
+0x7e00, 0x1fc3f8, 0x7f00fe00, 0x3f8000, 
+0x3f80, 0x3f81fc, 0x3f81fc00, 0x7f0000, 
+0x1fff, 0xffff00ff, 0xffffffff, 0xffff0000, 
+0xfff, 0xfffe007f, 0xffffffff, 0xfffe0000, 
+0x7ff, 0xfffc003f, 0xffffffff, 0xfffc0000, 
+0x3ff, 0xfff0000f, 0xffffffff, 0xfff80000, 
+0xff, 0xffc00003, 0xffffffff, 0xffe00000, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0, 
+0x0, 0x0, 0x0, 0x0
+};
