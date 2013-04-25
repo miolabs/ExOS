@@ -8,25 +8,18 @@
 #include <stdio.h>
 #include <assert.h>
 #include "xcpu.h"
-
-
-static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
-
-
-static const CAN_EP _eps[] = {
-
-	{0x300, LCD_CAN_BUS}, {0x301, LCD_CAN_BUS} };
+#include "fir.h"
 
 
 static unsigned char scrrot [(128*64)/8];
 static unsigned int  screen [(128*64)/32];
 
+static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
 static void _bilevel_linear_2_lcd ( unsigned char* dst, unsigned int* src, int w, int h);
+static void _clean_bilevel ( unsigned int* scr, int w, int h)  { for (int i=0; i<((w*h)/32); i++) scr [i] = 0;  }
 
-static void _clean_bilevel ( unsigned int* scr, int w, int h) 
-{ 
-	for (int i=0; i<((w*h)/32); i++) scr [i] = 0; 
-}
+static const CAN_EP _eps[] = {{0x300, LCD_CAN_BUS}, {0x301, LCD_CAN_BUS} };
+
 
 enum
 {
@@ -169,56 +162,6 @@ static void _battery_bar ( int level_fx8)
 	_vertical_sprite_comb ( &_battery_full, &_battery_empty, 0x100 - level_fx8, 5, 4);
 }
 
-// --------------------
-
-#define FIR_LEN  10
-typedef struct
-{
-	int stored, pos, chained_discards;
-	unsigned int   total;
-	unsigned short smp[FIR_LEN];
-} FIR;
-
-static inline void fir_init( FIR* fir) {  fir->stored=0; fir->chained_discards=0; }
-
-static inline int fir_out_of_range ( unsigned int old_avg, unsigned int newval)
-{
-	int dif = (int)old_avg;
-	dif -= (int)newval;
-	if ( dif < 0) dif = -dif;
-	return dif > 500;
-}
-
-static unsigned int fir_filter ( FIR* fir, unsigned int newval, int discard)
-{
-	unsigned int res = 0;
-	// Get average
-	if ( fir->stored > 0)
-	{
-		unsigned int old_avg =  fir->total / fir->stored;
-		if ( discard && fir->chained_discards < 3)
-			if ( fir_out_of_range ( old_avg, newval))
-			{	
-				fir->chained_discards++;
-				return old_avg;
-			}
-		if( fir->chained_discards > 0) fir->chained_discards--;
-		
-		if ( fir->stored == FIR_LEN)
-			fir->total -= fir->smp[ fir->pos];
-		fir->smp[fir->pos] = newval;
-		fir->pos++;    if( fir->pos == FIR_LEN) fir->pos = 0;
-		fir->stored++; if( fir->stored > FIR_LEN) fir->stored = FIR_LEN;
-		fir->total += newval;
-
-		res =  fir->total / fir->stored;
-	}
-	else
-		fir->stored=1, fir->pos=1, fir->smp[0]=newval,fir->total=newval, res=newval;
-
-	return res;
-}
-// -----------------
 
 typedef struct
 {
@@ -380,7 +323,7 @@ static void _read_send_analogic_inputs ()
 	{
 		_fir_needs_init = 0;
 		for(int i=0; i<NUM_ADC_INPUTS; i++)
-			fir_init( &_ain[0].fir);
+			fir_init( &_ain[0].fir, 500, 3);
 	}
 
 	static char discards [NUM_ADC_INPUTS] = {1,1,1,0,0};
@@ -422,7 +365,7 @@ void main()
 	unsigned int prev_time = 0;
 
 	int screen_count = 0;
-    int initial_status = ST_LOGO_IN; //ST_LOGO_IN; //ST_DASH; //ST_DEBUG;
+    int initial_status = ST_DEBUG; //ST_LOGO_IN; //ST_DASH; //ST_DEBUG;
 	int status =  initial_status;
 	int prev_cpu_state = 0;	// Default state is OFF, wait for master to start
 
