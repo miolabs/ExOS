@@ -41,7 +41,7 @@ void lcdcon_initialize(LCD_PROPERTIES *lcd)
 
 		for(int i = 0; i < 48; i++)
 		{
-			unsigned char data[] = {0xf0,0xf0,0x0f,0x0f };
+			unsigned char data[] = {0x0,0x0,0x0,0x0 };//{0xf0,0xf0,0x0f,0x0f };
 			_write_data(data, sizeof(data));
 		}
 	}
