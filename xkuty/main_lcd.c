@@ -60,6 +60,7 @@ const static unsigned int _bmp_fatal_error [];
 const static unsigned int _bmp_cruisin [];
 
 static unsigned int _dummy_mask[] = {0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff};
+
 static MONO_SPR _font_spr_big   = { 24, 21, _bmp_nums_speed, _dummy_mask, 1,0};
 static MONO_SPR _font_spr_small = { 12, 9, _bmp_nums_distance, _dummy_mask, 1,0};
 
@@ -67,10 +68,10 @@ static MONO_SPR _km_spr =  { 15, 7, _bmp_km, _dummy_mask, 1,0};
 static MONO_SPR _mi_spr =  { 21, 10, _bmp_mi, _dummy_mask, 1,0};
 static MONO_SPR _kmh_spr =  { 23, 7, _bmp_kmh, _dummy_mask, 1,0};
 static MONO_SPR _mph_spr =  { 21, 10, _bmp_mph, _dummy_mask, 1,0};
-static MONO_SPR _lock_spr =  { 22,21, _bmp_lock, _dummy_mask, 1,0};
-static MONO_SPR _warning_spr =  { 32,30, _bmp_warning, _dummy_mask, 1,0};
+static MONO_SPR _lock_spr =  { 30,25, _bmp_lock, _dummy_mask, 1,0};
+static MONO_SPR _warning_spr =  { 24,21, _bmp_warning, _dummy_mask, 1,0};
 static MONO_SPR _fatal_error_spr =  { 32,24, _bmp_fatal_error, _dummy_mask, 1,0};
-static MONO_SPR _cruisin_spr =  { 24,23, _bmp_cruisin, _dummy_mask, 1,0};
+static MONO_SPR _cruisin_spr =  { 30,26, _bmp_cruisin, _dummy_mask, 1,0};
 
 
 static inline void _limit ( int* v, int min, int max)
@@ -168,6 +169,56 @@ static void _battery_bar ( int level_fx8)
 	_vertical_sprite_comb ( &_battery_full, &_battery_empty, 0x100 - level_fx8, 5, 4);
 }
 
+// --------------------
+
+#define FIR_LEN  10
+typedef struct
+{
+	int stored, pos, chained_discards;
+	unsigned int   total;
+	unsigned short smp[FIR_LEN];
+} FIR;
+
+static inline void fir_init( FIR* fir) {  fir->stored=0; fir->chained_discards=0; }
+
+static inline int fir_out_of_range ( unsigned int old_avg, unsigned int newval)
+{
+	int dif = (int)old_avg;
+	dif -= (int)newval;
+	if ( dif < 0) dif = -dif;
+	return dif > 500;
+}
+
+static unsigned int fir_filter ( FIR* fir, unsigned int newval, int discard)
+{
+	unsigned int res = 0;
+	// Get average
+	if ( fir->stored > 0)
+	{
+		unsigned int old_avg =  fir->total / fir->stored;
+		if ( discard && fir->chained_discards < 3)
+			if ( fir_out_of_range ( old_avg, newval))
+			{	
+				fir->chained_discards++;
+				return old_avg;
+			}
+		if( fir->chained_discards > 0) fir->chained_discards--;
+		
+		if ( fir->stored == FIR_LEN)
+			fir->total -= fir->smp[ fir->pos];
+		fir->smp[fir->pos] = newval;
+		fir->pos++;    if( fir->pos == FIR_LEN) fir->pos = 0;
+		fir->stored++; if( fir->stored > FIR_LEN) fir->stored = FIR_LEN;
+		fir->total += newval;
+
+		res =  fir->total / fir->stored;
+	}
+	else
+		fir->stored=1, fir->pos=1, fir->smp[0]=newval,fir->total=newval, res=newval;
+
+	return res;
+}
+// -----------------
 
 typedef struct
 {
@@ -175,6 +226,8 @@ typedef struct
     unsigned short scaled;				// Input re-escaled to def_min/def_max
 	unsigned short max, min;			// Run time register
 	unsigned short def_min, def_max;	// Factory registered min and max
+	unsigned short filtered;			// Filtered value of curr
+	FIR			   fir;					
 } ANALOGIC;
 
 #define NUM_ADC_INPUTS (5)
@@ -187,7 +240,9 @@ static ANALOGIC _ain[NUM_ADC_INPUTS]=
 	{0,0,0,0xffff, 0,4095},		// 4 - Horn  (bool)
 };
 
-#define INTRO_BMP1 xkuty_bw
+static int _fir_needs_init = 1;
+
+#define INTRO_BMP1 xkuty2_bw
 //#define INTRO_BMP2 xkuty2_bw
 #define INTRO_BMP2 exos_bw
 
@@ -199,30 +254,30 @@ static void _intro ( int* status, int* st_time_base, int time)
 	switch ( *status)
 	{
 		case ST_LOGO_IN:
-			factor = time/16;
+			factor = time/6;
 			_xkuty_effect ( INTRO_BMP1, factor * factor, 64, 32);
 			if ( factor > 75) *status = ST_LOGO_SHOW, *st_time_base = time;
 			break;
 		case ST_LOGO_SHOW:
 			_xkuty_effect ( INTRO_BMP1, 100*100, 64, 32);
-			if ( time >= (*st_time_base+1000)) *status = ST_LOGO_OUT, *st_time_base = time;
+			if ( time >= (*st_time_base+600)) *status = ST_LOGO_OUT, *st_time_base = time;
 			break;
 		case ST_LOGO_OUT:
-			factor = 75-((time - *st_time_base) / 16);
+			factor = 75-((time - *st_time_base) / 6);
 			_xkuty_effect ( INTRO_BMP1, factor * factor, 64, 32);
 			if ( factor <= 0) *status = ST_EXOS_IN, *st_time_base = time;
 			break;
 		case ST_EXOS_IN:
-			factor = ((time - *st_time_base)/8);
+			factor = ((time - *st_time_base)/3);
 			_xkuty_effect ( INTRO_BMP2, factor * factor, 0, 64);
 			if ( factor > 140) *status = ST_EXOS_SHOW, *st_time_base = time;
 			break;
 		case ST_EXOS_SHOW:
 			_xkuty_effect ( INTRO_BMP2, 150*150, 0, 64);
-			if ( time >= (*st_time_base+1000)) *status = ST_EXOS_OUT, *st_time_base = time;
+			if ( time >= (*st_time_base+600)) *status = ST_EXOS_OUT, *st_time_base = time;
 			break;
 		case ST_EXOS_OUT:
-			factor = 140-((time - *st_time_base)/8);
+			factor = 140-((time - *st_time_base)/3);
 			_xkuty_effect ( INTRO_BMP2, factor * factor, 127, 64);
 			if ( factor <= 0) *status = ST_DASH;
 			break;
@@ -242,18 +297,19 @@ static DASH_DATA _dash = {0,0,0,0,0};
 
 static void _runtime_screens ( int status)
 {
-	// General switch; insert new screens here
+	// General runtime switch; insert new screens here
 	switch ( status)
 	{
 		case ST_DASH:
 			{
-				_dash.status |= XCPU_STATE_CRUISE_ON;
+				//_dash.status |= XCPU_STATE_CRUISE_ON;
+				//_dash.status |= XCPU_STATE_WARNING;
 				int l;
 				l = sprintf ( _tmp, "%d", _dash.speed);
 				if ( _dash.status & (XCPU_STATE_NEUTRAL | XCPU_STATE_ERROR))
 				{
 					if ( _dash.status & XCPU_STATE_NEUTRAL)
-						mono_draw_sprite ( screen, 128, 64, &_lock_spr, 100,9);
+						mono_draw_sprite ( screen, 128, 64, &_lock_spr, 100,7);
 					if ( _dash.status & XCPU_STATE_ERROR)
 						mono_draw_sprite ( screen, 128, 64, &_fatal_error_spr, 60,9);
 				}
@@ -268,9 +324,9 @@ static void _runtime_screens ( int status)
 				_battery_bar ( _dash.battery_level_fx8);
 
 				if ( _dash.status & XCPU_STATE_CRUISE_ON)
-					mono_draw_sprite ( screen, 128, 64, &_cruisin_spr, 32,9);
+					mono_draw_sprite ( screen, 128, 64, &_cruisin_spr, 36,4);
 				if ( _dash.status & XCPU_STATE_WARNING)
-					mono_draw_sprite ( screen, 128, 64, &_warning_spr, 32,9);
+					mono_draw_sprite ( screen, 128, 64, &_warning_spr, 36,26);
 
 				//mono_draw_sprite ( screen, 128, 64, &_kmh_spr, 100,4);
 				mono_draw_sprite ( screen, 128, 64, &_km_spr, 108,41);
@@ -285,7 +341,7 @@ static void _runtime_screens ( int status)
 					sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].max);
 				else
 					sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].min);*/
-				sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].scaled);
+				sprintf ( _tmp, "%d.%d %d", i, _ain[i].filtered, _ain[i].scaled);
 				_draw_text ( _tmp, &_font_spr_small, 0, y);
 			}
 			break;
@@ -320,21 +376,32 @@ static void _get_can_messages ()
 
 static void _read_send_analogic_inputs ()
 {
+	if ( _fir_needs_init)
+	{
+		_fir_needs_init = 0;
+		for(int i=0; i<NUM_ADC_INPUTS; i++)
+			fir_init( &_ain[0].fir);
+	}
+
+	static char discards [NUM_ADC_INPUTS] = {1,1,1,0,0};
 	for(int i=0; i<NUM_ADC_INPUTS; i++)
 	{
 		_ain[i].curr   = hal_adc_read(i) >> 4;	// 12 bit resolution
-		_ain[i].scaled = _sensor_scale ( _ain[i].curr, _ain[i].def_min, _ain[i].def_max);
 		if ( _ain[i].curr > _ain[i].max) _ain[i].max = _ain[i].curr;
 		if ( _ain[i].curr < _ain[i].min) _ain[i].min = _ain[i].curr;
+        _ain[i].filtered = fir_filter (& _ain[i].fir, _ain[i].curr, discards[i]);
+		_ain[i].scaled = _sensor_scale ( _ain[i].filtered, _ain[i].def_min, _ain[i].def_max);
 	}
+
 	unsigned char relays = 0;
-	if (_ain[3].curr < 0x800) 
+	if (_ain[3].filtered < 0x800) 
 		relays |= (1<<0);
-	if (_ain[4].curr < 0x800) 
+	if (_ain[4].filtered < 0x800) 
 		relays |= (1<<1);
 	CAN_BUFFER buf = (CAN_BUFFER) { relays, _ain[0].scaled, _ain[1].scaled, _ain[2].scaled, 5, 6, 7, 8 };
 	hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
 }
+
 
 void main()
 {
@@ -354,8 +421,8 @@ void main()
     unsigned int time_base = exos_timer_time();
 	unsigned int prev_time = 0;
 
-	int frame = 0;
-    int initial_status = ST_LOGO_IN; //ST_DASH; //ST_DEBUG;
+	int screen_count = 0;
+    int initial_status = ST_LOGO_IN; //ST_LOGO_IN; //ST_DASH; //ST_DEBUG;
 	int status =  initial_status;
 	int prev_cpu_state = 0;	// Default state is OFF, wait for master to start
 
@@ -373,11 +440,12 @@ void main()
 				prev_time, st_time_base = 0;
                	lcdcon_gpo_backlight(1);
                 status =  initial_status;
-				frame = 0;
+				screen_count = 0;
+                _fir_needs_init = 1;
 			}
 
 			unsigned int time = exos_timer_time();
-			unsigned int req_frame_time = 50;
+			unsigned int req_update_time = 20;
 			time -= time_base;
 			unsigned int elapsed_time = time - prev_time;
 
@@ -385,24 +453,30 @@ void main()
 
 			_clean_bilevel ( screen, 128, 64);
 
+
+			int frame_skips = 0;
 			if (( status > ST_INTRO_SECTION) && ( status < ST_INTRO_SECTION_END))
 			{
-				req_frame_time = 16;
+				 frame_skips = 0;
 				_intro ( &status, &st_time_base, time);
 			}
 			else
 			{
-				req_frame_time = 50;
+				 frame_skips = 4;
 				_runtime_screens ( status);
 			}
 
 			// Screen conversion & dump
-			_bilevel_linear_2_lcd ( scrrot, screen, 128, 64);
-			lcd_dump_screen ( scrrot);
+			if ( screen_count > frame_skips)
+			{
+				_bilevel_linear_2_lcd ( scrrot, screen, 128, 64);
+				lcd_dump_screen ( scrrot);
+                screen_count=0;
+			}
+			screen_count++;
 
-			frame++;
-			if ( elapsed_time < req_frame_time)
-				exos_thread_sleep( req_frame_time - elapsed_time);
+			if ( elapsed_time < req_update_time)
+				exos_thread_sleep( req_update_time - elapsed_time);
 			prev_time = time;
 		} // dash status ON
 		else
@@ -584,24 +658,23 @@ const static unsigned int _bmp_battery_empty [] =
 
 const static unsigned int _bmp_lock []  = 
 {
-0xf0003c00, 0xf8003c00, 0xfc003c00, 0xfe003c00, 
-0xff003c00, 0xff803c00, 0xffc03c00, 0xf7e03c00, 
-0xf3f03c00, 0xf1f83c00, 0xf0fc3c00, 0xf07e3c00, 
-0xf03f3c00, 0xf01fbc00, 0xf00ffc00, 0xf007fc00, 
-0xf003fc00, 0xf001fc00, 0xf000fc00, 0xf0007c00, 
-0xf0003c00
+0x0, 0x3ffffc00, 0x40000200, 0x40000200, 
+0x40000200, 0x4f00f200, 0x4f80f200, 0x4fc0f200, 
+0x4fe0f200, 0x4ff0f200, 0x4ff8f200, 0x4ffcf200, 
+0x4f7ef200, 0x4f3ff200, 0x4f1ff200, 0x4f0ff200, 
+0x4f07f200, 0x4f03f200, 0x4f01f200, 0x4f00f200, 
+0x40000200, 0x40000200, 0x40000200, 0x3ffffc00, 
+0x0
 };
 
 const static unsigned int _bmp_warning []  = 
 {
-0x0, 0x0, 0x18000, 0x3c000, 
-0x7e000, 0x7e000, 0xe7000, 0xc3000, 
-0x1c3800, 0x39dc00, 0x3bdc00, 0x73ce00, 
-0x71c700, 0xe1c700, 0xc1c380, 0x1c1c180, 
-0x181c1c0, 0x381c0e0, 0x701c0e0, 0x701c070, 
-0xe000038, 0xc000038, 0x1c01c01c, 0x3801c00c, 
-0x3801c00e, 0x70000007, 0x7fffffff, 0x7fffffff, 
-0x0, 0x0
+0x0, 0x180000, 0x3c0000, 0x7c0000, 
+0x6e0000, 0xe60000, 0xff0000, 0x1fb8000, 
+0x3b98000, 0x339c000, 0x718e000, 0x6186000, 
+0xe187000, 0x1c183800, 0x18003800, 0x38381c00, 
+0x30380c00, 0x7fe00e00, 0x7fffff00, 0x7ffffe00, 
+0x0
 };
 
 const static unsigned int _bmp_fatal_error [] = 
@@ -616,12 +689,13 @@ const static unsigned int _bmp_fatal_error [] =
 
 const static unsigned int _bmp_cruisin [] = 
 {
-0x0, 0x0, 0x20000000, 0x30000000, 
-0x14000000, 0xc7f8000, 0x1cedc000, 0x38c6000, 
-0x3807000, 0x6c05800, 0x4601800, 0xc3e0800, 
-0xc3e0c00, 0xe323c00, 0xc3e0c00, 0xc1c0800, 
-0x4001800, 0x6805800, 0x3807000, 0x3002000, 
-0x0, 0x0, 0x0
+0x0, 0x60000000, 0x7207f000, 0x3a1ffc00, 
+0x1e7c9f00, 0xef08780, 0x3fc081c0, 0x3c081e0, 
+0x3e00260, 0x7700470, 0x6380030, 0xe1c0038, 
+0xc0fc018, 0xc076018, 0xfc221f8, 0xc036018, 
+0xc01c018, 0xe000038, 0x6000030, 0x7000070, 
+0x3080860, 0x39004e0, 0x1e003c0, 0xe00380, 
+0x600300, 0x0
 };
 
 const static unsigned int _bmp_nums_speed [] = 
