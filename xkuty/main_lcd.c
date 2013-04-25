@@ -30,12 +30,14 @@ static void _clean_bilevel ( unsigned int* scr, int w, int h)
 
 enum
 {
-    ST_LOGO_IN = 1,
+	ST_INTRO_SECTION = 1,
+    ST_LOGO_IN,
     ST_LOGO_SHOW,
     ST_LOGO_OUT,
     ST_EXOS_IN,
     ST_EXOS_SHOW,
     ST_EXOS_OUT,
+	ST_INTRO_SECTION_END,
 	//
     ST_DASH,
 	ST_DEBUG,
@@ -191,65 +193,42 @@ static ANALOGIC _ain[NUM_ADC_INPUTS]=
 
 static EXOS_TIMER _timer_update;	// Could be local?
 
-static void _intro ()
+static void _intro ( int* status, int* st_time_base, int time)
 {
-	int status = ST_LOGO_IN;
-	int factor = 0;
-	int done = 0;
-
-	//EXOS_SIGNAL timer_sig = exos_signal_alloc();
-	//exos_timer_create(&_timer_update, 20, 20, timer_sig);
-
-	int st_time_base = 0;
-    unsigned int time_base = exos_timer_time();
-    st_time_base = 0;
-	while (!done)
+	int factor;
+	switch ( *status)
 	{
-		//exos_signal_wait(timer_sig, EXOS_TIMEOUT_NEVER);
-		unsigned int time = exos_timer_time();
-		time -= time_base;
-		switch ( status)
-        {
-			case ST_LOGO_IN:
-				factor = time/16;
-				_xkuty_effect ( INTRO_BMP1, factor * factor, 64, 32);
-				if ( factor > 75) status = ST_LOGO_SHOW, st_time_base = time;
-				break;
-			case ST_LOGO_SHOW:
-				_xkuty_effect ( INTRO_BMP1, 100*100, 64, 32);
-				if ( time >= (st_time_base+1000)) 
-					status = ST_LOGO_OUT, st_time_base = time;
-				break;
-			case ST_LOGO_OUT:
-				factor = 75-((time - st_time_base) / 16);
-				_xkuty_effect ( INTRO_BMP1, factor * factor, 64, 32);
-				if ( factor <= 0) status = ST_EXOS_IN, st_time_base = time;
-				break;
-			case ST_EXOS_IN:
-				factor = ((time - st_time_base)/8);
-				_xkuty_effect ( INTRO_BMP2, factor * factor, 0, 64);
-				if ( factor > 140) status = ST_EXOS_SHOW, st_time_base = time;
-				break;
-			case ST_EXOS_SHOW:
-				_xkuty_effect ( INTRO_BMP2, factor*factor, 0, 64);
-				if ( time >= (st_time_base+1000)) status = ST_EXOS_OUT, st_time_base = time;
-				break;
-			case ST_EXOS_OUT:
-				factor = 140-((time - st_time_base)/8);
-				_xkuty_effect ( INTRO_BMP2, factor * factor, 127, 64);
-				if ( factor <= 0)
-				   done = 1;
-				break;
-		}
-
-		// Screen conversion & dump
-		_bilevel_linear_2_lcd ( scrrot, screen, 128, 64);
-		lcd_dump_screen ( scrrot);
-		exos_thread_sleep( 15);
+		case ST_LOGO_IN:
+			factor = time/16;
+			_xkuty_effect ( INTRO_BMP1, factor * factor, 64, 32);
+			if ( factor > 75) *status = ST_LOGO_SHOW, *st_time_base = time;
+			break;
+		case ST_LOGO_SHOW:
+			_xkuty_effect ( INTRO_BMP1, 100*100, 64, 32);
+			if ( time >= (*st_time_base+1000)) *status = ST_LOGO_OUT, *st_time_base = time;
+			break;
+		case ST_LOGO_OUT:
+			factor = 75-((time - *st_time_base) / 16);
+			_xkuty_effect ( INTRO_BMP1, factor * factor, 64, 32);
+			if ( factor <= 0) *status = ST_EXOS_IN, *st_time_base = time;
+			break;
+		case ST_EXOS_IN:
+			factor = ((time - *st_time_base)/8);
+			_xkuty_effect ( INTRO_BMP2, factor * factor, 0, 64);
+			if ( factor > 140) *status = ST_EXOS_SHOW, *st_time_base = time;
+			break;
+		case ST_EXOS_SHOW:
+			_xkuty_effect ( INTRO_BMP2, 150*150, 0, 64);
+			if ( time >= (*st_time_base+1000)) *status = ST_EXOS_OUT, *st_time_base = time;
+			break;
+		case ST_EXOS_OUT:
+			factor = 140-((time - *st_time_base)/8);
+			_xkuty_effect ( INTRO_BMP2, factor * factor, 127, 64);
+			if ( factor <= 0) *status = ST_DASH;
+			break;
 	}
-
-	//exos_timer_abort(&_timer_update);
 }
+
 
 typedef struct {
 	int status;
@@ -259,7 +238,60 @@ typedef struct {
 	int battery_level_fx8;
 } DASH_DATA;
 
-static DASH_DATA _dash;
+static DASH_DATA _dash = {0,0,0,0,0};
+
+static void _runtime_screens ( int status)
+{
+	// General switch; insert new screens here
+	switch ( status)
+	{
+		case ST_DASH:
+			{
+				_dash.status |= XCPU_STATE_CRUISE_ON;
+				int l;
+				l = sprintf ( _tmp, "%d", _dash.speed);
+				if ( _dash.status & (XCPU_STATE_NEUTRAL | XCPU_STATE_ERROR))
+				{
+					if ( _dash.status & XCPU_STATE_NEUTRAL)
+						mono_draw_sprite ( screen, 128, 64, &_lock_spr, 100,9);
+					if ( _dash.status & XCPU_STATE_ERROR)
+						mono_draw_sprite ( screen, 128, 64, &_fatal_error_spr, 60,9);
+				}
+				else
+					_draw_text ( _tmp, &_font_spr_big,   124 - (24*l), 9);
+
+				l = sprintf ( _tmp, "%d", _dash.distance_hi);
+				_tmp[l] = '.', l++;
+				l += sprintf ( &_tmp[l], "%d", _dash.distance_lo);
+				_draw_text ( _tmp, &_font_spr_small, 130 - (_font_spr_small.w * l), 50);
+
+				_battery_bar ( _dash.battery_level_fx8);
+
+				if ( _dash.status & XCPU_STATE_CRUISE_ON)
+					mono_draw_sprite ( screen, 128, 64, &_cruisin_spr, 32,9);
+				if ( _dash.status & XCPU_STATE_WARNING)
+					mono_draw_sprite ( screen, 128, 64, &_warning_spr, 32,9);
+
+				//mono_draw_sprite ( screen, 128, 64, &_kmh_spr, 100,4);
+				mono_draw_sprite ( screen, 128, 64, &_km_spr, 108,41);
+			}
+			break;
+
+		case ST_DEBUG:
+			for (int i=0; i<NUM_ADC_INPUTS; i++)
+			{
+				int y=12*i;
+				/*if(( frame>>4) & 1)
+					sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].max);
+				else
+					sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].min);*/
+				sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].scaled);
+				_draw_text ( _tmp, &_font_spr_small, 0, y);
+			}
+			break;
+	}
+}
+
 
 static EXOS_PORT _can_rx_port;
 static EXOS_FIFO _can_free_msgs;
@@ -282,7 +314,7 @@ static void _get_can_messages ()
 				break;
 		}
 		exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
-        xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 50);
+        xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0);
 	}
 }
 
@@ -303,11 +335,21 @@ void main()
 	hal_fullcan_setup(_can_setup, NULL);
 	hal_adc_initialize(1000, 16);
 
-    int status = ST_DASH; //ST_DEBUG;
+	unsigned int st_time_base = 0;
+    unsigned int time_base = exos_timer_time();
+	unsigned int prev_time = 0;
+    st_time_base = 0;
+
+    int status = ST_LOGO_IN; //ST_DASH; //ST_DEBUG;
 	while(1)
 	{
-		_get_can_messages ();
+		unsigned int req_frame_time = 50;
+		unsigned int time = exos_timer_time();
+		time -= time_base;
+		unsigned int elapsed_time = time - prev_time;
 
+		// Read CAN messages from master 
+		_get_can_messages ();
 
 		for(int i=0; i<NUM_ADC_INPUTS; i++)
 		{
@@ -327,61 +369,25 @@ void main()
 		// Show inputs
 		_clean_bilevel ( screen, 128, 64);
 
-		// General switch; insert new screens here
-		switch ( status)
+		if (( status > ST_INTRO_SECTION) && ( status < ST_INTRO_SECTION_END))
 		{
-			case ST_DASH:
-				{
-					_dash.status |= XCPU_STATE_CRUISE_ON;
-					int l;
-					l = sprintf ( _tmp, "%d", _dash.speed);
-					if ( _dash.status & (XCPU_STATE_NEUTRAL | XCPU_STATE_ERROR))
-					{
-						if ( _dash.status & XCPU_STATE_NEUTRAL)
-							mono_draw_sprite ( screen, 128, 64, &_lock_spr, 100,9);
-						if ( _dash.status & XCPU_STATE_ERROR)
-							mono_draw_sprite ( screen, 128, 64, &_fatal_error_spr, 60,9);
-					}
-					else
-						_draw_text ( _tmp, &_font_spr_big,   124 - (24*l), 9);
-
-					l = sprintf ( _tmp, "%d", _dash.distance_hi);
-					_tmp[l] = '.', l++;
-					l += sprintf ( &_tmp[l], "%d", _dash.distance_lo);
-					_draw_text ( _tmp, &_font_spr_small, 130 - (_font_spr_small.w * l), 50);
-
-					_battery_bar ( _dash.battery_level_fx8);
-
-					if ( _dash.status & XCPU_STATE_CRUISE_ON)
-						mono_draw_sprite ( screen, 128, 64, &_cruisin_spr, 32,9);
-					if ( _dash.status & XCPU_STATE_WARNING)
-						mono_draw_sprite ( screen, 128, 64, &_warning_spr, 32,9);
-
-					//mono_draw_sprite ( screen, 128, 64, &_kmh_spr, 100,4);
-					mono_draw_sprite ( screen, 128, 64, &_km_spr, 108,41);
-				}
-				break;
-
-			case ST_DEBUG:
-				for (int i=0; i<NUM_ADC_INPUTS; i++)
-				{
-					int y=12*i;
-					/*if(( frame>>4) & 1)
-						sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].max);
-					else
-						sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].min);*/
-					sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].scaled);
-					_draw_text ( _tmp, &_font_spr_small, 0, y);
-				}
-				break;					
-		 }
-		//test_mono ();
+			req_frame_time = 16;
+			_intro ( &status, &st_time_base, time);
+		}
+		else
+		{
+			req_frame_time = 50;
+			_runtime_screens ( status);
+		}
 
 		// Screen conversion & dump
 		_bilevel_linear_2_lcd ( scrrot, screen, 128, 64);
 		lcd_dump_screen ( scrrot);
 
 		frame++;
+		if ( elapsed_time < req_frame_time)
+			exos_thread_sleep( req_frame_time - elapsed_time);
+        prev_time = time;
 	}	// while (1)
 }
 
