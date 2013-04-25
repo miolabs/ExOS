@@ -52,6 +52,9 @@ const static unsigned int _bmp_mi [];
 const static unsigned int _bmp_km []; 
 const static unsigned int _bmp_kmh [];
 const static unsigned int _bmp_mph []; 
+const static unsigned int _bmp_lock [];
+const static unsigned int _bmp_warning [];
+const static unsigned int _bmp_fatal_error [];
 
 static unsigned int _dummy_mask[] = {0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff};
 static MONO_SPR _font_spr_big   = { 24, 21, _bmp_nums_speed, _dummy_mask, 1,0};
@@ -61,6 +64,9 @@ static MONO_SPR _km_spr =  { 15, 7, _bmp_km, _dummy_mask, 1,0};
 static MONO_SPR _mi_spr =  { 21, 10, _bmp_mi, _dummy_mask, 1,0};
 static MONO_SPR _kmh_spr =  { 23, 7, _bmp_kmh, _dummy_mask, 1,0};
 static MONO_SPR _mph_spr =  { 21, 10, _bmp_mph, _dummy_mask, 1,0};
+static MONO_SPR _lock_spr =  { 22,21, _bmp_lock, _dummy_mask, 1,0};
+static MONO_SPR _warning_spr =  { 32,30, _bmp_warning, _dummy_mask, 1,0};
+static MONO_SPR _fatal_error_spr =  { 32,24, _bmp_fatal_error, _dummy_mask, 1,0};
 
 
 static inline void _limit ( int* v, int min, int max)
@@ -101,7 +107,9 @@ static inline int _sensor_scale ( int in, int base, int top)
 	int len = top - base;
 	int pos = in  - base;
 	_limit ( &pos, 0, len);
-	return (pos * 0x100) / len;
+	int res = (pos * 0x100) / len;
+	_limit ( &res, 0, 0xff);
+	return res;
 }
 
 static char _tmp [20];
@@ -153,7 +161,7 @@ static void _battery_bar ( int level_fx8)
 	static MONO_SPR _battery_full  = { 27, 59, _bmp_battery, _dummy_mask, 1,0};
 	static MONO_SPR _battery_empty = { 27, 59, _bmp_battery_empty, _dummy_mask, 1,0};
 
-	_vertical_sprite_comb ( &_battery_full, &_battery_empty, level_fx8, 5, 4);
+	_vertical_sprite_comb ( &_battery_full, &_battery_empty, 0x100 - level_fx8, 5, 4);
 }
 
 
@@ -170,7 +178,7 @@ static ANALOGIC _ain[NUM_ADC_INPUTS]=
 {
 	{0,0,0,0xffff, 587, 3109},	// 0 - Throtle  (16 bits)
 	{0,0,0,0xffff, 1765,2400},	// 1 - Brake left (16 bits)
-	{0,0,0,0xffff, 1765,2730},	// 2 - Brake right (16 bits)
+	{0,0,0,0xffff, 1765,2700},	// 2 - Brake right (16 bits)
 	{0,0,0,0xffff, 0,4095},		// 3 - Start (bool)
 	{0,0,0,0xffff, 0,4095},		// 4 - Horn  (bool)
 };
@@ -276,9 +284,10 @@ void main()
 			switch(xmsg->CanMsg.EP.Id)
 			{
 				case 0x300:
-					speed = xmsg->CanMsg.Data.u32[0];
-				    distance_hi = xmsg->CanMsg.Data.u32[1] / 10;
-                    distance_lo = xmsg->CanMsg.Data.u32[1] % 10;
+					speed             = xmsg->CanMsg.Data.u8[0];
+                    battery_level_fx8 = xmsg->CanMsg.Data.u8[1];
+				    distance_hi       = xmsg->CanMsg.Data.u32[1] / 10;
+                    distance_lo       = xmsg->CanMsg.Data.u32[1] % 10;
 					break;
 			}
 			exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
@@ -308,19 +317,26 @@ void main()
 			{
 				case ST_DASH:
 					{
+						int l;
 						//speed       = frame & 0xff;
 						//distance_hi = frame, distance_lo = 0;
-						int l = sprintf ( _tmp, "%d", speed);
-						_draw_text ( _tmp, &_font_spr_big,   124 - (24*l), 13);
+						//battery_level_fx8 = frame & 0xff;
+						if (0)
+						{
+							l = sprintf ( _tmp, "%d", speed);
+							_draw_text ( _tmp, &_font_spr_big,   124 - (24*l), 13);
+						}
+						else
+							mono_draw_sprite ( screen, 128, 64, &_lock_spr, 100,9);
+
 						l = sprintf ( _tmp, "%d", distance_hi);
 						_tmp[l] = '.', l++;
 						l += sprintf ( &_tmp[l], "%d", distance_lo);
 						_draw_text ( _tmp, &_font_spr_small, 130 - (_font_spr_small.w * l), 50);
 	
-						battery_level_fx8 = frame & 0xff;
 						_battery_bar ( battery_level_fx8);
 
-						mono_draw_sprite ( screen, 128, 64, &_kmh_spr, 100,4);
+						//mono_draw_sprite ( screen, 128, 64, &_kmh_spr, 100,4);
 						mono_draw_sprite ( screen, 128, 64, &_km_spr, 108,41);
 					}
 					break;
@@ -506,6 +522,38 @@ const static unsigned int _bmp_battery_empty [] =
 0x30000180, 0x30000180, 0x30000180, 0x30000180, 
 0x30000180, 0x30000180, 0x30000180, 0x3fffff80, 
 0x3fffff80, 0x0, 0x0
+};
+
+const static unsigned int _bmp_lock []  = 
+{
+0xf0003c00, 0xf8003c00, 0xfc003c00, 0xfe003c00, 
+0xff003c00, 0xff803c00, 0xffc03c00, 0xf7e03c00, 
+0xf3f03c00, 0xf1f83c00, 0xf0fc3c00, 0xf07e3c00, 
+0xf03f3c00, 0xf01fbc00, 0xf00ffc00, 0xf007fc00, 
+0xf003fc00, 0xf001fc00, 0xf000fc00, 0xf0007c00, 
+0xf0003c00
+};
+
+const static unsigned int _bmp_warning []  = 
+{
+0x0, 0x0, 0x18000, 0x3c000, 
+0x7e000, 0x7e000, 0xe7000, 0xc3000, 
+0x1c3800, 0x39dc00, 0x3bdc00, 0x73ce00, 
+0x71c700, 0xe1c700, 0xc1c380, 0x1c1c180, 
+0x181c1c0, 0x381c0e0, 0x701c0e0, 0x701c070, 
+0xe000038, 0xc000038, 0x1c01c01c, 0x3801c00c, 
+0x3801c00e, 0x70000007, 0x7fffffff, 0x7fffffff, 
+0x0, 0x0
+};
+
+const static unsigned int _bmp_fatal_error []  = 
+{ 
+0x0, 0xffff00, 0xffff00, 0x1c000, 
+0x1c000, 0xfff800, 0x3fffc00, 0x47800f80, 
+0x6e000fbe, 0x6c0001be, 0x6c0001fe, 0x6c0001f6, 
+0x6c000006, 0x7c000006, 0x7c000006, 0x6c000006, 
+0x6c000006, 0x6c000006, 0x6e0001f6, 0x6fc001f6, 
+0x47f001be, 0x3c01be, 0x1fff80, 0x7ff80
 };
 
 const static unsigned int _bmp_nums_speed [] = 
