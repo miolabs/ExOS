@@ -318,12 +318,27 @@ static void _get_can_messages ()
 	}
 }
 
+static void _read_send_analogic_inputs ()
+{
+	for(int i=0; i<NUM_ADC_INPUTS; i++)
+	{
+		_ain[i].curr   = hal_adc_read(i) >> 4;	// 12 bit resolution
+		_ain[i].scaled = _sensor_scale ( _ain[i].curr, _ain[i].def_min, _ain[i].def_max);
+		if ( _ain[i].curr > _ain[i].max) _ain[i].max = _ain[i].curr;
+		if ( _ain[i].curr < _ain[i].min) _ain[i].min = _ain[i].curr;
+	}
+	unsigned char relays = 0;
+	if (_ain[3].curr < 0x800) 
+		relays |= (1<<0);
+	if (_ain[4].curr < 0x800) 
+		relays |= (1<<1);
+	CAN_BUFFER buf = (CAN_BUFFER) { relays, _ain[0].scaled, _ain[1].scaled, _ain[2].scaled, 5, 6, 7, 8 };
+	hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
+}
+
 void main()
 {
-	int frame = 0;
-
 	lcd_initialize();
-	lcdcon_gpo_backlight(1);
 
 	//_intro ();
 
@@ -338,56 +353,73 @@ void main()
 	unsigned int st_time_base = 0;
     unsigned int time_base = exos_timer_time();
 	unsigned int prev_time = 0;
-    st_time_base = 0;
 
-    int status = ST_LOGO_IN; //ST_DASH; //ST_DEBUG;
+	int frame = 0;
+    int initial_status = ST_LOGO_IN; //ST_DASH; //ST_DEBUG;
+	int status =  initial_status;
+	int prev_cpu_state = 0;	// Default state is OFF, wait for master to start
+
 	while(1)
 	{
-		unsigned int req_frame_time = 50;
-		unsigned int time = exos_timer_time();
-		time -= time_base;
-		unsigned int elapsed_time = time - prev_time;
-
 		// Read CAN messages from master 
 		_get_can_messages ();
 
-		for(int i=0; i<NUM_ADC_INPUTS; i++)
+		if ( _dash.status & XCPU_STATE_ON)
 		{
-			_ain[i].curr   = hal_adc_read(i) >> 4;	// 12 bit resolution
-			_ain[i].scaled = _sensor_scale ( _ain[i].curr, _ain[i].def_min, _ain[i].def_max);
-			if ( _ain[i].curr > _ain[i].max) _ain[i].max = _ain[i].curr;
-			if ( _ain[i].curr < _ain[i].min) _ain[i].min = _ain[i].curr;
-		}
-		unsigned char relays = 0;
-		if (_ain[3].curr < 0x800) 
-			relays |= (1<<0);
-		if (_ain[4].curr < 0x800) 
-			relays |= (1<<1);
-		CAN_BUFFER buf = (CAN_BUFFER) { relays, _ain[0].scaled, _ain[1].scaled, _ain[2].scaled, 5, 6, 7, 8 };
-		hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
+			if ((prev_cpu_state & XCPU_STATE_ON) == 0)
+			{
+				// Switch ON, Restart main loop
+				time_base = exos_timer_time();
+				prev_time, st_time_base = 0;
+               	lcdcon_gpo_backlight(1);
+                status =  initial_status;
+				frame = 0;
+			}
 
-		// Show inputs
-		_clean_bilevel ( screen, 128, 64);
+			unsigned int time = exos_timer_time();
+			unsigned int req_frame_time = 50;
+			time -= time_base;
+			unsigned int elapsed_time = time - prev_time;
 
-		if (( status > ST_INTRO_SECTION) && ( status < ST_INTRO_SECTION_END))
-		{
-			req_frame_time = 16;
-			_intro ( &status, &st_time_base, time);
-		}
+			_read_send_analogic_inputs ();
+
+			_clean_bilevel ( screen, 128, 64);
+
+			if (( status > ST_INTRO_SECTION) && ( status < ST_INTRO_SECTION_END))
+			{
+				req_frame_time = 16;
+				_intro ( &status, &st_time_base, time);
+			}
+			else
+			{
+				req_frame_time = 50;
+				_runtime_screens ( status);
+			}
+
+			// Screen conversion & dump
+			_bilevel_linear_2_lcd ( scrrot, screen, 128, 64);
+			lcd_dump_screen ( scrrot);
+
+			frame++;
+			if ( elapsed_time < req_frame_time)
+				exos_thread_sleep( req_frame_time - elapsed_time);
+			prev_time = time;
+		} // dash status ON
 		else
 		{
-			req_frame_time = 50;
-			_runtime_screens ( status);
+			// DASH OFF
+			exos_thread_sleep (50);
+
+			if (prev_cpu_state & XCPU_STATE_ON) 
+			{
+				_clean_bilevel ( screen, 128, 64);
+            	_bilevel_linear_2_lcd ( scrrot, screen, 128, 64);
+				lcd_dump_screen ( scrrot);
+				lcdcon_gpo_backlight(0);
+			}
 		}
 
-		// Screen conversion & dump
-		_bilevel_linear_2_lcd ( scrrot, screen, 128, 64);
-		lcd_dump_screen ( scrrot);
-
-		frame++;
-		if ( elapsed_time < req_frame_time)
-			exos_thread_sleep( req_frame_time - elapsed_time);
-        prev_time = time;
+        prev_cpu_state = _dash.status;
 	}	// while (1)
 }
 
