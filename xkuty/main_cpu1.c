@@ -1,5 +1,6 @@
 #include <CMSIS/LPC11xx.h>
 #include <kernel/thread.h>
+#include <kernel/port.h>
 #include <kernel/timer.h>
 #include <support/can_hal.h>
 #include "xcpu.h"
@@ -38,8 +39,13 @@
 
 static const CAN_EP _eps[] = { {0x200, 0}, {0x201, 0} };
 static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
+static EXOS_PORT _can_rx_port;
+static EXOS_FIFO _can_free_msgs;
+#define CAN_MSG_QUEUE 10
+static XCPU_MSG _can_msg[CAN_MSG_QUEUE];
 
 static EXOS_TIMER _timer;
+static void _run_diag();
 
 static enum
 {
@@ -49,12 +55,15 @@ static enum
 	OUTPUT_BRAKEL = (1<<2),
 	OUTPUT_HORN = (1<<3),
 } _output_state;
+
 static enum
 {
 	CONTROL_OFF = 0,
 	CONTROL_ON,
 	CONTROL_CRUISE,
 } _control_state;
+static XCPU_STATE _state; // comm state to share (with lcd)
+
 
 void main()
 {
@@ -66,6 +75,10 @@ void main()
 	OUTPUT_PORT->MASKED_ACCESS[OUTPUT_MASK] = 0;	// FIXME: HEADL should be left active
 
 	exos_timer_create(&_timer, 100, 100, exos_signal_alloc());
+
+	exos_port_create(&_can_rx_port, NULL);
+	exos_fifo_create(&_can_free_msgs, NULL);
+	for(int i = 0; i < CAN_MSG_QUEUE; i++) exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)&_can_msg[i]);
 
 	hal_can_initialize(0, 250000);
 	hal_fullcan_setup(_can_setup, NULL);
@@ -93,10 +106,12 @@ void main()
 
 	_control_state = CONTROL_OFF;
 	_output_state = OUTPUT_NONE;
+	_state = XCPU_STATE_OFF;
 
 	int speed = 0;
 	int km = 0;
 	int batt = 0;
+	int push = 0;
 	while(1)
 	{
 		exos_timer_wait(&_timer);
@@ -122,18 +137,39 @@ void main()
 			hal_can_send((CAN_EP) { .Id = 0x300 }, &buf, 8, CANF_NONE);
 		}
 
-		
 		switch(_control_state)
 		{
 			case CONTROL_OFF:
 				_output_state = 0;
+				push = !(INPUT_PORT->DATA & INPUT_STOP) ? push++ : 0;
+				if (push > 500)
+				{
+					push = 0;
+					_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
+					_control_state = CONTROL_ON;
+					_state = XCPU_STATE_ON;
 
-				 break;
-			case CONTROL_ON:
-				_output_state |= OUTPUT_HEADL | OUTPUT_TAILL;
-
-
+					_run_diag();
+				}
 				break;
+			case CONTROL_CRUISE:
+			case CONTROL_ON:
+				// TODO: update brake and throttle out
+
+				push = !(INPUT_PORT->DATA & INPUT_STOP) ? push++ : 0;
+				if (push > 500)
+				{
+					push = 500;
+					if (speed == 0)
+					{
+						push = 0;
+						_output_state = OUTPUT_NONE;
+						_control_state = CONTROL_OFF;
+						_state = XCPU_STATE_OFF;
+					}
+				}
+				// TODO: check battery and engine
+				break;				
 		}
 
 		OUTPUT_PORT->MASKED_ACCESS[HEADL_MASK] = (_output_state & OUTPUT_HEADL) ? HEADL_MASK : 0;
@@ -170,4 +206,8 @@ static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state)
 		return 1;
 	}
 	return 0;
+}
+
+static void _run_diag()
+{
 }
