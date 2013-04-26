@@ -223,8 +223,8 @@ static void _runtime_screens ( int status)
 	{
 		case ST_DASH:
 			{
-				_dash.status |= XCPU_STATE_CRUISE_ON;
-				_dash.status |= XCPU_STATE_WARNING;
+				//_dash.status |= XCPU_STATE_CRUISE_ON;
+				//_dash.status |= XCPU_STATE_WARNING;
                 //_dash.status |= XCPU_STATE_ERROR;
 				int l;
 				l = sprintf ( _tmp, "%d", _dash.speed);
