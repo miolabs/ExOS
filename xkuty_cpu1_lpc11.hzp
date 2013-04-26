@@ -42,16 +42,17 @@
         <folder Name="lpc11">
           <file file_name="support/lpc11/c_can.c"/>
           <file file_name="support/lpc11/ssp.c"/>
+          <file file_name="support/lpc11/timer32.c"/>
         </folder>
       </folder>
       <folder Name="xkuty">
         <file file_name="xkuty/main_cpu1.c"/>
         <folder Name="xcpu">
-          <file file_name="xkuty/xcpu/sensor.c"/>
+          <file file_name="xkuty/xcpu/sensor_cpu1.c"/>
         </folder>
       </folder>
     </folder>
-    <folder Name="System Files">
+    <folder Name="System Files" file_name="">
       <file file_name="$(TargetsDir)/LPC1000/LPC1100_Target.js">
         <configuration Name="Common" file_type="Reset Script"/>
       </file>

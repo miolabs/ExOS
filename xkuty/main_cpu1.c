@@ -3,7 +3,13 @@
 #include <kernel/port.h>
 #include <kernel/timer.h>
 #include <support/can_hal.h>
+#include <support/pwm_hal.h>
 #include "xcpu.h"
+
+#define BRAKE_THRESHOLD 30
+#define BUTTON_CRUISE (1<<0)
+#define BUTTON_HORN (1<<1)
+
 
 #if defined BOARD_MIORELAY1
 
@@ -25,6 +31,8 @@
 #define SENSOREN_MASK (1<<10)
 #define OUTPUT_MASK (HEADL_MASK | TAILL_MASK | BRAKEL_MASK | HORN_MASK | SENSOREN_MASK)
 
+#define PWM_TIMER_MODULE 1
+
 #define LED_PORT LPC_GPIO3
 #define LED_MASK (1<<0)
 
@@ -43,9 +51,13 @@ static EXOS_PORT _can_rx_port;
 static EXOS_FIFO _can_free_msgs;
 #define CAN_MSG_QUEUE 10
 static XCPU_MSG _can_msg[CAN_MSG_QUEUE];
+#ifdef DEBUG
+static int _lost_msgs = 0;
+#endif
 
 static EXOS_TIMER _timer;
 static void _run_diag();
+static int _push_delay(int push, int *state, int limit);
 
 static enum
 {
@@ -72,9 +84,13 @@ void main()
 	LED_PORT->MASKED_ACCESS[LED_MASK] = 0;	// led on
 
 	OUTPUT_PORT->DIR |= OUTPUT_MASK;
-	OUTPUT_PORT->MASKED_ACCESS[OUTPUT_MASK] = 0;	// FIXME: HEADL should be left active
+	OUTPUT_PORT->MASKED_ACCESS[OUTPUT_MASK] = 0;
 
-	exos_timer_create(&_timer, 100, 100, exos_signal_alloc());
+	hal_pwm_initialize(PWM_TIMER_MODULE, 1000, 1024);
+	hal_pwm_set_output(PWM_TIMER_MODULE, 0, 1025);
+	LPC_IOCON->R_PIO1_1 = 3 | (1<<7);
+	
+	exos_timer_create(&_timer, 50, 50, exos_signal_alloc());
 
 	exos_port_create(&_can_rx_port, NULL);
 	exos_fifo_create(&_can_free_msgs, NULL);
@@ -89,104 +105,143 @@ void main()
 	LPC_GPIO2->MASKED_ACCESS[1<<8] = 1<<8;
 #endif
 
-	OUTPUT_PORT->MASKED_ACCESS[TAILL_MASK] = TAILL_MASK;
-	OUTPUT_PORT->MASKED_ACCESS[BRAKEL_MASK] = BRAKEL_MASK;
-	OUTPUT_PORT->MASKED_ACCESS[BRAKEL_MASK | TAILL_MASK] = 0;
-
-	OUTPUT_PORT->MASKED_ACCESS[HEADL_MASK] = HEADL_MASK;
-	OUTPUT_PORT->MASKED_ACCESS[HEADL_MASK] = 0;
-
+#ifdef DEBUG
 	OUTPUT_PORT->MASKED_ACCESS[HORN_MASK] = HORN_MASK;
 	exos_thread_sleep(100);
 	OUTPUT_PORT->MASKED_ACCESS[HORN_MASK] = 0;
-	exos_thread_sleep(100);
+	exos_thread_sleep(200);
 	OUTPUT_PORT->MASKED_ACCESS[HORN_MASK] = HORN_MASK;
 	exos_thread_sleep(100);
 	OUTPUT_PORT->MASKED_ACCESS[HORN_MASK] = 0;
+#endif
 
 	_control_state = CONTROL_OFF;
 	_output_state = OUTPUT_NONE;
 	_state = XCPU_STATE_OFF;
 
+	unsigned char throttle;
+	unsigned char brake_left, brake_right;
+	unsigned char buttons;
+
 	int speed = 0;
 	int km = 0;
 	int batt = 0;
-	int push = 0;
+	int push_stop = 0;
+	int push_cruise = 0;
+	int push_off = 0;
 	while(1)
 	{
 		exos_timer_wait(&_timer);
 
-
-
-//		if (0 == exos_event_wait(&_can_event, 100))
-//		{
-//			// TODO
-//		}
-//		else
+		XCPU_MSG *xmsg;
+		while(NULL != (xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0)))
 		{
-			LED_PORT->MASKED_ACCESS[LED_MASK] = ~LED_PORT->DATA;
-			// background processing?
+			if (xmsg->CanMsg.EP.Id == 0x200)
+			{
+				CAN_BUFFER *data = &xmsg->CanMsg.Data;
+				buttons = data->u8[0];
+				throttle = data->u8[1];
+				brake_left = data->u8[2];
+				brake_right = data->u8[3];
+			}
 
-			speed = (speed + 1) & 255;
-			km++;
-			batt = (km / 3) & 255;
-			CAN_BUFFER buf;
-			buf.u8[0] = speed;
-			buf.u8[1] = batt;
-			buf.u32[1] = km;
-			hal_can_send((CAN_EP) { .Id = 0x300 }, &buf, 8, CANF_NONE);
+			exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
 		}
+
+		// FAKE
+		speed = throttle / 10;
+		km++;
+		batt = (km / 3) & 255;
 
 		switch(_control_state)
 		{
 			case CONTROL_OFF:
 				_output_state = 0;
-				push = !(INPUT_PORT->DATA & INPUT_STOP) ? push++ : 0;
-				if (push > 500)
+				if (_push_delay(!(INPUT_PORT->DATA & INPUT_STOP), &push_stop, 10))
 				{
-					push = 0;
-					_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
 					_control_state = CONTROL_ON;
 					_state = XCPU_STATE_ON;
-
 					_run_diag();
 				}
 				break;
 			case CONTROL_CRUISE:
-			case CONTROL_ON:
-				// TODO: update brake and throttle out
-
-				push = !(INPUT_PORT->DATA & INPUT_STOP) ? push++ : 0;
-				if (push > 500)
+				// TODO: calculate throttle to keep cruise speed
+				
+				if (_output_state & OUTPUT_BRAKEL)
 				{
-					push = 500;
+					_control_state = CONTROL_ON;
+					_state &= ~XCPU_STATE_CRUISE_ON;
+				}
+			case CONTROL_ON:
+				_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
+				if (brake_left > BRAKE_THRESHOLD || brake_right > BRAKE_THRESHOLD)
+					_output_state |= OUTPUT_BRAKEL;
+				if (buttons & BUTTON_HORN)
+					_output_state |= OUTPUT_HORN;
+
+				if (_push_delay(buttons & BUTTON_CRUISE, &push_cruise, 5))
+				{
 					if (speed == 0)
 					{
-						push = 0;
+						_state ^= XCPU_STATE_NEUTRAL;
+					}
+					else
+					{
+						_state ^= XCPU_STATE_CRUISE_ON;
+						_control_state = _state & XCPU_STATE_CRUISE_ON ? CONTROL_CRUISE : CONTROL_ON;
+					}
+				}
+
+				if (_push_delay(!(INPUT_PORT->DATA & INPUT_STOP), &push_stop, 10) ||
+					_push_delay(buttons & BUTTON_CRUISE, &push_off, 50))
+				{
+					if (speed == 0)
+					{
 						_output_state = OUTPUT_NONE;
 						_control_state = CONTROL_OFF;
 						_state = XCPU_STATE_OFF;
 					}
+					else _state |= XCPU_STATE_WARNING;
 				}
+
 				// TODO: check battery and engine
+
+				// TODO: update throttle and brake output
+                hal_pwm_set_output(PWM_TIMER_MODULE, 0, 1023 - ((throttle * 1023) >> 8));
 				break;				
 		}
+
+		LED_PORT->MASKED_ACCESS[LED_MASK] = ~LED_PORT->DATA;
+
+		CAN_BUFFER buf;
+		buf.u8[0] = speed;
+		buf.u8[1] = batt;
+		buf.u8[2] = _state;
+		buf.u32[1] = km;
+		hal_can_send((CAN_EP) { .Id = 0x300 }, &buf, 8, CANF_NONE);
 
 		OUTPUT_PORT->MASKED_ACCESS[HEADL_MASK] = (_output_state & OUTPUT_HEADL) ? HEADL_MASK : 0;
 		OUTPUT_PORT->MASKED_ACCESS[TAILL_MASK] = (_output_state & OUTPUT_TAILL) ? TAILL_MASK : 0;
 		OUTPUT_PORT->MASKED_ACCESS[BRAKEL_MASK] = (_output_state & OUTPUT_BRAKEL) ? BRAKEL_MASK : 0;
 		OUTPUT_PORT->MASKED_ACCESS[HORN_MASK] = (_output_state & OUTPUT_HORN) ? HORN_MASK : 0;
-		
-
 	}
 }
 
 void hal_can_received_handler(int index, CAN_MSG *msg)
 {
+	XCPU_MSG *xmsg;
 	switch(msg->EP.Id)
 	{
 		case 0x200:
-//			_relay_state = msg->Data.u8[0];
+			xmsg = (XCPU_MSG *)exos_fifo_dequeue(&_can_free_msgs);
+			if (xmsg != NULL)
+			{
+				xmsg->CanMsg = *msg;
+				exos_port_send_message(&_can_rx_port, (EXOS_MESSAGE *)xmsg);
+			}
+#ifdef DEBUG
+			else _lost_msgs++;
+#endif
 			break;
 		case 0x201:
 			// TODO
@@ -203,6 +258,23 @@ static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state)
 	{
 		*ep = _eps[index];
 		*pflags = CANF_RXINT;
+		return 1;
+	}
+	return 0;
+}
+
+static int _push_delay(int push, int *state, int limit)
+{
+	int count = *state;
+	count = push ? count + 1 : 0;
+	if (count < limit)
+	{
+		*state = count;
+		return 0;
+	}
+	if (count == limit)
+	{
+		*state = count;
 		return 1;
 	}
 	return 0;
