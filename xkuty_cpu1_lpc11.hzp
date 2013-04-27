@@ -49,8 +49,11 @@
         <file file_name="xkuty/main_cpu1.c"/>
         <folder Name="xcpu">
           <file file_name="xkuty/xcpu/sensor_cpu1.c"/>
+          <file file_name="xkuty/xcpu/board_cpu1.c"/>
         </folder>
+        <file file_name="xkuty/pid.c"/>
       </folder>
+      <file file_name="xkuty/xcpu/speed.c"/>
     </folder>
     <folder Name="System Files" file_name="">
       <file file_name="$(TargetsDir)/LPC1000/LPC1100_Target.js">
@@ -71,7 +74,7 @@
   <configuration Name="MioRelay1 Release" inherited_configurations="Flash;MioRelay1;Release;THUMB"/>
   <configuration Name="MioRelay1 Debug" inherited_configurations="Debug;Flash;MioRelay1;THUMB"/>
   <configuration Name="Common" c_preprocessor_definitions="__EXOS__;EXOS_NO_NET;MAIN_THREAD_STACK=512;MAIN_THREAD_PRI=0"/>
-  <configuration Name="Xkuty-cpu1" c_preprocessor_definitions="BOARD_XKUTYCPU1" hidden="Yes"/>
+  <configuration Name="Xkuty-cpu1" c_preprocessor_definitions="BOARD_XKUTYCPU1;PWM_TIMER_MODULE=1;CAP_TIMER_MODULE=0" hidden="Yes"/>
   <configuration Name="Xkuty-cpu1 Debug" inherited_configurations="Debug;Flash;THUMB;Xkuty-cpu1"/>
   <configuration Name="Xkuty-cpu1 Release" inherited_configurations="Flash;Release;THUMB;Xkuty-cpu1"/>
 </solution>
