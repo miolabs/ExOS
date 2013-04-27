@@ -1,4 +1,5 @@
 
+#include <assert.h>
 #include "fir.h"
 
 static inline int fir_out_of_range ( unsigned int old_avg, unsigned int newval, int treshold)
@@ -9,26 +10,30 @@ static inline int fir_out_of_range ( unsigned int old_avg, unsigned int newval, 
 	return dif > treshold;
 }
 
-unsigned int fir_filter ( FIR* fir, unsigned int newval, int discard)
+unsigned int fir_filter ( FIR* fir, unsigned int newval)
 {
 	unsigned int res = 0;
+	assert(fir->num_regs <= FIR_LEN);
 	// Get average
 	if ( fir->stored > 0)
 	{
 		unsigned int old_avg =  fir->total / fir->stored;
-		if ( discard && fir->chained_discards < fir->max_chained_discards)
+		if ( fir->discard && (fir->chained_discards < fir->max_chained_discards))
+		{
 			if ( fir_out_of_range ( old_avg, newval, fir->treshold))
 			{	
 				fir->chained_discards++;
 				return old_avg;
 			}
+		}
+
 		if( fir->chained_discards > 0) fir->chained_discards--;
 		
-		if ( fir->stored == FIR_LEN)
+		if ( fir->stored == fir->num_regs)
 			fir->total -= fir->smp[ fir->pos];
 		fir->smp[fir->pos] = newval;
-		fir->pos++;    if( fir->pos == FIR_LEN) fir->pos = 0;
-		fir->stored++; if( fir->stored > FIR_LEN) fir->stored = FIR_LEN;
+		fir->pos++;    if( fir->pos == fir->num_regs) fir->pos = 0;
+		fir->stored++; if( fir->stored > fir->num_regs) fir->stored = fir->num_regs;
 		fir->total += newval;
 
 		res =  fir->total / fir->stored;
