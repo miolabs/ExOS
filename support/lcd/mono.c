@@ -222,6 +222,7 @@ void mono_draw_sprite ( unsigned int* canvas, int w, int h,
 	else
 	{
 		// General blit case
+		int central_e = ( span_flags & SPAN_TAIL) ? scrspan_e : scrspan_e+1;
 		for ( y=res.yi; y<=res.ye; y++)
 		{
 			int tscrx = scrspan_i;
@@ -238,16 +239,17 @@ void mono_draw_sprite ( unsigned int* canvas, int w, int h,
 			
 			// Central spans
 			if ( shift != 0)
-				while ( tscrx < scrspan_e)
+			{
+				while ( tscrx < central_e)
 				{ 
-					sprpix  = (sprline  [tsprx] >> shift) | (sprline  [tsprx+1] << (32-shift));
-					sprmask = (maskline [tsprx] >> shift) | (maskline [tsprx+1] << (32-shift));
+					sprpix  = (sprline  [tsprx+1] >> shift) | (sprline  [tsprx] << (32-shift));
+					sprmask = (maskline [tsprx+1] >> shift) | (maskline [tsprx] << (32-shift));
 					scrline[tscrx] = ( sprpix & sprmask) | ( scrline[tscrx] & (~sprmask));
 					tscrx++, tsprx++;
 				}
+			}
 			else
 			{
-				int central_e = ( span_flags & SPAN_TAIL) ? scrspan_e : scrspan_e+1;
 				while ( tscrx < central_e)
 				{
 					sprpix = sprline  [tsprx], sprmask = maskline [tsprx];
