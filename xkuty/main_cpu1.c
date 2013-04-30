@@ -1,49 +1,20 @@
-#include <CMSIS/LPC11xx.h>
 #include <kernel/thread.h>
 #include <kernel/port.h>
 #include <kernel/timer.h>
 #include <support/can_hal.h>
 #include <support/pwm_hal.h>
 #include "xcpu.h"
+#include "xcpu/board.h"
+#include "xcpu/speed.h"
+#include "pid.h"
 
 #define BRAKE_THRESHOLD 30
 #define BUTTON_CRUISE (1<<0)
 #define BUTTON_HORN (1<<1)
-
-
-#if defined BOARD_MIORELAY1
-
-#define OUTPUT_PORT LPC_GPIO2
-#define HEADL_MASK (1<<6)
-#define TAILL_MASK (1<<7)
-#define OUTPUT_MASK (HEADL_MASK | TAILL_MASK)
-
-#define LED_PORT LPC_GPIO3
-#define LED_MASK (1<<0)
-
-#elif defined BOARD_XKUTYCPU1
-
-#define OUTPUT_PORT LPC_GPIO2
-#define HEADL_MASK (1<<7)
-#define TAILL_MASK (1<<0)
-#define BRAKEL_MASK (1<<6)
-#define HORN_MASK (1<<8)
-#define SENSOREN_MASK (1<<10)
-#define OUTPUT_MASK (HEADL_MASK | TAILL_MASK | BRAKEL_MASK | HORN_MASK | SENSOREN_MASK)
-
-#define PWM_TIMER_MODULE 1
-
-#define LED_PORT LPC_GPIO3
-#define LED_MASK (1<<0)
-
-#define INPUT_PORT LPC_GPIO3
-#define INPUT_STOP (1<<1)
-#define INPUT_ERROR_OUTPUT (1<<2)
-#define INPUT_ERROR_SENSOR (1<<3)
-
-#else
-#error "Unsupported board"
-#endif
+#define PWM_RANGE 100
+#define MOTOR_OFFSET 50
+#define MOTOR_RANGE (160 - 50)
+#define WHEEL_RATIO (12.9 / 47)
 
 static const CAN_EP _eps[] = { {0x200, 0}, {0x201, 0} };
 static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
@@ -55,18 +26,14 @@ static XCPU_MSG _can_msg[CAN_MSG_QUEUE];
 static int _lost_msgs = 0;
 #endif
 
+static XCPU_OUTPUT_MASK _output_state;
+
+static PID_K _pid_k; 
+static PID_STATE _pid;
+
 static EXOS_TIMER _timer;
 static void _run_diag();
-static int _push_delay(int push, int *state, int limit);
-
-static enum
-{
-	OUTPUT_NONE = 0,
-	OUTPUT_HEADL = (1<<0),
-	OUTPUT_TAILL = (1<<1),
-	OUTPUT_BRAKEL = (1<<2),
-	OUTPUT_HORN = (1<<3),
-} _output_state;
+static int _push_delay(int push, unsigned char *state, int limit);
 
 static enum
 {
@@ -80,16 +47,12 @@ static XCPU_STATE _state; // comm state to share (with lcd)
 void main()
 {
 	int result;
-	LED_PORT->DIR |= LED_MASK;
-	LED_PORT->MASKED_ACCESS[LED_MASK] = 0;	// led on
-
-	OUTPUT_PORT->DIR |= OUTPUT_MASK;
-	OUTPUT_PORT->MASKED_ACCESS[OUTPUT_MASK] = 0;
-
-	hal_pwm_initialize(PWM_TIMER_MODULE, 1000, 1024);
+	hal_pwm_initialize(PWM_TIMER_MODULE, PWM_RANGE - 1, 200000);
 	hal_pwm_set_output(PWM_TIMER_MODULE, 0, 1025);
-	LPC_IOCON->R_PIO1_1 = 3 | (1<<7);
 	
+	speed_initialize();
+	_pid_k = (PID_K) { .P = 5, .I = 5, .CMin = 0, .CMax = 255 };
+
 	exos_timer_create(&_timer, 50, 50, exos_signal_alloc());
 
 	exos_port_create(&_can_rx_port, NULL);
@@ -99,36 +62,37 @@ void main()
 	hal_can_initialize(0, 250000);
 	hal_fullcan_setup(_can_setup, NULL);
 
-#if defined BOARD_MIORELAY1
-	// enable CAN term
-	LPC_GPIO2->DIR |= 1<<8;
-	LPC_GPIO2->MASKED_ACCESS[1<<8] = 1<<8;
-#endif
-
-#ifdef DEBUG
-	OUTPUT_PORT->MASKED_ACCESS[HORN_MASK] = HORN_MASK;
-	exos_thread_sleep(100);
-	OUTPUT_PORT->MASKED_ACCESS[HORN_MASK] = 0;
-	exos_thread_sleep(200);
-	OUTPUT_PORT->MASKED_ACCESS[HORN_MASK] = HORN_MASK;
-	exos_thread_sleep(100);
-	OUTPUT_PORT->MASKED_ACCESS[HORN_MASK] = 0;
-#endif
-
 	_control_state = CONTROL_OFF;
 	_output_state = OUTPUT_NONE;
 	_state = XCPU_STATE_OFF;
+
+#ifdef DEBUG
+	xcpu_board_output(_output_state);
+	exos_thread_sleep(500);
+	xcpu_board_output(_output_state | OUTPUT_HORN);
+	exos_thread_sleep(100);
+	xcpu_board_output(_output_state);
+	exos_thread_sleep(200);
+	xcpu_board_output(_output_state | OUTPUT_HORN);
+	exos_thread_sleep(100);
+	xcpu_board_output(_output_state);
+#endif
 
 	unsigned char throttle;
 	unsigned char brake_left, brake_right;
 	unsigned char buttons;
 
-	int speed = 0;
-	int km = 0;
+	unsigned char led = 0;
+	unsigned char push_start = 0;
+	unsigned char push_cruise = 0;
+	unsigned char push_off = 0;
+	
+	float dt = 0;
+	float speed = 0;
+	int speed_wait = 0;
+	unsigned long m = 0;
 	int batt = 0;
-	int push_stop = 0;
-	int push_cruise = 0;
-	int push_off = 0;
+	int throttle_target = 0;
 	while(1)
 	{
 		exos_timer_wait(&_timer);
@@ -148,16 +112,30 @@ void main()
 			exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
 		}
 
-		// FAKE
-		speed = throttle / 10;
-		km++;
-		batt = (km / 3) & 255;
+		// read sensors
+		float dt2 = 0;
+		int space = speed_read(&dt2);
+		dt += dt2;
+		if (space != 0)
+		{
+			speed = dt != 0 ? (int)((space / dt) * WHEEL_RATIO) : 99;
+			m += space * WHEEL_RATIO;
+			dt2 = dt;
+			dt = 0;
+			speed_wait = 0;
+		}
+		else
+		{
+			if (speed_wait < 50) speed_wait++;
+			else speed = 0;
+		}
+		batt = (m / 3) & 255;
 
 		switch(_control_state)
 		{
 			case CONTROL_OFF:
 				_output_state = 0;
-				if (_push_delay(!(INPUT_PORT->DATA & INPUT_STOP), &push_stop, 10))
+				if (_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push_start, 10))
 				{
 					_control_state = CONTROL_ON;
 					_state = XCPU_STATE_ON;
@@ -165,7 +143,11 @@ void main()
 				}
 				break;
 			case CONTROL_CRUISE:
-				// TODO: calculate throttle to keep cruise speed
+				throttle = pid(&_pid, speed, &_pid_k, 0.05F);
+				if (throttle > 250)
+				{
+					throttle--;
+				}
 				
 				if (_output_state & OUTPUT_BRAKEL)
 				{
@@ -175,7 +157,10 @@ void main()
 			case CONTROL_ON:
 				_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
 				if (brake_left > BRAKE_THRESHOLD || brake_right > BRAKE_THRESHOLD)
-					_output_state |= OUTPUT_BRAKEL;
+				{
+					_output_state |= (OUTPUT_BRAKEL | OUTPUT_EBRAKE);
+					throttle = 0;
+				}
 				if (buttons & BUTTON_HORN)
 					_output_state |= OUTPUT_HORN;
 
@@ -187,12 +172,15 @@ void main()
 					}
 					else
 					{
+						_pid.SetPoint = speed;
+						_pid.Integral = throttle / _pid_k.I;
+
 						_state ^= XCPU_STATE_CRUISE_ON;
 						_control_state = _state & XCPU_STATE_CRUISE_ON ? CONTROL_CRUISE : CONTROL_ON;
 					}
 				}
 
-				if (_push_delay(!(INPUT_PORT->DATA & INPUT_STOP), &push_stop, 10) ||
+				if (_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push_start, 10) ||
 					_push_delay(buttons & BUTTON_CRUISE, &push_off, 50))
 				{
 					if (speed == 0)
@@ -200,30 +188,30 @@ void main()
 						_output_state = OUTPUT_NONE;
 						_control_state = CONTROL_OFF;
 						_state = XCPU_STATE_OFF;
+                        hal_pwm_set_output(PWM_TIMER_MODULE, 0, PWM_RANGE + 1);
 					}
 					else _state |= XCPU_STATE_WARNING;
 				}
 
 				// TODO: check battery and engine
 
-				// TODO: update throttle and brake output
-                hal_pwm_set_output(PWM_TIMER_MODULE, 0, 1023 - ((throttle * 1023) >> 8));
+				// update throttle output
+				unsigned char th_lim = (_state & XCPU_STATE_NEUTRAL) ? 0 
+					: MOTOR_OFFSET + ((throttle * MOTOR_RANGE) >> 8);
+                hal_pwm_set_output(PWM_TIMER_MODULE, 0, PWM_RANGE - ((th_lim * PWM_RANGE) >> 8));
 				break;				
 		}
 
-		LED_PORT->MASKED_ACCESS[LED_MASK] = ~LED_PORT->DATA;
+		xcpu_board_led(led = !led);	// toggle led
 
 		CAN_BUFFER buf;
 		buf.u8[0] = speed;
-		buf.u8[1] = batt;
+		buf.u8[1] = throttle; // batt
 		buf.u8[2] = _state;
-		buf.u32[1] = km;
+		buf.u32[1] = (unsigned long)(m / 100);
 		hal_can_send((CAN_EP) { .Id = 0x300 }, &buf, 8, CANF_NONE);
 
-		OUTPUT_PORT->MASKED_ACCESS[HEADL_MASK] = (_output_state & OUTPUT_HEADL) ? HEADL_MASK : 0;
-		OUTPUT_PORT->MASKED_ACCESS[TAILL_MASK] = (_output_state & OUTPUT_TAILL) ? TAILL_MASK : 0;
-		OUTPUT_PORT->MASKED_ACCESS[BRAKEL_MASK] = (_output_state & OUTPUT_BRAKEL) ? BRAKEL_MASK : 0;
-		OUTPUT_PORT->MASKED_ACCESS[HORN_MASK] = (_output_state & OUTPUT_HORN) ? HORN_MASK : 0;
+		xcpu_board_output(_output_state);
 	}
 }
 
@@ -247,8 +235,6 @@ void hal_can_received_handler(int index, CAN_MSG *msg)
 			// TODO
 			break;
 	}
-
-	//exos_event_reset(&_can_event);
 }
 
 static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state)
@@ -263,7 +249,7 @@ static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state)
 	return 0;
 }
 
-static int _push_delay(int push, int *state, int limit)
+static int _push_delay(int push, unsigned char *state, int limit)
 {
 	int count = *state;
 	count = push ? count + 1 : 0;
