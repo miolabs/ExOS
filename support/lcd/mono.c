@@ -168,15 +168,18 @@ static inline int _box_intersection ( MONO_BOX* res, MONO_BOX* a, MONO_BOX* b)
 	return did0 && did1;
 }
 
+#define WORD_ENDED(V)  (((V>>5)<<5)+31)
 void mono_draw_sprite ( unsigned int* canvas, int w, int h,
                         const MONO_SPR* spr, int x, int y)
 {
 	MONO_BOX scr = { -x, -x+w-1,  -y, -y+h-1};
 	MONO_BOX sub = { 0,  spr->w-1, 0, spr->h-1};
-	MONO_BOX res;
+	MONO_BOX sub_full = { 0, WORD_ENDED(spr->w), 0, spr->h-1}; // Including excess word bits
+	MONO_BOX res, res_full;
 
 	if ( !_box_intersection ( &res, &scr, &sub))
 		return;
+	_box_intersection ( &res_full, &scr, &sub_full);
 
 	int spr_1st_line = res.yi;
 	int sprspan_x    = res.xi >> 5;
@@ -186,18 +189,21 @@ void mono_draw_sprite ( unsigned int* canvas, int w, int h,
 	res.xe += x;
 	res.yi += y;
 	res.ye += y;
+    res_full.xe += x; // We only need span end
 
 	const unsigned int ones = 0xffffffff;
-	int scrspan_i = res.xi >> 5;
-	int scrspan_e = res.xe >> 5;
-	int mod_i     = res.xi & 0x1f;
-	int mod_e     = res.xe & 0x1f;
-	
+	int scrspan_i  = res.xi >> 5;
+	int scrspan_e  = res_full.xe >> 5;
+	int mod_i      = res.xi & 0x1f;
+	int mod_e      = res.xe & 0x1f;
+	int mod_e_full = res_full.xe & 0x1f;
+
 	int span_flags = 0;
 	if ( mod_i != 0)
 		span_flags |= SPAN_HEAD;
-	if ( mod_e != 0x1f)
+	if ( mod_e_full != 0x1f)
 		span_flags |= SPAN_TAIL;
+	int central_e = ( span_flags & SPAN_TAIL) ? scrspan_e : scrspan_e+1;
 
 	unsigned int* scrline  = canvas + (w >> 5) * res.yi;
 	const unsigned int* sprline  = spr->bitmap + spr->stride_bitmap * spr_1st_line;
@@ -222,7 +228,6 @@ void mono_draw_sprite ( unsigned int* canvas, int w, int h,
 	else
 	{
 		// General blit case
-		int central_e = ( span_flags & SPAN_TAIL) ? scrspan_e : scrspan_e+1;
 		for ( y=res.yi; y<=res.ye; y++)
 		{
 			int tscrx = scrspan_i;
