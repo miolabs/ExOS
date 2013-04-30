@@ -1,6 +1,6 @@
 <!DOCTYPE CrossStudio_Project_File>
-<solution Name="exos_lpc24" target="8" version="2">
-  <project Name="exos_lpc24">
+<solution Name="printserver_lpc24" target="8" version="2">
+  <project Name="printeserver_lpc24">
     <configuration Name="Common" Target="LPC2468" arm_architecture="v4T" arm_core_type="ARM7TDMI-S" arm_linker_jtag_pad_post_dr="0" arm_linker_jtag_pad_post_ir="0" arm_linker_jtag_pad_pre_dr="0" arm_linker_jtag_pad_pre_ir="0" arm_linker_svc_stack_size="512" arm_simulator_memory_simulation_filename="$(PackagesDir)/targets/Philips_LPC210X/LPC2000SimulatorMemory.dll" arm_simulator_memory_simulation_parameter="LPC24;0x80000;0x10000;0x0;0x0;0x0;0x0;0x0;0x0;0x0;0x0" arm_target_debug_interface_type="ARM7TDI" arm_target_loader_parameter="12000000" build_intermediate_directory=".output/$(Configuration)" build_output_directory=".output/$(Configuration)" c_only_additional_options="-fms-extensions" c_user_include_directories="$(ProjectDir);$(ProjectDir)/include;$(ProjectDir)/kernel/driver" gcc_entry_point="Reset_Handler" link_IOLibraryName="none" link_include_standard_libraries="No" link_include_startup_code="No" linker_additional_files="$(StudioDir)/lib/libc$(LibExt)$(LIB)" linker_memory_map_file="$(PackagesDir)/targets/Philips_LPC210X/Philips_LPC2468_MemoryMap.xml" oscillator_frequency="12MHz" project_directory="" project_type="Executable" property_groups_file_path="$(PackagesDir)/targets/Philips_LPC210X/propertyGroups24xx.xml"/>
     <configuration Name="Flash" Placement="Flash" arm_target_flash_loader_file_path="$(PackagesDir)/targets/Philips_LPC210X/Release/Loader_lpc2300.elf" arm_target_flash_loader_type="LIBMEM RPC Loader" linker_section_placement_file="$(ProjectDir)/support/lpc2k/lpc2468_placement.xml" target_reset_script="FLASHReset()"/>
     <folder Name="Source Files">
@@ -64,9 +64,6 @@
             <folder Name="classes">
               <file file_name="kernel/driver/usb/classes/scsi.c"/>
             </folder>
-            <folder Name="tests">
-              <file file_name="kernel/driver/usb/test/usbhost_test.c"/>
-            </folder>
           </folder>
         </folder>
         <file file_name="kernel/port.c"/>
@@ -105,6 +102,12 @@
         <folder Name="misc">
           <file file_name="support/misc/eeprom.c"/>
         </folder>
+      </folder>
+      <folder Name="printserver">
+        <file file_name="printserver/discovery.c"/>
+        <file file_name="printserver/main.c"/>
+        <file file_name="printserver/server.c"/>
+        <file file_name="printserver/config.c"/>
       </folder>
     </folder>
     <folder Name="System Files">

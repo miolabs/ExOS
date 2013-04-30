@@ -13,7 +13,7 @@ static LPC_UART_TypeDef *_modules[] = {
 
 static inline int _valid_module(unsigned module, LPC_UART_TypeDef **uart, UART_CONTROL_BLOCK **cb)
 {
-	if (module >= UART_MODULE_COUNT) 
+	if (module < UART_MODULE_COUNT) 
 	{
 		*uart = _modules[module];
 		*cb = _control[module];
@@ -64,10 +64,12 @@ int uart_initialize(unsigned module, UART_CONTROL_BLOCK *cb)
 	{
 		case 0:
 			PCLKSEL0bits.PCLK_UART0 = 1; // PCLK = CCLK
+			LPC_SC->PCONP |= PCONP_PCUART0;
 			VIC_EnableIRQ(UART0_IRQn);
 			break;
 		case 1:
 			PCLKSEL0bits.PCLK_UART1 = 1; // PCLK = CCLK
+			LPC_SC->PCONP |= PCONP_PCUART1;
 			VIC_EnableIRQ(UART1_IRQn);
 			break;
 		case 2:

@@ -185,6 +185,14 @@ static int _setup_uart(int unit)
 			PINSEL1bits.P0_16 = 1; // select RXD1
 			return 1;
 	}
+#elif defined BOARD_E2468
+	switch(unit)
+	{
+		case 0:
+			PINSEL0bits.P0_2 = 1; // select TXD0
+			PINSEL0bits.P0_3 = 1; // select RXD0
+			return 1;
+	}
 #endif
 	return 0;
 }

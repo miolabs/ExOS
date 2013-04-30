@@ -1,0 +1,23 @@
+#ifndef SERVER_DISCOVERY_H
+#define SERVER_DISCOVERY_H
+
+typedef enum
+{
+	SERVER_DISCOVERY_DISCOVER = 0,
+	SERVER_DISCOVERY_RESET,
+	SERVER_DISCOVERY_RECONFIG,
+	SERVER_DISCOVERY_READY,
+} SERVER_DISCOVERY_CMD;
+
+typedef struct
+{
+	unsigned long Magic;
+	SERVER_DISCOVERY_CMD Command;
+	unsigned char Data[0];
+} SERVER_DISCOVERY_MSG;
+
+void discovery_loop();
+
+
+#endif // SERVER_DISCOVERY_H
+
