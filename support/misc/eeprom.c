@@ -31,6 +31,8 @@ EEPROM_RESULT eeprom_read(unsigned char *buf, int offset, int length)
 {
 	EEPROM_RESULT error = 0;
 	unsigned char frame[2 + EEPROM_PAGE_SIZE];
+	
+	eeprom_lock_i2c();
 	while (length > 0)
 	{
 		frame[0] = (unsigned char)(offset >> 8);
@@ -46,6 +48,7 @@ EEPROM_RESULT eeprom_read(unsigned char *buf, int offset, int length)
 		}
 		else break;
 	}
+	eeprom_unlock_i2c();
 	return error;
 }
 
@@ -53,6 +56,8 @@ EEPROM_RESULT eeprom_write(unsigned char *buf, int offset, int length)
 {
 	EEPROM_RESULT error = 0;
 	unsigned char frame[2 + EEPROM_PAGE_SIZE];
+
+	eeprom_lock_i2c();
 	while(length > 0)
 	{
 		frame[0] = (unsigned char)(offset >> 8);
@@ -74,6 +79,7 @@ EEPROM_RESULT eeprom_write(unsigned char *buf, int offset, int length)
 		offset += frame_length;
 		length -= frame_length;
 	}
+	eeprom_unlock_i2c();
 	return error;
 }
 
