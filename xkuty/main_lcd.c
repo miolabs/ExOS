@@ -10,6 +10,7 @@
 #include "xcpu.h"
 #include "fir.h"
 #include "xkuty_gfx.h"
+#include "event_recording.h"
 
 
 #define DISPW (128)
@@ -158,40 +159,55 @@ static EXOS_TIMER _timer_update;	// Could be local?
 static void _intro ( int* status, int* st_time_base, int time)
 {
 	int factor;
+	const int cx = DISPW>>1, cy=DISPH>>1;
+	const int logo_time = 600; // ms
 	switch ( *status)
 	{
 		case ST_LOGO_IN:
 			factor = time/6;
-			_xkuty_effect ( INTRO_BMP1, factor * factor, 64, 32);
-			if ( factor > 75) *status = ST_LOGO_SHOW, *st_time_base = time;
+			_xkuty_effect ( INTRO_BMP1, factor * factor, cx, cy);
+			if ( factor > 75) 
+				*status = ST_LOGO_SHOW, *st_time_base = time;
 			break;
 		case ST_LOGO_SHOW:
-			_xkuty_effect ( INTRO_BMP1, 100*100, 64, 32);
-			if ( time >= (*st_time_base+600)) *status = ST_LOGO_OUT, *st_time_base = time;
+			_xkuty_effect ( INTRO_BMP1, 100*100, cx, cy);
+			if ( time >= (*st_time_base+logo_time)) 
+				*status = ST_LOGO_OUT, *st_time_base = time;
 			break;
 		case ST_LOGO_OUT:
 			factor = 75-((time - *st_time_base) / 6);
-			_xkuty_effect ( INTRO_BMP1, factor * factor, 64, 32);
-			if ( factor <= 0) *status = ST_EXOS_IN, *st_time_base = time;
+			_xkuty_effect ( INTRO_BMP1, factor * factor, cx, cy);
+			if ( factor <= 0) 
+				*status = ST_EXOS_IN, *st_time_base = time;
 			break;
 		case ST_EXOS_IN:
 			factor = ((time - *st_time_base)/3);
-			_xkuty_effect ( INTRO_BMP2, factor * factor, 0, 64);
-			if ( factor > 140) *status = ST_EXOS_SHOW, *st_time_base = time;
+			_xkuty_effect ( INTRO_BMP2, factor * factor, 0, DISPH);
+			if ( factor > 140) 
+				*status = ST_EXOS_SHOW, *st_time_base = time;
 			break;
 		case ST_EXOS_SHOW:
-			_xkuty_effect ( INTRO_BMP2, 150*150, 0, 64);
-			if ( time >= (*st_time_base+600)) *status = ST_EXOS_OUT, *st_time_base = time;
+			_xkuty_effect ( INTRO_BMP2, 150*150, 0, DISPH);
+			if ( time >= (*st_time_base+logo_time)) 
+				*status = ST_EXOS_OUT, *st_time_base = time;
 			break;
 		case ST_EXOS_OUT:
 			factor = 140-((time - *st_time_base)/3);
-			_xkuty_effect ( INTRO_BMP2, factor * factor, 127, 64);
-			if ( factor <= 0) *status = ST_DASH;
+			_xkuty_effect ( INTRO_BMP2, factor * factor, DISPW, DISPH);
+			if ( factor <= 0) 
+				*status = ST_DASH;
 			break;
 	}
 }
 
-
+static const EVREC_CHECK _maintenance_screen_access[]=
+{
+	{0x00000003,CHECK_PRESSED},
+	{0x00000003,CHECK_RELEASED},
+	{0x00000003,CHECK_PRESSED},	
+	{0x00000003,CHECK_RELEASED},
+	{0x00000000,CHECK_END},
+};
 
 typedef struct {
 	int status;
@@ -215,11 +231,10 @@ static int frame_dumps = 0;
 #define POS_KMH           100, 4
 #define POS_KM            108, 41
 
-static void _runtime_screens ( int status)
+static void _runtime_screens ( int* status)
 {
-
 	// General runtime switch; insert new screens here
-	switch ( status)
+	switch ( *status)
 	{
 		case ST_DASH:
 			{
@@ -252,6 +267,10 @@ static void _runtime_screens ( int status)
 
 				//mono_draw_sprite ( screen, DISPW, DISPH, &_kmh_spr, POS_KMH);
 				mono_draw_sprite ( screen, DISPW, DISPH, &_km_spr, POS_KM);
+
+				if ( event_happening ( _maintenance_screen_access))
+					*status = ST_DEBUG;
+				break;
 			}
 			break;
 
@@ -296,15 +315,13 @@ static void _get_can_messages ()
 	}
 }
 
-//int kk [DISPW];
-//int kkpos =0;
 
 static void _read_send_analogic_inputs ()
 {
 	if ( _fir_needs_init)
 	{
 		_fir_needs_init = 0;
-		fir_init( &_ain[0].fir, 6, 0, 0, 0);
+		fir_init( &_ain[0].fir, 6,  1, 500, 1);
 		fir_init( &_ain[1].fir, 10, 1, 100, 3);
 		fir_init( &_ain[2].fir, 10, 1, 100, 5);
 		fir_init( &_ain[3].fir, 8, 0, 0, 0);
@@ -318,11 +335,7 @@ static void _read_send_analogic_inputs ()
 		if ( _ain[i].curr < _ain[i].min) _ain[i].min = _ain[i].curr;
         _ain[i].filtered = fir_filter (& _ain[i].fir, _ain[i].curr);
 		_ain[i].scaled = _sensor_scale ( _ain[i].filtered, _ain[i].def_min, _ain[i].def_max, 0xfff);
-		//_ain[i].scaled = _sensor_scale ( _ain[i].curr, _ain[i].def_min, _ain[i].def_max, 0xfff);
-        //_ain[i].filtered = fir_filter (& _ain[i].fir, _ain[i].filtered, discards[i]);
 	}
-//kk[kkpos] = _ain[2].curr;
-//kkpos++; kkpos&=0x7f;
 
 	unsigned char relays = 0;
 	if (_ain[3].filtered < 0x800) 
@@ -331,14 +344,17 @@ static void _read_send_analogic_inputs ()
 		relays |= (1<<1);
 	CAN_BUFFER buf = (CAN_BUFFER) { relays, _ain[0].scaled>>4, _ain[1].scaled>>4, _ain[2].scaled>>4, 5, 6, 7, 8 };
 	hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
-}
 
+	// Record inputs for sequence triggering (to start debug services)
+	event_record  ( relays | 
+					(((_ain[0].scaled & 0x80) >> 7) << 2) |
+					(((_ain[1].scaled & 0x80) >> 7) << 3) |
+					(((_ain[2].scaled & 0x80) >> 7) << 4));
+}
 
 void main()
 {
 	lcd_initialize();
-
-	//_intro ();
 
 	exos_port_create(&_can_rx_port, NULL);
 	exos_fifo_create(&_can_free_msgs, NULL);
@@ -356,7 +372,7 @@ void main()
     int initial_status = ST_LOGO_IN; //ST_LOGO_IN; //ST_DASH; //ST_DEBUG;
 	int status =  initial_status;
 	int prev_cpu_state = 0;	// Default state is OFF, wait for master to start
-
+	_dash.status |= XCPU_STATE_ON;
 	while(1)
 	{
 		// Read CAN messages from master 
@@ -394,7 +410,7 @@ void main()
 			else
 			{
 				 frame_skips = 4;
-				_runtime_screens ( status);
+				_runtime_screens ( &status);
 			}
 
 			// Screen conversion & dump
