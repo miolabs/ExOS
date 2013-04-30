@@ -10,7 +10,7 @@ static LPC_UART_TypeDef *_modules[] = {
 
 static inline int _valid_module(unsigned module, LPC_UART_TypeDef **uart, UART_CONTROL_BLOCK **cb)
 {
-	if (module >= UART_MODULE_COUNT) 
+	if (module < UART_MODULE_COUNT) 
 	{
 		*uart = _modules[module];
 		*cb = _control[module];

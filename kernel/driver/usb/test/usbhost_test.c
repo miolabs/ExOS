@@ -16,10 +16,11 @@ unsigned char _rcv_buffer[TCP_BUFFER_SIZE];
 unsigned char _snd_buffer[TCP_BUFFER_SIZE] __attribute__((section(".dma")));
 
 // NOTE: hook called by net stack
-void net_board_set_mac_address(NET_ADAPTER *adapter, int index)
-{
-	adapter->MAC = (HW_ADDR) { 0x00, 0x18, 0x1b, 0x05, 0x05, 0x06 };
-}
+//void net_board_set_mac_address(NET_ADAPTER *adapter, int index)
+//{
+//	eeprom_initialize();
+//	adapter->MAC = (HW_ADDR) { 0x00, 0x18, 0x1b, 0x05, 0x05, 0x06 };
+//}
 
 void main()
 {
@@ -29,8 +30,7 @@ void main()
 	NET_ADAPTER *adapter = NULL;
 	if (net_adapter_enum(&adapter))
 	{
-//		adapter->IP = (IP_ADDR) { 10, 0, 1, 10 };
-//		adapter->NetMask = (IP_ADDR) { 255, 255, 255, 0 };
+		sprintf(_buffer, "%d.%d.%d.%d", adapter->IP.Bytes[0], adapter->IP.Bytes[1], adapter->IP.Bytes[2], adapter->IP.Bytes[3]);
 	}
 
 	while(1)

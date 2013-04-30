@@ -102,6 +102,7 @@
           <file file_name="support/lpc17/uart.c"/>
           <file file_name="support/lpc17/usb_otg.c"/>
           <file file_name="support/lpc17/usb_host.c"/>
+          <file file_name="support/lpc17/i2c.c"/>
         </folder>
         <folder Name="board">
           <file file_name="support/board/drivers_generic_lpc17.c"/>
@@ -121,6 +122,10 @@
             <file file_name="support/usb/driver/usbprint.c"/>
             <file file_name="support/usb/driver/ftdi.c"/>
           </folder>
+        </folder>
+        <folder Name="misc">
+          <file file_name="support/misc/mac_24xx02.c"/>
+          <file file_name="support/misc/eeprom.c"/>
         </folder>
       </folder>
       <folder Name="modules">
@@ -147,7 +152,7 @@
   <configuration Name="Debug" build_debug_information="Yes" c_preprocessor_definitions="DEBUG;__THUMB" gcc_optimization_level="None" hidden="Yes" link_include_startup_code="No"/>
   <configuration Name="Release" build_debug_information="No" c_additional_options="-g1" c_preprocessor_definitions="NDEBUG" gcc_optimization_level="Level 1" hidden="Yes" link_include_startup_code="No"/>
   <configuration Name="Common" arm_instruction_set="Thumb" arm_library_instruction_set="Thumb" c_preprocessor_definitions="MAIN_THREAD_STACK=1024;MAIN_THREAD_PRI=0;__EXOS__;__THUMB" linker_section_placement_file="X:/Dropbox/current/exos/support/lpc17/flash_placement_17xx.xml"/>
-  <configuration Name="Mioboard" c_preprocessor_definitions="BOARD_MIOBOARD" hidden="Yes"/>
+  <configuration Name="Mioboard" c_preprocessor_definitions="BOARD_MIOBOARD;EEPROM_I2C_MODULE=0;EEPROM_SIZE=256;EEPROM_PAGE_SIZE=8" hidden="Yes"/>
   <configuration Name="Mioboard Debug" inherited_configurations="Debug;Mioboard"/>
   <configuration Name="Mioboard Release" inherited_configurations="Mioboard;Release"/>
 </solution>

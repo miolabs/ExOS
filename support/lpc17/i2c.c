@@ -1,19 +1,17 @@
 // LPC17xx I2C Peripheral Support
 // by Miguel Fides
-// TODO: driver machine state using interrupts on Cortex-M3
 
 #include "i2c.h"
 #include "cpu.h"
 #include <support/i2c_hal.h>
 #include <support/board_hal.h>
-#include <CMSIS/LPC17xx.h>
 
 #define I2C_MODULE_COUNT 3
 
 static I2C_MODULE *_modules[] = { 
-	(I2C_MODULE *)0x4001C000, 
-	(I2C_MODULE *)0x4005C000, 
-	(I2C_MODULE *)0x400A0000 };
+	(I2C_MODULE *)LPC_I2C0_BASE, 
+	(I2C_MODULE *)LPC_I2C1_BASE, 
+	(I2C_MODULE *)LPC_I2C2_BASE };
 
 static inline I2C_MODULE *_get_module(int module)
 {
@@ -23,20 +21,16 @@ static inline I2C_MODULE *_get_module(int module)
 void hal_i2c_initialize(int module, int bitrate)
 {
 	I2C_MODULE *i2c = _get_module(module);
-	int pclk_div;
 	switch(module)
 	{
 		case 0:
 			LPC_SC->PCONP |= PCONP_PCI2C0;
-			pclk_div = PCLKSEL0bits.PCLK_I2C0;
 			break;
 		case 1:
 			LPC_SC->PCONP |= PCONP_PCI2C1;
-			pclk_div = PCLKSEL1bits.PCLK_I2C1;
 			break;
 		case 2:
 			LPC_SC->PCONP |= PCONP_PCI2C2;
-			pclk_div = PCLKSEL1bits.PCLK_I2C2;
 			break;
 	}
 
@@ -44,7 +38,7 @@ void hal_i2c_initialize(int module, int bitrate)
 	{
 		hal_board_init_pinmux(HAL_RESOURCE_I2C, module);
 		i2c->I2CONCLR = 0xFF;
-		int pclk = cpu_pclk(SystemCoreClock, pclk_div);
+		int pclk = cpu_pclk(SystemCoreClock, 1);
 		int third_divider = pclk / (bitrate * 3);
 		i2c->I2SCLH = third_divider;
 		i2c->I2SCLL = third_divider * 2;
