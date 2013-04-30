@@ -81,12 +81,13 @@
         </folder>
       </folder>
       <folder Name="xkuty" file_name="">
-        <folder Name="board">
+        <folder Name="board" file_name="">
           <file file_name="xkuty/board/board_lcd_lpc17.c"/>
         </folder>
         <file file_name="xkuty/main_lcd.c"/>
         <file file_name="xkuty/xcpu.c"/>
         <file file_name="xkuty/fir.c"/>
+        <file file_name="xkuty/event_recording.c"/>
       </folder>
     </folder>
     <folder Name="System Files">
