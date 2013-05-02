@@ -433,7 +433,7 @@ void main()
     int initial_status = ST_LOGO_IN; //ST_LOGO_IN; //ST_DASH; //ST_DEBUG_INPUT; // ST_DEBUG_SPEED
 	int status =  initial_status;
 	int prev_cpu_state = 0;	// Default state is OFF, wait for master to start
-	_dash.status |= XCPU_STATE_ON;
+	_dash.status |= XCPU_STATE_OFF;
 	while(1)
 	{
 		// Read CAN messages from master 
