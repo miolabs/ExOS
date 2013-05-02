@@ -42,10 +42,14 @@ void event_record ( unsigned int input_state_bits)
 	_input_pos &= RECORDS_MASK;
 }
 
-int event_happening ( const EVREC_CHECK* check_list)
+int event_happening ( const EVREC_CHECK* check_list,  int backlog)
 {
 	if( _input_pos==-1)
 		_event_init ();
+	if (backlog <= 0) 
+		backlog = 1; 
+	if (backlog >= LEN_EVENT_RECORDS) 
+		backlog = LEN_EVENT_RECORDS-1;
 
 	// Find check list end
 	int curr_check=0;
@@ -54,7 +58,7 @@ int event_happening ( const EVREC_CHECK* check_list)
 	if (( check_list[curr_check].check_type != CHECK_END) || (curr_check==0))
 		return 0;
 	curr_check--;
-	int count = LEN_EVENT_RECORDS-1;
+	int count = backlog;
 	int pos = _input_pos - 1;
 	while ( count)
 	{

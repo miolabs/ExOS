@@ -25,6 +25,16 @@ static void _clean_bilevel ( unsigned int* scr, int w, int h)  { for (int i=0; i
 
 static const CAN_EP _eps[] = {{0x300, LCD_CAN_BUS}, {0x301, LCD_CAN_BUS} };
 
+typedef struct {
+	int status;
+	int speed;
+	int distance_hi;
+	int distance_lo;
+	int battery_level_fx8;
+    int speed_adjust;
+} DASH_DATA;
+
+static DASH_DATA _dash = {0,0,0,0,0,0};
 
 enum
 {
@@ -38,12 +48,13 @@ enum
 	ST_INTRO_SECTION_END,
 	//
     ST_DASH,
-	ST_DEBUG,
+	ST_DEBUG_INPUT,
+    ST_DEBUG_SPEED,
 };
 
 static inline void _limit ( int* v, int min, int max)
 {
-    if ( *v < min) *v = 0;
+    if ( *v < min) *v = min;
     if ( *v > max) *v = max;
 }
 
@@ -88,7 +99,7 @@ static char _tmp [20];
 
 static void _draw_text ( const char* text, const MONO_SPR* font, int x, int y)
 { 
-	MONO_SPR spr   = *font;
+	MONO_SPR spr = *font;
 	int i = 0;
 	while ( text[i])
 	{
@@ -97,8 +108,11 @@ static void _draw_text ( const char* text, const MONO_SPR* font, int x, int y)
 		if (( text [i]>='0' && text [i]<='9'))
 			glyph = text [i] - '0';
 		else
-			if ( text [i] == '.')	// Hyper-hack
-				glyph = 10, glyph_w = font->w >> 1;
+			switch ( text [i])	// Hyper-hack
+			{
+				case '.': glyph = 10, glyph_w = font->w >> 1; break;
+				case '-': glyph = 11; break;
+			}
 		if ( glyph != -1)
 		{
 			spr.bitmap = font->bitmap + (spr.stride_bitmap * spr.h * glyph);
@@ -127,6 +141,7 @@ static void _vertical_sprite_comb ( const MONO_SPR* spr0, const MONO_SPR* spr1,
 		mono_draw_sprite ( screen, DISPW, DISPH, &spr, x, y + cut_y);
 }
 
+static int _fir_needs_init = 1;
 
 typedef struct
 {
@@ -144,14 +159,100 @@ static ANALOGIC _ain[NUM_ADC_INPUTS]=
 	{0,0,0,0xffff, 587, 3109},	// 0 - Throtle  (16 bits)   2400->maximum accepted by motor controller, 1050->minimum 
 	{0,0,0,0xffff, 1765,2400},	// 1 - Brake left (16 bits)
 	{0,0,0,0xffff, 1900,2600},	// 2 - Brake right (16 bits)
-	{0,0,0,0xffff, 0,4095},		// 3 - Start (bool)
+	{0,0,0,0xffff, 0,4095},		// 3 - Cruise (bool)
 	{0,0,0,0xffff, 0,4095},		// 4 - Horn  (bool)
 };
 
-static int _fir_needs_init = 1;
+#define THROTTLE_MASK    (1<<0)
+#define BRAKE_LEFT_MASK  (1<<1)
+#define BRAKE_RIGHT_MASK (1<<2)
+#define CRUISE_MASK      (1<<3)
+#define HORN_MASK        (1<<4)
+
+static unsigned int _input_status = 0;
+
+/*static const EVREC_CHECK _maintenance_screen_access[]=
+{
+	{BRAKE_LEFT_MASK,                 CHECK_PRESS},
+	{THROTTLE_MASK,                   CHECK_PRESS},
+	{BRAKE_LEFT_MASK | THROTTLE_MASK, CHECK_PRESSED},
+	{BRAKE_LEFT_MASK | THROTTLE_MASK, CHECK_RELEASED},
+	{HORN_MASK,                       CHECK_PRESS},	
+	{0x00000000,CHECK_END},
+};*/
+
+static const EVREC_CHECK _maintenance_screen_access[]=
+{
+	{BRAKE_RIGHT_MASK | HORN_MASK | CRUISE_MASK, CHECK_PRESSED},
+	{0x00000000,CHECK_END},
+};
+
+static void _read_send_analogic_inputs ()
+{
+	if ( _fir_needs_init)
+	{
+		_fir_needs_init = 0;
+		fir_init( &_ain[0].fir, 6,  1, 500, 1);
+		fir_init( &_ain[1].fir, 10, 1, 100, 3);
+		fir_init( &_ain[2].fir, 10, 1, 100, 5);
+		fir_init( &_ain[3].fir, 8, 0, 0, 0);
+		fir_init( &_ain[4].fir, 8, 0, 0, 0);
+	}
+
+	for(int i=0; i<NUM_ADC_INPUTS; i++)
+	{
+		_ain[i].curr   = hal_adc_read(i) >> 4;	// 12 bit resolution
+		if ( _ain[i].curr > _ain[i].max) _ain[i].max = _ain[i].curr;
+		if ( _ain[i].curr < _ain[i].min) _ain[i].min = _ain[i].curr;
+        _ain[i].filtered = fir_filter (& _ain[i].fir, _ain[i].curr);
+		_ain[i].scaled = _sensor_scale ( _ain[i].filtered, _ain[i].def_min, _ain[i].def_max, 0xfff);
+	}
+
+	unsigned char relays = 0;
+	if (_ain[3].filtered < 0x800) 
+		relays |= (1<<0);
+	if (_ain[4].filtered < 0x800) 
+		relays |= (1<<1);
+	CAN_BUFFER buf = (CAN_BUFFER) { relays, _ain[0].scaled>>4, _ain[1].scaled>>4,
+									_ain[2].scaled>>4, _dash.speed_adjust, 6, 7, 8 };
+	hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
+
+	// Record inputs for sequence triggering (to start debug services)
+	 _input_status = (((_ain[0].scaled & 0x80) >> 7) << 0) |
+					(((_ain[1].scaled & 0x80) >> 7) << 1) |
+					(((_ain[2].scaled & 0x80) >> 7) << 2) |
+					(relays << 3);
+	event_record ( _input_status);
+}
+
+
+static EXOS_PORT _can_rx_port;
+static EXOS_FIFO _can_free_msgs;
+#define CAN_MSG_QUEUE 10
+static XCPU_MSG _can_msg[CAN_MSG_QUEUE];
+
+static void _get_can_messages ()
+{
+	XCPU_MSG *xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0);
+	while (xmsg != NULL)
+	{
+		switch(xmsg->CanMsg.EP.Id)
+		{
+			case 0x300:
+				_dash.speed             = xmsg->CanMsg.Data.u8[0];
+				_dash.battery_level_fx8 = xmsg->CanMsg.Data.u8[1];
+				_dash.status       = xmsg->CanMsg.Data.u8[2];
+				_dash.distance_hi       = xmsg->CanMsg.Data.u32[1] / 10;
+				_dash.distance_lo       = xmsg->CanMsg.Data.u32[1] % 10;
+				break;
+		}
+		exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
+        xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0);
+	}
+}
+
 
 #define INTRO_BMP1 xkuty2_bw
-//#define INTRO_BMP2 xkuty2_bw
 #define INTRO_BMP2 exos_bw
 
 static EXOS_TIMER _timer_update;	// Could be local?
@@ -199,25 +300,6 @@ static void _intro ( int* status, int* st_time_base, int time)
 			break;
 	}
 }
-
-static const EVREC_CHECK _maintenance_screen_access[]=
-{
-	{0x00000003,CHECK_PRESSED},
-	{0x00000003,CHECK_RELEASED},
-	{0x00000003,CHECK_PRESSED},	
-	{0x00000003,CHECK_RELEASED},
-	{0x00000000,CHECK_END},
-};
-
-typedef struct {
-	int status;
-	int speed;
-	int distance_hi;
-	int distance_lo;
-	int battery_level_fx8;
-} DASH_DATA;
-
-static DASH_DATA _dash = {0,0,0,0,0};
 
 static int frame_dumps = 0;
 
@@ -268,13 +350,14 @@ static void _runtime_screens ( int* status)
 				//mono_draw_sprite ( screen, DISPW, DISPH, &_kmh_spr, POS_KMH);
 				mono_draw_sprite ( screen, DISPW, DISPH, &_km_spr, POS_KM);
 
-				if ( event_happening ( _maintenance_screen_access))
-					*status = ST_DEBUG;
+				if ( _dash.speed == 0)
+					if ( event_happening ( _maintenance_screen_access, 50)) // 1 second
+						*status = ST_DEBUG_SPEED;
 				break;
 			}
 			break;
 
-		case ST_DEBUG:
+		case ST_DEBUG_INPUT:
 			for (int i=0; i<NUM_ADC_INPUTS; i++)
 			{
 				int y=12*i;
@@ -286,71 +369,27 @@ static void _runtime_screens ( int* status)
 				_draw_text ( _tmp, &_font_spr_small, 0, y);
 			}
 			break;
+		case ST_DEBUG_SPEED:
+			{
+				const EVREC_CHECK speed_adj_down[]= {{CRUISE_MASK, CHECK_PRESS},{0x00000000,CHECK_END}};
+				const EVREC_CHECK speed_adj_up[]  = {{BRAKE_RIGHT_MASK, CHECK_PRESS},{0x00000000,CHECK_END}};
+				const EVREC_CHECK speed_adj_exit[]= {{HORN_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
+				if ( event_happening ( speed_adj_down,1))
+					_dash.speed_adjust--;
+				if ( event_happening ( speed_adj_up,1))
+					_dash.speed_adjust++;
+				_limit( &_dash.speed_adjust, -10, 10);
+				sprintf ( _tmp, "%d", _dash.speed_adjust);
+				_draw_text ( _tmp, &_font_spr_big, 36, 28);
+                mono_draw_sprite ( screen, DISPW, DISPH, &_speed_adjust_spr, 16, 8);
+                //mono_draw_sprite ( screen, DISPW, DISPH, &_xkuty_pic_spr, -100, 8);
+                if ( event_happening ( speed_adj_exit,1))
+					*status = ST_DASH;
+			}
+			break;
 	}
 }
 
-
-static EXOS_PORT _can_rx_port;
-static EXOS_FIFO _can_free_msgs;
-#define CAN_MSG_QUEUE 10
-static XCPU_MSG _can_msg[CAN_MSG_QUEUE];
-
-static void _get_can_messages ()
-{
-	XCPU_MSG *xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0);
-	while (xmsg != NULL)
-	{
-		switch(xmsg->CanMsg.EP.Id)
-		{
-			case 0x300:
-				_dash.speed             = xmsg->CanMsg.Data.u8[0];
-				_dash.battery_level_fx8 = xmsg->CanMsg.Data.u8[1];
-				_dash.status       = xmsg->CanMsg.Data.u8[2];
-				_dash.distance_hi       = xmsg->CanMsg.Data.u32[1] / 10;
-				_dash.distance_lo       = xmsg->CanMsg.Data.u32[1] % 10;
-				break;
-		}
-		exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
-        xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0);
-	}
-}
-
-
-static void _read_send_analogic_inputs ()
-{
-	if ( _fir_needs_init)
-	{
-		_fir_needs_init = 0;
-		fir_init( &_ain[0].fir, 6,  1, 500, 1);
-		fir_init( &_ain[1].fir, 10, 1, 100, 3);
-		fir_init( &_ain[2].fir, 10, 1, 100, 5);
-		fir_init( &_ain[3].fir, 8, 0, 0, 0);
-		fir_init( &_ain[4].fir, 8, 0, 0, 0);
-	}
-
-	for(int i=0; i<NUM_ADC_INPUTS; i++)
-	{
-		_ain[i].curr   = hal_adc_read(i) >> 4;	// 12 bit resolution
-		if ( _ain[i].curr > _ain[i].max) _ain[i].max = _ain[i].curr;
-		if ( _ain[i].curr < _ain[i].min) _ain[i].min = _ain[i].curr;
-        _ain[i].filtered = fir_filter (& _ain[i].fir, _ain[i].curr);
-		_ain[i].scaled = _sensor_scale ( _ain[i].filtered, _ain[i].def_min, _ain[i].def_max, 0xfff);
-	}
-
-	unsigned char relays = 0;
-	if (_ain[3].filtered < 0x800) 
-		relays |= (1<<0);
-	if (_ain[4].filtered < 0x800) 
-		relays |= (1<<1);
-	CAN_BUFFER buf = (CAN_BUFFER) { relays, _ain[0].scaled>>4, _ain[1].scaled>>4, _ain[2].scaled>>4, 5, 6, 7, 8 };
-	hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
-
-	// Record inputs for sequence triggering (to start debug services)
-	event_record  ( relays | 
-					(((_ain[0].scaled & 0x80) >> 7) << 2) |
-					(((_ain[1].scaled & 0x80) >> 7) << 3) |
-					(((_ain[2].scaled & 0x80) >> 7) << 4));
-}
 
 void main()
 {
@@ -369,7 +408,7 @@ void main()
 	unsigned int prev_time = 0;
 
 	int screen_count = 0;
-    int initial_status = ST_LOGO_IN; //ST_LOGO_IN; //ST_DASH; //ST_DEBUG;
+    int initial_status = ST_LOGO_IN; //ST_LOGO_IN; //ST_DASH; //ST_DEBUG_INPUT; // ST_DEBUG_SPEED
 	int status =  initial_status;
 	int prev_cpu_state = 0;	// Default state is OFF, wait for master to start
 	_dash.status |= XCPU_STATE_ON;

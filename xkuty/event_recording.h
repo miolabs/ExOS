@@ -15,4 +15,4 @@ typedef struct
 } EVREC_CHECK;	// Event record check
 
 void event_record    ( unsigned int input_state_bits);
-int  event_happening ( const EVREC_CHECK* check_list);
+int  event_happening ( const EVREC_CHECK* check_list, int backlog_len_to_check);
