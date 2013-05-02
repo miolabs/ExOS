@@ -6,15 +6,15 @@
 #include "xcpu.h"
 #include "xcpu/board.h"
 #include "xcpu/speed.h"
+#include "xcpu/persist.h"
 #include "pid.h"
 
 #define BRAKE_THRESHOLD 30
-#define BUTTON_CRUISE (1<<0)
-#define BUTTON_HORN (1<<1)
 #define PWM_RANGE 100
 #define MOTOR_OFFSET 50
 #define MOTOR_RANGE (160 - 50)
-#define WHEEL_RATIO (12.9 / 47)
+#define WHEEL_RATIO_KMH (12.9 / 47)
+#define WHEEL_RATIO_MPH (1.60934 * WHEEL_RATIO_KMH)
 
 static const CAN_EP _eps[] = { {0x200, 0}, {0x201, 0} };
 static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
@@ -43,14 +43,7 @@ static enum
 } _control_state;
 static XCPU_STATE _state; // comm state to share (with lcd)
 
-static struct
-{
-	unsigned long Magic;
-	unsigned long TotalSteps;
-	unsigned char ConfigBits;
-	char WheelRatio;
-	unsigned short Reserved;
-} _storage;
+static XCPU_PERSIST_DATA _storage;
 
 void main()
 {
@@ -69,10 +62,6 @@ void main()
 
 	hal_can_initialize(0, 250000);
 	hal_fullcan_setup(_can_setup, NULL);
-
-	_control_state = CONTROL_OFF;
-	_output_state = OUTPUT_NONE;
-	_state = XCPU_STATE_OFF;
 
 #ifdef DEBUG
 	xcpu_board_output(_output_state);
@@ -94,11 +83,27 @@ void main()
 	unsigned char push_start = 0;
 	unsigned char push_cruise = 0;
 	unsigned char push_off = 0;
+	unsigned char push_up = 0;
+	unsigned char push_down = 0;
+	unsigned char push_switch = 0;
 	
+	if (!persist_load(&_storage))
+	{
+		_storage = (XCPU_PERSIST_DATA) { .Magic = XCPU_PERSIST_MAGIC,
+			.TotalSteps = 0,
+			.ConfigBits = XCPU_CONFIGF_NONE,
+			.WheelRatioAdj = 0 };
+	}
+
+	_control_state = CONTROL_OFF;
+	_output_state = OUTPUT_NONE;
+	_state = XCPU_STATE_OFF;
+
 	float dt = 0;
 	float speed = 0;
+	float ratio = 0;
 	int speed_wait = 0;
-	unsigned long m = 0;
+	unsigned long s_partial = 0;
 	int batt = 0;
 	int throttle_target = 0;
 	while(1)
@@ -123,11 +128,17 @@ void main()
 		// read sensors
 		float dt2 = 0;
 		int space = speed_read(&dt2);
+#ifdef DEBUG
+		space = 1;
+		dt = 0.05F;
+#endif
 		dt += dt2;
 		if (space != 0)
 		{
-			speed = dt != 0 ? (int)((space / dt) * WHEEL_RATIO) : 99;
-			m += space * WHEEL_RATIO;
+			ratio = (_state & XCPU_STATE_MILES) ? WHEEL_RATIO_MPH : WHEEL_RATIO_KMH;
+			ratio += ratio * (float)_storage.WheelRatioAdj * 0.001F;
+			speed = dt != 0 ? (int)((space / dt) * ratio) : 99;
+			s_partial += space;
 			dt2 = dt;
 			dt = 0;
 			speed_wait = 0;
@@ -137,16 +148,17 @@ void main()
 			if (speed_wait < 50) speed_wait++;
 			else speed = 0;
 		}
-		batt = (m / 3) & 255;
 
 		switch(_control_state)
 		{
 			case CONTROL_OFF:
 				_output_state = 0;
+#ifndef DEBUG
 				if (_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push_start, 10))
+#endif
 				{
 					_control_state = CONTROL_ON;
-					_state = XCPU_STATE_ON;
+					_state = (_storage.ConfigBits & XCPU_CONFIGF_MILES) ? XCPU_STATE_ON | XCPU_STATE_MILES : XCPU_STATE_ON;
 					_run_diag();
 				}
 				break;
@@ -169,10 +181,25 @@ void main()
 					_output_state |= (OUTPUT_BRAKEL | OUTPUT_EBRAKE);
 					throttle = 0;
 				}
-				if (buttons & BUTTON_HORN)
+				if (buttons & XCPU_BUTTON_HORN)
 					_output_state |= OUTPUT_HORN;
+				
+				if (_push_delay(buttons & XCPU_BUTTON_ADJUST_UP, &push_up, 5) &&
+					_storage.WheelRatioAdj < 100)
+				{
+					_storage.WheelRatioAdj++;
+				}
+				if (_push_delay(buttons & XCPU_BUTTON_ADJUST_DOWN, &push_down, 5) &&
+					_storage.WheelRatioAdj > -100)
+				{
+					_storage.WheelRatioAdj--;
+				}
+				if (_push_delay(buttons & XCPU_BUTTON_SWITCH_UNITS, &push_switch, 5))
+				{
+					_state &= ~XCPU_STATE_MILES;
+				}
 
-				if (_push_delay(buttons & BUTTON_CRUISE, &push_cruise, 5))
+				if (_push_delay(buttons & XCPU_BUTTON_CRUISE, &push_cruise, 5))
 				{
 					if (speed == 0)
 					{
@@ -189,7 +216,7 @@ void main()
 				}
 
 				if (_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push_start, 10) ||
-					_push_delay(buttons & BUTTON_CRUISE, &push_off, 50))
+					_push_delay(buttons & XCPU_BUTTON_CRUISE, &push_off, 50))
 				{
 					if (speed == 0)
 					{
@@ -218,7 +245,8 @@ void main()
 		buf.u8[0] = speed;
 		buf.u8[1] = throttle; // batt
 		buf.u8[2] = _state;
-		buf.u32[1] = (unsigned long)(m / 100);
+		buf.u8[3] = _storage.WheelRatioAdj;
+		buf.u32[1] = (unsigned long)(((_storage.TotalSteps + s_partial) * ratio) / 100);
 		hal_can_send((CAN_EP) { .Id = 0x300 }, &buf, 8, CANF_NONE);
 
 		xcpu_board_output(_output_state);

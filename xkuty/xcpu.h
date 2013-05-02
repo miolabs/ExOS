@@ -11,7 +11,6 @@ typedef struct
 	unsigned char status;			// XCPU_STATE;
 	unsigned char speed_adjust;		// -10 to +10
 	unsigned long distance;			// distance km (or miles)
-
 } XCPU_MASTER_OUT;
 
 typedef struct
@@ -19,7 +18,7 @@ typedef struct
 	EXOS_MESSAGE;
 	union
 	{
-		CAN_MSG         CanMsg;
+		CAN_MSG CanMsg;
         XCPU_MASTER_OUT MasterInfo;
 	};
 } XCPU_MSG;
@@ -37,12 +36,12 @@ typedef enum
 
 typedef enum
 {
-	XCPU_RELAY_CRUISIN = (1<<0),
-	XCPU_RELAY_HORN = (1<<1),
-	XCPU_RELAY_ADJUST_UP = (1<<2),
-	XCPU_RELAY_ADJUST_DOWN = (1<<3),
-	XCPU_RELAY_CHANGE_METRICS = (1<<4),
-} XCPU_RELAYS_IN;
+	XCPU_BUTTON_CRUISE = (1<<0),
+	XCPU_BUTTON_HORN = (1<<1),
+	XCPU_BUTTON_ADJUST_UP = (1<<2),
+	XCPU_BUTTON_ADJUST_DOWN = (1<<3),
+	XCPU_BUTTON_SWITCH_UNITS = (1<<4),
+} XCPU_BUTTONS;
 
 #endif // XCPU_H
 
