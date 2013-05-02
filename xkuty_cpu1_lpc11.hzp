@@ -51,6 +51,7 @@
           <file file_name="xkuty/xcpu/sensor_cpu1.c"/>
           <file file_name="xkuty/xcpu/board_cpu1.c"/>
           <file file_name="xkuty/xcpu/speed.c"/>
+          <file file_name="xkuty/xcpu/persist.c"/>
         </folder>
         <file file_name="xkuty/pid.c"/>
       </folder>
