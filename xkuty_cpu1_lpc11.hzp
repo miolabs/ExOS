@@ -50,10 +50,10 @@
         <folder Name="xcpu">
           <file file_name="xkuty/xcpu/sensor_cpu1.c"/>
           <file file_name="xkuty/xcpu/board_cpu1.c"/>
+          <file file_name="xkuty/xcpu/speed.c"/>
         </folder>
         <file file_name="xkuty/pid.c"/>
       </folder>
-      <file file_name="xkuty/xcpu/speed.c"/>
     </folder>
     <folder Name="System Files" file_name="">
       <file file_name="$(TargetsDir)/LPC1000/LPC1100_Target.js">

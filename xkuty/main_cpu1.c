@@ -43,6 +43,14 @@ static enum
 } _control_state;
 static XCPU_STATE _state; // comm state to share (with lcd)
 
+static struct
+{
+	unsigned long Magic;
+	unsigned long TotalSteps;
+	unsigned char ConfigBits;
+	char WheelRatio;
+	unsigned short Reserved;
+} _storage;
 
 void main()
 {
@@ -188,7 +196,9 @@ void main()
 						_output_state = OUTPUT_NONE;
 						_control_state = CONTROL_OFF;
 						_state = XCPU_STATE_OFF;
-                        hal_pwm_set_output(PWM_TIMER_MODULE, 0, PWM_RANGE + 1);
+                        hal_pwm_set_output(PWM_TIMER_MODULE, 0, PWM_RANGE + 1); //	disable pwm
+
+						//_save();
 					}
 					else _state |= XCPU_STATE_WARNING;
 				}
