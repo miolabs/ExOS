@@ -9,7 +9,7 @@ typedef struct
 	unsigned char speed;			// kmh (or mph)
 	unsigned char battery_level_fx8; 
 	unsigned char status;			// XCPU_STATE;
-	unsigned char speed_adjust;		// -10 to +10
+	signed char	  speed_adjust;		// -10 to +10
 	unsigned long distance;			// distance km (or miles)
 
 } XCPU_MASTER_OUT;

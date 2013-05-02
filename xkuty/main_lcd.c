@@ -231,15 +231,15 @@ static void _read_send_analogic_inputs ()
 
 	unsigned char relays = 0;
 	if (_ain[3].filtered < 0x800) 
-		relays |= XCPU_RELAY_CRUISIN;
+		relays |= XCPU_BUTTON_CRUISE;
 	if (_ain[4].filtered < 0x800) 
-		relays |= XCPU_RELAY_HORN;
+		relays |= XCPU_BUTTON_HORN;
 	if ( _adj_up)
-		relays |= XCPU_RELAY_ADJUST_UP;
+		relays |= XCPU_BUTTON_ADJUST_UP;
 	if ( _adj_down)
-		relays |= XCPU_RELAY_ADJUST_DOWN;
+		relays |= XCPU_BUTTON_ADJUST_DOWN;
 	if ( _adj_metrics)
-		relays |=XCPU_RELAY_CHANGE_METRICS;
+		relays |=XCPU_BUTTON_SWITCH_UNITS;
 
 	CAN_BUFFER buf = (CAN_BUFFER) { relays, _ain[0].scaled>>4, _ain[1].scaled>>4,
 									_ain[2].scaled>>4, 5, 6, 7, 8 };
@@ -342,6 +342,7 @@ static int frame_dumps = 0;
 #define POS_WARNING       37,  28
 #define POS_KMH           100, 4
 #define POS_KM            108, 41
+#define POS_MI            102, 37
 
 static void _runtime_screens ( int* status)
 {
@@ -378,11 +379,14 @@ static void _runtime_screens ( int* status)
 					mono_draw_sprite ( screen, DISPW, DISPH, &_warning_spr, POS_WARNING);
 
 				//mono_draw_sprite ( screen, DISPW, DISPH, &_kmh_spr, POS_KMH);
-				mono_draw_sprite ( screen, DISPW, DISPH, 
-									(_dash.status & XCPU_STATE_MILES) ? &_mi_spr : &_km_spr, 
-									POS_KM);
+                if (_dash.status & XCPU_STATE_MILES)
+					mono_draw_sprite ( screen, DISPW, DISPH, &_mi_spr, POS_MI);
+				else
+					mono_draw_sprite ( screen, DISPW, DISPH, &_km_spr, POS_KM);
 
-				//if ( _dash.speed == 0)
+									
+
+				if ( _dash.speed == 0)
 					if ( event_happening ( _maintenance_screen_access, 50)) // 1 second
 						*status = ST_DEBUG_SPEED;
 				break;
@@ -418,9 +422,11 @@ static void _runtime_screens ( int* status)
                 //mono_draw_sprite ( screen, DISPW, DISPH, &_xkuty_pic_spr, -100, 2);
 				sprintf ( _tmp, "%d", _dash.speed_adjust);
 				_draw_text ( _tmp, &_font_spr_big, 36, 20);
-				mono_draw_sprite ( screen, DISPW, DISPH, 
-									(_dash.status & XCPU_STATE_MILES) ? &_mi_spr : &_km_spr, 
-									100, 32);
+                if (_dash.status & XCPU_STATE_MILES)
+					mono_draw_sprite ( screen, DISPW, DISPH, &_mi_spr, 0, 54);
+				else
+					mono_draw_sprite ( screen, DISPW, DISPH, &_km_spr, 4, 57);
+									
 				_horizontal_sprite_comb ( &_adjust_full_spr, &_adjust_empty_spr, bar, 40,46); 
                 if ( event_happening ( speed_adj_exit,1))
 					*status = ST_DASH;
@@ -450,7 +456,7 @@ void main()
     int initial_status = ST_LOGO_IN; //ST_LOGO_IN; //ST_DASH; //ST_DEBUG_INPUT; // ST_DEBUG_SPEED
 	int status =  initial_status;
 	int prev_cpu_state = 0;	// Default state is OFF, wait for master to start
-	_dash.status |= XCPU_STATE_ON;
+	//_dash.status |= XCPU_STATE_ON;
 	while(1)
 	{
 		// Read CAN messages from master 
