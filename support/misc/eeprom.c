@@ -14,6 +14,12 @@
 #define EEPROM_PAGE_SIZE 64
 #endif
 
+#if EEPROM_SIZE > 256
+#define EEPROM_ADDR_LEN 2
+#else
+#define EEPROM_ADDR_LEN 1
+#endif
+
 int eeprom_initialize()
 {
 	hal_i2c_initialize(EEPROM_I2C_MODULE, EEPROM_I2C_CLOCK);
@@ -30,19 +36,23 @@ int eeprom_read_geometry(int *psize, int *ppagesize)
 EEPROM_RESULT eeprom_read(unsigned char *buf, int offset, int length)
 {
 	EEPROM_RESULT error = 0;
-	unsigned char frame[2 + EEPROM_PAGE_SIZE];
+	unsigned char frame[EEPROM_ADDR_LEN + EEPROM_PAGE_SIZE];
 	
 	eeprom_lock_i2c();
 	while (length > 0)
 	{
+#if EEPROM_ADDR_LEN == 2
 		frame[0] = (unsigned char)(offset >> 8);
 		frame[1] = (unsigned char)offset;
+#else
+		frame[0] = (unsigned char)offset;
+#endif
 		int max_length = EEPROM_PAGE_SIZE - (offset & (EEPROM_PAGE_SIZE - 1));
 		int frame_length = length > max_length ? max_length : length;
-		error = hal_i2c_master_frame(EEPROM_I2C_MODULE, EEPROM_I2C_ADDRESS, frame, 2, frame_length);
+		error = hal_i2c_master_frame(EEPROM_I2C_MODULE, EEPROM_I2C_ADDRESS, frame, EEPROM_ADDR_LEN, frame_length);
 		if (error == EEPROM_RES_OK)
 		{
-			for (int i = 0; i < frame_length; i++) *buf++ = frame[i + 2];
+			for (int i = 0; i < frame_length; i++) *buf++ = frame[i + EEPROM_ADDR_LEN];
 			offset += frame_length;
 			length -= frame_length;
 		}
@@ -55,22 +65,26 @@ EEPROM_RESULT eeprom_read(unsigned char *buf, int offset, int length)
 EEPROM_RESULT eeprom_write(unsigned char *buf, int offset, int length)
 {
 	EEPROM_RESULT error = 0;
-	unsigned char frame[2 + EEPROM_PAGE_SIZE];
+	unsigned char frame[EEPROM_ADDR_LEN + EEPROM_PAGE_SIZE];
 
 	eeprom_lock_i2c();
 	while(length > 0)
 	{
+#if EEPROM_ADDR_LEN == 2
 		frame[0] = (unsigned char)(offset >> 8);
 		frame[1] = (unsigned char)offset;
+#else
+		frame[0] = (unsigned char)offset;
+#endif
 		int max_length = EEPROM_PAGE_SIZE - (offset & (EEPROM_PAGE_SIZE - 1));
 		int frame_length = length > max_length ? max_length : length;
-		for (int i = 0; i < frame_length; i++) frame[i + 2] = *buf++;
-		error = hal_i2c_master_frame(EEPROM_I2C_MODULE, EEPROM_I2C_ADDRESS, frame, 2 + frame_length, 0);
+		for (int i = 0; i < frame_length; i++) frame[i + EEPROM_ADDR_LEN] = *buf++;
+		error = hal_i2c_master_frame(EEPROM_I2C_MODULE, EEPROM_I2C_ADDRESS, frame, EEPROM_ADDR_LEN + frame_length, 0);
 		if (error == 3)
 		{
 			for(int retry = 0; retry < 200; retry++)
 			{
-				error = hal_i2c_master_frame(EEPROM_I2C_MODULE, EEPROM_I2C_ADDRESS, frame, 2 + frame_length, 0);
+				error = hal_i2c_master_frame(EEPROM_I2C_MODULE, EEPROM_I2C_ADDRESS, frame, EEPROM_ADDR_LEN + frame_length, 0);
 				if (error != 3) 
 					break;
 			}
