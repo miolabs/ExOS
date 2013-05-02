@@ -213,7 +213,31 @@ const static unsigned int _bmp_nums_distance [] =
 0x1e000000, 0x1e000000, 0x0, 0x0
 };
 
+static const unsigned int _bmp_adjust_bar_full [] = 
+{ 
+0xffffffff, 0xffffc000, 0xffffffff, 0xffffc000, 
+0x80000000, 0x4000, 0xbf3f3f3f, 0x3f3f4000, 
+0xbf3f3f3f, 0x3f3f4000, 0xbf3f3f3f, 0x3f3f4000, 
+0xbf3f3f3f, 0x3f3f4000, 0xbf3f3f3f, 0x3f3f4000, 
+0xbf3f3f3f, 0x3f3f4000, 0xbf3f3f3f, 0x3f3f4000, 
+0xbf3f3f3f, 0x3f3f4000, 0xbf3f3f3f, 0x3f3f4000, 
+0xbf3f3f3f, 0x3f3f4000, 0xbf3f3f3f, 0x3f3f4000, 
+0xbf3f3f3f, 0x3f3f4000, 0x80000000, 0x4000, 
+0xffffffff, 0xffffc000, 0xffffffff, 0xffffc000
+};
 
+static const unsigned int _bmp_adjust_bar_empty [] = 
+{
+0xffffffff, 0xffffc000, 0xffffffff, 0xffffc000, 
+0x80000000, 0x4000, 0x80000000, 0x4000, 
+0x80000000, 0x4000, 0x80000000, 0x4000, 
+0x80000000, 0x4000, 0x80000000, 0x4000, 
+0x80000000, 0x4000, 0x80000000, 0x4000, 
+0x80000000, 0x4000, 0x80000000, 0x4000, 
+0x80000000, 0x4000, 0x80000000, 0x4000, 
+0x80000000, 0x4000, 0x80000000, 0x4000, 
+0xffffffff, 0xffffc000, 0xffffffff, 0xffffc000
+};
 
 static const unsigned int xkuty_bw [] = 
 { 
@@ -438,6 +462,8 @@ static MONO_SPR _speed_adjust_spr = { 94, 14, _bmp_speed_adjust, _dummy_mask, 3,
 
 static MONO_SPR _battery_full  = { 27, 59, _bmp_battery, _dummy_mask, 1,0};
 static MONO_SPR _battery_empty = { 27, 59, _bmp_battery_empty, _dummy_mask, 1,0};
+static MONO_SPR _adjust_full_spr  = { 50, 18, _bmp_adjust_bar_full, _dummy_mask, 2, 0};
+static MONO_SPR _adjust_empty_spr = { 50, 18, _bmp_adjust_bar_empty, _dummy_mask, 2, 0};
 
 static const unsigned int _bmp_xkuty_pic [] = 
 {

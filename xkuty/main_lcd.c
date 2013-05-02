@@ -141,6 +141,24 @@ static void _vertical_sprite_comb ( const MONO_SPR* spr0, const MONO_SPR* spr1,
 		mono_draw_sprite ( screen, DISPW, DISPH, &spr, x, y + cut_y);
 }
 
+static void _horizontal_sprite_comb ( const MONO_SPR* spr0, const MONO_SPR* spr1, 
+                                      int level_fx8, int x, int y)
+{
+	static unsigned int show_mask[] = {0,0,0,0};
+	_limit ( &level_fx8, 0,0x100);
+	int cut_x = (level_fx8 * spr0->w) >> 8;
+	int spans = cut_x >> 5;
+	int i=0;
+	for ( ;i<spans;i++)
+		show_mask[i] = 0xffffffff;
+	show_mask[i] = (unsigned int)(-1<<(31-(cut_x&0x1f)));
+	mono_draw_sprite ( screen, DISPW, DISPH, spr1, x, y);
+	MONO_SPR spr = *spr0;
+	spr.mask = show_mask;
+	spr.stride_mask = 0;
+	mono_draw_sprite ( screen, DISPW, DISPH, &spr, x, y);
+}
+
 static int _fir_needs_init = 1;
 
 typedef struct
@@ -184,6 +202,7 @@ static unsigned int _input_status = 0;
 static const EVREC_CHECK _maintenance_screen_access[]=
 {
 	{BRAKE_RIGHT_MASK | HORN_MASK | CRUISE_MASK, CHECK_PRESSED},
+	{BRAKE_RIGHT_MASK | HORN_MASK | CRUISE_MASK, CHECK_RELEASED},
 	{0x00000000,CHECK_END},
 };
 
@@ -373,16 +392,19 @@ static void _runtime_screens ( int* status)
 			{
 				const EVREC_CHECK speed_adj_down[]= {{CRUISE_MASK, CHECK_PRESS},{0x00000000,CHECK_END}};
 				const EVREC_CHECK speed_adj_up[]  = {{BRAKE_RIGHT_MASK, CHECK_PRESS},{0x00000000,CHECK_END}};
-				const EVREC_CHECK speed_adj_exit[]= {{HORN_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
+				const EVREC_CHECK speed_adj_exit[]= {{BRAKE_LEFT_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
 				if ( event_happening ( speed_adj_down,1))
 					_dash.speed_adjust--;
 				if ( event_happening ( speed_adj_up,1))
 					_dash.speed_adjust++;
 				_limit( &_dash.speed_adjust, -10, 10);
+				int bar = 0x80 + (_dash.speed_adjust * (0x80/10));
+				mono_draw_sprite ( screen, DISPW, DISPH, &_speed_adjust_spr, 16, 2);
+                //mono_draw_sprite ( screen, DISPW, DISPH, &_xkuty_pic_spr, -100, 2);
 				sprintf ( _tmp, "%d", _dash.speed_adjust);
-				_draw_text ( _tmp, &_font_spr_big, 36, 28);
-                mono_draw_sprite ( screen, DISPW, DISPH, &_speed_adjust_spr, 16, 8);
-                //mono_draw_sprite ( screen, DISPW, DISPH, &_xkuty_pic_spr, -100, 8);
+				_draw_text ( _tmp, &_font_spr_big, 36, 20);
+ 
+				_horizontal_sprite_comb ( &_adjust_full_spr, &_adjust_empty_spr, bar, 40,46); 
                 if ( event_happening ( speed_adj_exit,1))
 					*status = ST_DASH;
 			}
