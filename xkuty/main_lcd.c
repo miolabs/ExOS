@@ -148,10 +148,11 @@ static void _horizontal_sprite_comb ( const MONO_SPR* spr0, const MONO_SPR* spr1
 	_limit ( &level_fx8, 0,0x100);
 	int cut_x = (level_fx8 * spr0->w) >> 8;
 	int spans = cut_x >> 5;
+	int inter = cut_x & 0x1f;
 	int i=0;
 	for ( ;i<spans;i++)
 		show_mask[i] = 0xffffffff;
-	show_mask[i] = (unsigned int)(-1<<(31-(cut_x&0x1f)));
+	show_mask[i] = (inter == 0) ? 0 : (unsigned int)(-1<<(32-inter));
 	mono_draw_sprite ( screen, DISPW, DISPH, spr1, x, y);
 	MONO_SPR spr = *spr0;
 	spr.mask = show_mask;
@@ -188,6 +189,7 @@ static ANALOGIC _ain[NUM_ADC_INPUTS]=
 #define HORN_MASK        (1<<4)
 
 static unsigned int _input_status = 0;
+static char _latch_adj_up=0, _latch_adj_down=0, _latch_adj_metrics=0;
 
 /*static const EVREC_CHECK _maintenance_screen_access[]=
 {
@@ -229,11 +231,18 @@ static void _read_send_analogic_inputs ()
 
 	unsigned char relays = 0;
 	if (_ain[3].filtered < 0x800) 
-		relays |= (1<<0);
+		relays |= XCPU_RELAY_CRUISIN;
 	if (_ain[4].filtered < 0x800) 
-		relays |= (1<<1);
+		relays |= XCPU_RELAY_HORN;
+	if ( _latch_adj_up)
+		relays |= XCPU_RELAY_ADJUST_UP, _latch_adj_up=0;
+	if ( _latch_adj_down)
+		relays |= XCPU_RELAY_ADJUST_DOWN, _latch_adj_down=0;
+	if ( _latch_adj_metrics)
+		relays |=XCPU_RELAY_CHANGE_METRICS, _latch_adj_metrics=0;
+
 	CAN_BUFFER buf = (CAN_BUFFER) { relays, _ain[0].scaled>>4, _ain[1].scaled>>4,
-									_ain[2].scaled>>4, _dash.speed_adjust, 6, 7, 8 };
+									_ain[2].scaled>>4, 5, 6, 7, 8 };
 	hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
 
 	// Record inputs for sequence triggering (to start debug services)
@@ -258,11 +267,12 @@ static void _get_can_messages ()
 		switch(xmsg->CanMsg.EP.Id)
 		{
 			case 0x300:
-				_dash.speed             = xmsg->CanMsg.Data.u8[0];
-				_dash.battery_level_fx8 = xmsg->CanMsg.Data.u8[1];
-				_dash.status       = xmsg->CanMsg.Data.u8[2];
-				_dash.distance_hi       = xmsg->CanMsg.Data.u32[1] / 10;
-				_dash.distance_lo       = xmsg->CanMsg.Data.u32[1] % 10;
+				_dash.speed             = xmsg->MasterInfo.speed;
+				_dash.battery_level_fx8 = xmsg->MasterInfo.battery_level_fx8;
+				_dash.status			= xmsg->MasterInfo.status;
+                _dash.speed_adjust      = xmsg->MasterInfo.speed_adjust;
+				_dash.distance_hi       = xmsg->MasterInfo.distance / 10;
+				_dash.distance_lo       = xmsg->MasterInfo.distance % 10;
 				break;
 		}
 		exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
@@ -271,8 +281,8 @@ static void _get_can_messages ()
 }
 
 
-#define INTRO_BMP1 xkuty2_bw
-#define INTRO_BMP2 exos_bw
+#define INTRO_BMP1 _xkuty2_bw
+#define INTRO_BMP2 _exos_bw
 
 static EXOS_TIMER _timer_update;	// Could be local?
 
@@ -367,7 +377,9 @@ static void _runtime_screens ( int* status)
 					mono_draw_sprite ( screen, DISPW, DISPH, &_warning_spr, POS_WARNING);
 
 				//mono_draw_sprite ( screen, DISPW, DISPH, &_kmh_spr, POS_KMH);
-				mono_draw_sprite ( screen, DISPW, DISPH, &_km_spr, POS_KM);
+				mono_draw_sprite ( screen, DISPW, DISPH, 
+									(_dash.status & XCPU_STATE_MILES) ? &_mi_spr : &_km_spr, 
+									POS_KM);
 
 				if ( _dash.speed == 0)
 					if ( event_happening ( _maintenance_screen_access, 50)) // 1 second
@@ -390,20 +402,26 @@ static void _runtime_screens ( int* status)
 			break;
 		case ST_DEBUG_SPEED:
 			{
-				const EVREC_CHECK speed_adj_down[]= {{CRUISE_MASK, CHECK_PRESS},{0x00000000,CHECK_END}};
+				const EVREC_CHECK speed_adj_down[]= {{BRAKE_LEFT_MASK, CHECK_PRESS},{0x00000000,CHECK_END}};
 				const EVREC_CHECK speed_adj_up[]  = {{BRAKE_RIGHT_MASK, CHECK_PRESS},{0x00000000,CHECK_END}};
-				const EVREC_CHECK speed_adj_exit[]= {{BRAKE_LEFT_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
+				const EVREC_CHECK speed_adj_exit[]= {{HORN_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
+				const EVREC_CHECK speed_adj_metrics[]= {{CRUISE_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
 				if ( event_happening ( speed_adj_down,1))
-					_dash.speed_adjust--;
+					_latch_adj_down=1;
 				if ( event_happening ( speed_adj_up,1))
-					_dash.speed_adjust++;
+					_latch_adj_up=1;
+				if ( event_happening ( speed_adj_metrics,1))
+					_latch_adj_metrics=1;
+
 				_limit( &_dash.speed_adjust, -10, 10);
 				int bar = 0x80 + (_dash.speed_adjust * (0x80/10));
 				mono_draw_sprite ( screen, DISPW, DISPH, &_speed_adjust_spr, 16, 2);
                 //mono_draw_sprite ( screen, DISPW, DISPH, &_xkuty_pic_spr, -100, 2);
 				sprintf ( _tmp, "%d", _dash.speed_adjust);
 				_draw_text ( _tmp, &_font_spr_big, 36, 20);
- 
+				mono_draw_sprite ( screen, DISPW, DISPH, 
+									(_dash.status & XCPU_STATE_MILES) ? &_mi_spr : &_km_spr, 
+									100, 32);
 				_horizontal_sprite_comb ( &_adjust_full_spr, &_adjust_empty_spr, bar, 40,46); 
                 if ( event_happening ( speed_adj_exit,1))
 					*status = ST_DASH;
@@ -433,7 +451,7 @@ void main()
     int initial_status = ST_LOGO_IN; //ST_LOGO_IN; //ST_DASH; //ST_DEBUG_INPUT; // ST_DEBUG_SPEED
 	int status =  initial_status;
 	int prev_cpu_state = 0;	// Default state is OFF, wait for master to start
-	_dash.status |= XCPU_STATE_OFF;
+	_dash.status |= XCPU_STATE_ON;
 	while(1)
 	{
 		// Read CAN messages from master 
