@@ -17,11 +17,7 @@ typedef struct
 typedef struct
 {
 	EXOS_MESSAGE;
-	union
-	{
-		CAN_MSG         CanMsg;
-        XCPU_MASTER_OUT MasterInfo;
-	};
+	CAN_MSG  CanMsg;
 } XCPU_MSG;
 
 typedef enum

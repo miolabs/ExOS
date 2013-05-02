@@ -189,7 +189,7 @@ static ANALOGIC _ain[NUM_ADC_INPUTS]=
 #define HORN_MASK        (1<<4)
 
 static unsigned int _input_status = 0;
-static char _latch_adj_up=0, _latch_adj_down=0, _latch_adj_metrics=0;
+static char _adj_up=0, _adj_down=0, _adj_metrics=0;
 
 /*static const EVREC_CHECK _maintenance_screen_access[]=
 {
@@ -234,12 +234,12 @@ static void _read_send_analogic_inputs ()
 		relays |= XCPU_RELAY_CRUISIN;
 	if (_ain[4].filtered < 0x800) 
 		relays |= XCPU_RELAY_HORN;
-	if ( _latch_adj_up)
-		relays |= XCPU_RELAY_ADJUST_UP, _latch_adj_up=0;
-	if ( _latch_adj_down)
-		relays |= XCPU_RELAY_ADJUST_DOWN, _latch_adj_down=0;
-	if ( _latch_adj_metrics)
-		relays |=XCPU_RELAY_CHANGE_METRICS, _latch_adj_metrics=0;
+	if ( _adj_up)
+		relays |= XCPU_RELAY_ADJUST_UP;
+	if ( _adj_down)
+		relays |= XCPU_RELAY_ADJUST_DOWN;
+	if ( _adj_metrics)
+		relays |=XCPU_RELAY_CHANGE_METRICS;
 
 	CAN_BUFFER buf = (CAN_BUFFER) { relays, _ain[0].scaled>>4, _ain[1].scaled>>4,
 									_ain[2].scaled>>4, 5, 6, 7, 8 };
@@ -264,15 +264,16 @@ static void _get_can_messages ()
 	XCPU_MSG *xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0);
 	while (xmsg != NULL)
 	{
+		XCPU_MASTER_OUT* tmsg = (XCPU_MASTER_OUT*)&xmsg->CanMsg.Data.u8[0];
 		switch(xmsg->CanMsg.EP.Id)
 		{
 			case 0x300:
-				_dash.speed             = xmsg->MasterInfo.speed;
-				_dash.battery_level_fx8 = xmsg->MasterInfo.battery_level_fx8;
-				_dash.status			= xmsg->MasterInfo.status;
-                _dash.speed_adjust      = xmsg->MasterInfo.speed_adjust;
-				_dash.distance_hi       = xmsg->MasterInfo.distance / 10;
-				_dash.distance_lo       = xmsg->MasterInfo.distance % 10;
+				_dash.speed             = tmsg->speed;
+				_dash.battery_level_fx8 = tmsg->battery_level_fx8;
+				_dash.status			= tmsg->status;
+                _dash.speed_adjust      = tmsg->speed_adjust;
+				_dash.distance_hi       = tmsg->distance / 10;
+				_dash.distance_lo       = tmsg->distance % 10;
 				break;
 		}
 		exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
@@ -381,7 +382,7 @@ static void _runtime_screens ( int* status)
 									(_dash.status & XCPU_STATE_MILES) ? &_mi_spr : &_km_spr, 
 									POS_KM);
 
-				if ( _dash.speed == 0)
+				//if ( _dash.speed == 0)
 					if ( event_happening ( _maintenance_screen_access, 50)) // 1 second
 						*status = ST_DEBUG_SPEED;
 				break;
@@ -402,16 +403,14 @@ static void _runtime_screens ( int* status)
 			break;
 		case ST_DEBUG_SPEED:
 			{
-				const EVREC_CHECK speed_adj_down[]= {{BRAKE_LEFT_MASK, CHECK_PRESS},{0x00000000,CHECK_END}};
-				const EVREC_CHECK speed_adj_up[]  = {{BRAKE_RIGHT_MASK, CHECK_PRESS},{0x00000000,CHECK_END}};
 				const EVREC_CHECK speed_adj_exit[]= {{HORN_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
-				const EVREC_CHECK speed_adj_metrics[]= {{CRUISE_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
-				if ( event_happening ( speed_adj_down,1))
-					_latch_adj_down=1;
-				if ( event_happening ( speed_adj_up,1))
-					_latch_adj_up=1;
-				if ( event_happening ( speed_adj_metrics,1))
-					_latch_adj_metrics=1;
+					_adj_down = _adj_up = _adj_metrics = 0;
+				if ( _input_status & BRAKE_LEFT_MASK)
+					_adj_down=1;
+				if ( _input_status & BRAKE_RIGHT_MASK)
+					_adj_up=1;
+				if ( _input_status & CRUISE_MASK)
+					_adj_metrics=1;
 
 				_limit( &_dash.speed_adjust, -10, 10);
 				int bar = 0x80 + (_dash.speed_adjust * (0x80/10));
