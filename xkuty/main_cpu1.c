@@ -14,7 +14,7 @@
 #define MOTOR_OFFSET 50
 #define MOTOR_RANGE (160 - 50)
 #define WHEEL_RATIO_KMH (12.9 / 47)
-#define WHEEL_RATIO_MPH (1.60934 * WHEEL_RATIO_KMH)
+#define WHEEL_RATIO_MPH (WHEEL_RATIO_KMH / 1.60934)
 
 static const CAN_EP _eps[] = { {0x200, 0}, {0x201, 0} };
 static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
@@ -128,15 +128,11 @@ void main()
 		// read sensors
 		float dt2 = 0;
 		int space = speed_read(&dt2);
-#ifdef DEBUG
-		space = 1;
-		dt = 0.05F;
-#endif
 		dt += dt2;
 		if (space != 0)
 		{
 			ratio = (_state & XCPU_STATE_MILES) ? WHEEL_RATIO_MPH : WHEEL_RATIO_KMH;
-			ratio += ratio * (float)_storage.WheelRatioAdj * 0.001F;
+			ratio += ratio * (float)_storage.WheelRatioAdj * 0.01F;
 			speed = dt != 0 ? (int)((space / dt) * ratio) : 99;
 			s_partial += space;
 			dt2 = dt;
@@ -185,18 +181,18 @@ void main()
 					_output_state |= OUTPUT_HORN;
 				
 				if (_push_delay(buttons & XCPU_BUTTON_ADJUST_UP, &push_up, 5) &&
-					_storage.WheelRatioAdj < 100)
+					_storage.WheelRatioAdj < 10)
 				{
 					_storage.WheelRatioAdj++;
 				}
 				if (_push_delay(buttons & XCPU_BUTTON_ADJUST_DOWN, &push_down, 5) &&
-					_storage.WheelRatioAdj > -100)
+					_storage.WheelRatioAdj > -10)
 				{
 					_storage.WheelRatioAdj--;
 				}
 				if (_push_delay(buttons & XCPU_BUTTON_SWITCH_UNITS, &push_switch, 5))
 				{
-					_state &= ~XCPU_STATE_MILES;
+					_state ^= XCPU_STATE_MILES;
 				}
 
 				if (_push_delay(buttons & XCPU_BUTTON_CRUISE, &push_cruise, 5))
@@ -216,7 +212,7 @@ void main()
 				}
 
 				if (_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push_start, 10) ||
-					_push_delay(buttons & XCPU_BUTTON_CRUISE, &push_off, 50))
+					_push_delay(buttons & XCPU_BUTTON_CRUISE, &push_off, 100))
 				{
 					if (speed == 0)
 					{
