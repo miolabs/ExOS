@@ -67,6 +67,9 @@
           </folder>
         </folder>
         <file file_name="kernel/port.c"/>
+        <folder Name="posix">
+          <file file_name="kernel/posix/printf.c"/>
+        </folder>
       </folder>
       <folder Name="support">
         <folder Name="lpc2k">

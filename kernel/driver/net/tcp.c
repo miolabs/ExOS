@@ -158,25 +158,30 @@ static void _handle_input(TCP_IO_ENTRY *io, TCP_HEADER *tcp, void *data, unsigne
 		}
 		else
 		{
-			if (tcp->Flags.FIN)
-			{
-				io->RcvNext++;
-				io->SndFlags.ACK = 1;
-				io->State = TCP_STATE_CLOSE_WAIT;
-				net_tcp_service(io, 0);
-			}
-			else if (data_length != 0)
+			int service_delay = -1;
+			if (data_length != 0)
 			{
 				int done = exos_io_buffer_write(&io->RcvBuffer, data, data_length);
 				io->RcvNext += done;
 				io->SndFlags.ACK = 1;
-				net_tcp_service(io, 10);	// FIXME: make time clearance configurable
+				service_delay = 10;
 				// NOTE: this time is to allow our application to send some (reply) data and save and empty (no-data) ack
 			}
 			else
 			{
 				io->SndFlags.ACK = 0;
 			}
+			
+			if (tcp->Flags.FIN)
+			{
+				io->RcvNext++;
+				io->SndFlags.ACK = 1;
+				io->State = TCP_STATE_CLOSE_WAIT;
+				service_delay = 0;
+			}
+
+			if (service_delay >= 0)
+				net_tcp_service(io, service_delay);	// FIXME: make time clearance configurable
 		}
 	}
 }

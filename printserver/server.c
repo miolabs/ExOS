@@ -25,6 +25,9 @@ void server_start()
 static void *_server(void *arg)
 {
 	int err;
+	int done;
+	int total;
+
 	while(1)
 	{
 		EXOS_IO_STREAM_BUFFERS buffers = (EXOS_IO_STREAM_BUFFERS) {
@@ -52,18 +55,35 @@ static void *_server(void *arg)
 			err = comm_io_open(&_comm);
 			if (err == 0)
 			{
+				total = 0;
+#ifdef DEBUG
+				done = sprintf(_buffer, "Connection accepted: %d bytes\r\n", total);
+				done = exos_io_write((EXOS_IO_ENTRY *)&_comm, _buffer, done);				
+#endif
+				
 				while(1)
 				{
 					int done = exos_io_read((EXOS_IO_ENTRY *)&_socket, _buffer, 1024);
 					if (done < 0) break;
 
 hal_led_set(1, 1);
-//					done = exos_io_write((EXOS_IO_ENTRY *)&_socket, _buffer, done);
+					total += done;
+#ifdef DEBUG
+					done = sprintf(_buffer, "Total: %d bytes\r\n", total);
 					done = exos_io_write((EXOS_IO_ENTRY *)&_comm, _buffer, done);
+#else
+					done = exos_io_write((EXOS_IO_ENTRY *)&_comm, _buffer, done);
+#endif
 hal_led_set(1, 0);
 					if (done < 0) break;
 				}
 
+#ifdef DEBUG
+				done = sprintf(_buffer, "Connection closed: %d bytes\r\n", total);
+				done = exos_io_write((EXOS_IO_ENTRY *)&_comm, _buffer, done);
+#endif
+
+				exos_thread_sleep(100);
 				comm_io_close(&_comm);
 			}
 		}
