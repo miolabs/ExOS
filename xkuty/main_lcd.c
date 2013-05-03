@@ -63,6 +63,7 @@ static inline int _xkutybit ( int x, int y, int t, int cx, int cy)
 
 void _xkuty_effect ( const unsigned int* bitmap, int t, int cx, int cy)
 {
+	if ( t<0) t=0x7fffffff;		// Show the full bitmap
     int i=0, x=0, y=0, sx=0;
     for (y=0; y<DISPH; y++)
 	{
@@ -174,8 +175,8 @@ static ANALOGIC _ain[NUM_ADC_INPUTS]=
 	{0,0,0,0xffff, 587, 3109},	// 0 - Throtle  (16 bits)   2400->maximum accepted by motor controller, 1050->minimum 
 	{0,0,0,0xffff, 1765,2400},	// 1 - Brake left (16 bits)
 	{0,0,0,0xffff, 1900,2600},	// 2 - Brake right (16 bits)
-	{0,0,0,0xffff, 0,4095},		// 3 - Cruise (bool)
-	{0,0,0,0xffff, 0,4095},		// 4 - Horn  (bool)
+	{0,0,0,0xffff, 0,   4095},	// 3 - Cruise (bool)
+	{0,0,0,0xffff, 0,   4095},	// 4 - Horn  (bool)
 };
 
 #define THROTTLE_MASK    (1<<0)
@@ -186,16 +187,6 @@ static ANALOGIC _ain[NUM_ADC_INPUTS]=
 
 static unsigned int _input_status = 0;
 static char _adj_up=0, _adj_down=0, _adj_metrics=0;
-
-/*static const EVREC_CHECK _maintenance_screen_access[]=
-{
-	{BRAKE_LEFT_MASK,                 CHECK_PRESS},
-	{THROTTLE_MASK,                   CHECK_PRESS},
-	{BRAKE_LEFT_MASK | THROTTLE_MASK, CHECK_PRESSED},
-	{BRAKE_LEFT_MASK | THROTTLE_MASK, CHECK_RELEASED},
-	{HORN_MASK,                       CHECK_PRESS},	
-	{0x00000000,CHECK_END},
-};*/
 
 static const EVREC_CHECK _maintenance_screen_access[]=
 {
@@ -278,10 +269,9 @@ static void _get_can_messages ()
 }
 
 
-#define INTRO_BMP1 _xkuty2_bw
-#define INTRO_BMP2 _exos_bw
 
-static EXOS_TIMER _timer_update;	// Could be local?
+static EXOS_TIMER _timer_update;
+static int        _frame_dumps = 0;
 
 static void _intro ( int* status, int* st_time_base, int time)
 {
@@ -292,42 +282,41 @@ static void _intro ( int* status, int* st_time_base, int time)
 	{
 		case ST_LOGO_IN:
 			factor = time/6;
-			_xkuty_effect ( INTRO_BMP1, factor * factor, cx, cy);
+			_xkuty_effect ( _xkuty2_bw, factor * factor, cx, cy);
 			if ( factor > 75) 
 				*status = ST_LOGO_SHOW, *st_time_base = time;
 			break;
 		case ST_LOGO_SHOW:
-			_xkuty_effect ( INTRO_BMP1, 100*100, cx, cy);
+			_xkuty_effect ( _xkuty2_bw, -1, cx, cy);
 			if ( time >= (*st_time_base+logo_time)) 
 				*status = ST_LOGO_OUT, *st_time_base = time;
 			break;
 		case ST_LOGO_OUT:
 			factor = 75-((time - *st_time_base) / 6);
-			_xkuty_effect ( INTRO_BMP1, factor * factor, cx, cy);
+			_xkuty_effect ( _xkuty2_bw, factor * factor, cx, cy);
 			if ( factor <= 0) 
 				*status = ST_EXOS_IN, *st_time_base = time;
 			break;
 		case ST_EXOS_IN:
 			factor = ((time - *st_time_base)/3);
-			_xkuty_effect ( INTRO_BMP2, factor * factor, 0, DISPH);
+			_xkuty_effect ( _exos_bw, factor * factor, 0, DISPH);
 			if ( factor > 140) 
 				*status = ST_EXOS_SHOW, *st_time_base = time;
 			break;
 		case ST_EXOS_SHOW:
-			_xkuty_effect ( INTRO_BMP2, 150*150, 0, DISPH);
+			_xkuty_effect ( _exos_bw, -1, 0, DISPH);
 			if ( time >= (*st_time_base+logo_time)) 
 				*status = ST_EXOS_OUT, *st_time_base = time;
 			break;
 		case ST_EXOS_OUT:
 			factor = 140-((time - *st_time_base)/3);
-			_xkuty_effect ( INTRO_BMP2, factor * factor, DISPW, DISPH);
+			_xkuty_effect ( _exos_bw, factor * factor, DISPW, DISPH);
 			if ( factor <= 0) 
 				*status = ST_DASH;
 			break;
 	}
 }
 
-static int frame_dumps = 0;
 
 #define POS_BATTERY_BAR   5,   4
 #define POS_NEUTRAL       98,  7
@@ -340,6 +329,12 @@ static int frame_dumps = 0;
 #define POS_KM            108, 41
 #define POS_MI            102, 37
 
+#define POS_ADJUST_MSG    16, 2
+#define POS_ADJUST_MILES  0, 54
+#define POS_ADJUST_KM     4, 57
+#define POS_ADJUST_BAR    40,46
+#define POS_ADJUST_SPEED  36, 20
+
 static void _runtime_screens ( int* status)
 {
 	// General runtime switch; insert new screens here
@@ -350,13 +345,12 @@ static void _runtime_screens ( int* status)
 				//_dash.status |= XCPU_STATE_CRUISE_ON;
 				//_dash.status |= XCPU_STATE_WARNING;
                 //_dash.status |= XCPU_STATE_ERROR;
-				int l;
-				l = sprintf ( _tmp, "%d", _dash.speed);
+				int l = sprintf ( _tmp, "%d", _dash.speed);
 				if ( _dash.status & (XCPU_STATE_NEUTRAL | XCPU_STATE_ERROR))
 				{
 					if ( _dash.status & XCPU_STATE_NEUTRAL)
 						mono_draw_sprite ( screen, DISPW, DISPH, &_lock_spr, POS_NEUTRAL);
-					if (( _dash.status & XCPU_STATE_ERROR) && ((frame_dumps & 8) == 0))
+					if (( _dash.status & XCPU_STATE_ERROR) && ((_frame_dumps & 8) == 0))
 						mono_draw_sprite ( screen, DISPW, DISPH, &_fatal_error_spr, POS_FATAL);
 				}
 				else
@@ -411,15 +405,15 @@ static void _runtime_screens ( int* status)
 
 				_dash.speed_adjust = __LIMIT( _dash.speed_adjust, -10, 10);
 				int bar = 0x80 + (_dash.speed_adjust * (0x80/10));
-				mono_draw_sprite ( screen, DISPW, DISPH, &_speed_adjust_spr, 16, 2);
+				mono_draw_sprite ( screen, DISPW, DISPH, &_speed_adjust_spr, POS_ADJUST_MSG);
 				sprintf ( _tmp, "%d", _dash.speed_adjust);
-				_draw_text ( _tmp, &_font_spr_big, 36, 20);
+				_draw_text ( _tmp, &_font_spr_big, POS_ADJUST_SPEED);
                 if (_dash.status & XCPU_STATE_MILES)
-					mono_draw_sprite ( screen, DISPW, DISPH, &_mi_spr, 0, 54);
+					mono_draw_sprite ( screen, DISPW, DISPH, &_mi_spr, POS_ADJUST_MILES);
 				else
-					mono_draw_sprite ( screen, DISPW, DISPH, &_km_spr, 4, 57);
+					mono_draw_sprite ( screen, DISPW, DISPH, &_km_spr, POS_ADJUST_KM);
 									
-				_horizontal_sprite_comb ( &_adjust_full_spr, &_adjust_empty_spr, bar, 40,46); 
+				_horizontal_sprite_comb ( &_adjust_full_spr, &_adjust_empty_spr, bar, POS_ADJUST_BAR); 
                 if ( event_happening ( speed_adj_exit,1))
 					*status = ST_DASH;
 			}
@@ -495,7 +489,7 @@ void main()
 				_bilevel_linear_2_lcd ( scrrot, screen, DISPW, DISPH);
 				lcd_dump_screen ( scrrot);
                 screen_count=0;
-				frame_dumps++;
+				_frame_dumps++;
 			}
 			screen_count++;
 
