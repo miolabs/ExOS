@@ -54,12 +54,6 @@ enum
     ST_DEBUG_SPEED,
 };
 
-static inline void _limit ( int* v, int min, int max)
-{
-    if ( *v < min) *v = min;
-    if ( *v > max) *v = max;
-}
-
 static inline int _xkutybit ( int x, int y, int t, int cx, int cy)
 {
 	int xx = x - cx; int yy = y - cy;
@@ -91,9 +85,9 @@ static inline int _sensor_scale ( int in, int base, int top, int magnitude)
 {
 	int len = top - base;
 	int pos = in  - base;
-	_limit ( &pos, 0, len);
+	pos = __LIMIT( pos, 0, len);
 	int res = (pos * magnitude) / len;
-	_limit ( &res, 0, magnitude - 1);
+	res = __LIMIT( res, 0, magnitude - 1);
 	return res;
 }
 
@@ -130,7 +124,7 @@ static void _vertical_sprite_comb ( const MONO_SPR* spr0, const MONO_SPR* spr1,
                                     int level_fx8, int x, int y)
 {
 	MONO_SPR spr = *spr1;
-	_limit ( &level_fx8, 0,0x100);
+	level_fx8 = __LIMIT ( level_fx8, 0,0x100);
 	int cut_y = (level_fx8 * spr.h) >> 8;
 	spr.h     = cut_y;
 	if ( spr.h > 0)
@@ -147,7 +141,7 @@ static void _horizontal_sprite_comb ( const MONO_SPR* spr0, const MONO_SPR* spr1
                                       int level_fx8, int x, int y)
 {
 	static unsigned int show_mask[] = {0,0,0,0};
-	_limit ( &level_fx8, 0,0x100);
+	level_fx8 = __LIMIT( level_fx8, 0,0x100);
 	int cut_x = (level_fx8 * spr0->w) >> 8;
 	int spans = cut_x >> 5;
 	int inter = cut_x & 0x1f;
@@ -415,7 +409,7 @@ static void _runtime_screens ( int* status)
 				if ( _input_status & CRUISE_MASK)
 					_adj_metrics=1;
 
-				_limit( &_dash.speed_adjust, -10, 10);
+				_dash.speed_adjust = __LIMIT( _dash.speed_adjust, -10, 10);
 				int bar = 0x80 + (_dash.speed_adjust * (0x80/10));
 				mono_draw_sprite ( screen, DISPW, DISPH, &_speed_adjust_spr, 16, 2);
 				sprintf ( _tmp, "%d", _dash.speed_adjust);
@@ -457,7 +451,6 @@ void main()
 	while(1)
 	{
 		//_dash.status |= XCPU_STATE_ON;
-
 		// Read CAN messages from master 
 		_get_can_messages ();
 

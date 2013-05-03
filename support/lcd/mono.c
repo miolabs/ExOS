@@ -142,22 +142,19 @@ void mono_filled_polygon ( const MONO_POLY* poly, unsigned int* bitmap,
 
 typedef struct { int xi, xe, yi, ye; } MONO_BOX;
 
-static inline void _swapi ( int* a, int* b)  { int aux=*b; *b=*a; *a=aux; }
-static inline int  _min   ( int a, int b)    { return (a<b)?a:b; }
-
 static inline int _segment_intersection ( int* resi, int* rese, 
 											int ai, int ae, int bi, int be)
 {
 	// Order segments
 	if ( bi < ai)
 	{
-		_swapi(&ai,&bi);
-		_swapi(&ae,&be);
+		__SWAP(int,ai,bi);
+		__SWAP(int,ae,be);
 	}
 	if ( ae < bi) 
 		return 0;
 	*resi = bi;
-	*rese = _min(ae,be);
+	*rese = __MIN(ae,be);
 	return 1;
 }
 
