@@ -45,6 +45,10 @@
           <file file_name="support/lcd/mono.c"/>
           <file file_name="support/lcd/splc501c.c"/>
         </folder>
+        <folder Name="lpc11">
+          <file file_name="support/lpc11/c_can.c"/>
+          <file file_name="support/lpc11/ssp.c"/>
+        </folder>
       </folder>
     </folder>
     <folder Name="System Files">

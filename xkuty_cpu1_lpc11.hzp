@@ -43,6 +43,10 @@
           <file file_name="support/lpc11/c_can.c"/>
           <file file_name="support/lpc11/ssp.c"/>
           <file file_name="support/lpc11/timer32.c"/>
+          <file file_name="support/lpc11/iap.c"/>
+        </folder>
+        <folder Name="misc">
+          <file file_name="support/misc/flash.c"/>
         </folder>
       </folder>
       <folder Name="xkuty">

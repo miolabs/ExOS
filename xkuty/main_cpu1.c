@@ -216,12 +216,17 @@ void main()
 				{
 					if (speed == 0)
 					{
+                        hal_pwm_set_output(PWM_TIMER_MODULE, 0, PWM_RANGE + 1); //	disable pwm
+
+						_storage.TotalSteps += s_partial;
+						s_partial = 0;
+						_storage.ConfigBits = XCPU_CONFIGF_NONE;
+						if (_state & XCPU_STATE_MILES) _storage.ConfigBits |= XCPU_CONFIGF_MILES;
+						persist_save(&_storage);
+
 						_output_state = OUTPUT_NONE;
 						_control_state = CONTROL_OFF;
 						_state = XCPU_STATE_OFF;
-                        hal_pwm_set_output(PWM_TIMER_MODULE, 0, PWM_RANGE + 1); //	disable pwm
-
-						//_save();
 					}
 					else _state |= XCPU_STATE_WARNING;
 				}

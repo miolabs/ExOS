@@ -8,7 +8,7 @@ typedef struct
 	unsigned long Magic;
 	unsigned long TotalSteps;
 	unsigned char ConfigBits;
-	char WheelRatioAdj;
+	signed char WheelRatioAdj;
 	unsigned short Reserved;
 } XCPU_PERSIST_DATA;
 
