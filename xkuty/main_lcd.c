@@ -19,6 +19,8 @@
 static unsigned char scrrot [(DISPW*DISPH)/8];
 static unsigned int  screen [(DISPW*DISPH)/32];
 
+#define MAIN_LOOP_TIME  (20)
+
 static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
 static void _bilevel_linear_2_lcd ( unsigned char* dst, unsigned int* src, int w, int h);
 static void _clean_bilevel ( unsigned int* scr, int w, int h)  { for (int i=0; i<((w*h)/32); i++) scr [i] = 0;  }
@@ -383,12 +385,9 @@ static void _runtime_screens ( int* status)
 					mono_draw_sprite ( screen, DISPW, DISPH, &_mi_spr, POS_MI);
 				else
 					mono_draw_sprite ( screen, DISPW, DISPH, &_km_spr, POS_KM);
-
-									
-
 				if ( _dash.speed == 0)
 					if ( event_happening ( _maintenance_screen_access, 50)) // 1 second
-						*status = ST_DEBUG_SPEED;
+						*status = ST_DEBUG_SPEED;	
 				break;
 			}
 			break;
@@ -419,7 +418,6 @@ static void _runtime_screens ( int* status)
 				_limit( &_dash.speed_adjust, -10, 10);
 				int bar = 0x80 + (_dash.speed_adjust * (0x80/10));
 				mono_draw_sprite ( screen, DISPW, DISPH, &_speed_adjust_spr, 16, 2);
-                //mono_draw_sprite ( screen, DISPW, DISPH, &_xkuty_pic_spr, -100, 2);
 				sprintf ( _tmp, "%d", _dash.speed_adjust);
 				_draw_text ( _tmp, &_font_spr_big, 36, 20);
                 if (_dash.status & XCPU_STATE_MILES)
@@ -456,9 +454,10 @@ void main()
     int initial_status = ST_LOGO_IN; //ST_LOGO_IN; //ST_DASH; //ST_DEBUG_INPUT; // ST_DEBUG_SPEED
 	int status =  initial_status;
 	int prev_cpu_state = 0;	// Default state is OFF, wait for master to start
-	//_dash.status |= XCPU_STATE_ON;
 	while(1)
 	{
+		//_dash.status |= XCPU_STATE_ON;
+
 		// Read CAN messages from master 
 		_get_can_messages ();
 
@@ -476,7 +475,7 @@ void main()
 			}
 
 			unsigned int time = exos_timer_time();
-			unsigned int req_update_time = 20;
+			unsigned int req_update_time = MAIN_LOOP_TIME;
 			time -= time_base;
 			unsigned int elapsed_time = time - prev_time;
 
