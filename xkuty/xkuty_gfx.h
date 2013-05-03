@@ -239,7 +239,7 @@ static const unsigned int _bmp_adjust_bar_empty [] =
 0xffffffff, 0xffffc000, 0xffffffff, 0xffffc000
 };
 
-static const unsigned int _xkuty_bw [] = 
+/*static const unsigned int _xkuty_bw [] = 
 { 
 0x0, 0x0, 0x0, 0x0, 
 0x0, 0x0, 0x0, 0x0, 
@@ -305,7 +305,7 @@ static const unsigned int _xkuty_bw [] =
 0x0, 0x0, 0x0, 0x0, 
 0x0, 0x0, 0x0, 0x0, 
 0x0, 0x0, 0x0, 0x0
-};
+};*/
 
 static const unsigned int _xkuty2_bw [] = 
 { 
@@ -445,7 +445,7 @@ static const unsigned int _exos_bw [] =
 
 
 
-static unsigned int _dummy_mask[] = {0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff};
+static unsigned int _dummy_mask[] = {0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff};
 
 static MONO_SPR _font_spr_big   = { 24, 21, _bmp_nums_speed, _dummy_mask, 1,0};
 static MONO_SPR _font_spr_small = { 10, 9, _bmp_nums_distance, _dummy_mask, 1,0};
@@ -465,6 +465,7 @@ static MONO_SPR _battery_empty = { 27, 59, _bmp_battery_empty, _dummy_mask, 1,0}
 static MONO_SPR _adjust_full_spr  = { 50, 18, _bmp_adjust_bar_full, _dummy_mask, 2, 0};
 static MONO_SPR _adjust_empty_spr = { 50, 18, _bmp_adjust_bar_empty, _dummy_mask, 2, 0};
 
+/*
 static const unsigned int _bmp_xkuty_pic [] = 
 {
 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 
@@ -670,7 +671,7 @@ static const unsigned int _bmp_xkuty_pic [] =
 };
 
 static MONO_SPR _xkuty_pic_spr = { 145, 160, _bmp_xkuty_pic, _dummy_mask, 5,0};
-
+*/
 
 #endif // XCUTY_GFX_H
 

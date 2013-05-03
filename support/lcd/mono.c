@@ -142,22 +142,19 @@ void mono_filled_polygon ( const MONO_POLY* poly, unsigned int* bitmap,
 
 typedef struct { int xi, xe, yi, ye; } MONO_BOX;
 
-static inline void _swapi ( int* a, int* b)  { int aux=*b; *b=*a; *a=aux; }
-static inline int  _min   ( int a, int b)    { return (a<b)?a:b; }
-
 static inline int _segment_intersection ( int* resi, int* rese, 
 											int ai, int ae, int bi, int be)
 {
 	// Order segments
 	if ( bi < ai)
 	{
-		_swapi(&ai,&bi);
-		_swapi(&ae,&be);
+		__SWAP(int,ai,bi);
+		__SWAP(int,ae,be);
 	}
 	if ( ae < bi) 
 		return 0;
 	*resi = bi;
-	*rese = _min(ae,be);
+	*rese = __MIN(ae,be);
 	return 1;
 }
 
@@ -175,11 +172,10 @@ void mono_draw_sprite ( unsigned int* canvas, int w, int h,
 	MONO_BOX scr = { -x, -x+w-1,  -y, -y+h-1};
 	MONO_BOX sub = { 0,  spr->w-1, 0, spr->h-1};
 	MONO_BOX sub_full = { 0, WORD_ENDED(spr->w), 0, spr->h-1}; // Including excess word bits
-	MONO_BOX res, res_full;
+	MONO_BOX res;
 
 	if ( !_box_intersection ( &res, &scr, &sub))
 		return;
-	_box_intersection ( &res_full, &scr, &sub_full);
 
 	int spr_1st_line = res.yi;
 	int sprspan_x    = res.xi >> 5;
@@ -189,19 +185,17 @@ void mono_draw_sprite ( unsigned int* canvas, int w, int h,
 	res.xe += x;
 	res.yi += y;
 	res.ye += y;
-    res_full.xe += x; // We only need span end
 
 	const unsigned int ones = 0xffffffff;
 	int scrspan_i  = res.xi >> 5;
-	int scrspan_e  = res_full.xe >> 5;
+	int scrspan_e  = res.xe >> 5;
 	int mod_i      = res.xi & 0x1f;
 	int mod_e      = res.xe & 0x1f;
-	int mod_e_full = res_full.xe & 0x1f;
 
 	int span_flags = 0;
 	if ( mod_i != 0)
 		span_flags |= SPAN_HEAD;
-	if ( mod_e_full != 0x1f)
+	if ( mod_e != 0x1f)
 		span_flags |= SPAN_TAIL;
 	int central_e = ( span_flags & SPAN_TAIL) ? scrspan_e : scrspan_e+1;
 
@@ -265,10 +259,23 @@ void mono_draw_sprite ( unsigned int* canvas, int w, int h,
 
 			if (( span_flags & SPAN_TAIL) != 0)
 			{
-				sprpix  = sprline  [tsprx];
-				sprmask = maskline [tsprx];
-				if ( shift) 
-					sprpix <<= (32-shift), sprmask <<= (32-shift);
+				if ( shift < mod_e)
+				{
+					if ( shift != 0)
+						sprpix  = (sprline  [tsprx+1] >> shift) | (sprline  [tsprx] << (32-shift)),
+						sprmask = (maskline [tsprx+1] >> shift) | (maskline [tsprx] << (32-shift));
+					else
+						sprpix  = sprline  [tsprx],
+						sprmask = maskline [tsprx];
+				}
+				else
+				{
+					sprpix  = sprline  [tsprx];
+					sprmask = maskline [tsprx];
+					if ( shift) 
+						sprpix <<= (32-shift), sprmask <<= (32-shift);
+				}
+
 				mask =  mask_e & sprmask;
 				scrline[tscrx] = ( sprpix & mask) | ( scrline[tscrx] & (~mask));
 			}
@@ -281,7 +288,4 @@ void mono_draw_sprite ( unsigned int* canvas, int w, int h,
 	}
 
 }
-
-
-
 
