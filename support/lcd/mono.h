@@ -1,6 +1,8 @@
 #ifndef LCD_MONO_H
 #define LCD_MONO_H
 
+#include "canvas.h"
+
 typedef struct { short a, b; } MONO_POLY_SEGMENT; 
 typedef struct { short x, y; } MONO_POLY_COORDS;
 
@@ -35,7 +37,7 @@ typedef struct
 	short          stride_bitmap, stride_mask;	// Stride in words of uint32
 } MONO_SPR;
 
-void mono_draw_sprite ( unsigned int* canvas, int w, int h,
+void mono_draw_sprite ( const CANVAS* canvas,
                         const MONO_SPR* spr, int x, int y);
 
 #endif //LCD_MONO_H

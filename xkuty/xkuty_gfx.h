@@ -444,26 +444,23 @@ static const unsigned int _exos_bw [] =
 };
 
 
+static MONO_SPR _font_spr_big   = { 24, 21, _bmp_nums_speed, 0, 1,0};
+static MONO_SPR _font_spr_small = { 10, 9, _bmp_nums_distance, 0, 1,0};
 
-static unsigned int _dummy_mask[] = {0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff};
+static MONO_SPR _km_spr =  { 15, 7, _bmp_km, 0, 1,0};
+static MONO_SPR _mi_spr =  { 21, 10, _bmp_mi, 0, 1,0};
+static MONO_SPR _kmh_spr =  { 23, 7, _bmp_kmh, 0, 1,0};
+static MONO_SPR _mph_spr =  { 21, 10, _bmp_mph, 0, 1,0};
+static MONO_SPR _lock_spr =  { 30,25, _bmp_lock, 0, 1,0};
+static MONO_SPR _warning_spr =  { 24,19, _bmp_warning, 0, 1,0};
+static MONO_SPR _fatal_error_spr =  { 20,17, _bmp_fatal_error, 0, 1,0};
+static MONO_SPR _cruisin_spr =  { 24,19, _bmp_cruisin, 0, 1,0};
+static MONO_SPR _speed_adjust_spr = { 94, 14, _bmp_speed_adjust, 0, 3,0};
 
-static MONO_SPR _font_spr_big   = { 24, 21, _bmp_nums_speed, _dummy_mask, 1,0};
-static MONO_SPR _font_spr_small = { 10, 9, _bmp_nums_distance, _dummy_mask, 1,0};
-
-static MONO_SPR _km_spr =  { 15, 7, _bmp_km, _dummy_mask, 1,0};
-static MONO_SPR _mi_spr =  { 21, 10, _bmp_mi, _dummy_mask, 1,0};
-static MONO_SPR _kmh_spr =  { 23, 7, _bmp_kmh, _dummy_mask, 1,0};
-static MONO_SPR _mph_spr =  { 21, 10, _bmp_mph, _dummy_mask, 1,0};
-static MONO_SPR _lock_spr =  { 30,25, _bmp_lock, _dummy_mask, 1,0};
-static MONO_SPR _warning_spr =  { 24,19, _bmp_warning, _dummy_mask, 1,0};
-static MONO_SPR _fatal_error_spr =  { 20,17, _bmp_fatal_error, _dummy_mask, 1,0};
-static MONO_SPR _cruisin_spr =  { 24,19, _bmp_cruisin, _dummy_mask, 1,0};
-static MONO_SPR _speed_adjust_spr = { 94, 14, _bmp_speed_adjust, _dummy_mask, 3,0};
-
-static MONO_SPR _battery_full  = { 27, 59, _bmp_battery, _dummy_mask, 1,0};
-static MONO_SPR _battery_empty = { 27, 59, _bmp_battery_empty, _dummy_mask, 1,0};
-static MONO_SPR _adjust_full_spr  = { 50, 18, _bmp_adjust_bar_full, _dummy_mask, 2, 0};
-static MONO_SPR _adjust_empty_spr = { 50, 18, _bmp_adjust_bar_empty, _dummy_mask, 2, 0};
+static MONO_SPR _battery_full  = { 27, 59, _bmp_battery, 0, 1,0};
+static MONO_SPR _battery_empty = { 27, 59, _bmp_battery_empty, 0, 1,0};
+static MONO_SPR _adjust_full_spr  = { 50, 18, _bmp_adjust_bar_full, 0, 2, 0};
+static MONO_SPR _adjust_empty_spr = { 50, 18, _bmp_adjust_bar_empty, 0, 2, 0};
 
 /*
 static const unsigned int _bmp_xkuty_pic [] = 
