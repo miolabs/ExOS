@@ -17,12 +17,12 @@
 #define DISPW (128)
 #define DISPH (64)
 
-static unsigned char scrrot [(DISPW*DISPH)/8];
-static unsigned int  screen_pixels [(DISPW*DISPH)/32];
+static unsigned char _scrrot [(DISPW*DISPH)/8];
+static unsigned int  _screen_pixels [(DISPW*DISPH)/32];
 
-static const CANVAS screen = 
+static const CANVAS _screen = 
 { 
-	(unsigned char*)screen_pixels,
+	(unsigned char*)_screen_pixels,
     DISPW, DISPH,
     DISPW/8,
     PIX_1_MONOCHROME
@@ -78,12 +78,12 @@ static inline int _xkutybit ( int x, int y, int t, int cx, int cy)
 
 void _xkuty_effect ( const unsigned int* bitmap, int t, int cx, int cy)
 {
-	unsigned int* pixels = (unsigned int *)screen.pixels;
+	unsigned int* pixels = (unsigned int *)_screen.pixels;
 	if ( t<0) t=0x7fffffff;		// Show the full bitmap
     int i=0, x=0, y=0, sx=0;
-    for (y=0; y<screen.h; y++)
+    for (y=0; y<_screen.h; y++)
 	{
-        for ( x=0; x<screen.w; x+=32)
+        for ( x=0; x<_screen.w; x+=32)
         {
 			unsigned int pic = bitmap [i];
         	int bits = _xkutybit ( x+0, y, t, cx, cy);
@@ -129,7 +129,7 @@ static void _draw_text ( const char* text, const MONO_SPR* font, int x, int y)
 		if ( glyph != -1)
 		{
 			spr.bitmap = font->bitmap + (spr.stride_bitmap * spr.h * glyph);
-			mono_draw_sprite ( &screen, &spr, x, y);
+			mono_draw_sprite ( &_screen, &spr, x, y);
 		}
 		x += glyph_w;
 		i++;
@@ -145,13 +145,13 @@ static void _vertical_sprite_comb ( const MONO_SPR* spr0, const MONO_SPR* spr1,
 	int cut_y = (level_fx8 * spr.h) >> 8;
 	spr.h     = cut_y;
 	if ( spr.h > 0)
-		mono_draw_sprite ( &screen, &spr, x, y);
+		mono_draw_sprite ( &_screen, &spr, x, y);
 
 	spr = *spr0;
 	spr.bitmap = spr0->bitmap + (spr.stride_bitmap * cut_y);
 	spr.h      = spr.h - cut_y;
 	if ( spr.h > 0)
-		mono_draw_sprite ( &screen, &spr, x, y + cut_y);
+		mono_draw_sprite ( &_screen, &spr, x, y + cut_y);
 }
 
 static void _horizontal_sprite_comb ( const MONO_SPR* spr0, const MONO_SPR* spr1, 
@@ -166,11 +166,11 @@ static void _horizontal_sprite_comb ( const MONO_SPR* spr0, const MONO_SPR* spr1
 	for ( ;i<spans;i++)
 		show_mask[i] = 0xffffffff;
 	show_mask[i] = (inter == 0) ? 0 : (unsigned int)(-1<<(32-inter));
-	mono_draw_sprite ( &screen, spr1, x, y);
+	mono_draw_sprite ( &_screen, spr1, x, y);
 	MONO_SPR spr = *spr0;
 	spr.mask = show_mask;
 	spr.stride_mask = 0;
-	mono_draw_sprite ( &screen, &spr, x, y);
+	mono_draw_sprite ( &_screen, &spr, x, y);
 }
 
 static int _fir_needs_init = 1;
@@ -292,7 +292,7 @@ static int        _frame_dumps = 0;
 static void _intro ( int* status, int* st_time_base, int time)
 {
 	int factor;
-	const int cx = screen.w>>1, cy=screen.h>>1;
+	const int cx = _screen.w>>1, cy=_screen.h>>1;
 	const int logo_time = 600; // ms
 	switch ( *status)
 	{
@@ -326,7 +326,7 @@ static void _intro ( int* status, int* st_time_base, int time)
 			break;
 		case ST_EXOS_OUT:
 			factor = 140-((time - *st_time_base)/3);
-			_xkuty_effect ( _exos_bw, factor * factor, screen.w, screen.h);
+			_xkuty_effect ( _exos_bw, factor * factor, _screen.w, _screen.h);
 			if ( factor <= 0) 
 				*status = ST_DASH;
 			break;
@@ -365,9 +365,9 @@ static void _runtime_screens ( int* status)
 				if ( _dash.status & (XCPU_STATE_NEUTRAL | XCPU_STATE_ERROR))
 				{
 					if ( _dash.status & XCPU_STATE_NEUTRAL)
-						mono_draw_sprite ( &screen, &_lock_spr, POS_NEUTRAL);
+						mono_draw_sprite ( &_screen, &_lock_spr, POS_NEUTRAL);
 					if (( _dash.status & XCPU_STATE_ERROR) && ((_frame_dumps & 8) == 0))
-						mono_draw_sprite ( &screen, &_fatal_error_spr, POS_FATAL);
+						mono_draw_sprite ( &_screen, &_fatal_error_spr, POS_FATAL);
 				}
 				else
 					_draw_text ( _tmp, &_font_spr_big,  - (24*l) + POS_SPEED_TEXT);
@@ -380,15 +380,15 @@ static void _runtime_screens ( int* status)
                 _vertical_sprite_comb ( &_battery_full, &_battery_empty, 0x100 - _dash.battery_level_fx8, POS_BATTERY_BAR);
 
 				if ( _dash.status & XCPU_STATE_CRUISE_ON)
-					mono_draw_sprite ( &screen, &_cruisin_spr, POS_CRUISE);
+					mono_draw_sprite ( &_screen, &_cruisin_spr, POS_CRUISE);
 				if ( _dash.status & XCPU_STATE_WARNING)
-					mono_draw_sprite ( &screen, &_warning_spr, POS_WARNING);
+					mono_draw_sprite ( &_screen, &_warning_spr, POS_WARNING);
 
 				//mono_draw_sprite ( &screen, &_kmh_spr, POS_KMH);
                 if (_dash.status & XCPU_STATE_MILES)
-					mono_draw_sprite ( &screen, &_mi_spr, POS_MI);
+					mono_draw_sprite ( &_screen, &_mi_spr, POS_MI);
 				else
-					mono_draw_sprite ( &screen, &_km_spr, POS_KM);
+					mono_draw_sprite ( &_screen, &_km_spr, POS_KM);
 				if ( _dash.speed == 0)
 					if ( event_happening ( _maintenance_screen_access, 50)) // 1 second
 						*status = ST_DEBUG_SPEED;	
@@ -421,13 +421,13 @@ static void _runtime_screens ( int* status)
 
 				_dash.speed_adjust = __LIMIT( _dash.speed_adjust, -10, 10);
 				int bar = 0x80 + (_dash.speed_adjust * (0x80/10));
-				mono_draw_sprite ( &screen, &_speed_adjust_spr, POS_ADJUST_MSG);
+				mono_draw_sprite ( &_screen, &_speed_adjust_spr, POS_ADJUST_MSG);
 				sprintf ( _tmp, "%d", _dash.speed_adjust);
 				_draw_text ( _tmp, &_font_spr_big, POS_ADJUST_SPEED);
                 if (_dash.status & XCPU_STATE_MILES)
-					mono_draw_sprite ( &screen, &_mi_spr, POS_ADJUST_MILES);
+					mono_draw_sprite ( &_screen, &_mi_spr, POS_ADJUST_MILES);
 				else
-					mono_draw_sprite ( &screen, &_km_spr, POS_ADJUST_KM);
+					mono_draw_sprite ( &_screen, &_km_spr, POS_ADJUST_KM);
 									
 				_horizontal_sprite_comb ( &_adjust_full_spr, &_adjust_empty_spr, bar, POS_ADJUST_BAR); 
                 if ( event_happening ( speed_adj_exit,1))
@@ -460,7 +460,7 @@ void main()
 	int prev_cpu_state = 0;	// Default state is OFF, wait for master to start
 	while(1)
 	{
-		_dash.status |= XCPU_STATE_ON;
+		//_dash.status |= XCPU_STATE_ON;
 		// Read CAN messages from master 
 		_get_can_messages ();
 
@@ -484,7 +484,7 @@ void main()
 
 			_read_send_analogic_inputs ();
 
-			_clean_bilevel ( &screen);
+			_clean_bilevel ( &_screen);
 
 
 			int frame_skips = 0;
@@ -502,8 +502,8 @@ void main()
 			// Screen conversion & dump
 			if ( screen_count > frame_skips)
 			{
-				_bilevel_linear_2_lcd ( scrrot, (unsigned int*)screen.pixels, screen.w, screen.h);
-				lcd_dump_screen ( scrrot);
+				_bilevel_linear_2_lcd ( _scrrot, (unsigned int*)_screen.pixels, _screen.w, _screen.h);
+				lcd_dump_screen ( _scrrot);
                 screen_count=0;
 				_frame_dumps++;
 			}
@@ -520,9 +520,9 @@ void main()
 
 			if (prev_cpu_state & XCPU_STATE_ON) 
 			{
-				_clean_bilevel ( &screen);
-            	_bilevel_linear_2_lcd ( scrrot, (unsigned int*)screen.pixels, screen.w, screen.h);
-				lcd_dump_screen ( scrrot);
+				_clean_bilevel ( &_screen);
+            	_bilevel_linear_2_lcd ( _scrrot, (unsigned int*)_screen.pixels, _screen.w, _screen.h);
+				lcd_dump_screen ( _scrrot);
 				lcdcon_gpo_backlight(0);
 			}
 		}
