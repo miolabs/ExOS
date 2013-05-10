@@ -5,6 +5,7 @@
 #include "mono.h"
 #include "canvas.h"
 
+
 void mono_filled_polygon_create ( MONO_POLY* poly, int w, int h)
 {
 	poly->segments = (MONO_POLY_SEGMENT*) exos_mem_alloc( sizeof(MONO_POLY_SEGMENT) * h, 
@@ -148,29 +149,23 @@ void mono_filled_polygon ( const MONO_POLY* poly, unsigned int* bitmap,
 // which allows to stop the pointer in runtime
 #define MSK(OFFS)  ((tsprx+(OFFS)) & mask_skipper)
 
-void mono_draw_sprite ( const CANVAS* canvas,
-                        const MONO_SPR* spr, int x, int y)
+static inline void _mono_draw_sprite_box ( const CANVAS* canvas,
+                            const SPRITE* spr, int x, int y, BOX* sprbox)
 {
-	MONO_BOX scr = { -x, -x+canvas->w-1,  -y, -y+canvas->h-1};
-	MONO_BOX sub = { 0,  spr->w-1, 0, spr->h-1};
-	MONO_BOX res;
-	if ( !_box_intersection ( &res, &scr, &sub))
-		return;
-
-	int spr_1st_line = res.yi;
-	int sprspan_x    = res.xi >> 5;
+	int spr_1st_line = sprbox->yi;
+	int sprspan_x    = sprbox->xi >> 5;
 	int shift        = x & 0x1f;
 	// On screen result
-	res.xi += x;
-	res.xe += x;
-	res.yi += y;
-	res.ye += y;
+	sprbox->xi += x;
+	sprbox->xe += x;
+	sprbox->yi += y;
+	sprbox->ye += y;
 
 	const unsigned int ones = 0xffffffff;
-	int scrspan_i  = res.xi >> 5;
-	int scrspan_e  = res.xe >> 5;
-	int mod_i      = res.xi & 0x1f;
-	int mod_e      = res.xe & 0x1f;
+	int scrspan_i  = sprbox->xi >> 5;
+	int scrspan_e  = sprbox->xe >> 5;
+	int mod_i      = sprbox->xi & 0x1f;
+	int mod_e      = sprbox->xe & 0x1f;
 
 	int span_flags = 0;
 	if ( mod_i != 0)
@@ -179,7 +174,7 @@ void mono_draw_sprite ( const CANVAS* canvas,
 		span_flags |= SPAN_TAIL;
 	int central_e = ( span_flags & SPAN_TAIL) ? scrspan_e : scrspan_e+1;
 
-	unsigned int* scrline  = (unsigned int* )(canvas->pixels + (canvas->stride_bytes * res.yi));
+	unsigned int* scrline  = (unsigned int* )(canvas->pixels + (canvas->stride_bytes * sprbox->yi));
 	const unsigned int* sprline  = spr->bitmap + spr->stride_bitmap * spr_1st_line;
 	const unsigned int* maskline = spr->mask   + spr->stride_mask   * spr_1st_line;
 	unsigned int mask_i = ones >> mod_i;
@@ -191,36 +186,67 @@ void mono_draw_sprite ( const CANVAS* canvas,
 	if ( spr->mask == 0)
 		maskline = &default_mask, mask_skipper = 0, stride_mask = 0;
 
-	if ((( span_flags & SPAN_HEAD_TAIL) == SPAN_HEAD_TAIL)  && ( scrspan_i == scrspan_e))
+	//if ((( span_flags & SPAN_HEAD_TAIL) == SPAN_HEAD_TAIL)  &&  ( scrspan_i == scrspan_e))
+	if ( scrspan_i == scrspan_e)
 	{
-		// Narrow sprite special case     			 
-		for ( y=res.yi;y<=res.ye;  y++)
-		{
-			int tsprx = sprspan_x;
-			unsigned int sprmask = maskline [MSK(0)] >> shift;
-			unsigned int sprpix  = sprline  [ tsprx] >> shift;
-			unsigned int mask = mask_i & mask_e & sprmask;
-			scrline[scrspan_i] = ( sprpix & mask) | ( scrline[scrspan_i] & (~mask));
-			scrline  += canvas->stride_bytes >> 2;
-			sprline  += spr->stride_bitmap;
-			maskline += stride_mask;
-		}
+		// Narrow sprite special case    
+		if ( shift <= mod_i)
+			for ( y=sprbox->yi;y<=sprbox->ye;  y++)
+			{
+				int tsprx = sprspan_x;
+				unsigned int sprmask = maskline [MSK(0)] >> shift;
+				unsigned int sprpix  = sprline  [ tsprx] >> shift;
+				unsigned int mask    = mask_i & mask_e & sprmask;
+				scrline[scrspan_i] =  ( sprpix & mask) | ( scrline[scrspan_i] & (~mask)); 
+				scrline  += canvas->stride_bytes >> 2;
+				sprline  += spr->stride_bitmap;
+				maskline += stride_mask;
+			}
+		else
+			for ( y=sprbox->yi;y<=sprbox->ye;  y++)
+			{
+				int tsprx = sprspan_x;
+				unsigned int sprpix, sprmask;
+				if ( shift != 0)
+					sprpix  = (sprline  [tsprx+1] >> shift) | (sprline  [ tsprx] << (32-shift)),
+					sprmask = (maskline [MSK( 1)] >> shift) | (maskline [MSK(0)] << (32-shift));
+				else
+					sprpix  = sprline  [tsprx],
+					sprmask = maskline [MSK(0)];
+				unsigned int mask    = mask_i & mask_e & sprmask;
+				scrline[scrspan_i] =  ( sprpix & mask) | ( scrline[scrspan_i] & (~mask)); 
+				scrline  += canvas->stride_bytes >> 2;
+				sprline  += spr->stride_bitmap;
+				maskline += stride_mask;
+			}
 	}
-	else
+	else	// Wide sprite
 	{
 		// General blit case
-		for ( y=res.yi; y<=res.ye; y++)
+		for ( y=sprbox->yi; y<=sprbox->ye; y++)
 		{
 			int tscrx = scrspan_i;
 			int tsprx = sprspan_x;
 			unsigned int sprpix, sprmask, mask;
 			if (( span_flags & SPAN_HEAD) != 0)
 			{
-				sprpix  = sprline  [ tsprx] >> shift;
-				sprmask = maskline [MSK(0)] >> shift;
+				if ( shift <= mod_i)
+					sprpix  = sprline  [ tsprx] >> shift,
+					sprmask = maskline [MSK(0)] >> shift;
+				else
+				{
+					if ( shift != 0)
+						sprpix  = (sprline  [tsprx+1] >> shift) | (sprline  [ tsprx] << (32-shift)),
+						sprmask = (maskline [MSK( 1)] >> shift) | (maskline [MSK(0)] << (32-shift));
+					else
+						sprpix  = sprline  [tsprx+0],
+						sprmask = maskline [MSK(0)];
+				}
 				mask = mask_i & sprmask;
 				scrline[ tscrx ] = ( sprpix & mask) | ( scrline[tscrx] & (~mask));
                 tscrx++;
+				if (( shift > mod_i) || (shift == 0))
+					tsprx++;
 			}
 			
 			// Central spans
@@ -252,7 +278,7 @@ void mono_draw_sprite ( const CANVAS* canvas,
 						sprpix  = (sprline  [tsprx+1] >> shift) | (sprline  [ tsprx] << (32-shift)),
 						sprmask = (maskline [MSK( 1)] >> shift) | (maskline [MSK(0)] << (32-shift));
 					else
-						sprpix  = sprline  [tsprx],
+						sprpix  = sprline  [tsprx+0],
 						sprmask = maskline [MSK(0)];
 				}
 				else
@@ -274,3 +300,42 @@ void mono_draw_sprite ( const CANVAS* canvas,
 	}
 }
 
+void mono_draw_sprite ( const CANVAS* canvas,
+                        const SPRITE* spr, int x, int y)
+{
+	assert(( spr->pix_type == PIX_1_MONOCHROME) && ( canvas->pix_type == PIX_1_MONOCHROME));
+	BOX scr = { -x, -x+canvas->w-1,  -y, -y+canvas->h-1};
+	BOX sub = { 0,  spr->w-1, 0, spr->h-1};
+	BOX res;
+	if ( !_box_intersection ( &res, &scr, &sub))
+		return;
+
+	_mono_draw_sprite_box (canvas, spr,  x,  y, &res);
+}
+
+
+void mono_draw_sprite_part ( const CANVAS* canvas, const SPRITE* spr,
+                             int x, int y, const BOX* part)
+{
+	assert(( spr->pix_type == PIX_1_MONOCHROME) && ( canvas->pix_type == PIX_1_MONOCHROME));
+
+	// Check "part" is inside the bitmap
+	BOX bitm = { 0,  spr->w-1, 0, spr->h-1};
+	BOX bpart;
+	if ( !_box_intersection ( &bpart, part, &bitm))
+		return;
+
+	// 	Set the sprite square on screen
+	BOX scr = { -x, -x+canvas->w-1,  -y, -y+canvas->h-1};
+	BOX sub = { 0, bpart.xe - bpart.xi, 
+	            0, bpart.ye - bpart.yi };
+	BOX res;
+	if ( !_box_intersection ( &res, &scr, &sub))
+		return;
+
+	res.xi += bpart.xi;
+	res.xe += bpart.xi;
+	res.yi += bpart.yi;
+	res.ye += bpart.yi;
+	_mono_draw_sprite_box (canvas, spr, x - bpart.xi,  y - bpart.yi, &res);
+}

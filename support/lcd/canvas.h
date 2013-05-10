@@ -15,13 +15,12 @@ typedef struct
 	unsigned char* pixels;
 	short w, h;
 	short stride_bytes;
-	short pix_type;		// See enum PIXEL_TYPES
+	int   pix_type;		// See enum PIXEL_TYPES
 } CANVAS;
-
 
 // Small utility to help with canvas
 
-typedef struct { int xi, xe, yi, ye; } MONO_BOX;
+typedef struct { int xi, xe, yi, ye; } BOX;
 
 static inline int _segment_intersection ( int* resi, int* rese, 
 											int ai, int ae, int bi, int be)
@@ -39,12 +38,14 @@ static inline int _segment_intersection ( int* resi, int* rese,
 	return 1;
 }
 
-static inline int _box_intersection ( MONO_BOX* res, MONO_BOX* a, MONO_BOX* b)
+static inline int _box_intersection ( BOX* res, const BOX* a, const BOX* b)
 {
 	int did0 = _segment_intersection ( &res->xi, &res->xe, a->xi, a->xe, b->xi, b->xe);
 	int did1 = _segment_intersection ( &res->yi, &res->ye, a->yi, a->ye, b->yi, b->ye);
 	return did0 && did1;
 }
 
+
 #endif // CANVAS_H
+
 

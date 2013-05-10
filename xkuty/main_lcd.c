@@ -7,12 +7,15 @@
 #include <support/can_hal.h>
 #include <stdio.h>
 #include <assert.h>
+#include <support/lcd/font.h>
 
 #include "xcpu.h"
 #include "fir.h"
 #include "xkuty_gfx.h"
 #include "event_recording.h"
 
+
+//#include "arial32.h"
 
 #define DISPW (128)
 #define DISPH (64)
@@ -110,9 +113,9 @@ static inline int _sensor_scale ( int in, int base, int top, int magnitude)
 
 static char _tmp [20];
 
-static void _draw_text ( const char* text, const MONO_SPR* font, int x, int y)
+static void _draw_text ( const char* text, const SPRITE* font, int x, int y)
 { 
-	MONO_SPR spr = *font;
+	SPRITE spr = *font;
 	int i = 0;
 	while ( text[i])
 	{
@@ -137,10 +140,10 @@ static void _draw_text ( const char* text, const MONO_SPR* font, int x, int y)
 }
 
 
-static void _vertical_sprite_comb ( const MONO_SPR* spr0, const MONO_SPR* spr1, 
+static void _vertical_sprite_comb ( const SPRITE* spr0, const SPRITE* spr1, 
                                     int level_fx8, int x, int y)
 {
-	MONO_SPR spr = *spr1;
+	SPRITE spr = *spr1;
 	level_fx8 = __LIMIT ( level_fx8, 0,0x100);
 	int cut_y = (level_fx8 * spr.h) >> 8;
 	spr.h     = cut_y;
@@ -154,7 +157,7 @@ static void _vertical_sprite_comb ( const MONO_SPR* spr0, const MONO_SPR* spr1,
 		mono_draw_sprite ( &_screen, &spr, x, y + cut_y);
 }
 
-static void _horizontal_sprite_comb ( const MONO_SPR* spr0, const MONO_SPR* spr1, 
+static void _horizontal_sprite_comb ( const SPRITE* spr0, const SPRITE* spr1, 
                                       int level_fx8, int x, int y)
 {
 	static unsigned int show_mask[] = {0,0,0,0};
@@ -167,7 +170,7 @@ static void _horizontal_sprite_comb ( const MONO_SPR* spr0, const MONO_SPR* spr1
 		show_mask[i] = 0xffffffff;
 	show_mask[i] = (inter == 0) ? 0 : (unsigned int)(-1<<(32-inter));
 	mono_draw_sprite ( &_screen, spr1, x, y);
-	MONO_SPR spr = *spr0;
+	SPRITE spr = *spr0;
 	spr.mask = show_mask;
 	spr.stride_mask = 0;
 	mono_draw_sprite ( &_screen, &spr, x, y);
@@ -358,6 +361,7 @@ static void _runtime_screens ( int* status)
 	{
 		case ST_DASH:
 			{
+			    #if 1
 				//_dash.status |= XCPU_STATE_CRUISE_ON;
 				//_dash.status |= XCPU_STATE_WARNING;
                 //_dash.status |= XCPU_STATE_ERROR;
@@ -392,7 +396,12 @@ static void _runtime_screens ( int* status)
 				if ( _dash.speed == 0)
 					if ( event_happening ( _maintenance_screen_access, 50)) // 1 second
 						*status = ST_DEBUG_SPEED;	
-				break;
+				#else
+				int t=font_calc_len ( &font_Arial_Black32, 
+					"Salut i força al canut", FONT_PROPORTIONAL);
+				font_draw ( &_screen, "Salut i força al canut", &font_Arial_Black32, 
+							FONT_PROPORTIONAL, 64-(t/2)+(_frame_dumps & 63), 30);		
+				#endif
 			}
 			break;
 
