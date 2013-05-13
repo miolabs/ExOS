@@ -1,6 +1,7 @@
 #include "pipes.h"
 #include "buffers.h"
 #include <kernel/thread.h>
+#include <kernel/panic.h>
 
 void ohci_pipe_add(USB_HOST_PIPE *pipe)
 {
@@ -137,8 +138,14 @@ static void _init_hctd(OHCI_HCTD *hctd, OHCI_TD_PID pid, OHCI_TD_TOGGLE td_toggl
 	hctd->BufferEnd = buffer + (length - 1);
 }
 
-OHCI_STD *ohci_add_std(USB_HOST_PIPE *pipe, OHCI_STD *next_std, OHCI_TD_PID pid, OHCI_TD_TOGGLE toggle, void *buffer, int length)
+OHCI_STD *ohci_add_std(USB_REQUEST_BUFFER *urb, OHCI_STD *next_std, OHCI_TD_PID pid, OHCI_TD_TOGGLE toggle)
 {
+#ifdef DEBUG
+	if (urb == NULL || urb->Pipe == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+
+	USB_HOST_PIPE *pipe = urb->Pipe;
 	OHCI_SED *sed = (OHCI_SED *)pipe->Endpoint;
 	OHCI_STD *std = NULL;
 	OHCI_STD *tail_std = (OHCI_STD *)sed->HCED.TailTD;
@@ -150,12 +157,14 @@ OHCI_STD *ohci_add_std(USB_HOST_PIPE *pipe, OHCI_STD *next_std, OHCI_TD_PID pid,
 			if (next_std == NULL) return NULL;
 		}
 		std = tail_std;
-		_init_hctd(&std->HCTD, pid, toggle, buffer, length);
-		std->Pipe = pipe;
-		std->Buffer = buffer; 
+		_init_hctd(&std->HCTD, pid, toggle, urb->Data, urb->Length);
+		std->Request = urb; 
 		std->Status = OHCI_STD_STA_READY;
-		exos_event_reset(&pipe->Event);
-
+		
+		exos_event_reset(&urb->Event);
+		urb->State = std;
+		urb->Status = URB_STATUS_ISSUED;
+		
 		OHCI_HCTD *new_hctd = &next_std->HCTD;
 		ohci_clear_hctd(new_hctd);
 		tail_std->HCTD.Next = new_hctd;
@@ -175,23 +184,22 @@ OHCI_STD *ohci_add_std(USB_HOST_PIPE *pipe, OHCI_STD *next_std, OHCI_TD_PID pid,
 	return std;
 }
 
-OHCI_STD_RESULT ohci_process_std(USB_HOST_PIPE *pipe, OHCI_TD_PID pid, OHCI_TD_TOGGLE toggle, void *data, int length)
+int ohci_process_std(USB_REQUEST_BUFFER *urb, OHCI_TD_PID pid, OHCI_TD_TOGGLE toggle, void *data, int length)
 {
-	OHCI_STD_RESULT res = OHCI_STD_FAILED;
-	OHCI_STD *std = ohci_add_std(pipe, NULL, pid, toggle, data, length);
+#ifdef DEBUG
+	if (urb == NULL || urb->Pipe == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+
+	urb->Data = data;
+	urb->Length = length;
+	OHCI_STD *std = ohci_add_std(urb, NULL, pid, toggle);
 	if (std != NULL)
 	{
-		exos_event_wait(&pipe->Event, EXOS_TIMEOUT_NEVER);	// FIXME: support timeouts
-		if (std->Status == OHCI_STD_STA_COMPLETED &&
-			std->HCTD.ControlBits.ConditionCode == OHCI_TD_CC_NO_ERROR)
-		{
-			// NOTE: stds have rounding option always set (partial transfers are NOT errors)
-			// if buffer was entirely transferred, CurrBufPtr will be NULL 
-			res = std->HCTD.CurrBufPtr == NULL ? OHCI_STD_COMPLETE : OHCI_STD_PARTIAL;
-		}
+		exos_event_wait(&urb->Event, EXOS_TIMEOUT_NEVER);	// FIXME: support timeouts
 		ohci_buffers_release_std(std);
 	}
-	return res;
+	return urb->Status == URB_STATUS_DONE;
 }
 
 

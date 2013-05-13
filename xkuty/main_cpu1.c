@@ -149,12 +149,11 @@ void main()
 		{
 			case CONTROL_OFF:
 				_output_state = 0;
-#ifndef DEBUG
 				if (_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push_start, 10))
-#endif
 				{
 					_control_state = CONTROL_ON;
 					_state = (_storage.ConfigBits & XCPU_CONFIGF_MILES) ? XCPU_STATE_ON | XCPU_STATE_MILES : XCPU_STATE_ON;
+                    _state |= XCPU_STATE_NEUTRAL;
 					_run_diag();
 				}
 				break;
@@ -233,10 +232,13 @@ void main()
 
 				// TODO: check battery and engine
 
-				// update throttle output
-				unsigned char th_lim = (_state & XCPU_STATE_NEUTRAL) ? 0 
-					: MOTOR_OFFSET + ((throttle * MOTOR_RANGE) >> 8);
-                hal_pwm_set_output(PWM_TIMER_MODULE, 0, PWM_RANGE - ((th_lim * PWM_RANGE) >> 8));
+				// update throttle out
+				if (_control_state != CONTROL_OFF)
+				{
+					unsigned char th_lim = (_state & XCPU_STATE_NEUTRAL) ? 0 
+						: MOTOR_OFFSET + ((throttle * MOTOR_RANGE) >> 8);
+					hal_pwm_set_output(PWM_TIMER_MODULE, 0, PWM_RANGE - ((th_lim * PWM_RANGE) >> 8));
+				}
 				break;				
 		}
 

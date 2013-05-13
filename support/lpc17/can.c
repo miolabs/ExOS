@@ -1,7 +1,6 @@
 #include "can.h"
 #include "cpu.h"
 #include <support/board_hal.h>
-#include <CMSIS/LPC17xx.h>
 #include <kernel/panic.h>
 
 // NOTE: nominal bit time = (1 + (tseg1 + 1) + (tseg2 + 1))
@@ -72,10 +71,14 @@ int hal_can_initialize(int module, int bitrate)
 	}
 	else return 0;
 
+#if (__TARGET_PROCESSOR < 1770)
 	// NOTE: PCLK_CAN1 and PCLK_CAN2 must have the same PCLK divide value when the CAN function is used
 	PCLKSEL0bits.PCLK_CAN1 = pclk_div;
 	PCLKSEL0bits.PCLK_CAN2 = pclk_div;
+#else
 	
+#endif
+
 	switch(module)
 	{
 		case 0:

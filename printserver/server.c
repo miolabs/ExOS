@@ -42,6 +42,8 @@ static void *_server(void *arg)
 
 		err = net_io_accept((NET_IO_ENTRY *)&_socket, (NET_IO_ENTRY *)&_socket, &buffers);
 		hal_led_set(0, 1);
+		
+		exos_io_set_timeout((EXOS_IO_ENTRY *)&_socket, 2000); // NOTE: we didn't set timeout before because we don't want accept()  to timeout
 
 		EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/usbprint");
 		if (dev_node == NULL)
@@ -68,12 +70,7 @@ static void *_server(void *arg)
 
 hal_led_set(1, 1);
 					total += done;
-#ifdef DEBUG
-					done = sprintf(_buffer, "Total: %d bytes\r\n", total);
 					done = exos_io_write((EXOS_IO_ENTRY *)&_comm, _buffer, done);
-#else
-					done = exos_io_write((EXOS_IO_ENTRY *)&_comm, _buffer, done);
-#endif
 hal_led_set(1, 0);
 					if (done < 0) break;
 				}

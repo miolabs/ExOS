@@ -165,7 +165,7 @@ static void _handle_input(TCP_IO_ENTRY *io, TCP_HEADER *tcp, void *data, unsigne
 				io->RcvNext += done;
 				io->SndFlags.ACK = 1;
 				service_delay = 10;
-				// NOTE: this time is to allow our application to send some (reply) data and save and empty (no-data) ack
+				// NOTE: this time is to allow our application to send some (reply) data and save an empty (no-data) ack
 			}
 			else
 			{

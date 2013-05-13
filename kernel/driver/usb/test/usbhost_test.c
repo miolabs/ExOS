@@ -15,17 +15,11 @@ unsigned char _buffer[1024];
 unsigned char _rcv_buffer[TCP_BUFFER_SIZE]; 
 unsigned char _snd_buffer[TCP_BUFFER_SIZE] __attribute__((section(".dma")));
 
-// NOTE: hook called by net stack
-//void net_board_set_mac_address(NET_ADAPTER *adapter, int index)
-//{
-//	eeprom_initialize();
-//	adapter->MAC = (HW_ADDR) { 0x00, 0x18, 0x1b, 0x05, 0x05, 0x06 };
-//}
-
 void main()
 {
 	usb_host_initialize();
 	int err = 0;
+	int done = 0;
 
 	NET_ADAPTER *adapter = NULL;
 	if (net_adapter_enum(&adapter))
@@ -50,26 +44,42 @@ void main()
 
 		EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/usbprint");
 		if (dev_node == NULL)
-			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/usbftdi");
+			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/usbftdi0");
 		if (dev_node == NULL)
 			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/comm0");
 
+
 		if (dev_node != NULL)
 		{
-			comm_io_create(&_comm, dev_node->Device, dev_node->Unit, EXOS_IOF_WAIT); 
+			comm_io_create(&_comm, dev_node->Device, dev_node->Unit, EXOS_IOF_WAIT);
 			err = comm_io_open(&_comm);
 			if (err == 0)
 			{
+				done = sprintf(_buffer, "Connected to '%s'!\r\n", dev_node->Name);
+				done = exos_io_write((EXOS_IO_ENTRY *)&_socket, _buffer, done);
+				
 				while(1)
 				{
-					int done = exos_io_read((EXOS_IO_ENTRY *)&_socket, _buffer, 1024);
-					if (done < 0) break;
+					EXOS_EVENT *input_events[] = { &_socket.InputEvent, &_comm.InputEvent };
+					done = exos_event_wait_multiple(input_events, 2, EXOS_TIMEOUT_NEVER);
 
-hal_led_set(1, 1);
-					done = exos_io_write((EXOS_IO_ENTRY *)&_socket, _buffer, done);
-//					done = exos_io_write((EXOS_IO_ENTRY *)&_comm, _buffer, done);
-hal_led_set(1, 0);
-					if (done < 0) break;
+					if (_socket.InputEvent.State)
+					{
+						done = exos_io_read((EXOS_IO_ENTRY *)&_socket, _buffer, 1024);
+						if (done < 0) break;
+	
+						done = exos_io_write((EXOS_IO_ENTRY *)&_comm, _buffer, done);
+						if (done < 0) break;
+					}
+
+					if (_comm.InputEvent.State)
+					{
+						done = exos_io_read((EXOS_IO_ENTRY *)&_comm, _buffer, 1024);
+						if (done < 0) break;
+
+						done = exos_io_write((EXOS_IO_ENTRY *)&_socket, _buffer, done);
+						if (done < 0) break;
+					}
 				}
 
 				comm_io_close(&_comm);

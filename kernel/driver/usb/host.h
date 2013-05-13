@@ -9,6 +9,7 @@
 typedef const struct _USB_HOST_FUNCTION_DRIVER USB_HOST_FUNCTION_DRIVER;
 typedef const struct _USB_HOST_CONTROLLER_DRIVER USB_HOST_CONTROLLER_DRIVER;
 typedef struct _USB_HOST_DEVICE USB_HOST_DEVICE;
+typedef struct _USB_REQUEST_BUFFER USB_REQUEST_BUFFER;
 
 typedef struct _USB_HOST_PIPE
 {
@@ -20,7 +21,7 @@ typedef struct _USB_HOST_PIPE
 	unsigned char EndpointNumber;
 	unsigned char InterruptInterval;
 	unsigned char Reserved;
-	EXOS_EVENT Event;
+	USB_REQUEST_BUFFER *Pending;
 } USB_HOST_PIPE;
 
 typedef enum
@@ -48,6 +49,14 @@ struct _USB_HOST_DEVICE
 	unsigned short Product;
 };
 
+typedef enum
+{
+	URB_STATUS_EMPTY = 0,
+	URB_STATUS_ISSUED,
+	URB_STATUS_FAILED,
+	URB_STATUS_DONE,
+} URB_STATUS;
+
 typedef struct
 {
 	EXOS_NODE Node;
@@ -62,12 +71,25 @@ struct _USB_HOST_FUNCTION_DRIVER
 	void (*Stop)(USB_HOST_FUNCTION *func);
 };
 
+struct _USB_REQUEST_BUFFER
+{
+	EXOS_NODE Node;
+	USB_HOST_PIPE *Pipe;
+	EXOS_EVENT Event;
+	void *Data;
+	unsigned short Length;
+	unsigned short Done;
+	void *State;
+	URB_STATUS Status;
+};
+
 struct _USB_HOST_CONTROLLER_DRIVER
 {
 	int (*CtrlSetupRead)(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *in_data, int in_length);
 	int (*CtrlSetupWrite)(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *out_data, int out_length);
 	int (*StartPipe)(USB_HOST_PIPE *pipe);
-	int (*BulkTransfer)(USB_HOST_PIPE *pipe, void *data, int length);
+	int (*BeginBulkTransfer)(USB_REQUEST_BUFFER *urb, void *data, int length);
+	int (*EndBulkTransfer)(USB_REQUEST_BUFFER *urb);
 };
 
 typedef struct
@@ -86,7 +108,10 @@ void usb_host_create_device(USB_HOST_DEVICE *device, USB_HOST_CONTROLLER_DRIVER 
 void usb_host_create_function(USB_HOST_FUNCTION *func, USB_HOST_DEVICE *device, USB_HOST_FUNCTION_DRIVER *driver);
 void usb_host_init_pipe_from_descriptor(USB_HOST_DEVICE *device, USB_HOST_PIPE *pipe, USB_ENDPOINT_DESCRIPTOR *ep_desc);
 int usb_host_start_pipe(USB_HOST_PIPE *pipe);
-int usb_host_bulk_transfer(USB_HOST_PIPE *pipe, void *data, int length); 
+void usb_host_urb_create(USB_REQUEST_BUFFER *urb, USB_HOST_PIPE *pipe);
+int usb_host_bulk_transfer(USB_HOST_PIPE *pipe, void *data, int length);
+int usb_host_begin_bulk_transfer(USB_REQUEST_BUFFER *urb, void *data, int length);
+int usb_host_end_bulk_transfer(USB_REQUEST_BUFFER *urb);
 
 int usb_host_ctrl_setup(USB_HOST_DEVICE *device, const USB_REQUEST *request, void *data, int length);
 int usb_host_read_descriptor(USB_HOST_DEVICE *device, int desc_type, int desc_index, void *data, int length);

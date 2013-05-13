@@ -38,7 +38,8 @@ OHCI_STD *ohci_buffers_alloc_std()
 	OHCI_STD *std = (OHCI_STD *)exos_fifo_dequeue(&_free_buffers);
 	if (std != NULL)
 	{
-		std->Pipe = NULL;
+		std->Request = NULL;
+        std->Status = OHCI_STD_STA_EMPTY;
 	}
 	return std;
 }

@@ -108,7 +108,7 @@ int ohci_init_hctd_iso(OHCI_HCTD_ISO *itd, int sf, void *buffer, int length, int
 	return r + 1;
 }
 
-// NOTE: this is called by lower USB host otg layer
+// NOTE: this is called by lower USB host/otg layer
 void ohci_isr()
 {
 	int int_status = _hc->InterruptStatus & _hc->InterruptEnable;
@@ -144,10 +144,23 @@ void ohci_isr()
 				std->Status = (hctd->ControlBits.ConditionCode == OHCI_TD_CC_NO_ERROR) ?
 					OHCI_STD_STA_COMPLETED : OHCI_STD_STA_ERROR;
 
-				USB_HOST_PIPE *pipe = std->Pipe;
-				if (pipe == NULL) 
+				USB_REQUEST_BUFFER *urb = std->Request;
+				if (urb == NULL) 
 					kernel_panic(KERNEL_ERROR_NULL_POINTER);
-				exos_event_set(&pipe->Event);
+	
+				if (std->Status == OHCI_STD_STA_COMPLETED &&
+					std->HCTD.ControlBits.ConditionCode == OHCI_TD_CC_NO_ERROR)
+				{
+					// NOTE: stds have rounding option always set (partial transfers are NOT errors)
+					// if buffer was entirely transferred, CurrBufPtr will be NULL 
+					urb->Done = (std->HCTD.CurrBufPtr == NULL) ? urb->Length : (std->HCTD.CurrBufPtr - urb->Data);
+					urb->Status = URB_STATUS_DONE;
+				}
+				else
+				{
+					urb->Status = URB_STATUS_FAILED;
+				}
+				exos_event_set(&urb->Event);
 
 				if (prev == NULL) break;
 				prev->Next = NULL;

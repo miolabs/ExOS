@@ -63,6 +63,7 @@ static int _bind(TCP_IO_ENTRY *io, TCP_STATE init_state)
 		if (existing == NULL) list_add_tail(&_entries, (EXOS_NODE *)io);
 		done = 1;
 	}
+	exos_event_reset(&io->CloseEvent);
 	exos_mutex_unlock(&_entries_mutex);
 	return done;
 }
@@ -96,44 +97,55 @@ int net_tcp_accept(TCP_IO_ENTRY *io, const EXOS_IO_STREAM_BUFFERS *buffers, TCP_
 
 	exos_mutex_lock(&io->Mutex);
 
-	exos_io_buffer_create(&io->RcvBuffer, buffers->RcvBuffer, buffers->RcvBufferSize);
-	io->RcvBuffer.NotEmptyEvent = &io->InputEvent;
+	int done = 0;
+	if (io->State == TCP_STATE_CLOSED)
+	{
+		exos_io_buffer_create(&io->RcvBuffer, buffers->RcvBuffer, buffers->RcvBufferSize);
+		io->RcvBuffer.NotEmptyEvent = &io->InputEvent;
+	
+		exos_io_buffer_create(&io->SndBuffer, buffers->SndBuffer, buffers->SndBufferSize);
+		io->SndBuffer.NotFullEvent = &io->OutputEvent;
+	
+		io->Adapter = conn->Adapter;
+		io->LocalPort = conn->LocalPort;
+		io->RemotePort = conn->RemotePort;
+		io->RemoteEP = conn->RemoteEP;
+	
+		io->RcvNext = conn->Sequence + 1;
+		io->SndSeq = 0; // FIXME: use random for security
+	
+		io->SndFlags = (TCP_FLAGS) { .SYN = 1, .ACK = 1 };
+		done = _bind(io, TCP_STATE_SYN_RECEIVED);
 
-	exos_io_buffer_create(&io->SndBuffer, buffers->SndBuffer, buffers->SndBufferSize);
-	io->SndBuffer.NotFullEvent = &io->OutputEvent;
-
-	io->Adapter = conn->Adapter;
-	io->LocalPort = conn->LocalPort;
-	io->RemotePort = conn->RemotePort;
-	io->RemoteEP = conn->RemoteEP;
-
-	io->RcvNext = conn->Sequence + 1;
-	io->SndSeq = 0; // FIXME: use random for security
-
-	io->SndFlags = (TCP_FLAGS) { .SYN = 1, .ACK = 1 };
-	int done = _bind(io, TCP_STATE_SYN_RECEIVED);
-
+		// recycle conn
+		exos_fifo_queue(&_free_incoming_connections, (EXOS_NODE *)conn);
+	}
+	
 	exos_mutex_unlock(&io->Mutex);
-
-	// recycle conn
-	exos_fifo_queue(&_free_incoming_connections, (EXOS_NODE *)conn);
 
 	if (done) 
 	{
 		net_tcp_service(io, 0);
-        exos_event_wait(&io->OutputEvent, EXOS_TIMEOUT_NEVER);	// FIXME: allow timeout
+		exos_event_wait(&io->OutputEvent, EXOS_TIMEOUT_NEVER);	// FIXME: allow timeout
 	}
 	return done;
 }
 
 int net_tcp_close(TCP_IO_ENTRY *io)
 {
+	TCP_INCOMING_CONN *conn;
 	int run_service = 0;
 	exos_mutex_lock(&io->Mutex);
 	if (io->State != TCP_STATE_CLOSED)
 	{
 		switch(io->State)
 		{
+			case TCP_STATE_LISTEN:
+				while(NULL != (conn = (TCP_INCOMING_CONN *)exos_fifo_dequeue(&io->AcceptQueue)))
+				{
+					exos_fifo_queue(&_free_incoming_connections, (EXOS_NODE *)conn);
+				}
+				break;
 			case TCP_STATE_CLOSE_WAIT:
 				io->SndFlags = (TCP_FLAGS) { .FIN = 1, .ACK = 1 };
 				io->State = TCP_STATE_LAST_ACK;
@@ -143,15 +155,13 @@ int net_tcp_close(TCP_IO_ENTRY *io)
 				io->SndFlags = (TCP_FLAGS) { .FIN = 1, .ACK = 1 };
 				io->State = TCP_STATE_FIN_WAIT_1;
 				break;
-			case TCP_STATE_LISTEN:
-				io->State = TCP_STATE_CLOSED;
-				break;
 		}
 		run_service = 1;
 	}
 	exos_mutex_unlock(&io->Mutex);
 
-	if (run_service) net_tcp_service(io, 0);
+	if (run_service) 
+		net_tcp_service(io, 0);
 
 	exos_event_wait(&io->CloseEvent, EXOS_TIMEOUT_NEVER);
 
@@ -317,8 +327,10 @@ static void *_service(void *arg)
 			TCP_IO_ENTRY *io = (TCP_IO_ENTRY *)node;
 
 			if (io->State == TCP_STATE_LISTEN) 
-				continue;	// FIXME: this should not happen, check service setup on listen state
-			
+			{
+   				io->State = TCP_STATE_CLOSED;
+			}
+
 			if (io->State != TCP_STATE_CLOSED)
 			{
 				int rem = (unsigned long)io->ServiceWait - exos_timer_elapsed(io->ServiceTime);

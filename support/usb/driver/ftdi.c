@@ -1,10 +1,23 @@
 #include "ftdi.h"
 #include <usb/enumerate.h>
 #include <kernel/machine/hal.h>
+#include <kernel/panic.h>
+
+#ifndef FTDI_MAX_INSTANCES 
+#define FTDI_MAX_INSTANCES 2
+#endif
 
 #ifndef FTDI_BAUDRATE
 #define FTDI_BAUDRATE 9600
 #endif
+
+#define THREAD_STACK 1024
+static EXOS_THREAD _thread;
+static unsigned char _stack[THREAD_STACK] __attribute__((aligned(16)));
+static void *_service(void *arg);
+static EXOS_EVENT _handle_event;
+static EXOS_MUTEX _handle_list_lock;
+static EXOS_LIST _handle_list;
 
 static USB_HOST_FUNCTION *_check_interface(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTOR *conf_desc, USB_DESCRIPTOR_HEADER *fn_desc);
 static void _start(USB_HOST_FUNCTION *func);
@@ -25,10 +38,29 @@ static const COMM_DRIVER _comm_driver = {
     .GetAttr = _get_attr, .SetAttr = _set_attr, 
 	.Read = _read, .Write = _write };
 static COMM_DEVICE _comm_device = { .Driver = &_comm_driver, .PortCount = 1 };
-static FTDI_FUNCTION _func __usb; // FIXME: support multiple instances
+
+static FTDI_FUNCTION _functions[FTDI_MAX_INSTANCES] __usb;
+static volatile unsigned char _func_usage[FTDI_MAX_INSTANCES];
+static FTDI_FUNCTION *_get_func(int port);
+static const char *_device_names[] = { "usbftdi0", "usbftdi1", "usbftdi2", "usbftdi3" }; 
 
 void ftdi_initialize()
 {
+	exos_event_create(&_handle_event);
+	exos_mutex_create(&_handle_list_lock);
+	list_initialize(&_handle_list);
+	for(int port = 0; port < FTDI_MAX_INSTANCES; port++)
+	{
+		_func_usage[port] = 0;
+		FTDI_FUNCTION *func = &_functions[port];
+		*func = (FTDI_FUNCTION) { .DeviceUnit = port, .DeviceName = _device_names[port] }; 
+	}
+
+	EXOS_EVENT event;
+	exos_event_create(&event);
+	exos_thread_create(&_thread, 5, _stack, THREAD_STACK, NULL, _service, &event);
+	exos_event_wait(&event, EXOS_TIMEOUT_NEVER);
+
 	_driver_node = (USB_HOST_FUNCTION_DRIVER_NODE) { .Driver = &_driver };
 	usb_host_driver_register(&_driver_node);
 }
@@ -48,21 +80,30 @@ static USB_HOST_FUNCTION *_check_interface(USB_HOST_DEVICE *device, USB_CONFIGUR
 		if (if_desc->InterfaceClass == USB_CLASS_CUSTOM
 			&& _device_if_matches(device, if_desc))
 		{
-			FTDI_FUNCTION *func = &_func;
-			usb_host_create_function((USB_HOST_FUNCTION *)func, device, &_driver);
-
-			USB_ENDPOINT_DESCRIPTOR *ep_desc;			
-			ep_desc = usb_enumerate_find_endpoint_descriptor(conf_desc, if_desc, USB_TT_BULK, USB_HOST_TO_DEVICE, 0);
-			if (!ep_desc) return NULL;
-			usb_host_init_pipe_from_descriptor(device, &func->BulkOutputPipe, ep_desc);
-
-			ep_desc = usb_enumerate_find_endpoint_descriptor(conf_desc, if_desc, USB_TT_BULK, USB_DEVICE_TO_HOST, 0);
-			if (!ep_desc) return NULL;
-			usb_host_init_pipe_from_descriptor(device, &func->BulkInputPipe, ep_desc);
-
-			func->Interface = if_desc->InterfaceNumber;
-			func->Protocol = 0;
-			return (USB_HOST_FUNCTION *)func;
+			FTDI_FUNCTION *func = NULL;
+			for(int port = 0; port < FTDI_MAX_INSTANCES; port++) if (_func_usage[port] == 0)
+			{
+				_func_usage[port] = 1;
+				func = &_functions[port];
+				break;
+			}
+			if (func != NULL)
+			{
+				usb_host_create_function((USB_HOST_FUNCTION *)func, device, &_driver);
+	
+				USB_ENDPOINT_DESCRIPTOR *ep_desc;			
+				ep_desc = usb_enumerate_find_endpoint_descriptor(conf_desc, if_desc, USB_TT_BULK, USB_HOST_TO_DEVICE, 0);
+				if (!ep_desc) return NULL;
+				usb_host_init_pipe_from_descriptor(device, &func->BulkOutputPipe, ep_desc);
+	
+				ep_desc = usb_enumerate_find_endpoint_descriptor(conf_desc, if_desc, USB_TT_BULK, USB_DEVICE_TO_HOST, 0);
+				if (!ep_desc) return NULL;
+				usb_host_init_pipe_from_descriptor(device, &func->BulkInputPipe, ep_desc);
+	
+				func->Interface = if_desc->InterfaceNumber;
+				func->Protocol = 0;
+				return (USB_HOST_FUNCTION *)func;
+			}
 		}
 	}
 	return NULL;
@@ -88,8 +129,8 @@ static int _get_latency(FTDI_FUNCTION *func, unsigned char *plat)
 		.RequestType = USB_REQTYPE_DEVICE_TO_HOST | USB_REQTYPE_VENDOR | USB_REQTYPE_RECIPIENT_DEVICE,
 		.RequestCode = FTDI_REQUEST_GET_LATENCY_TIMER,
 		.Value = 0, func->Interface, .Length = 1 };
-	int done = usb_host_ctrl_setup(func->Device, &setup, func->Buffer, 1);
-	*plat = done ? func->Buffer[0] : 0;
+	int done = usb_host_ctrl_setup(func->Device, &setup, func->OutputBuffer, 1);
+	*plat = done ? func->OutputBuffer[0] : 0;
 	return done;
 }
 
@@ -121,11 +162,11 @@ static void _start(USB_HOST_FUNCTION *usb_func)
 //	_get_latency(func, &latency);
 
 	func->KernelDevice = (EXOS_TREE_DEVICE) {
-		.Name = "usbftdi",	// FIXME: allow more instances
+		.Name = func->DeviceName,
 		.DeviceType = EXOS_TREE_DEVICE_COMM,
 		.Device = &_comm_device,
-		.Unit = 0 };	// FIXME: allow more instances
-	
+		.Unit = func->DeviceUnit };
+
 	exos_tree_add_device(&func->KernelDevice);
 }
 
@@ -138,9 +179,21 @@ static void _stop(USB_HOST_FUNCTION *usb_func)
 
 static int _open(COMM_IO_ENTRY *io)
 {
-	if (io->Port == 0)
+	FTDI_FUNCTION *func = _get_func(io->Port);
+	if (func != NULL)
 	{
-		// TODO: check usb function to be ready
+		// TODO: check usb function to be closed
+
+		exos_io_buffer_create(&func->IORcvBuffer, func->IOBuffer, FTDI_IO_BUFFER);
+		func->IORcvBuffer.NotEmptyEvent = &io->InputEvent;
+
+		FTDI_HANDLE *handle = &func->AsyncHandle;
+		*handle = (FTDI_HANDLE) { .Entry = io };
+
+		exos_mutex_lock(&_handle_list_lock);
+		list_add_tail(&_handle_list, (EXOS_NODE *)handle);
+		exos_mutex_unlock(&_handle_list_lock);
+		exos_event_reset(&_handle_event);
 
 		exos_event_set(&io->OutputEvent);
 		return 0;
@@ -160,32 +213,102 @@ static int _set_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
 
 static void _close(COMM_IO_ENTRY *io)
 {
-	// TODO
+	FTDI_FUNCTION *func = _get_func(io->Port);
+	if (func != NULL)
+	{
+		// TODO: check usb function to be opened
+
+		exos_mutex_lock(&_handle_list_lock);
+		list_remove((EXOS_NODE *)&func->AsyncHandle);
+		exos_mutex_unlock(&_handle_list_lock);
+	
+		func->IORcvBuffer.NotEmptyEvent = NULL;
+		// TODO
+	}
 }
 
 static int _read(COMM_IO_ENTRY *io, unsigned char *buffer, unsigned long length)
 {
-	// TODO: implement bidirectional feature
-	return -1;
+	FTDI_FUNCTION *func = _get_func(io->Port);
+	if (func == NULL) return -1;
+
+	int done = exos_io_buffer_read(&func->IORcvBuffer, buffer, length);
+	return done;
 }
 
 static int _write(COMM_IO_ENTRY *io, const unsigned char *buffer, unsigned long length)
 {
-	FTDI_FUNCTION *func = &_func;	// FIXME: use provided usb function when opened
-	if (io->Port != 0) return -1;
+	FTDI_FUNCTION *func = _get_func(io->Port);
+	if (func == NULL) return -1;
 
 	int offset = 0;
 	do
 	{
 		int part = length - offset;
-		if (part > FTDI_BUFFER_SIZE) part = FTDI_BUFFER_SIZE;
-		__mem_copy(func->Buffer, func->Buffer + part, buffer + offset);
-		int done = usb_host_bulk_transfer(&func->BulkOutputPipe, func->Buffer, part);
+		if (part > FTDI_USB_BUFFER) part = FTDI_USB_BUFFER;
+		__mem_copy(func->OutputBuffer, func->OutputBuffer + part, buffer + offset);
+		int done = usb_host_bulk_transfer(&func->BulkOutputPipe, func->OutputBuffer, part);
 		if (!done) return -1;
 		offset += part;
 	} while(offset < length);
 	return offset;
 }
 
+static FTDI_FUNCTION *_get_func(int port)
+{
+	if (port < FTDI_MAX_INSTANCES && _func_usage[port] != 0)
+		return &_functions[port];
+	return NULL;
+}
 
+static void *_service(void *arg)
+{
+	exos_event_set((EXOS_EVENT *)arg);	// notify of service ready
+
+	EXOS_EVENT *events[FTDI_MAX_INSTANCES + 1];
+	events[0] = &_handle_event;
+	int count = 0;
+
+	while(1)
+	{
+		exos_event_wait_multiple(events, count + 1, EXOS_TIMEOUT_NEVER);
+
+		count = 0;
+		exos_mutex_lock(&_handle_list_lock);
+		FOREACH(node, &_handle_list)
+		{
+			FTDI_HANDLE *handle = (FTDI_HANDLE *)node;
+			COMM_IO_ENTRY *io = handle->Entry;
+
+			FTDI_FUNCTION *func = _get_func(io->Port);
+			USB_REQUEST_BUFFER *urb = &handle->Request;
+			EXOS_EVENT *event = NULL;
+			switch(urb->Status)
+			{
+				case URB_STATUS_EMPTY:
+					usb_host_urb_create(urb, &func->BulkInputPipe);
+					usb_host_begin_bulk_transfer(urb, func->InputBuffer, FTDI_USB_BUFFER);
+					event = &urb->Event;
+					break;
+				case URB_STATUS_DONE:
+					usb_host_end_bulk_transfer(urb);
+					if (urb->Done > 2)
+					{
+						exos_io_buffer_write(&func->IORcvBuffer, func->InputBuffer + 2, urb->Done - 2);
+                    }
+					usb_host_begin_bulk_transfer(urb, func->InputBuffer, FTDI_USB_BUFFER);
+					event = &urb->Event;
+					break;
+				case URB_STATUS_FAILED:
+#ifdef DEBUG
+					kernel_panic(KERNEL_ERROR_UNKNOWN);
+#endif
+					break;
+			}
+			if (event != NULL)
+				events[++count] = event;
+		}
+		exos_mutex_unlock(&_handle_list_lock);
+	}
+}
 

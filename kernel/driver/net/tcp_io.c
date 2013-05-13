@@ -26,7 +26,7 @@ void net_tcp_io_create(TCP_IO_ENTRY *io, EXOS_IO_FLAGS flags)
 	io->RcvBuffer = (EXOS_IO_BUFFER) { .Buffer = NULL, .Size = 0 };
 	io->SndBuffer = (EXOS_IO_BUFFER) { .Buffer = NULL, .Size = 0 };
 
-	io->BufferSize = 32;	// FIXME
+	io->BufferSize = 32;	// FIXME: use pre-defined initial value
 
 	io->State = TCP_STATE_CLOSED;
 
@@ -69,7 +69,11 @@ static int _accept(NET_IO_ENTRY *socket, NET_IO_ENTRY *conn_socket, const EXOS_I
 		TCP_INCOMING_CONN *conn = (TCP_INCOMING_CONN *)exos_fifo_wait(&io->AcceptQueue, io->Timeout);
 		if (conn != NULL)
 		{
-			int done = net_tcp_accept((TCP_IO_ENTRY *)conn_socket, buffers, conn);
+			TCP_IO_ENTRY *conn_io = (TCP_IO_ENTRY *)conn_socket;
+			if (conn_io->State == TCP_STATE_LISTEN)
+				net_tcp_close(conn_io);
+
+			int done = net_tcp_accept(conn_io, buffers, conn);
 			return done ? 0 : -1;
 		}
 	}

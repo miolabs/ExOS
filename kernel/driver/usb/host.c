@@ -58,7 +58,6 @@ void usb_host_create_device(USB_HOST_DEVICE *device, USB_HOST_CONTROLLER_DRIVER 
 	// setup control pipe with initial 8 byte max transfer size
 	USB_HOST_PIPE *pipe = &device->ControlPipe;
 	*pipe = (USB_HOST_PIPE) { .Device = device, .EndpointType = USB_TT_CONTROL, .MaxPacketSize = 8 }; 
-	exos_event_create(&pipe->Event);
 }
 
 void usb_host_create_function(USB_HOST_FUNCTION *func, USB_HOST_DEVICE *device, USB_HOST_FUNCTION_DRIVER *driver)
@@ -79,7 +78,6 @@ void usb_host_init_pipe_from_descriptor(USB_HOST_DEVICE *device, USB_HOST_PIPE *
 		.MaxPacketSize = USB16TOH(ep_desc->MaxPacketSize),
 		.EndpointNumber = ep_desc->AddressBits.EndpointNumber,
 		.InterruptInterval = ep_desc->Interval };
-	exos_event_create(&pipe->Event);
 }
 
 int usb_host_start_pipe(USB_HOST_PIPE *pipe)
@@ -97,7 +95,42 @@ int usb_host_bulk_transfer(USB_HOST_PIPE *pipe, void *data, int length)
 	USB_HOST_DEVICE *device = pipe->Device;
 	exos_mutex_lock(&device->ControlMutex);
 	const USB_HOST_CONTROLLER_DRIVER *hcd = device->Controller;
-	int done = hcd->BulkTransfer(pipe, data, length);
+
+	int done = 0;
+	USB_REQUEST_BUFFER urb;
+	usb_host_urb_create(&urb, pipe);
+	if (hcd->BeginBulkTransfer(&urb, data, length))
+	{
+		done = hcd->EndBulkTransfer(&urb);
+	}
+	exos_mutex_unlock(&device->ControlMutex);
+	return done;
+}
+
+int usb_host_begin_bulk_transfer(USB_REQUEST_BUFFER *urb, void *data, int length)
+{
+	if (urb == NULL || urb->Pipe == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+	
+	USB_HOST_DEVICE *device = urb->Pipe->Device;
+	const USB_HOST_CONTROLLER_DRIVER *hcd = device->Controller;
+
+	exos_mutex_lock(&device->ControlMutex);
+	int done = hcd->BeginBulkTransfer(urb, data, length);
+	exos_mutex_unlock(&device->ControlMutex);
+	return done;
+}
+
+int usb_host_end_bulk_transfer(USB_REQUEST_BUFFER *urb)
+{
+	if (urb == NULL || urb->Pipe == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+	
+	USB_HOST_DEVICE *device = urb->Pipe->Device;
+	const USB_HOST_CONTROLLER_DRIVER *hcd = device->Controller;
+
+	exos_mutex_lock(&device->ControlMutex);
+	int done = hcd->EndBulkTransfer(urb);
 	exos_mutex_unlock(&device->ControlMutex);
 	return done;
 }
@@ -142,6 +175,11 @@ int usb_host_set_interface(USB_HOST_DEVICE *device, int interface, int alternate
 	return usb_host_ctrl_setup(device, &req, NULL, 0);
 }
 
+void usb_host_urb_create(USB_REQUEST_BUFFER *urb, USB_HOST_PIPE *pipe)
+{
+	urb->Pipe = pipe;
+	exos_event_create(&urb->Event);
+}
 
 
 

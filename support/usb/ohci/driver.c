@@ -7,11 +7,12 @@
 static int _ctrl_setup_read(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *in_data, int in_length);
 static int _ctrl_setup_write(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *out_data, int out_length);
 static int _start_pipe(USB_HOST_PIPE *pipe);
-static int _bulk_transfer(USB_HOST_PIPE *pipe, void *data, int length);
+static int _begin_bulk_transfer(USB_REQUEST_BUFFER *urb, void *data, int length);
+static int _end_bulk_transfer(USB_REQUEST_BUFFER *urb);
 
 const USB_HOST_CONTROLLER_DRIVER __ohci_driver = {
 	_ctrl_setup_read, _ctrl_setup_write, 
-	_start_pipe, _bulk_transfer,
+	_start_pipe, _begin_bulk_transfer, _end_bulk_transfer,
 	};
 
 static USB_HOST_DEVICE _devices[2] __usb;	// FIXME: allow more devices (each port can generate more than one)
@@ -64,11 +65,28 @@ static int _start_pipe(USB_HOST_PIPE *pipe)
 	return 0;
 }
 
-static int _bulk_transfer(USB_HOST_PIPE *pipe, void *data, int length)
+static int _begin_bulk_transfer(USB_REQUEST_BUFFER *urb, void *data, int length)
 {
-	OHCI_TD_PID pid = pipe->Direction == USB_HOST_TO_DEVICE ? OHCI_TD_DIR_OUT : OHCI_TD_DIR_IN;
-	int done = ohci_process_std(pipe, pid, OHCI_TD_TOGGLE_CARRY, data, length);
-	return done;
+	OHCI_TD_PID pid = urb->Pipe->Direction == USB_HOST_TO_DEVICE ? OHCI_TD_DIR_OUT : OHCI_TD_DIR_IN;
+    urb->Data = data;
+	urb->Length = length;
+	OHCI_STD *std = ohci_add_std(urb, NULL, pid, OHCI_TD_TOGGLE_CARRY);
+	return (std != NULL);
+}
+
+static int _end_bulk_transfer(USB_REQUEST_BUFFER *urb)
+{
+	if (urb == NULL || urb->Pipe == NULL || urb->State == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+
+	OHCI_STD *std = (OHCI_STD *)urb->State;
+#ifdef DEBUG
+	if (std->Request != urb)
+		kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
+#endif
+	exos_event_wait(&urb->Event, EXOS_TIMEOUT_NEVER);	// FIXME: support timeouts
+	ohci_buffers_release_std(std);
+	return (urb->Status == URB_STATUS_DONE) ? urb->Done : -1;
 }
 
 USB_HOST_DEVICE *ohci_device_create(int port, USB_HOST_DEVICE_SPEED speed)
@@ -87,35 +105,41 @@ USB_HOST_DEVICE *ohci_device_create(int port, USB_HOST_DEVICE_SPEED speed)
 
 static int _ctrl_setup_read(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *in_data, int in_length)
 {
+	USB_REQUEST_BUFFER urb;
+
 	USB_HOST_PIPE *pipe = &device->ControlPipe;
-	int done = ohci_process_std(pipe, OHCI_TD_SETUP, OHCI_TD_TOGGLE_0, setup_data, setup_length);
-    if (done) 
+	usb_host_urb_create(&urb, pipe);
+	int done = ohci_process_std(&urb, OHCI_TD_SETUP, OHCI_TD_TOGGLE_0, setup_data, setup_length);
+	if (done) 
 	{
-        if (in_length) 
+		if (in_length) 
 		{
-            done = ohci_process_std(pipe, OHCI_TD_DIR_IN, OHCI_TD_TOGGLE_1, in_data, in_length);
-        }
-        if (done) 
+			done = ohci_process_std(&urb, OHCI_TD_DIR_IN, OHCI_TD_TOGGLE_1, in_data, in_length);
+		}
+		if (done) 
 		{
-            done = ohci_process_std(pipe, OHCI_TD_DIR_OUT, OHCI_TD_TOGGLE_1, NULL, 0);
-        }
-    }
-    return done;
+			done = ohci_process_std(&urb, OHCI_TD_DIR_OUT, OHCI_TD_TOGGLE_1, NULL, 0);
+		}
+	}
+	return done;
 }
 
 static int _ctrl_setup_write(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *out_data, int out_length)
 {
+	USB_REQUEST_BUFFER urb;
+
 	USB_HOST_PIPE *pipe = &device->ControlPipe;
-	int done = ohci_process_std(pipe, OHCI_TD_SETUP, OHCI_TD_TOGGLE_0, setup_data, setup_length);
+	usb_host_urb_create(&urb, pipe);
+	int done = ohci_process_std(&urb, OHCI_TD_SETUP, OHCI_TD_TOGGLE_0, setup_data, setup_length);
     if (done) 
 	{
         if (out_length) 
 		{
-            done = ohci_process_std(pipe, OHCI_TD_DIR_OUT, OHCI_TD_TOGGLE_1, out_data, out_length);
+            done = ohci_process_std(&urb, OHCI_TD_DIR_OUT, OHCI_TD_TOGGLE_1, out_data, out_length);
         }
         if (done) 
 		{
-            done = ohci_process_std(pipe, OHCI_TD_DIR_IN, OHCI_TD_TOGGLE_1, NULL, 0);
+            done = ohci_process_std(&urb, OHCI_TD_DIR_IN, OHCI_TD_TOGGLE_1, NULL, 0);
         }
     }
     return done;

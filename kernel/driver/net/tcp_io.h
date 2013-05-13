@@ -26,7 +26,7 @@ typedef struct
 			EXOS_IO_BUFFER SndBuffer;
 			TCP_FLAGS SndFlags;
 		};
-		struct
+		struct	// for LISTENING STATE
 		{
 			EXOS_FIFO AcceptQueue;
 		};

@@ -18,7 +18,9 @@ void hal_board_initialize()
 	dma_initialize();
 
 #if defined BOARD_MIOBOARD
-
+#define LED1_PORT LPC_GPIO3
+#define LED1_MASK (1<<23)
+	LED1_PORT->CLR = LED1_MASK;
 #else
 #error Unsupported Board
 #endif
@@ -83,13 +85,17 @@ static int _setup_ssp(int unit)
 static int _setup_usbhost(int unit)
 {
 #if defined BOARD_MIOBOARD
-//	PINSEL1bits.P0_29 = 1;		// D+
-//	PINSEL1bits.P0_30 = 1;		// D-
-//	PINSEL3bits.P1_18 = 1;		// USB_UP_LED
-//	PINSEL3bits.P1_19 = 2;		// _USB_PPWR
-//	PINSEL3bits.P1_22 = 2;		// USB_PWRD
-//	PINSEL3bits.P1_27 = 2;		// _USB_OVRCR
-	return (1<<0);
+	// usb1
+	pincon_setfunc(0, 29, 1);	// D+
+	pincon_setfunc(0, 30, 1);	// D-
+	pincon_setfunc(1, 18, 1);	// USB_UP_LED
+	pincon_setfunc(1, 19, 2);	// _USB_PPWR
+	pincon_setfunc(1, 22, 2);	// USB_PWRD
+	pincon_setfunc(1, 27, 2);	// _USB_OVRCR
+	
+	// usb2
+	pincon_setfunc(0, 31, 1);	// D+ 
+	return (1<<0) | (1<<1);
 #else
 	return 0;
 #endif
@@ -97,6 +103,7 @@ static int _setup_usbhost(int unit)
 
 static int _setup_usbdev(int unit)
 {
+
 //	PINSEL1bits.P0_29 = 1;		// D+
 //	PINSEL1bits.P0_30 = 1;		// D-
 //	PINSEL4bits.P2_9 = 1;		// USB_CONNECT
@@ -173,10 +180,10 @@ void hal_led_set(HAL_LED led, int state)
 	{
 		case LED_STATUS:
 		case 0:
-//			if (state)
-//				LPC_GPIO1->FIOSET = (1<<18); // USB_LED
-//			else
-//				LPC_GPIO1->FIOCLR = (1<<18); // USB_LED
+			if (state)
+				LED1_PORT->DIR |= LED1_MASK;
+			else
+				LED1_PORT->DIR &= ~LED1_MASK;
 			break;
 	}
 }

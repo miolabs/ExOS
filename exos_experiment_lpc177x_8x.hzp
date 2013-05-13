@@ -103,6 +103,7 @@
           <file file_name="support/lpc17/usb_otg.c"/>
           <file file_name="support/lpc17/usb_host.c"/>
           <file file_name="support/lpc17/i2c.c"/>
+          <file file_name="support/lpc17/can.c"/>
         </folder>
         <folder Name="board">
           <file file_name="support/board/drivers_generic_lpc17.c"/>
