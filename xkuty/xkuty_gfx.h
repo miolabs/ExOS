@@ -444,23 +444,23 @@ static const unsigned int _exos_bw [] =
 };
 
 
-static SPRITE _font_spr_big   = { 24, 21, _bmp_nums_speed, 0, 1,0, PIX_1_MONOCHROME};
-static SPRITE _font_spr_small = { 10, 9, _bmp_nums_distance, 0, 1,0, PIX_1_MONOCHROME};
+static SPRITE _font_spr_big   = { 24, 21, _bmp_nums_speed, 0, 1,0, PIX_1_MONOCHROME, PIX_NONE};
+static SPRITE _font_spr_small = { 10, 9, _bmp_nums_distance, 0, 1,0, PIX_1_MONOCHROME, PIX_NONE};
 
-static SPRITE _km_spr =  { 15, 7, _bmp_km, 0, 1,0, PIX_1_MONOCHROME};
-static SPRITE _mi_spr =  { 21, 10, _bmp_mi, 0, 1,0, PIX_1_MONOCHROME};
-static SPRITE _kmh_spr =  { 23, 7, _bmp_kmh, 0, 1,0, PIX_1_MONOCHROME};
-static SPRITE _mph_spr =  { 21, 10, _bmp_mph, 0, 1,0, PIX_1_MONOCHROME};
-static SPRITE _lock_spr =  { 30,25, _bmp_lock, 0, 1,0, PIX_1_MONOCHROME};
-static SPRITE _warning_spr =  { 24,19, _bmp_warning, 0, 1,0, PIX_1_MONOCHROME};
-static SPRITE _fatal_error_spr =  { 20,17, _bmp_fatal_error, 0, 1,0, PIX_1_MONOCHROME};
-static SPRITE _cruisin_spr =  { 24,19, _bmp_cruisin, 0, 1,0, PIX_1_MONOCHROME};
-static SPRITE _speed_adjust_spr = { 94, 14, _bmp_speed_adjust, 0, 3,0, PIX_1_MONOCHROME};
+static SPRITE _km_spr =  { 15, 7, _bmp_km, 0, 1,0, PIX_1_MONOCHROME, PIX_NONE};
+static SPRITE _mi_spr =  { 21, 10, _bmp_mi, 0, 1,0, PIX_1_MONOCHROME, PIX_NONE};
+static SPRITE _kmh_spr =  { 23, 7, _bmp_kmh, 0, 1,0, PIX_1_MONOCHROME, PIX_NONE};
+static SPRITE _mph_spr =  { 21, 10, _bmp_mph, 0, 1,0, PIX_1_MONOCHROME, PIX_NONE};
+static SPRITE _lock_spr =  { 30,25, _bmp_lock, 0, 1,0, PIX_1_MONOCHROME, PIX_NONE};
+static SPRITE _warning_spr =  { 24,19, _bmp_warning, 0, 1,0, PIX_1_MONOCHROME, PIX_NONE};
+static SPRITE _fatal_error_spr =  { 20,17, _bmp_fatal_error, 0, 1,0, PIX_1_MONOCHROME, PIX_NONE};
+static SPRITE _cruisin_spr =  { 24,19, _bmp_cruisin, 0, 1,0, PIX_1_MONOCHROME, PIX_NONE};
+static SPRITE _speed_adjust_spr = { 94, 14, _bmp_speed_adjust, 0, 3,0, PIX_1_MONOCHROME, PIX_NONE};
 
-static SPRITE _battery_full  = { 27, 59, _bmp_battery, 0, 1,0, PIX_1_MONOCHROME};
-static SPRITE _battery_empty = { 27, 59, _bmp_battery_empty, 0, 1,0, PIX_1_MONOCHROME};
-static SPRITE _adjust_full_spr  = { 50, 18, _bmp_adjust_bar_full, 0, 2, 0, PIX_1_MONOCHROME};
-static SPRITE _adjust_empty_spr = { 50, 18, _bmp_adjust_bar_empty, 0, 2, 0, PIX_1_MONOCHROME};
+static SPRITE _battery_full  = { 27, 59, _bmp_battery, 0, 1,0, PIX_1_MONOCHROME, PIX_NONE};
+static SPRITE _battery_empty = { 27, 59, _bmp_battery_empty, 0, 1,0, PIX_1_MONOCHROME, PIX_NONE};
+static SPRITE _adjust_full_spr  = { 50, 18, _bmp_adjust_bar_full, 0, 2, 0, PIX_1_MONOCHROME, PIX_NONE};
+static SPRITE _adjust_empty_spr = { 50, 18, _bmp_adjust_bar_empty, 0, 2, 0, PIX_1_MONOCHROME, PIX_NONE};
 
 /*
 static const unsigned int _bmp_xkuty_pic [] = 
@@ -667,7 +667,7 @@ static const unsigned int _bmp_xkuty_pic [] =
 0xffffffff, 0xffffffff, 0xffffffff, 0xffff8000
 };
 
-static SPRITE _xkuty_pic_spr = { 145, 160, _bmp_xkuty_pic, _dummy_mask, 5,0, , PIX_1_MONOCHROME};
+static SPRITE _xkuty_pic_spr = { 145, 160, _bmp_xkuty_pic, _dummy_mask, 5,0, , PIX_1_MONOCHROME, PIX_NONE};
 */
 
 #endif // XCUTY_GFX_H

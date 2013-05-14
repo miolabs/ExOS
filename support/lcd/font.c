@@ -15,7 +15,7 @@ static inline int kerning_width ( const KERNING* kernings, int nextchar)
 	int ref = kernings->g1st;
 	while ( kernings->g1st == ref)
 	{
-		if ( kernings->g1st == nextchar)
+		if ( kernings->g2nd == nextchar)
 		 return kernings->amount;
 		kernings++;
 	}
@@ -43,7 +43,9 @@ int  font_calc_len ( const FONT* font, const char* text, int print_flags)
 			if ( do_kerning)
 			{
 				assert( map->fast_kernings);
-				w += kerning_width ( &map->kernings [ map->fast_kernings[code]], text[i]);
+				int kern_idx = map->fast_kernings[code];
+				if ( kern_idx != -1)				
+					w += kerning_width ( &map->kernings [ kern_idx], text[i+1]);
 			}
 		}
 		i++;
@@ -84,7 +86,9 @@ void font_draw ( CANVAS* canvas, const char* text, const FONT* font,
 				adv = glyph->advx;
 				if ( do_kerning)
 				{
-					adv += kerning_width ( &map->kernings [ map->fast_kernings[code]], text[i]);
+					int kern_idx = map->fast_kernings[code];
+					if ( kern_idx != -1)				
+						adv += kerning_width ( &map->kernings [ kern_idx], text[i+1]);
 				}
 			}
 			x += adv;

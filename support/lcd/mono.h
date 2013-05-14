@@ -35,7 +35,7 @@ typedef struct
 	const unsigned int* bitmap;
 	const unsigned int* mask;
 	short          stride_bitmap, stride_mask;	// Stride in words of uint32
-	int            pix_type;
+	short          pix_type, alpha_pix_type;  // enum PIXEL_TYPES
 } SPRITE;
 
 void mono_draw_sprite ( const CANVAS* canvas,

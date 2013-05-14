@@ -5,6 +5,8 @@
 
 typedef enum
 {
+	PIX_NONE = 0,
+	//
 	PIX_1_MONOCHROME = 1,
 	PIX_8_GREY = 2,
 	PIX_32_ARGB = 3,
@@ -15,7 +17,7 @@ typedef struct
 	unsigned char* pixels;
 	short w, h;
 	short stride_bytes;
-	int   pix_type;		// See enum PIXEL_TYPES
+	short pix_type;		// See enum PIXEL_TYPES
 } CANVAS;
 
 // Small utility to help with canvas
