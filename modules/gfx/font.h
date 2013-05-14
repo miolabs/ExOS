@@ -2,6 +2,7 @@
 #define FONT_H
 
 #include "canvas.h"
+#include "mono.h"
 
 typedef struct
 {

@@ -4,8 +4,6 @@
 #include <string.h>
 #include <assert.h>
 
-#include <support/lcd/mono.h>
-
 #include "font.h"
 
 

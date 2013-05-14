@@ -1,21 +1,20 @@
 #include <support/lcd/lcd.h>
-#include <support/lcd/mono.h>
 #include <support/adc_hal.h>
 #include <kernel/thread.h>
 #include <kernel/event.h>
 #include <kernel/timer.h>
 #include <support/can_hal.h>
+#include <modules/gfx/mono.h>
+#include <modules/gfx/font.h>
 #include <stdio.h>
 #include <assert.h>
-#include <support/lcd/font.h>
 
 #include "xcpu.h"
 #include "fir.h"
 #include "xkuty_gfx.h"
 #include "event_recording.h"
 
-
-//#include "arial32.h"
+//#include "modules/gfx/test/arial32.h"
 
 #define DISPW (128)
 #define DISPH (64)
@@ -398,9 +397,9 @@ static void _runtime_screens ( int* status)
 						*status = ST_DEBUG_SPEED;	
 				#else
 				int t=font_calc_len ( &font_Arial_Black32, 
-					"Salut i força al canut", FONT_PROPORTIONAL);
-				font_draw ( &_screen, "Salut i força al canut", &font_Arial_Black32, 
-							FONT_PROPORTIONAL, 64-(t/2)+(_frame_dumps & 63), 30);		
+					"Y.ut i força al canut", FONT_PROPORTIONAL | FONT_KERNING);
+				font_draw ( &_screen, "Y.ut i força al canut", &font_Arial_Black32, 
+							FONT_PROPORTIONAL | FONT_KERNING, -(t/2)+(_frame_dumps & 127), 30);		
 				#endif
 			}
 			break;

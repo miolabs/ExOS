@@ -77,8 +77,6 @@
           <file file_name="support/lcd/lcd.c"/>
           <file file_name="support/lcd/splc501c.c"/>
           <file file_name="support/lcd/st7565r.c"/>
-          <file file_name="support/lcd/mono.c"/>
-          <file file_name="support/lcd/font.c"/>
         </folder>
       </folder>
       <folder Name="xkuty" file_name="">
@@ -89,6 +87,12 @@
         <file file_name="xkuty/xcpu.c"/>
         <file file_name="xkuty/fir.c"/>
         <file file_name="xkuty/event_recording.c"/>
+      </folder>
+      <folder Name="modules">
+        <folder Name="gfx" file_name="">
+          <file file_name="modules/gfx/font.c"/>
+          <file file_name="modules/gfx/mono.c"/>
+        </folder>
       </folder>
     </folder>
     <folder Name="System Files">
