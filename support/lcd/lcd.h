@@ -70,4 +70,7 @@ void lcdcon_gpo(LCDCON_GPO gpo);
 void lcdcon_gpo_backlight(int enable);
 void lcd_dump_screen(unsigned char* pixels);
 
+void lcd_bilevel_linear_2_vertical_bytes ( unsigned char* dst, const unsigned int* src, int w, int h);
+
+
 #endif // LCD_LCD_H
