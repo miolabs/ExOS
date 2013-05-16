@@ -301,7 +301,8 @@ static void *_service(void *arg)
 					break;
 				case URB_STATUS_FAILED:
 #ifdef DEBUG
-					kernel_panic(KERNEL_ERROR_UNKNOWN);
+					usb_host_begin_bulk_transfer(urb, func->InputBuffer, FTDI_USB_BUFFER);
+					event = &urb->Event;
 #endif
 					break;
 			}

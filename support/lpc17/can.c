@@ -52,32 +52,25 @@ int hal_can_initialize(int module, int bitrate)
 	if (!hal_board_init_pinmux(HAL_RESOURCE_CAN, module))
 		return 0;
 
+#if (__TARGET_PROCESSOR < 1770)
+	// NOTE: PCLK_CAN1 and PCLK_CAN2 must have the same PCLK divide value when the CAN function is used
+	PCLKSEL0bits.PCLK_CAN1 = 1;
+	PCLKSEL0bits.PCLK_CAN2 = 1;
+#endif
+
 	unsigned long btr;
 	int cdiv;
-	int pclk, pclk_div;
-	if ((SystemCoreClock % (12 * 6 * bitrate)) == 0)
+	if ((SystemCoreClock % (12 * bitrate)) == 0)
 	{
-		pclk_div = 3; // CCLK / 6
-		pclk = SystemCoreClock / 6;
-		int brp = pclk / (12 * bitrate);
+		int brp = SystemCoreClock / (12 * bitrate);
 		btr = CANBTR_F((brp - 1), 1, 8, 1, 0);  // BRP, SJW, TSEG1, TSEG2, SAM (12 clk/bit)
 	}
-	else if ((SystemCoreClock % (5 * 4 * bitrate)) == 0)
+	else if ((SystemCoreClock % (5 * bitrate)) == 0)
 	{
-		pclk_div = 0; // CCLK / 4
-		pclk = SystemCoreClock / 4;
-		int brp = pclk / (5 * bitrate);
+		int brp = SystemCoreClock / (5 * bitrate);
 		btr = CANBTR_F((brp - 1), 1, 2, 0, 0);  // BRP, SJW, TSEG1, TSEG2, SAM (5 clk /bit)
 	}
 	else return 0;
-
-#if (__TARGET_PROCESSOR < 1770)
-	// NOTE: PCLK_CAN1 and PCLK_CAN2 must have the same PCLK divide value when the CAN function is used
-	PCLKSEL0bits.PCLK_CAN1 = pclk_div;
-	PCLKSEL0bits.PCLK_CAN2 = pclk_div;
-#else
-	
-#endif
 
 	switch(module)
 	{

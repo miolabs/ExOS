@@ -89,12 +89,13 @@ static int _setup_usbhost(int unit)
 	pincon_setfunc(0, 29, 1);	// D+
 	pincon_setfunc(0, 30, 1);	// D-
 	pincon_setfunc(1, 18, 1);	// USB_UP_LED
-	pincon_setfunc(1, 19, 2);	// _USB_PPWR
-	pincon_setfunc(1, 22, 2);	// USB_PWRD
-	pincon_setfunc(1, 27, 2);	// _USB_OVRCR
+	pincon_setfunc(1, 19, 2);	// _USB_PPWR1
+	pincon_setfunc(1, 22, 2);	// USB_PWRD1
+	pincon_setfunc(1, 27, 2);	// _USB_OVRCR1
 	
 	// usb2
 	pincon_setfunc(0, 31, 1);	// D+ 
+	pincon_setfunc(0, 12, 1);	// _USB_PPWR2
 	return (1<<0) | (1<<1);
 #else
 	return 0;
@@ -140,9 +141,13 @@ static int _setup_can(int unit)
 #if defined BOARD_MIOBOARD 
 	switch(unit)
 	{
+		case 0:
+			pincon_setfunc(0, 0, 1);	// CAN_RD1
+			pincon_setfunc(0, 1, 1);	// CAN_TD1 
+			return 1;
 		case 1:
-//			PINSEL4bits.P2_7 = 1;	// RD2
-//			PINSEL4bits.P2_8 = 1;	// TD2
+			pincon_setfunc(2, 7, 1);	// CAN_RD2
+			pincon_setfunc(2, 8, 1);	// CAN_TD2 
 			return 1;
 	}
 #else

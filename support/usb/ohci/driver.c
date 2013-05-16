@@ -17,9 +17,13 @@ const USB_HOST_CONTROLLER_DRIVER __ohci_driver = {
 
 static USB_HOST_DEVICE _devices[2] __usb;	// FIXME: allow more devices (each port can generate more than one)
 
+static EXOS_MUTEX _mutex;
+
 void ohci_driver_initialize()
 {
-    // initialize static buffers
+	exos_mutex_create(&_mutex);
+	
+	// initialize static buffers
 	ohci_buffers_initialize();
 
 	ohci_initialize();
@@ -107,6 +111,8 @@ static int _ctrl_setup_read(USB_HOST_DEVICE *device, void *setup_data, int setup
 {
 	USB_REQUEST_BUFFER urb;
 
+	exos_mutex_lock(&_mutex);
+
 	USB_HOST_PIPE *pipe = &device->ControlPipe;
 	usb_host_urb_create(&urb, pipe);
 	int done = ohci_process_std(&urb, OHCI_TD_SETUP, OHCI_TD_TOGGLE_0, setup_data, setup_length);
@@ -121,12 +127,17 @@ static int _ctrl_setup_read(USB_HOST_DEVICE *device, void *setup_data, int setup
 			done = ohci_process_std(&urb, OHCI_TD_DIR_OUT, OHCI_TD_TOGGLE_1, NULL, 0);
 		}
 	}
+
+	exos_mutex_unlock(&_mutex);
+
 	return done;
 }
 
 static int _ctrl_setup_write(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *out_data, int out_length)
 {
 	USB_REQUEST_BUFFER urb;
+
+	exos_mutex_lock(&_mutex);
 
 	USB_HOST_PIPE *pipe = &device->ControlPipe;
 	usb_host_urb_create(&urb, pipe);
@@ -142,7 +153,10 @@ static int _ctrl_setup_write(USB_HOST_DEVICE *device, void *setup_data, int setu
             done = ohci_process_std(&urb, OHCI_TD_DIR_IN, OHCI_TD_TOGGLE_1, NULL, 0);
         }
     }
-    return done;
+
+	exos_mutex_unlock(&_mutex);
+
+	return done;
 }
 
 
