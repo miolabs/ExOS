@@ -199,7 +199,8 @@ int ohci_process_std(USB_REQUEST_BUFFER *urb, OHCI_TD_PID pid, OHCI_TD_TOGGLE to
 		exos_event_wait(&urb->Event, EXOS_TIMEOUT_NEVER);	// FIXME: support timeouts
 		ohci_buffers_release_std(std);
 	}
-	return urb->Status == URB_STATUS_DONE;
+	if (urb->Status == URB_STATUS_DONE) return 1;
+	return 0;
 }
 
 

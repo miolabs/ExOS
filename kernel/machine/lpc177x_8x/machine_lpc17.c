@@ -4,6 +4,8 @@
 
 void __machine_init()
 {
+	LPC_SC->PCLKSEL = 1;
+
 	hal_board_initialize();
 
 	// set lowest priority for PendSV

@@ -42,7 +42,7 @@ __init __naked void Reset_Handler()
 	__mem_set(&__bss2_start__, &__bss2_end__, 0);
 
 	SystemInit();
-	
+
 	__kernel_start();
 
 	while(1);
