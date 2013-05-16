@@ -10,9 +10,18 @@ typedef struct
 	unsigned char battery_level_fx8; 
 	unsigned char status;			// XCPU_STATE;
 	signed char	  speed_adjust;		// -10 to +10
-	unsigned long distance;			// distance km (or miles)
+	unsigned long distance;			// distance km (or miles) / 10
 
-} XCPU_MASTER_OUT;
+} XCPU_MASTER_OUT1;
+
+typedef struct 
+{
+	unsigned char  throttle_adj_min;	// fx8
+	unsigned char  throttle_adj_max;	// fx8
+	unsigned short reserved1; 
+	unsigned long  reserved2;	
+
+} XCPU_MASTER_OUT2;
 
 typedef struct
 {

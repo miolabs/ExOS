@@ -92,7 +92,9 @@ void main()
 		_storage = (XCPU_PERSIST_DATA) { .Magic = XCPU_PERSIST_MAGIC,
 			.TotalSteps = 0,
 			.ConfigBits = XCPU_CONFIGF_NONE,
-			.WheelRatioAdj = 0 };
+			.WheelRatioAdj = 0,
+			.ThrottleAdjMin = 66, 
+			.ThrottleAdjMax = 166};
 	}
 
 	_control_state = CONTROL_OFF;
@@ -251,6 +253,12 @@ void main()
 		buf.u8[3] = _storage.WheelRatioAdj;
 		buf.u32[1] = (unsigned long)(((_storage.TotalSteps + s_partial) * ratio) / 100);
 		hal_can_send((CAN_EP) { .Id = 0x300 }, &buf, 8, CANF_NONE);
+
+		buf.u32[0] = 0;
+		buf.u32[1] = 0;
+		buf.u8[0] = _storage.ThrottleAdjMin;
+		buf.u8[1] = _storage.ThrottleAdjMax;
+		hal_can_send((CAN_EP) { .Id = 0x301 }, &buf, 8, CANF_NONE);
 
 		xcpu_board_output(_output_state);
 	}
