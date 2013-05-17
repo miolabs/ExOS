@@ -241,7 +241,7 @@ static const EVREC_CHECK _throttle_screen_access[]=
 	{0x00000000,CHECK_END},
 };
 
-static void _read_send_analogic_inputs ()
+static void _read_send_analogic_inputs ( int status)
 {
 	if ( _fir_needs_init)
 	{
@@ -276,12 +276,17 @@ static void _read_send_analogic_inputs ()
 	if ( _adj_throttle > 0)
         relays |= XCPU_BUTTON_ADJ_THROTTLE, _adj_throttle--;
 
+	unsigned char throttle = _ain[THROTTLE_IDX].scaled>>4;
+	// Throttle only should work on dash screen, the rest are debug or intro screens
+	if ( status != ST_DASH)
+		throttle = 0;
+
 	CAN_BUFFER buf = (CAN_BUFFER) { relays, 
-									_ain[THROTTLE_IDX].scaled>>4, 
+									throttle,
 									_ain[BRAKE_LEFT_IDX].scaled >> 4,
 									_ain[BRAKE_RIGHT_IDX].scaled >> 4, 
-									_adj_throttle_min << 4, 
-									_adj_throttle_max << 4,
+									_adj_throttle_min >> 4, 
+									_adj_throttle_max >> 4,
 									7, 8 };
 	hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
 
@@ -509,10 +514,12 @@ static void _runtime_screens ( int* status)
 			}
 			break;
 		case ST_ADJUST_THROTTLE_MAX:
-            *status = _adjust_creen ( *status, "Push max throttle", ST_ADJUST_THROTTLE_MIN, &_adj_throttle_min);
+            *status = _adjust_creen ( *status, "Push max throttle", ST_ADJUST_THROTTLE_MIN, 
+										&_adj_throttle_max);
 			break;		
 		case ST_ADJUST_THROTTLE_MIN:
-            *status = _adjust_creen ( *status, "Release throttle", ST_DASH, &_adj_throttle_max);
+            *status = _adjust_creen ( *status, "Release throttle", ST_DASH, 
+										&_adj_throttle_min);
 			break;
 	}
 }
@@ -541,7 +548,7 @@ void main()
 	int prev_cpu_state = 0;	// Default state is OFF, wait for master to start
 	while(1)
 	{
-		_dash.status |= XCPU_STATE_ON;
+		//_dash.status |= XCPU_STATE_ON;
 		// Read CAN messages from master 
 		_get_can_messages ();
 
@@ -563,7 +570,7 @@ void main()
 			time -= time_base;
 			unsigned int elapsed_time = time - prev_time;
 
-			_read_send_analogic_inputs ();
+			_read_send_analogic_inputs ( status);
 
 			_clean_bilevel ( &_screen);
 

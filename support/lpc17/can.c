@@ -29,9 +29,13 @@ void CAN_IRQHandler(void)
 		{
 			for(int i = 0; i < 32; i++)
 			{
-				if ((mask & (1 << i)) &&
-					hal_fullcan_read_msg(i, &msg))
-					hal_can_received_handler(i, &msg);
+				if (mask & (1 << i)) 
+				{
+					if (hal_fullcan_read_msg(i, &msg))
+						hal_can_received_handler(i, &msg);
+					if (hal_fullcan_read_msg(i + 1, &msg))
+						hal_can_received_handler(i + 1, &msg);
+				}
 			}
 		}
 		mask = _fcan->FCANIC1;
