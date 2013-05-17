@@ -4,7 +4,7 @@
 #include <kernel/panic.h>
 
 // NOTE: nominal bit time = (1 + (tseg1 + 1) + (tseg2 + 1))
-#define CANBTR_F(brp, sjw, tseg1, tseg2, sam) ((brp & 0x3F) | ((sjw & 0x03) << 14) | ((tseg1 & 0x0F) << 16) | ((tseg2 & 0x07) << 20) | ((sam & 0x01) << 23))
+#define CANBTR_F(brp, sjw, tseg1, tseg2, sam) ((brp & 0x3FF) | ((sjw & 0x03) << 14) | ((tseg1 & 0x0F) << 16) | ((tseg2 & 0x07) << 20) | ((sam & 0x01) << 23))
 
 #define CAN_MODULE_COUNT 2
 static CAN_MODULE *_can_table[] = {
@@ -56,6 +56,7 @@ int hal_can_initialize(int module, int bitrate)
 	// NOTE: PCLK_CAN1 and PCLK_CAN2 must have the same PCLK divide value when the CAN function is used
 	PCLKSEL0bits.PCLK_CAN1 = 1;
 	PCLKSEL0bits.PCLK_CAN2 = 1;
+	PCLKSEL0bits.PCLK_ACF = 1;
 #endif
 
 	unsigned long btr;

@@ -46,7 +46,7 @@ static XCPU_STATE _state; // comm state to share (with lcd)
 static XCPU_PERSIST_DATA _storage;
 
 void main()
-{
+ {
 	int result;
 	hal_pwm_initialize(PWM_TIMER_MODULE, PWM_RANGE - 1, 200000);
 	hal_pwm_set_output(PWM_TIMER_MODULE, 0, 1025);
@@ -122,6 +122,11 @@ void main()
 				throttle = data->u8[1];
 				brake_left = data->u8[2];
 				brake_right = data->u8[3];
+                if ( buttons & XCPU_BUTTON_ADJ_THROTTLE)
+				{
+					_storage.ThrottleAdjMin = data->u8[4];
+					_storage.ThrottleAdjMax = data->u8[5];
+				}
 			}
 
 			exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
@@ -254,11 +259,15 @@ void main()
 		buf.u32[1] = (unsigned long)(((_storage.TotalSteps + s_partial) * ratio) / 100);
 		hal_can_send((CAN_EP) { .Id = 0x300 }, &buf, 8, CANF_NONE);
 
-		buf.u32[0] = 0;
+		exos_thread_sleep (5);
+
+		/*buf.u32[0] = 0;
 		buf.u32[1] = 0;
 		buf.u8[0] = _storage.ThrottleAdjMin;
 		buf.u8[1] = _storage.ThrottleAdjMax;
 		hal_can_send((CAN_EP) { .Id = 0x301 }, &buf, 8, CANF_NONE);
+
+		exos_thread_sleep (5);*/
 
 		xcpu_board_output(_output_state);
 	}

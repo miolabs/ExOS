@@ -51,7 +51,7 @@ int  font_calc_len ( const FONT* font, const char* text, int print_flags)
 	return w;
 }
 
-void font_draw ( CANVAS* canvas, const char* text, const FONT* font, 
+void font_draw ( const CANVAS* canvas, const char* text, const FONT* font, 
 				 int print_flags, int x, int y)
 {
 	const FONT_MAP* map = font->map;
