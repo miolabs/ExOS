@@ -36,7 +36,7 @@ static void *_server(void *arg)
 
 		net_tcp_io_create(&_socket, EXOS_IOF_WAIT);
 
-		IP_PORT_ADDR local = (IP_PORT_ADDR) { .Address = IP_ADDR_ANY, .Port = 23 };
+		IP_PORT_ADDR local = (IP_PORT_ADDR) { .Address = IP_ADDR_ANY, .Port = 9100 };
 		err = net_io_bind((NET_IO_ENTRY *)&_socket, &local); 
 		err = net_io_listen((NET_IO_ENTRY *)&_socket);
 
@@ -47,7 +47,7 @@ static void *_server(void *arg)
 
 		EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/usbprint");
 		if (dev_node == NULL)
-			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/usbftdi");
+			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/usbftdi0");
 		if (dev_node == NULL)
 			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/comm0");
 
@@ -59,7 +59,7 @@ static void *_server(void *arg)
 			{
 				total = 0;
 #ifdef DEBUG
-				done = sprintf(_buffer, "Connection accepted: %d bytes\r\n", total);
+				done = sprintf(_buffer, "Connection accepted:\r\n");
 				done = exos_io_write((EXOS_IO_ENTRY *)&_comm, _buffer, done);				
 #endif
 				
