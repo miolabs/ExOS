@@ -15,10 +15,10 @@ typedef struct
     unsigned int id;        // Char code
     unsigned short x, y;    // Pos in bitmap page
     unsigned short w, h;    // Width, height
-    short offsx, offsy;  // Extra offset (glyphs are compacted in bitmap)
-    short advx;         // Offs to next letter?
-    char  page;         // Bitmap number
-    char  channel;      // to be understood...
+    short offsx, offsy;		// Extra offset (glyphs are compacted in bitmap)
+    short advx;				// Offs to next letter?
+    char  page;				// Bitmap number
+    char  channel;			// to be understood...
 } GLYPH;
 
 typedef struct
@@ -50,7 +50,7 @@ enum
 };
 
 // Y coordinate refers to font baseline
-void font_draw ( CANVAS* canvas, const char* text, const FONT* font, 
+void font_draw ( const CANVAS* canvas, const char* text, const FONT* font, 
 				 int print_flags, int x, int y);
 
 // Calculate pixel length of a given text 

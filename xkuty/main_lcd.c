@@ -14,7 +14,7 @@
 #include "xkuty_gfx.h"
 #include "event_recording.h"
 
-//#include "modules/gfx/test/arial32.h"
+#include "small_font.h"
 
 #define DISPW (128)
 #define DISPH (64)
@@ -67,7 +67,9 @@ enum
 	//
     ST_DASH,
 	ST_DEBUG_INPUT,
-    ST_DEBUG_SPEED,
+    ST_ADJUST_SPEED,
+	ST_ADJUST_THROTTLE_MAX,
+	ST_ADJUST_THROTTLE_MIN,
 };
 
 static inline int _xkutybit ( int x, int y, int t, int cx, int cy)
@@ -159,15 +161,22 @@ static void _horizontal_sprite_comb ( const SPRITE* spr0, const SPRITE* spr1,
                                       int level_fx8, int x, int y)
 {
 	static unsigned int show_mask[] = {0,0,0,0};
+
+	mono_draw_sprite ( &_screen, spr1, x, y);
+
 	level_fx8 = __LIMIT( level_fx8, 0,0x100);
 	int cut_x = (level_fx8 * spr0->w) >> 8;
 	int spans = cut_x >> 5;
 	int inter = cut_x & 0x1f;
 	int i=0;
-	for ( ;i<spans;i++)
-		show_mask[i] = 0xffffffff;
-	show_mask[i] = (inter == 0) ? 0 : (unsigned int)(-1<<(32-inter));
-	mono_draw_sprite ( &_screen, spr1, x, y);
+	for ( ;i<4;i++)
+		if ( i < (cut_x >> 5)) 
+			show_mask[i] = 0xffffffff;
+		else
+			if (( cut_x>>5) == i)
+				show_mask[i] = (unsigned int)(-1<<(32-inter));
+			else
+				show_mask[i] = 0;
 	SPRITE spr = *spr0;
 	spr.mask = show_mask;
 	spr.stride_mask = 0;
@@ -202,8 +211,16 @@ static ANALOGIC _ain[NUM_ADC_INPUTS]=
 #define CRUISE_MASK      (1<<3)
 #define HORN_MASK        (1<<4)
 
+#define THROTTLE_IDX     (0)
+#define BRAKE_LEFT_IDX   (1)
+#define BRAKE_RIGHT_IDX  (2)
+#define CRUISE_IDX       (3)
+#define HORN_IDX         (4)
+
 static unsigned int _input_status = 0;
 static char _adj_up=0, _adj_down=0, _adj_metrics=0;
+static char _adj_throttle=0;
+static unsigned short _adj_throttle_max=0, _adj_throttle_min=0;
 
 static const EVREC_CHECK _maintenance_screen_access[]=
 {
@@ -212,16 +229,28 @@ static const EVREC_CHECK _maintenance_screen_access[]=
 	{0x00000000,CHECK_END},
 };
 
+static const EVREC_CHECK _throttle_screen_access[]=
+{
+	{BRAKE_RIGHT_MASK | BRAKE_RIGHT_MASK, CHECK_RELEASED},
+	{BRAKE_RIGHT_MASK | BRAKE_RIGHT_MASK, CHECK_PRESSED},
+	{BRAKE_RIGHT_MASK | BRAKE_RIGHT_MASK, CHECK_RELEASED},
+	{BRAKE_RIGHT_MASK | BRAKE_RIGHT_MASK, CHECK_PRESSED},
+	{BRAKE_RIGHT_MASK | BRAKE_RIGHT_MASK, CHECK_RELEASED},
+	//{CRUISE_MASK, CHECK_RELEASED},
+	//{CRUISE_MASK, CHECK_RELEASE},
+	{0x00000000,CHECK_END},
+};
+
 static void _read_send_analogic_inputs ()
 {
 	if ( _fir_needs_init)
 	{
 		_fir_needs_init = 0;
-		fir_init( &_ain[0].fir, 6,  1, 500, 1);
-		fir_init( &_ain[1].fir, 10, 1, 100, 3);
-		fir_init( &_ain[2].fir, 10, 1, 100, 5);
-		fir_init( &_ain[3].fir, 8, 0, 0, 0);
-		fir_init( &_ain[4].fir, 8, 0, 0, 0);
+		fir_init( &_ain[THROTTLE_IDX].fir,    6,  1, 500, 1);
+		fir_init( &_ain[BRAKE_LEFT_IDX].fir,  10, 1, 100, 3);
+		fir_init( &_ain[BRAKE_RIGHT_IDX].fir, 10, 1, 100, 5);
+		fir_init( &_ain[CRUISE_IDX].fir,      8, 0, 0, 0);
+		fir_init( &_ain[HORN_IDX].fir,        8, 0, 0, 0);
 	}
 
 	for(int i=0; i<NUM_ADC_INPUTS; i++)
@@ -234,25 +263,32 @@ static void _read_send_analogic_inputs ()
 	}
 
 	unsigned char relays = 0;
-	if (_ain[3].filtered < 0x800) 
+	if (_ain[CRUISE_IDX].filtered < 0x800) 
 		relays |= XCPU_BUTTON_CRUISE;
-	if (_ain[4].filtered < 0x800) 
+	if (_ain[HORN_IDX].filtered < 0x800) 
 		relays |= XCPU_BUTTON_HORN;
 	if ( _adj_up)
 		relays |= XCPU_BUTTON_ADJUST_UP;
 	if ( _adj_down)
 		relays |= XCPU_BUTTON_ADJUST_DOWN;
 	if ( _adj_metrics)
-		relays |=XCPU_BUTTON_SWITCH_UNITS;
+		relays |= XCPU_BUTTON_SWITCH_UNITS;
+	if ( _adj_throttle > 0)
+        relays |= XCPU_BUTTON_ADJ_THROTTLE, _adj_throttle--;
 
-	CAN_BUFFER buf = (CAN_BUFFER) { relays, _ain[0].scaled>>4, _ain[1].scaled>>4,
-									_ain[2].scaled>>4, 5, 6, 7, 8 };
+	CAN_BUFFER buf = (CAN_BUFFER) { relays, 
+									_ain[THROTTLE_IDX].scaled>>4, 
+									_ain[BRAKE_LEFT_IDX].scaled >> 4,
+									_ain[BRAKE_RIGHT_IDX].scaled >> 4, 
+									_adj_throttle_min << 4, 
+									_adj_throttle_max << 4,
+									7, 8 };
 	hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
 
 	// Record inputs for sequence triggering (to start debug services)
-	 _input_status = (((_ain[0].scaled & 0x80) >> 7) << 0) |
-					(((_ain[1].scaled & 0x80) >> 7) << 1) |
-					(((_ain[2].scaled & 0x80) >> 7) << 2) |
+	 _input_status = (((_ain[THROTTLE_IDX].scaled & 0x80) >> 7) << 0) |
+					(((_ain[BRAKE_LEFT_IDX].scaled & 0x80) >> 7) << 1) |
+					(((_ain[BRAKE_RIGHT_IDX].scaled & 0x80) >> 7) << 2) |
 					(relays << 3);
 	event_record ( _input_status);
 }
@@ -268,17 +304,28 @@ static void _get_can_messages ()
 	XCPU_MSG *xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0);
 	while (xmsg != NULL)
 	{
-		XCPU_MASTER_OUT* tmsg = (XCPU_MASTER_OUT*)&xmsg->CanMsg.Data.u8[0];
+		
 		switch(xmsg->CanMsg.EP.Id)
 		{
 			case 0x300:
+			{
+				XCPU_MASTER_OUT1* tmsg = (XCPU_MASTER_OUT1*)&xmsg->CanMsg.Data.u8[0];
 				_dash.speed             = tmsg->speed;
 				_dash.battery_level_fx8 = tmsg->battery_level_fx8;
 				_dash.status			= tmsg->status;
                 _dash.speed_adjust      = tmsg->speed_adjust;
 				_dash.distance_hi       = tmsg->distance / 10;
 				_dash.distance_lo       = tmsg->distance % 10;
-				break;
+			}
+			break;
+
+			case 0x301:
+			{
+				XCPU_MASTER_OUT2* tmsg = (XCPU_MASTER_OUT2*)&xmsg->CanMsg.Data.u8[0];
+				_ain[THROTTLE_IDX].def_min = tmsg->throttle_adj_min << 4;
+				_ain[THROTTLE_IDX].def_max = tmsg->throttle_adj_max << 4;
+			}
+			break;
 		}
 		exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
         xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0);
@@ -352,6 +399,29 @@ static void _intro ( int* status, int* st_time_base, int time)
 #define POS_ADJUST_BAR    40,46
 #define POS_ADJUST_SPEED  36, 20
 
+static int _adjust_creen ( int status, char* str, int next, unsigned short* res)
+{
+	const EVREC_CHECK throttle_adj_exit[]= {{CRUISE_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
+
+	int t=font_calc_len ( &font_small, str, FONT_PROPORTIONAL | FONT_KERNING);
+	font_draw ( &_screen, str, &font_small, 
+				FONT_PROPORTIONAL | FONT_KERNING, 64-(t/2), 14);
+
+	sprintf ( _tmp, "%d", _ain[THROTTLE_IDX].curr >> 4);
+	_draw_text ( _tmp, &_font_spr_small, 48, 26);
+
+	_horizontal_sprite_comb ( &_adjust_full_spr, &_adjust_empty_spr, 
+							_ain[THROTTLE_IDX].curr >> 4, POS_ADJUST_BAR); 
+	if ( event_happening ( throttle_adj_exit,1))
+	{
+		*res = _ain[THROTTLE_IDX].curr;
+		if ( next == ST_DASH)
+			_adj_throttle = 10;	// Sent the adjust 10 times to be safe
+		return next;
+	}
+	return status;
+}
+
 static void _runtime_screens ( int* status)
 {
 	// General runtime switch; insert new screens here
@@ -359,7 +429,6 @@ static void _runtime_screens ( int* status)
 	{
 		case ST_DASH:
 			{
-			    #if 1
 				//_dash.status |= XCPU_STATE_CRUISE_ON;
 				//_dash.status |= XCPU_STATE_WARNING;
                 //_dash.status |= XCPU_STATE_ERROR;
@@ -392,14 +461,12 @@ static void _runtime_screens ( int* status)
 				else
 					mono_draw_sprite ( &_screen, &_km_spr, POS_KM);
 				if ( _dash.speed == 0)
+                {
 					if ( event_happening ( _maintenance_screen_access, 50)) // 1 second
-						*status = ST_DEBUG_SPEED;	
-				#else
-				int t=font_calc_len ( &font_Arial_Black32, 
-					"Y.ut i força al canut", FONT_PROPORTIONAL | FONT_KERNING);
-				font_draw ( &_screen, "Y.ut i força al canut", &font_Arial_Black32, 
-							FONT_PROPORTIONAL | FONT_KERNING, -(t/2)+(_frame_dumps & 127), 30);		
-				#endif
+						*status = ST_ADJUST_SPEED;
+					if ( event_happening ( _throttle_screen_access, 50)) // 1 second
+						*status = ST_ADJUST_THROTTLE_MAX;	
+				}	
 			}
 			break;
 
@@ -415,7 +482,7 @@ static void _runtime_screens ( int* status)
 				_draw_text ( _tmp, &_font_spr_small, 0, y);
 			}
 			break;
-		case ST_DEBUG_SPEED:
+		case ST_ADJUST_SPEED:
 			{
 				const EVREC_CHECK speed_adj_exit[]= {{HORN_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
 					_adj_down = _adj_up = _adj_metrics = 0;
@@ -441,6 +508,12 @@ static void _runtime_screens ( int* status)
 					*status = ST_DASH;
 			}
 			break;
+		case ST_ADJUST_THROTTLE_MAX:
+            *status = _adjust_creen ( *status, "Push max throttle", ST_ADJUST_THROTTLE_MIN, &_adj_throttle_min);
+			break;		
+		case ST_ADJUST_THROTTLE_MIN:
+            *status = _adjust_creen ( *status, "Release throttle", ST_DASH, &_adj_throttle_max);
+			break;
 	}
 }
 
@@ -449,6 +522,7 @@ void main()
 {
 	lcd_initialize();
 
+	exos_port_create(&_can_rx_port, NULL);
 	exos_port_create(&_can_rx_port, NULL);
 	exos_fifo_create(&_can_free_msgs, NULL);
 	for(int i = 0; i < CAN_MSG_QUEUE; i++) exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)&_can_msg[i]);
@@ -462,12 +536,12 @@ void main()
 	unsigned int prev_time = 0;
 
 	int screen_count = 0;
-    int initial_status = ST_LOGO_IN; //ST_LOGO_IN; //ST_DASH; //ST_DEBUG_INPUT; // ST_DEBUG_SPEED
+    int initial_status = ST_LOGO_IN; //ST_LOGO_IN; //ST_DASH; //ST_DEBUG_INPUT; // ST_ADJUST_SPEED
 	int status =  initial_status;
 	int prev_cpu_state = 0;	// Default state is OFF, wait for master to start
 	while(1)
 	{
-		//_dash.status |= XCPU_STATE_ON;
+		_dash.status |= XCPU_STATE_ON;
 		// Read CAN messages from master 
 		_get_can_messages ();
 
@@ -546,6 +620,7 @@ void hal_can_received_handler(int index, CAN_MSG *msg)
 	switch(msg->EP.Id)
 	{
 		case 0x300:
+		case 0x301:
 			xmsg = (XCPU_MSG *)exos_fifo_dequeue(&_can_free_msgs);
 			if (xmsg != NULL)
 			{
@@ -556,6 +631,7 @@ void hal_can_received_handler(int index, CAN_MSG *msg)
 			else _lost_msgs++;
 #endif
 			break;
+
 	}
 }
 
