@@ -51,11 +51,12 @@
       </folder>
       <folder Name="xkuty">
         <file file_name="xkuty/main_cpu1.c"/>
-        <folder Name="xcpu">
+        <folder Name="xcpu" file_name="">
           <file file_name="xkuty/xcpu/sensor_cpu1.c"/>
           <file file_name="xkuty/xcpu/board_cpu1.c"/>
           <file file_name="xkuty/xcpu/speed.c"/>
           <file file_name="xkuty/xcpu/persist.c"/>
+          <file file_name="xkuty/xcpu/throttle_curves.c"/>
         </folder>
         <file file_name="xkuty/pid.c"/>
       </folder>

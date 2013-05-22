@@ -16,7 +16,10 @@ typedef enum
 {
 	XCPU_CONFIGF_NONE = 0,
 	XCPU_CONFIGF_MILES = (1<<0),
+	XCPU_CONFIGG_DRIVE_MODE = (3<<1)
 } XCPU_CONFIG_FLAGS;
+
+#define XCPU_CONFIGG_DRIVE_MODE_SHIFT  (1)
 
 // prototypes
 int persist_load(XCPU_PERSIST_DATA *data);

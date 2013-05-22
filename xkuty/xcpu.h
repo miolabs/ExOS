@@ -18,7 +18,7 @@ typedef struct
 {
 	unsigned char  throttle_adj_min;	// fx8
 	unsigned char  throttle_adj_max;	// fx8
-	unsigned short reserved1; 
+	unsigned short drive_mode;			// See enum CURVE_MODE
 	unsigned long  reserved2;	
 
 } XCPU_MASTER_OUT2;
@@ -37,8 +37,9 @@ typedef enum
 	XCPU_STATE_CRUISE_ON = (1<<2),
 	XCPU_STATE_WARNING = (1<<3),
 	XCPU_STATE_ERROR = (1<<4),
-	XCPU_STATE_MILES = (1<<5)	// Bit 0=KM, 1=MILES
+	XCPU_STATE_MILES = (1<<5),	// Bit 0=KM, 1=MILES
 } XCPU_STATE;
+
 
 typedef enum
 {
@@ -48,7 +49,10 @@ typedef enum
 	XCPU_BUTTON_ADJUST_DOWN = (1<<3),
 	XCPU_BUTTON_SWITCH_UNITS = (1<<4),
 	XCPU_BUTTON_ADJ_THROTTLE = (1<<5),
+	XCPU_BUTTON_ADJ_DRIVE_MODE = (3<<6)	// 1-3
 } XCPU_BUTTONS;
+
+#define XCPU_BUTTON_ADJ_DRIVE_MODE_SHIFT (6)
 
 #endif // XCPU_H
 

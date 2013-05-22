@@ -7,7 +7,9 @@
 #include "xcpu/board.h"
 #include "xcpu/speed.h"
 #include "xcpu/persist.h"
+#include "xcpu/throttle_curves.h"
 #include "pid.h"
+
 
 #define BRAKE_THRESHOLD 30
 #define PWM_RANGE 100
@@ -45,11 +47,13 @@ static XCPU_STATE _state; // comm state to share (with lcd)
 
 static XCPU_PERSIST_DATA _storage;
 
+
 void main()
  {
 	int result;
 	hal_pwm_initialize(PWM_TIMER_MODULE, PWM_RANGE - 1, 200000);
 	hal_pwm_set_output(PWM_TIMER_MODULE, 0, 1025);
+	
 	
 	speed_initialize();
 	_pid_k = (PID_K) { .P = 5, .I = 5, .CMin = 0, .CMax = 255 };
@@ -75,9 +79,10 @@ void main()
 	xcpu_board_output(_output_state);
 #endif
 
-	unsigned char throttle;
+	unsigned char throttle = 0;
 	unsigned char brake_left, brake_right;
 	unsigned char buttons;
+	CURVE_MODE    drive_mode = CURVE_SOFT;
 
 	unsigned char led = 0;
 	unsigned char push_start = 0;
@@ -86,6 +91,7 @@ void main()
 	unsigned char push_up = 0;
 	unsigned char push_down = 0;
 	unsigned char push_switch = 0;
+	unsigned char push_mode = 0;
 	
 	if (!persist_load(&_storage))
 	{
@@ -119,14 +125,17 @@ void main()
 			{
 				CAN_BUFFER *data = &xmsg->CanMsg.Data;
 				buttons = data->u8[0];
-				throttle = data->u8[1];
-				brake_left = data->u8[2];
-				brake_right = data->u8[3];
+				unsigned int throttle_raw = data->u8[1] | ( data->u8[2] << 8);
+				brake_left = data->u8[3];
+				brake_right = data->u8[4];
                 if ( buttons & XCPU_BUTTON_ADJ_THROTTLE)
 				{
-					_storage.ThrottleAdjMin = data->u8[4];
-					_storage.ThrottleAdjMax = data->u8[5];
+					_storage.ThrottleAdjMin = data->u8[5];
+					_storage.ThrottleAdjMax = data->u8[6];
 				}
+
+				throttle = get_curve_value ( throttle_raw, drive_mode ) >> 4;
+
 			}
 
 			exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
@@ -161,6 +170,7 @@ void main()
 					_control_state = CONTROL_ON;
 					_state = (_storage.ConfigBits & XCPU_CONFIGF_MILES) ? XCPU_STATE_ON | XCPU_STATE_MILES : XCPU_STATE_ON;
                     _state |= XCPU_STATE_NEUTRAL;
+					drive_mode = ( _storage.ConfigBits & XCPU_CONFIGG_DRIVE_MODE) >> XCPU_CONFIGG_DRIVE_MODE_SHIFT;
 					_run_diag();
 				}
 				break;
@@ -201,6 +211,11 @@ void main()
 					_state ^= XCPU_STATE_MILES;
 				}
 
+				if (_push_delay( buttons & XCPU_BUTTON_ADJ_DRIVE_MODE, &push_mode, 5))
+				{
+					drive_mode = (buttons & XCPU_BUTTON_ADJ_DRIVE_MODE) >> XCPU_BUTTON_ADJ_DRIVE_MODE_SHIFT;
+				}
+
 				if (_push_delay(buttons & XCPU_BUTTON_CRUISE, &push_cruise, 5))
 				{
 					if (speed == 0)
@@ -227,14 +242,19 @@ void main()
 						_storage.TotalSteps += s_partial;
 						s_partial = 0;
 						_storage.ConfigBits = XCPU_CONFIGF_NONE;
-						if (_state & XCPU_STATE_MILES) _storage.ConfigBits |= XCPU_CONFIGF_MILES;
+						if (_state & XCPU_STATE_MILES) 
+							_storage.ConfigBits |= XCPU_CONFIGF_MILES;
+
+						_storage.ConfigBits |= drive_mode << XCPU_CONFIGG_DRIVE_MODE_SHIFT;
+
 						persist_save(&_storage);
 
 						_output_state = OUTPUT_NONE;
 						_control_state = CONTROL_OFF;
 						_state = XCPU_STATE_OFF;
 					}
-					else _state |= XCPU_STATE_WARNING;
+					else 
+						_state |= XCPU_STATE_WARNING;
 				}
 
 				// TODO: check battery and engine
@@ -255,8 +275,9 @@ void main()
 
 		buf.u32[0] = 0;
 		buf.u32[1] = 0;
-		buf.u8[0] = _storage.ThrottleAdjMin;
-		buf.u8[1] = _storage.ThrottleAdjMax;
+		buf.u8[0]  = _storage.ThrottleAdjMin;
+		buf.u8[1]  = _storage.ThrottleAdjMax;
+		buf.u16[1] = drive_mode;
 		hal_can_send((CAN_EP) { .Id = 0x301 }, &buf, 8, CANF_NONE);
 
 		exos_thread_sleep (5);	// Temporary fix; packets get overwritten

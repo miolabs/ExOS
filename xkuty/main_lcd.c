@@ -13,6 +13,7 @@
 #include "fir.h"
 #include "xkuty_gfx.h"
 #include "event_recording.h"
+#include "xcpu/throttle_curves.h"
 
 #include "small_font.h"
 
@@ -30,6 +31,7 @@ static const CANVAS _screen =
 };
 
 #define MAIN_LOOP_TIME  (20)
+#define RESEND_TIMES    (25)
 
 static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
 static void _bilevel_linear_2_lcd ( unsigned char* dst, unsigned int* src, int w, int h);
@@ -50,9 +52,10 @@ typedef struct {
 	int distance_lo;
 	int battery_level_fx8;
     int speed_adjust;
+	int drive_mode;
 } DASH_DATA;
 
-static DASH_DATA _dash = {0,0,0,0,0,0};
+static DASH_DATA _dash = {0,0,0,0,0,0, CURVE_SOFT};
 
 enum
 {
@@ -70,6 +73,7 @@ enum
     ST_ADJUST_SPEED,
 	ST_ADJUST_THROTTLE_MAX,
 	ST_ADJUST_THROTTLE_MIN,
+	ST_ADJUST_DRIVE_MODE,
 };
 
 static inline int _xkutybit ( int x, int y, int t, int cx, int cy)
@@ -183,6 +187,15 @@ static void _horizontal_sprite_comb ( const SPRITE* spr0, const SPRITE* spr1,
 	mono_draw_sprite ( &_screen, &spr, x, y);
 }
 
+static void _print_small ( const char* str, int x, int y)
+{
+	int t = font_calc_len ( &font_small, str, FONT_PROPORTIONAL | FONT_KERNING);
+	int xx = 64-(t/2);
+	if ( x != -1)
+		xx = x;
+	font_draw ( &_screen, str, &font_small, FONT_PROPORTIONAL | FONT_KERNING, xx, y);
+}
+
 static int _fir_needs_init = 1;
 
 typedef struct
@@ -221,6 +234,7 @@ static unsigned int _input_status = 0;
 static char _adj_up=0, _adj_down=0, _adj_metrics=0;
 static char _adj_throttle=0;
 static unsigned short _adj_throttle_max=0, _adj_throttle_min=0;
+static char _adj_drive_mode=0, _adj_drive_mode_cnt=0;
 
 static const EVREC_CHECK _maintenance_screen_access[]=
 {
@@ -238,6 +252,16 @@ static const EVREC_CHECK _throttle_screen_access[]=
 	{BRAKE_RIGHT_MASK | BRAKE_RIGHT_MASK, CHECK_RELEASED},
 	//{CRUISE_MASK, CHECK_RELEASED},
 	//{CRUISE_MASK, CHECK_RELEASE},
+	{0x00000000,CHECK_END},
+};
+
+static const EVREC_CHECK _mode_screen_access[]=
+{
+	{CRUISE_MASK | HORN_MASK, CHECK_RELEASED},
+	{CRUISE_MASK | HORN_MASK, CHECK_PRESSED},
+	{CRUISE_MASK | HORN_MASK, CHECK_RELEASED},
+	{CRUISE_MASK | HORN_MASK, CHECK_PRESSED},
+	{CRUISE_MASK | HORN_MASK, CHECK_RELEASED},
 	{0x00000000,CHECK_END},
 };
 
@@ -275,19 +299,22 @@ static void _read_send_analogic_inputs ( int status)
 		relays |= XCPU_BUTTON_SWITCH_UNITS;
 	if ( _adj_throttle > 0)
         relays |= XCPU_BUTTON_ADJ_THROTTLE, _adj_throttle--;
-
-	unsigned char throttle = _ain[THROTTLE_IDX].scaled>>4;
+	if ( _adj_drive_mode_cnt > 0)
+		_adj_drive_mode_cnt--,
+		relays |= _adj_drive_mode << XCPU_BUTTON_ADJ_DRIVE_MODE_SHIFT;
+	unsigned int throttle = _ain[THROTTLE_IDX].scaled;
 	// Throttle only should work on dash screen, the rest are debug or intro screens
 	if ( status != ST_DASH)
 		throttle = 0;
 
 	CAN_BUFFER buf = (CAN_BUFFER) { relays, 
-									throttle,
+									throttle & 0xff, // Throttle low
+									throttle >> 8,	// Throttle high
 									_ain[BRAKE_LEFT_IDX].scaled >> 4,
 									_ain[BRAKE_RIGHT_IDX].scaled >> 4, 
 									_adj_throttle_min >> 4, 
 									_adj_throttle_max >> 4,
-									7, 8 };
+									8 };
 	hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
 
 	// Record inputs for sequence triggering (to start debug services)
@@ -329,6 +356,7 @@ static void _get_can_messages ()
 				XCPU_MASTER_OUT2* tmsg = (XCPU_MASTER_OUT2*)&xmsg->CanMsg.Data.u8[0];
 				_ain[THROTTLE_IDX].def_min = tmsg->throttle_adj_min << 4;
 				_ain[THROTTLE_IDX].def_max = tmsg->throttle_adj_max << 4;
+				_dash.drive_mode           = tmsg->drive_mode;
 			}
 			break;
 		}
@@ -408,10 +436,7 @@ static int _adjust_creen ( int status, char* str, int next, unsigned short* res)
 {
 	const EVREC_CHECK throttle_adj_exit[]= {{CRUISE_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
 
-	int t=font_calc_len ( &font_small, str, FONT_PROPORTIONAL | FONT_KERNING);
-	font_draw ( &_screen, str, &font_small, 
-				FONT_PROPORTIONAL | FONT_KERNING, 64-(t/2), 14);
-
+	_print_small ( str, -1, 14);
 	sprintf ( _tmp, "%d", _ain[THROTTLE_IDX].curr >> 4);
 	_draw_text ( _tmp, &_font_spr_small, 48, 26);
 
@@ -421,7 +446,7 @@ static int _adjust_creen ( int status, char* str, int next, unsigned short* res)
 	{
 		*res = _ain[THROTTLE_IDX].curr;
 		if ( next == ST_DASH)
-			_adj_throttle = 10;	// Sent the adjust 10 times to be safe
+			_adj_throttle = RESEND_TIMES;
 		return next;
 	}
 	return status;
@@ -471,6 +496,12 @@ static void _runtime_screens ( int* status)
 						*status = ST_ADJUST_SPEED;
 					if ( event_happening ( _throttle_screen_access, 50)) // 1 second
 						*status = ST_ADJUST_THROTTLE_MAX;	
+					if ( event_happening ( _mode_screen_access, 50)) // 1 second
+                    {
+						_adj_drive_mode = _dash.drive_mode - 1;
+						_adj_drive_mode = __LIMIT( _adj_drive_mode, 0, 2);
+						*status = ST_ADJUST_DRIVE_MODE;
+					}
 				}	
 			}
 			break;
@@ -490,7 +521,7 @@ static void _runtime_screens ( int* status)
 		case ST_ADJUST_SPEED:
 			{
 				const EVREC_CHECK speed_adj_exit[]= {{HORN_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
-					_adj_down = _adj_up = _adj_metrics = 0;
+				_adj_down = _adj_up = _adj_metrics = 0;
 				if ( _input_status & BRAKE_LEFT_MASK)
 					_adj_down=1;
 				if ( _input_status & BRAKE_RIGHT_MASK)
@@ -520,6 +551,25 @@ static void _runtime_screens ( int* status)
 		case ST_ADJUST_THROTTLE_MIN:
             *status = _adjust_creen ( *status, "Release throttle", ST_DASH, 
 										&_adj_throttle_min);
+			break;
+
+		case ST_ADJUST_DRIVE_MODE:
+			{
+				const char _hei [] = { 30, 45, 60};
+				const EVREC_CHECK speed_adj_exit[]= {{HORN_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
+				const EVREC_CHECK mode_adj[]= {{BRAKE_RIGHT_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
+				int anm = (_frame_dumps & 0x7) >> 2;
+				_print_small ("DRIVE MODES", -1, 14);
+				_print_small ("Soft",        -1, _hei[0]);
+				_print_small ("Eco",         -1, _hei[1]);
+				_print_small ("Racing",      -1, _hei[2]);
+                if ( _frame_dumps & 0x7)
+					_print_small ( ">>", 24, _hei[_adj_drive_mode]);
+                if ( event_happening ( mode_adj,1))
+					_adj_drive_mode++, _adj_drive_mode %= 3;
+				if ( event_happening ( speed_adj_exit,1))
+					_adj_drive_mode++, _adj_drive_mode_cnt = RESEND_TIMES, *status = ST_DASH;
+			}
 			break;
 	}
 }
