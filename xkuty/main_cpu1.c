@@ -173,16 +173,19 @@ void main()
 				}
 				break;
 			case CONTROL_CRUISE:
-				throttle = pid(&_pid, speed, &_pid_k, 0.05F);
-				if (throttle > 250)
 				{
-					throttle--;
-				}
-				
-				if (_output_state & OUTPUT_BRAKEL)
-				{
-					_control_state = CONTROL_ON;
-					_state &= ~XCPU_STATE_CRUISE_ON;
+					int input_throttle = throttle;
+					throttle = pid(&_pid, speed, &_pid_k, 0.05F);
+					if (throttle > 250)
+					{
+						throttle--;
+					}
+					int release = ( input_throttle - throttle) > 20;
+					if ((_output_state & OUTPUT_BRAKEL) || release)
+					{
+						_control_state = CONTROL_ON;
+						_state &= ~XCPU_STATE_CRUISE_ON;
+					}
 				}
 			case CONTROL_ON:
 				_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
