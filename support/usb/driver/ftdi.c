@@ -328,11 +328,8 @@ static void *_service(void *arg)
 							exos_event_reset(&io->OutputEvent);
 						}
 					}
-					else
+					else if (urb->Status == URB_STATUS_FAILED)
 					{
-#ifdef DEBUG
-						if (urb->Status != URB_STATUS_FAILED) kernel_panic(KERNEL_ERROR_UNKNOWN);
-#endif
 						handle->State = FTDI_HANDLE_ERROR;
 						list_remove(node);
 					}
