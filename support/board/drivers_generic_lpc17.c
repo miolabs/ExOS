@@ -3,7 +3,7 @@
 #include <kernel/machine/lpc17/net_lpc17.h>
 #include <kernel/machine/lpc17/comm_lpc17.h>
 
-static NET_ADAPTER _internal_eth_adapter = { .Driver = &__net_driver_lpc17 };
+NET_ADAPTER _internal_eth_adapter = { .Driver = &__net_driver_lpc17 };
 
 static COMM_DEVICE _internal_comm_device = { .Driver = &__comm_driver_lpc17, .PortCount = 4 };
 static EXOS_TREE_DEVICE _comm_devices[] = {

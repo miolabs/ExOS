@@ -80,10 +80,10 @@ static int _begin_bulk_transfer(USB_REQUEST_BUFFER *urb, void *data, int length)
 
 static int _end_bulk_transfer(USB_REQUEST_BUFFER *urb)
 {
-	if (urb == NULL || urb->Pipe == NULL || urb->State == NULL)
+	if (urb == NULL || urb->Pipe == NULL || urb->UserState == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
 
-	OHCI_STD *std = (OHCI_STD *)urb->State;
+	OHCI_STD *std = (OHCI_STD *)urb->UserState;
 #ifdef DEBUG
 	if (std->Request != urb)
 		kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
