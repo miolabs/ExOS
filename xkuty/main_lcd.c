@@ -490,7 +490,7 @@ static void _runtime_screens ( int* status)
 					mono_draw_sprite ( &_screen, &_mi_spr, POS_MI);
 				else
 					mono_draw_sprite ( &_screen, &_km_spr, POS_KM);
-				if ( _dash.speed == 0)
+				if (( _dash.speed == 0) && ( _dash.status & XCPU_STATE_NEUTRAL))
                 {
 					if ( event_happening ( _maintenance_screen_access, 50)) // 1 second
 						*status = ST_ADJUST_SPEED;

@@ -81,6 +81,7 @@ void main()
 
 	unsigned char throttle = 0;
 	unsigned char brake_left, brake_right;
+	unsigned char throttle_adj_min, throttle_adj_max;
 	unsigned char buttons;
 	CURVE_MODE    drive_mode = CURVE_SOFT;
 
@@ -92,6 +93,7 @@ void main()
 	unsigned char push_down = 0;
 	unsigned char push_switch = 0;
 	unsigned char push_mode = 0;
+	unsigned char push_adj = 0;
 	
 	if (!persist_load(&_storage))
 	{
@@ -128,14 +130,10 @@ void main()
 				unsigned int throttle_raw = data->u8[1] | ( data->u8[2] << 8);
 				brake_left = data->u8[3];
 				brake_right = data->u8[4];
-                if ( buttons & XCPU_BUTTON_ADJ_THROTTLE)
-				{
-					_storage.ThrottleAdjMin = data->u8[5];
-					_storage.ThrottleAdjMax = data->u8[6];
-				}
+                throttle_adj_min = data->u8[5];
+                throttle_adj_max = data->u8[6];
 
 				throttle = get_curve_value ( throttle_raw, drive_mode ) >> 4;
-
 			}
 
 			exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
@@ -214,6 +212,12 @@ void main()
 				if (_push_delay( buttons & XCPU_BUTTON_ADJ_DRIVE_MODE, &push_mode, 5))
 				{
 					drive_mode = (buttons & XCPU_BUTTON_ADJ_DRIVE_MODE) >> XCPU_BUTTON_ADJ_DRIVE_MODE_SHIFT;
+				}
+
+                if (_push_delay( buttons & XCPU_BUTTON_ADJ_THROTTLE, &push_adj, 5))
+				{
+					_storage.ThrottleAdjMin = throttle_adj_min;
+					_storage.ThrottleAdjMax = throttle_adj_max;
 				}
 
 				if (_push_delay(buttons & XCPU_BUTTON_CRUISE, &push_cruise, 5))
