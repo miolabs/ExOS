@@ -307,9 +307,10 @@ static void _read_send_analogic_inputs ( int status)
 	if ( status != ST_DASH)
 		throttle = 0;
 
+	int throttle_modi = get_curve_value ( throttle, _dash.drive_mode);
 	CAN_BUFFER buf = (CAN_BUFFER) { relays, 
-									throttle & 0xff, // Throttle low
-									throttle >> 8,	// Throttle high
+									throttle_modi & 0xff, // Throttle low
+									throttle_modi >> 8,	// Throttle high
 									_ain[BRAKE_LEFT_IDX].scaled >> 4,
 									_ain[BRAKE_RIGHT_IDX].scaled >> 4, 
 									_adj_throttle_min >> 4, 

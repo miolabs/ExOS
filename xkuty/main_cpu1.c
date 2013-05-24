@@ -10,7 +10,6 @@
 #include "xcpu/throttle_curves.h"
 #include "pid.h"
 
-
 #define BRAKE_THRESHOLD 30
 #define PWM_RANGE 100
 #define MOTOR_OFFSET 50
@@ -133,7 +132,7 @@ void main()
                 throttle_adj_min = data->u8[5];
                 throttle_adj_max = data->u8[6];
 
-				throttle = get_curve_value ( throttle_raw, drive_mode ) >> 4;
+				throttle = throttle_raw >> 4;
 			}
 
 			exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
