@@ -162,7 +162,7 @@ OHCI_STD *ohci_add_std(USB_REQUEST_BUFFER *urb, OHCI_STD *next_std, OHCI_TD_PID 
 		std->Status = OHCI_STD_STA_READY;
 		
 		exos_event_reset(&urb->Event);
-		urb->State = std;
+		urb->UserState = std;
 		urb->Status = URB_STATUS_ISSUED;
 		
 		OHCI_HCTD *new_hctd = &next_std->HCTD;

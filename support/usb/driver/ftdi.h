@@ -27,13 +27,24 @@ typedef enum
 	FTDI_REQUEST_GET_LATENCY_TIMER,
 } FTDI_REQUEST;
 
-#define FTDI_REQUEST_GET_BAUDRATE 
+typedef enum
+{
+	FTDI_HANDLE_CLOSED = 0,
+	FTDI_HANDLE_OPENING,
+	FTDI_HANDLE_READY,
+	FTDI_HANDLE_CLOSING,
+	FTDI_HANDLE_ERROR,
+} FTDI_HANDLE_STATE;
 
 typedef struct
 {
 	EXOS_NODE Node;
 	COMM_IO_ENTRY *Entry;
+	EXOS_MUTEX Lock;
+	FTDI_HANDLE_STATE State;
    	USB_REQUEST_BUFFER Request;
+   	unsigned char Buffer[FTDI_IO_BUFFER];	
+	EXOS_IO_BUFFER IOBuffer;
 } FTDI_HANDLE;
 
 typedef struct
@@ -48,9 +59,7 @@ typedef struct
 	unsigned char OutputBuffer[FTDI_USB_BUFFER];	// used for output and setup
 	unsigned char InputBuffer[FTDI_USB_BUFFER];
 
-	FTDI_HANDLE AsyncHandle;
-	unsigned char IOBuffer[FTDI_IO_BUFFER];	// TODO: move out to conventional mem
-	EXOS_IO_BUFFER IORcvBuffer;
+	FTDI_HANDLE AsyncHandle; // TODO: move out to conventional mem
 	
 	unsigned char Interface;
 	unsigned char Protocol;

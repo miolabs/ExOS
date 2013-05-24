@@ -28,9 +28,6 @@
   <ProjectSessionItem path="canrfgate;canrfgate_lpc1778" name="unnamed" />
   <ProjectSessionItem path="canrfgate;canrfgate_lpc1778;Source Files" name="unnamed" />
   <ProjectSessionItem path="canrfgate;canrfgate_lpc1778;Source Files;canrfgate" name="unnamed" />
-  <ProjectSessionItem path="canrfgate;canrfgate_lpc1778;Source Files;support" name="unnamed" />
-  <ProjectSessionItem path="canrfgate;canrfgate_lpc1778;Source Files;support;usb" name="unnamed" />
-  <ProjectSessionItem path="canrfgate;canrfgate_lpc1778;Source Files;support;usb;ohci" name="unnamed" />
  </Project>
  <Register1>
   <RegisterWindow openNodes="USB_HOST;USB_HOST/HcRhPortStatus1;USB_HOST/HcRhPortStatus2" binaryNodes="" hiddenNodes="" unsignedNodes="" visibleGroups="USB_HOST" decimalNodes="" octalNodes="" asciiNodes="" />
@@ -68,16 +65,19 @@
   <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="X:\Dropbox\current\exos\support\usb\ohci\ohci.c" y="160" path="X:\Dropbox\current\exos\support\usb\ohci\ohci.c" left="0" selected="0" name="unnamed" top="105" />
   <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="X:\Dropbox\current\exos\support\usb\ohci\driver.c" y="95" path="X:\Dropbox\current\exos\support\usb\ohci\driver.c" left="0" selected="0" name="unnamed" top="95" />
   <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="X:\Dropbox\current\exos\support\lpc17\usb_otg.c" y="77" path="X:\Dropbox\current\exos\support\lpc17\usb_otg.c" left="0" selected="0" name="unnamed" top="0" />
-  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="X:\Dropbox\current\exos\kernel\startup.c" y="40" path="X:\Dropbox\current\exos\kernel\startup.c" left="0" selected="0" name="unnamed" top="0" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="X:\Dropbox\current\exos\kernel\startup.c" y="43" path="X:\Dropbox\current\exos\kernel\startup.c" left="0" selected="0" name="unnamed" top="43" />
   <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="X:\Dropbox\current\exos\support\usb\driver\ftdi.c" y="304" path="X:\Dropbox\current\exos\support\usb\driver\ftdi.c" left="0" selected="0" name="unnamed" top="304" />
   <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="X:\Dropbox\current\exos\support\usb\driver\ftdi.h" y="0" path="X:\Dropbox\current\exos\support\usb\driver\ftdi.h" left="0" selected="0" name="unnamed" top="18" />
-  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="3" debugPath="X:\Dropbox\current\exos\canrfgate\main.c" y="31" path="X:\Dropbox\current\exos\canrfgate\main.c" left="0" selected="1" name="unnamed" top="9" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="X:\Dropbox\current\exos\canrfgate\main.c" y="14" path="X:\Dropbox\current\exos\canrfgate\main.c" left="0" selected="0" name="unnamed" top="9" />
   <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="X:\Dropbox\current\exos\support\board\board_mioboard_lpc1778.c" y="97" path="X:\Dropbox\current\exos\support\board\board_mioboard_lpc1778.c" left="0" selected="0" name="unnamed" top="97" />
   <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="X:\dropbox\current\exos\kernel\event.c" y="6" path="X:\dropbox\current\exos\kernel\event.c" left="0" selected="0" name="unnamed" top="0" />
-  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="9" debugPath="X:\Dropbox\current\exos\canrfgate\server.c" y="135" path="X:\Dropbox\current\exos\canrfgate\server.c" left="0" selected="0" name="unnamed" top="111" />
-  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="X:\Dropbox\current\exos\canrfgate\rf.c" y="0" path="X:\Dropbox\current\exos\canrfgate\rf.c" left="0" selected="0" name="unnamed" top="9" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="2" debugPath="X:\Dropbox\current\exos\canrfgate\server.c" y="120" path="X:\Dropbox\current\exos\canrfgate\server.c" left="0" selected="1" name="unnamed" top="97" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="X:\Dropbox\current\exos\canrfgate\rf.c" y="31" path="X:\Dropbox\current\exos\canrfgate\rf.c" left="0" selected="0" name="unnamed" top="31" />
   <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="X:\Dropbox\current\exos\canrfgate\relay.c" y="12" path="X:\Dropbox\current\exos\canrfgate\relay.c" left="0" selected="0" name="unnamed" top="0" />
   <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="X:\Dropbox\current\exos\canrfgate\relay.h" y="17" path="X:\Dropbox\current\exos\canrfgate\relay.h" left="0" selected="0" name="unnamed" top="0" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="X:\Dropbox\current\exos\support\lpc17\emac.c" y="0" path="X:\Dropbox\current\exos\support\lpc17\emac.c" left="0" selected="0" name="unnamed" top="3" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="X:\Dropbox\current\exos\support\board\drivers_generic_lpc17.c" y="5" path="X:\Dropbox\current\exos\support\board\drivers_generic_lpc17.c" left="0" selected="0" name="unnamed" top="0" />
+  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" codecName="Latin1" x="0" debugPath="X:\Dropbox\current\exos\canrfgate\rf.h" y="0" path="X:\Dropbox\current\exos\canrfgate\rf.h" left="0" selected="0" name="unnamed" top="0" />
  </Files>
  <ARMCrossStudioWindow activeProject="canrfgate_lpc1778" autoConnectTarget="Olimex FTDI driver" debugSearchFileMap="" fileDialogInitialDirectory="" fileDialogDefaultFilter="*.c" autoConnectCapabilities="388991" debugSearchPath="" buildConfiguration="Mioboard Debug" />
 </session>

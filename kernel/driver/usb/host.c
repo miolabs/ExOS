@@ -179,6 +179,7 @@ void usb_host_urb_create(USB_REQUEST_BUFFER *urb, USB_HOST_PIPE *pipe)
 {
 	urb->Pipe = pipe;
 	exos_event_create(&urb->Event);
+	urb->Status = URB_STATUS_EMPTY;
 }
 
 
