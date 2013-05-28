@@ -3,6 +3,11 @@
 #include <kernel/thread.h>
 #include <support/ssp_hal.h>
 
+#define DISPW (128)
+#define DISPH (64)
+
+static unsigned char _scrrot [(DISPW*DISPH)/8];
+
 static void _write_cmd(unsigned char cmd);
 static void _write_cmd2(unsigned char cmd1, unsigned char cmd2);
 static void _write_data(unsigned char data[], int length);
@@ -10,9 +15,9 @@ static void _write_data(unsigned char data[], int length);
 void lcdcon_initialize(LCD_PROPERTIES *lcd)
 {
 	lcd->Buffer = (LCD_BUFFER_PROPERTIES) {
-		.Depth = 1, .Stride = 128, .BufferType = LCD_BUFFER_STRIPE };
-	lcd->Width = 128;
-	lcd->Height = 64;
+		.Depth = 1, .Stride = DISPW, .BufferType = LCD_BUFFER_STRIPE };
+	lcd->Width = DISPW;
+	lcd->Height = DISPH;
 
 	hal_ssp_initialize(LCD_SSP_MODULE, 4000000, HAL_SSP_MODE_SPI, HAL_SSP_CLK_IDLE_HIGH);
 	lcdcon_gpo_initialize();
@@ -41,7 +46,8 @@ void lcdcon_initialize(LCD_PROPERTIES *lcd)
 
 		for(int i = 0; i < 48; i++)
 		{
-			unsigned char data[] = {0x0,0x0,0x0,0x0 };//{0xf0,0xf0,0x0f,0x0f };
+			//unsigned char data[] = {0x0,0x0,0x0,0x0 };
+			unsigned char data[] = {0xf0,0xf0,0x0f,0x0f };
 			_write_data(data, sizeof(data));
 		}
 	}
@@ -78,6 +84,8 @@ static void _write_data(unsigned char data[], int length)
 
 void lcd_dump_screen ( unsigned char* pixels)
 {
+	lcd_bilevel_linear_2_vertical_bytes ( _scrrot, (const unsigned int*)pixels, DISPW, DISPH);
+
 	lcdcon_gpo(LCDCON_GPO_CS);
 
     for(int page = 0; page < 8; page++)
@@ -85,9 +93,7 @@ void lcd_dump_screen ( unsigned char* pixels)
         _write_cmd(0xb0 | page); // select page
         _write_cmd2(0x10, 0x00);
 
-        _write_data( pixels, 128);
-        //_write_data( pixels, 192 - 128);    // Stride?
-        pixels += 128;
+        _write_data( &_scrrot [page << 7], 128);
     }
 
    	lcdcon_gpo(LCDCON_GPO_IDLE);
