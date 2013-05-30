@@ -178,7 +178,6 @@ static void _stop(USB_HOST_FUNCTION *usb_func)
 
 
 // COM interface
-
 static int _open(COMM_IO_ENTRY *io)
 {
 	FTDI_FUNCTION *func = _get_func(io->Port);
@@ -233,8 +232,12 @@ static void _close(COMM_IO_ENTRY *io)
 			exos_mutex_unlock(&handle->Lock);
 			exos_event_set(&_handle_event);
 
+#ifdef DEBUG
 			if (-1 == exos_event_wait(&event, 500))
 				kernel_panic(KERNEL_ERROR_UNKNOWN);
+#else
+			exos_event_wait(&event, EXOS_TIMEOUT_NONE);
+#endif
 			if (handle->State != FTDI_HANDLE_CLOSED)
 				kernel_panic(KERNEL_ERROR_UNKNOWN);
 		}
@@ -244,13 +247,17 @@ static void _close(COMM_IO_ENTRY *io)
 static int _read(COMM_IO_ENTRY *io, unsigned char *buffer, unsigned long length)
 {
 	FTDI_FUNCTION *func = _get_func(io->Port);
-	if (func == NULL) return -1;
-
-	FTDI_HANDLE *handle = &func->AsyncHandle;
-	//if (handle->State != FTDI_HANDLE_READY) return -1;
-
-	int done = exos_io_buffer_read(&handle->IOBuffer, buffer, length);
-	return done;
+	if (func != NULL)
+	{
+		FTDI_HANDLE *handle = &func->AsyncHandle;
+		if (handle->State == FTDI_HANDLE_READY || 
+			handle->State == FTDI_HANDLE_OPENING)
+		{
+			int done = exos_io_buffer_read(&handle->IOBuffer, buffer, length);
+			return done;
+		}
+	}
+	return -1;
 }
 
 static int _write(COMM_IO_ENTRY *io, const unsigned char *buffer, unsigned long length)
@@ -303,7 +310,6 @@ static void *_service(void *arg)
 			FTDI_FUNCTION *func = _get_func(io->Port);
 			USB_REQUEST_BUFFER *urb = &handle->Request;
 			EXOS_EVENT *event = NULL;
-            int done;
 			switch(handle->State)
 			{
 				case FTDI_HANDLE_OPENING:
@@ -318,7 +324,7 @@ static void *_service(void *arg)
 				case FTDI_HANDLE_READY:
 					if (urb->Status == URB_STATUS_DONE)
 					{
-						done = usb_host_end_bulk_transfer(urb);
+						int done = usb_host_end_bulk_transfer(urb);
 						if (done > 2)
 						{
 							exos_io_buffer_write(&handle->IOBuffer, func->InputBuffer + 2, done - 2);
@@ -330,10 +336,11 @@ static void *_service(void *arg)
 					{
 						handle->State = FTDI_HANDLE_ERROR;
 						list_remove(node);
+                        if (handle->StateEvent != NULL) exos_event_set(handle->StateEvent);
 					}
 					break;
 				case FTDI_HANDLE_CLOSING:
-					done = usb_host_end_bulk_transfer(urb);
+					usb_host_end_bulk_transfer(urb);
 					handle->State = FTDI_HANDLE_CLOSED;
 					list_remove(node);
 					if (handle->StateEvent != NULL) exos_event_set(handle->StateEvent);
