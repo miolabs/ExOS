@@ -122,6 +122,8 @@
             <file file_name="support/usb/driver/msc.c"/>
             <file file_name="support/usb/driver/usbprint.c"/>
             <file file_name="support/usb/driver/ftdi.c"/>
+            <file file_name="support/usb/driver/iap2.c"/>
+            <file file_name="support/usb/driver/hid.c"/>
           </folder>
         </folder>
         <folder Name="misc">
@@ -137,6 +139,7 @@
           </folder>
         </folder>
       </folder>
+      <file file_name="support/usb/driver/iap2.h"/>
     </folder>
     <folder Name="System Files">
       <file file_name="$(TargetsDir)/LPC1000/LPC177x_8x_Target.js">

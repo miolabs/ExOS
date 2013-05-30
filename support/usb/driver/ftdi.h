@@ -59,7 +59,7 @@ typedef struct
 	unsigned char OutputBuffer[FTDI_USB_BUFFER];	// used for output and setup
 	unsigned char InputBuffer[FTDI_USB_BUFFER];
 
-	FTDI_HANDLE AsyncHandle; // TODO: move out to conventional mem
+	FTDI_HANDLE AsyncHandle; // TODO: move out to conventional memory
 	
 	unsigned char Interface;
 	unsigned char Protocol;

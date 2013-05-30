@@ -3,6 +3,8 @@
 #include <kernel/thread.h>
 #include <kernel/panic.h>
 
+static void _pipe_schedule(USB_HOST_PIPE *pipe);
+
 void ohci_pipe_add(USB_HOST_PIPE *pipe)
 {
 	OHCI_SED *sed = (OHCI_SED *)pipe->Endpoint;
@@ -15,6 +17,9 @@ void ohci_pipe_add(USB_HOST_PIPE *pipe)
 		case USB_TT_BULK:
 			sed->HCED.Next = _hc->BulkHeadED;
 			_hc->BulkHeadED = sed;
+			break;
+		default:
+			_pipe_schedule(pipe);
 			break;
 	}
 }
@@ -71,7 +76,7 @@ static int _bandwidth(OHCI_HCED *hced)
 	return total;
 }
 
-void ohci_pipe_schedule(USB_HOST_PIPE *pipe)
+static void _pipe_schedule(USB_HOST_PIPE *pipe)
 {
 	OHCI_SED *sed = (OHCI_SED *)pipe->Endpoint;
 
@@ -99,30 +104,27 @@ void ohci_pipe_schedule(USB_HOST_PIPE *pipe)
 		}
 	}
 
-// TODO
-/* 
 	// insert at specified interval in periodic lists
 	for(int ms = 0; ms < 32; ms += period)
 	{
 		int index = (ms + best_index) & 31;
-		OHCI_PIPE **p_ptr = (OHCI_PIPE **)ohci_get_periodic_ep(index);
-		OHCI_PIPE *link_pipe = NULL;
+		OHCI_HCED **hced_ptr = (OHCI_HCED **)ohci_get_periodic_ep(index);
+		OHCI_SED *link_sed = NULL;
 
-		while(*p_ptr != NULL)
+		while(*hced_ptr != NULL)
 		{
-			link_pipe = *p_ptr; 
-			if (pipe->EndpointType > link_pipe->EndpointType) break; // NOTE: TT_INTERRUPT is bigger than TT_ISO
-			if (period >= link_pipe->InterruptInterval) break;
-			p_ptr = (OHCI_PIPE **)&link_pipe->HCED.Next;
+			link_sed = (OHCI_SED *)*hced_ptr; 
+			if (pipe->EndpointType > link_sed->Pipe->EndpointType) break; // NOTE: TT_INTERRUPT is bigger than TT_ISO
+			if (period >= link_sed->Pipe->InterruptInterval) break;
+			hced_ptr = (OHCI_HCED **)&link_sed->HCED.Next;
 		}
 
-		if (link_pipe != pipe)	// don't queue again!
+		if (link_sed != sed)	// don't queue again!
 		{
-			pipe->HCED.Next = (OHCI_HCED *)*p_ptr;
-			*p_ptr = pipe;
+			sed->HCED.Next = (OHCI_HCED *)*hced_ptr;
+			*hced_ptr = &sed->HCED;
 		}
 	}
-*/
 }
 
 static void _init_hctd(OHCI_HCTD *hctd, OHCI_TD_PID pid, OHCI_TD_TOGGLE td_toggle, void *buffer, int length)

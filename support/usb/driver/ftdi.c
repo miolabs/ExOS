@@ -144,9 +144,6 @@ static int _set_latency(FTDI_FUNCTION *func, unsigned char lat)
 	return done;
 }
 
-
-// COM interface
-
 static void _start(USB_HOST_FUNCTION *usb_func)
 {
 	FTDI_FUNCTION *func = (FTDI_FUNCTION *)usb_func;
@@ -178,6 +175,9 @@ static void _stop(USB_HOST_FUNCTION *usb_func)
 
 	//TODO
 }
+
+
+// COM interface
 
 static int _open(COMM_IO_ENTRY *io)
 {

@@ -62,7 +62,7 @@ static int _enum_interfaces(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTO
 	int offset = conf_desc->Header.Length;	// skip itself conf. descriptor
 	int rem_interfaces = conf_desc->NumInterfaces;
 	int done = 0;
-	while (offset < USB16TOH(conf_desc->TotalLength) && rem_interfaces > 0)
+	while (offset < USB16TOH(conf_desc->TotalLength)) // && rem_interfaces > 0)
 	{
 		USB_DESCRIPTOR_HEADER *fn_desc = (USB_DESCRIPTOR_HEADER *)(buffer + offset);
 		USB_HOST_ENUM_DATA enum_data = (USB_HOST_ENUM_DATA) {
@@ -114,7 +114,7 @@ static int _parse_configuration(USB_HOST_DEVICE *device, int conf_index)
 		int total_length = USB16TOH(conf_desc->TotalLength);
 		if (total_length <= USB_ENUM_BUFFER_SIZE) 
 		{
-			int done = usb_host_read_descriptor(device, USB_DESCRIPTOR_TYPE_CONFIGURATION, conf_index,
+			done = usb_host_read_descriptor(device, USB_DESCRIPTOR_TYPE_CONFIGURATION, conf_index,
 				_buffer, total_length);
 			if (done)
 			{

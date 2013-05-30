@@ -1,6 +1,8 @@
 #include <usb/host.h>
 #include <support/usb/driver/usbprint.h>
 #include <support/usb/driver/ftdi.h>
+#include <support/usb/driver/iap2.h>
+#include <support/usb/driver/hid.h>
 #include <net/tcp_io.h>
 #include <comm/comm.h>
 #include <kernel/tree.h>
@@ -95,4 +97,6 @@ void usb_host_add_drivers()
 {
     usbprint_initialize();
 	ftdi_initialize();
+	iap2_initialize();
+	usbd_hid_initialize();
 }

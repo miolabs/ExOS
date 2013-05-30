@@ -115,6 +115,7 @@ static void *_server(void *arg)
 		}
 
 		if (comm0) comm_io_close(comm0);
+		if (comm1) comm_io_close(comm1);
 			
 		hal_led_set(0, 0);
 		net_io_close((NET_IO_ENTRY *)&_socket, &buffers);
