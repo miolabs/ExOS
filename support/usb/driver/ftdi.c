@@ -37,9 +37,9 @@ static const COMM_DRIVER _comm_driver = {
 	.Open = _open, .Close = _close,
     .GetAttr = _get_attr, .SetAttr = _set_attr, 
 	.Read = _read, .Write = _write };
-static COMM_DEVICE _comm_device = { .Driver = &_comm_driver, .PortCount = 1 };
+static COMM_DEVICE _comm_device = { .Driver = &_comm_driver, .PortCount = FTDI_MAX_INSTANCES };
 
-static FTDI_FUNCTION _functions[FTDI_MAX_INSTANCES] __usb;
+FTDI_FUNCTION _functions[FTDI_MAX_INSTANCES] __usb;
 static volatile unsigned char _func_usage[FTDI_MAX_INSTANCES];
 static FTDI_FUNCTION *_get_func(int port);
 static const char *_device_names[] = { "usbftdi0", "usbftdi1", "usbftdi2", "usbftdi3" }; 
@@ -196,7 +196,7 @@ static int _open(COMM_IO_ENTRY *io)
 			exos_mutex_lock(&_handle_list_lock);
 			list_add_tail(&_handle_list, (EXOS_NODE *)handle);
 			exos_mutex_unlock(&_handle_list_lock);
-			exos_event_reset(&_handle_event);
+			exos_event_set(&_handle_event);
 	
 			exos_event_set(&io->OutputEvent);
 			return 0;
@@ -217,6 +217,9 @@ static int _set_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
 
 static void _close(COMM_IO_ENTRY *io)
 {
+	EXOS_EVENT event;
+	exos_event_create(&event);
+
 	FTDI_FUNCTION *func = _get_func(io->Port);
 	if (func != NULL)
 	{
@@ -225,12 +228,15 @@ static void _close(COMM_IO_ENTRY *io)
 		{
 			exos_mutex_lock(&handle->Lock);
             handle->IOBuffer.NotEmptyEvent = NULL;
+			handle->StateEvent = &event;
 			handle->State = FTDI_HANDLE_CLOSING;
-			exos_event_reset(&io->OutputEvent);
 			exos_mutex_unlock(&handle->Lock);
-			
-			while(handle->State == FTDI_HANDLE_CLOSING)
-				exos_event_wait(&io->OutputEvent, 100);
+			exos_event_set(&_handle_event);
+
+			if (-1 == exos_event_wait(&event, 500))
+				kernel_panic(KERNEL_ERROR_UNKNOWN);
+			if (handle->State != FTDI_HANDLE_CLOSED)
+				kernel_panic(KERNEL_ERROR_UNKNOWN);
 		}
 	}
 }
@@ -278,13 +284,14 @@ static void *_service(void *arg)
 
 	EXOS_EVENT *events[FTDI_MAX_INSTANCES + 1];
 	events[0] = &_handle_event;
-	int count = 0;
+	int count = 1;
 	while(1)
 	{
-		exos_event_wait_multiple(events, count + 1, EXOS_TIMEOUT_NEVER);
+		exos_event_wait_multiple(events, count, EXOS_TIMEOUT_NEVER);
+		exos_event_reset(&_handle_event);
 
-		count = 0;
 		exos_mutex_lock(&_handle_list_lock);
+		count = 1;
 		EXOS_NODE *next;
 		for(EXOS_NODE *node = LIST_HEAD(&_handle_list)->Succ; node != LIST_TAIL(&_handle_list); node = next)
 		{
@@ -296,6 +303,7 @@ static void *_service(void *arg)
 			FTDI_FUNCTION *func = _get_func(io->Port);
 			USB_REQUEST_BUFFER *urb = &handle->Request;
 			EXOS_EVENT *event = NULL;
+            int done;
 			switch(handle->State)
 			{
 				case FTDI_HANDLE_OPENING:
@@ -307,26 +315,16 @@ static void *_service(void *arg)
 					event = &urb->Event;
 					handle->State = FTDI_HANDLE_READY;
 					break;
-				case FTDI_HANDLE_CLOSING:
 				case FTDI_HANDLE_READY:
 					if (urb->Status == URB_STATUS_DONE)
 					{
-						int done = usb_host_end_bulk_transfer(urb);
+						done = usb_host_end_bulk_transfer(urb);
 						if (done > 2)
 						{
 							exos_io_buffer_write(&handle->IOBuffer, func->InputBuffer + 2, done - 2);
 						}
-						if (handle->State == FTDI_HANDLE_READY)
-						{
-							usb_host_begin_bulk_transfer(urb, func->InputBuffer, FTDI_USB_BUFFER);
-							event = &urb->Event;
-						}
-						else
-						{
-							handle->State = FTDI_HANDLE_CLOSED;
-							list_remove(node);
-							exos_event_reset(&io->OutputEvent);
-						}
+						usb_host_begin_bulk_transfer(urb, func->InputBuffer, FTDI_USB_BUFFER);
+						event = &urb->Event;
 					}
 					else if (urb->Status == URB_STATUS_FAILED)
 					{
@@ -334,9 +332,15 @@ static void *_service(void *arg)
 						list_remove(node);
 					}
 					break;
+				case FTDI_HANDLE_CLOSING:
+					done = usb_host_end_bulk_transfer(urb);
+					handle->State = FTDI_HANDLE_CLOSED;
+					list_remove(node);
+					if (handle->StateEvent != NULL) exos_event_set(handle->StateEvent);
+					break;
 			}
 			if (event != NULL)
-				events[++count] = event;
+				events[count++] = event;
 			exos_mutex_unlock(&handle->Lock);
 		}
 		exos_mutex_unlock(&_handle_list_lock);

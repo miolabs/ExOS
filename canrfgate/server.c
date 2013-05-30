@@ -42,7 +42,7 @@ static COMM_IO_ENTRY *_open(COMM_IO_ENTRY *io, char *name)
 			return io;
 		}
 	}
-	return 0;
+	return NULL;
 }
 
 static void *_server(void *arg)
@@ -65,7 +65,7 @@ static void *_server(void *arg)
 		err = net_io_accept((NET_IO_ENTRY *)&_socket, (NET_IO_ENTRY *)&_socket, &buffers);
 		hal_led_set(0, 1);
 		
-		exos_io_set_timeout((EXOS_IO_ENTRY *)&_socket, 2000); // NOTE: we didn't set timeout before because we don't want accept()  to timeout
+		exos_io_set_timeout((EXOS_IO_ENTRY *)&_socket, 2000); // NOTE: we didn't set timeout before because we don't want accept() to timeout
 
 		COMM_IO_ENTRY *comm0;
 		COMM_IO_ENTRY *comm1;
@@ -83,7 +83,7 @@ static void *_server(void *arg)
 
 #ifdef DEBUG
 		done = sprintf(_buffer, "Connection accepted!\r\n");
-		done = exos_io_write((EXOS_IO_ENTRY *)&_socket, _buffer, done);				
+		done = exos_io_write((EXOS_IO_ENTRY *)&_socket, _buffer, done);
 #endif
 				
 		while(1)
@@ -102,14 +102,18 @@ static void *_server(void *arg)
 			{
 				done = exos_io_read((EXOS_IO_ENTRY *)&_comm0, _buffer, 1024);
 				if (done < 0) break;
-
+#ifdef DEBUG
+				for(int i = 0; i < done; i++) exos_io_write((EXOS_IO_ENTRY *)&_socket, ".", 1);
+#endif
 				rf_parse(&_reader0, _buffer, done);
 			}
 			if (_comm1.InputEvent.State)
 			{
 				done = exos_io_read((EXOS_IO_ENTRY *)&_comm1, _buffer, 1024);
 				if (done < 0) break;
-
+#ifdef DEBUG
+				for(int i = 0; i < done; i++) exos_io_write((EXOS_IO_ENTRY *)&_socket, ":", 1);
+#endif
 				rf_parse(&_reader1, _buffer, done);
 			}
 		}

@@ -42,9 +42,10 @@ typedef struct
 	COMM_IO_ENTRY *Entry;
 	EXOS_MUTEX Lock;
 	FTDI_HANDLE_STATE State;
+	EXOS_EVENT *StateEvent;
    	USB_REQUEST_BUFFER Request;
-   	unsigned char Buffer[FTDI_IO_BUFFER];	
 	EXOS_IO_BUFFER IOBuffer;
+   	unsigned char Buffer[FTDI_IO_BUFFER];	
 } FTDI_HANDLE;
 
 typedef struct
