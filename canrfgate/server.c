@@ -1,4 +1,8 @@
+#ifndef RFGATE_UDP
 #include <net/tcp_io.h>
+#else
+#include <net/udp_io.h>
+#endif
 #include <comm/comm.h>
 #include <kernel/tree.h>
 #include <support/board_hal.h>
@@ -11,12 +15,16 @@ static EXOS_THREAD _thread;
 static unsigned char _thread_stack[SERVER_THREAD_STACK];
 
 COMM_IO_ENTRY _comm0, _comm1;
-TCP_IO_ENTRY _socket;
 static unsigned char _buffer[1024] ;
 
+#ifndef RFGATE_UDP
+TCP_IO_ENTRY _socket;
 #define TCP_BUFFER_SIZE 8192 // tiny window for stress
 static unsigned char _rcv_buffer[TCP_BUFFER_SIZE]; 
 static unsigned char _snd_buffer[TCP_BUFFER_SIZE] __attribute__((section(".dma")));
+#else
+UDP_IO_ENTRY _socket;
+#endif
 static void *_server(void *);
 static void _parse_input();
 
@@ -52,17 +60,24 @@ static void *_server(void *arg)
 
 	while(1)
 	{
+#ifndef RFGATE_UDP
 		EXOS_IO_STREAM_BUFFERS buffers = (EXOS_IO_STREAM_BUFFERS) {
 			.RcvBuffer = _rcv_buffer, .RcvBufferSize = TCP_BUFFER_SIZE,
 			.SndBuffer = _snd_buffer, .SndBufferSize = TCP_BUFFER_SIZE };
 
 		net_tcp_io_create(&_socket, EXOS_IOF_WAIT);
+#else
+		net_udp_io_create(&_socket, EXOS_IOF_WAIT);
+		IP_PORT_ADDR remote = (IP_PORT_ADDR) { .Address = IP_ADDR_BROADCAST, .Port = 23 };
+#endif
 
 		IP_PORT_ADDR local = (IP_PORT_ADDR) { .Address = IP_ADDR_ANY, .Port = 23 };
 		err = net_io_bind((NET_IO_ENTRY *)&_socket, &local); 
-		err = net_io_listen((NET_IO_ENTRY *)&_socket);
 
+#ifndef RFGATE_UDP
+		err = net_io_listen((NET_IO_ENTRY *)&_socket);
 		err = net_io_accept((NET_IO_ENTRY *)&_socket, (NET_IO_ENTRY *)&_socket, &buffers);
+#endif
 		hal_led_set(0, 1);
 		
 		exos_io_set_timeout((EXOS_IO_ENTRY *)&_socket, 2000); // NOTE: we didn't set timeout before because we don't want accept() to timeout
@@ -81,7 +96,7 @@ static void *_server(void *arg)
 		rf_init_state(&_reader0, _parse_rf, "R0");
 		rf_init_state(&_reader1, _parse_rf, "R1");
 
-#ifdef DEBUG
+#if !defined RFGATE_UDP && defined DEBUG
 		done = sprintf(_buffer, "Connection accepted!\r\n");
 		done = exos_io_write((EXOS_IO_ENTRY *)&_socket, _buffer, done);
 #endif
@@ -92,7 +107,11 @@ static void *_server(void *arg)
 
 			if (_socket.InputEvent.State)
 			{
+#ifndef RFGATE_UDP
 				done = exos_io_read((EXOS_IO_ENTRY *)&_socket, _buffer, 1024);
+#else
+				done = net_io_receive((NET_IO_ENTRY *)&_socket, _buffer, 1024, &remote);
+#endif
 				if (done < 0) break;
 
 				if (done >= 1) _parse_input();
@@ -102,18 +121,14 @@ static void *_server(void *arg)
 			{
 				done = exos_io_read((EXOS_IO_ENTRY *)&_comm0, _buffer, 1024);
 				if (done < 0) break;
-#ifdef DEBUG
-				for(int i = 0; i < done; i++) exos_io_write((EXOS_IO_ENTRY *)&_socket, ".", 1);
-#endif
+
 				rf_parse(&_reader0, _buffer, done);
 			}
 			if (_comm1.InputEvent.State)
 			{
 				done = exos_io_read((EXOS_IO_ENTRY *)&_comm1, _buffer, 1024);
 				if (done < 0) break;
-#ifdef DEBUG
-				for(int i = 0; i < done; i++) exos_io_write((EXOS_IO_ENTRY *)&_socket, ":", 1);
-#endif
+
 				rf_parse(&_reader1, _buffer, done);
 			}
 		}
@@ -122,7 +137,9 @@ static void *_server(void *arg)
 		if (comm1) comm_io_close(comm1);
 			
 		hal_led_set(0, 0);
+#ifndef RFGATE_UDP
 		net_io_close((NET_IO_ENTRY *)&_socket, &buffers);
+#endif
 	}
 }
 

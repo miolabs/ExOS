@@ -16,11 +16,11 @@ void main()
 	usb_host_initialize();
 	relay_initialize();
 
-//	NET_ADAPTER *adapter = NULL;
-//	if (net_adapter_enum(&adapter))
-//	{
+	NET_ADAPTER *adapter = NULL;
+	if (net_adapter_enum(&adapter))
+	{
 //		adapter->IP = (IP_ADDR) { 192, 168, 1, 5 };
-//	}
+	}
 
 	exos_port_create(&_port, NULL);
 	exos_fifo_create(&_free_msgs, NULL);

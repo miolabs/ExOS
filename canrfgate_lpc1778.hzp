@@ -155,4 +155,7 @@
   <configuration Name="Mioboard" c_preprocessor_definitions="BOARD_MIOBOARD;EEPROM_I2C_MODULE=0;EEPROM_SIZE=256;EEPROM_PAGE_SIZE=8" hidden="Yes"/>
   <configuration Name="Mioboard Debug" inherited_configurations="Debug;Mioboard"/>
   <configuration Name="Mioboard Release" inherited_configurations="Mioboard;Release"/>
+  <configuration Name="UDP" c_preprocessor_definitions="RFGATE_UDP" hidden="Yes"/>
+  <configuration Name="Mioboard UDP Debug" inherited_configurations="Debug;Mioboard;UDP"/>
+  <configuration Name="Mioboard UDP Release" inherited_configurations="Mioboard;Release;UDP"/>
 </solution>
