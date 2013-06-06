@@ -16,6 +16,7 @@ static unsigned char _thread_stack[SERVER_THREAD_STACK];
 
 COMM_IO_ENTRY _comm0, _comm1;
 static unsigned char _buffer[1024] ;
+static unsigned char _buf_out[1024] __attribute__((section(".dma")));
 
 #ifndef RFGATE_UDP
 TCP_IO_ENTRY _socket;
@@ -68,7 +69,6 @@ static void *_server(void *arg)
 		net_tcp_io_create(&_socket, EXOS_IOF_WAIT);
 #else
 		net_udp_io_create(&_socket, EXOS_IOF_WAIT);
-		IP_PORT_ADDR remote = (IP_PORT_ADDR) { .Address = IP_ADDR_BROADCAST, .Port = 23 };
 #endif
 
 		IP_PORT_ADDR local = (IP_PORT_ADDR) { .Address = IP_ADDR_ANY, .Port = 23 };
@@ -77,6 +77,8 @@ static void *_server(void *arg)
 #ifndef RFGATE_UDP
 		err = net_io_listen((NET_IO_ENTRY *)&_socket);
 		err = net_io_accept((NET_IO_ENTRY *)&_socket, (NET_IO_ENTRY *)&_socket, &buffers);
+#else
+		exos_thread_sleep(1000);	// wait for usb devices to autoconfigure
 #endif
 		hal_led_set(0, 1);
 		
@@ -110,11 +112,15 @@ static void *_server(void *arg)
 #ifndef RFGATE_UDP
 				done = exos_io_read((EXOS_IO_ENTRY *)&_socket, _buffer, 1024);
 #else
-				done = net_io_receive((NET_IO_ENTRY *)&_socket, _buffer, 1024, &remote);
+				done = net_io_receive((NET_IO_ENTRY *)&_socket, _buffer, 1024, NULL);
 #endif
 				if (done < 0) break;
 
 				if (done >= 1) _parse_input();
+#ifdef DEBUG
+				RF_CARD ex = (RF_CARD) { .Id = 0x123 };
+				_parse_rf(&ex, "EX");
+#endif
 			}
 
 			if (_comm0.InputEvent.State)
@@ -164,7 +170,12 @@ static void _parse_input()
 
 static void _parse_rf(RF_CARD *card, void *state)
 {
-	char buf_out[32];
-	int done = sprintf(buf_out, "%s:%x%x\r\n", state, (unsigned long)(card->Id >> 32), (unsigned long)card->Id);
-	done = exos_io_write((EXOS_IO_ENTRY *)&_socket, buf_out, done);
+	IP_PORT_ADDR remote = (IP_PORT_ADDR) { .Address = IP_ADDR_BROADCAST, .Port = 5000 };
+	int done = sprintf(_buf_out, "%s:%x%x\r\n", state, (unsigned long)(card->Id >> 32), (unsigned long)card->Id);
+
+#ifndef RFGATE_UDP
+	done = exos_io_write((EXOS_IO_ENTRY *)&_socket, _buf_out, done);
+#else
+	done = net_io_send((NET_IO_ENTRY *)&_socket, _buf_out, done, &remote);
+#endif
 }
