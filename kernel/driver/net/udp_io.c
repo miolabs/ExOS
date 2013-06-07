@@ -124,6 +124,7 @@ static int _send(NET_IO_ENTRY *socket, void *buffer, unsigned long length, void 
 
 	if (ep.IP.Value == -1)
 	{
+		int done = 0;
 		net_adapter_list_lock();
 		NET_ADAPTER *adapter = NULL;
 		while(net_adapter_enum(&adapter))
@@ -132,11 +133,11 @@ static int _send(NET_IO_ENTRY *socket, void *buffer, unsigned long length, void 
 			{
 				ep.IP.Value = adapter->IP.Value | ~adapter->NetMask.Value;
 				if (net_ip_resolve(adapter, &ep))
-					net_udp_send(adapter, &ep, io->LocalPort, ip->Port, &msg);
+					done = net_udp_send(adapter, &ep, io->LocalPort, ip->Port, &msg);
 			}
 		}
 		net_adapter_list_unlock();
-		return 0;
+		return done;
 	}
 	else
 	{
