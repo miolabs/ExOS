@@ -20,7 +20,7 @@
           <file file_name="support/board/drivers_generic_dm36x.c"/>
         </folder>
       </folder>
-      <folder Name="kernel">
+      <folder Name="kernel" file_name="">
         <folder Name="machine">
           <folder Name="dm36x">
             <file file_name="kernel/machine/dm36x/startup_dm36x.s"/>
@@ -74,6 +74,7 @@
             <file file_name="kernel/driver/net/tcp_service.c"/>
           </folder>
         </folder>
+        <file file_name="kernel/port.c"/>
       </folder>
     </folder>
     <folder Name="System Files">
