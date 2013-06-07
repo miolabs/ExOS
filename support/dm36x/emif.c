@@ -25,7 +25,7 @@ void emif_initialize_ddr2(EMIF_SPEC *spec, unsigned int tclk)
 
 	// configure DDR PHY
 	_emif->DDRPHYCR1 = DDRPHYCR1_CONFIG_EXT_STRBEN // select external DQS strobe gating
-		| DDRPHYCR1_CONFIG_PWRDNEN | 6; // read_latency (CL + board round trip) - 1
+		| DDRPHYCR1_CONFIG_PWRDNEN | 4; // read_latency (CL + board round trip) - 1
 
 	// configure PBBPR (section 4.7)
 	_emif->PBBPR = 0x7f; // must be different to default value (0xff)
