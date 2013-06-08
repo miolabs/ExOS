@@ -24,6 +24,7 @@ TCP_IO_ENTRY _socket;
 static unsigned char _rcv_buffer[TCP_BUFFER_SIZE]; 
 static unsigned char _snd_buffer[TCP_BUFFER_SIZE] __attribute__((section(".dma")));
 #else
+IP_PORT_ADDR _remote;
 UDP_IO_ENTRY _socket;
 #endif
 static void *_server(void *);
@@ -58,6 +59,7 @@ static void *_server(void *arg)
 {
 	int err;
 	int done;
+	_remote = (IP_PORT_ADDR) { .Address = IP_ADDR_BROADCAST, .Port = 5000 };
 
 	while(1)
 	{
@@ -112,7 +114,7 @@ static void *_server(void *arg)
 #ifndef RFGATE_UDP
 				done = exos_io_read((EXOS_IO_ENTRY *)&_socket, _buffer, 1024);
 #else
-				done = net_io_receive((NET_IO_ENTRY *)&_socket, _buffer, 1024, NULL);
+				done = net_io_receive((NET_IO_ENTRY *)&_socket, _buffer, 1024, &_remote);
 #endif
 				if (done < 0) break;
 
@@ -170,12 +172,12 @@ static void _parse_input()
 
 static void _parse_rf(RF_CARD *card, void *state)
 {
-	IP_PORT_ADDR remote = (IP_PORT_ADDR) { .Address = IP_ADDR_BROADCAST, .Port = 5000 };
 	int done = sprintf(_buf_out, "%s:%x%x\r\n", state, (unsigned long)(card->Id >> 32), (unsigned long)card->Id);
 
 #ifndef RFGATE_UDP
 	done = exos_io_write((EXOS_IO_ENTRY *)&_socket, _buf_out, done);
 #else
-	done = net_io_send((NET_IO_ENTRY *)&_socket, _buf_out, done, &remote);
+	_remote.Port = 5000;
+	done = net_io_send((NET_IO_ENTRY *)&_socket, _buf_out, done, &_remote);
 #endif
 }

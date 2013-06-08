@@ -53,10 +53,10 @@ static void *_service(void *args)
 	unsigned char buffer[256];
 
 	pthread_t thread = pthread_self();
-	int done = sprintf(buffer, "thread 0x%lx, socket %lx\r", thread.info, fd);
+	int done = sprintf(buffer, "thread 0x%lx, socket %lx\r\n", thread.info, fd);
 	write(fd, buffer, done);
 
-	done = sprintf(buffer, "0x%lx bytes free in heap\r", exos_mem_heap_avail());
+	done = sprintf(buffer, "0x%lx bytes free in heap\r\n", exos_mem_heap_avail());
 	write(fd, buffer, done);
 
 	while(1)
