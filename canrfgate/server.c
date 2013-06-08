@@ -59,7 +59,6 @@ static void *_server(void *arg)
 {
 	int err;
 	int done;
-	_remote = (IP_PORT_ADDR) { .Address = IP_ADDR_BROADCAST, .Port = 5000 };
 
 	while(1)
 	{
@@ -71,6 +70,7 @@ static void *_server(void *arg)
 		net_tcp_io_create(&_socket, EXOS_IOF_WAIT);
 #else
 		net_udp_io_create(&_socket, EXOS_IOF_WAIT);
+		_remote = (IP_PORT_ADDR) { .Address = IP_ADDR_BROADCAST, .Port = 5000 };
 #endif
 
 		IP_PORT_ADDR local = (IP_PORT_ADDR) { .Address = IP_ADDR_ANY, .Port = 23 };

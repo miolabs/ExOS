@@ -37,22 +37,6 @@ typedef struct __attribute__((__packed__))
 	unsigned char Options[0];
 } TCP_HEADER;
 
-typedef enum
-{
-	TCP_STATE_CLOSED,
-	TCP_STATE_LISTEN,
-	TCP_STATE_SYN_SENT,
-	TCP_STATE_SYN_RECEIVED,
-	TCP_STATE_ESTABLISHED,
-	TCP_STATE_CLOSE_WAIT,
-	TCP_STATE_LAST_ACK,
-	TCP_STATE_FIN_WAIT_1,
-	TCP_STATE_FIN_WAIT_2,
-	TCP_STATE_CLOSING,
-	TCP_STATE_TIME_WAIT,
-} TCP_STATE;
-
-
 int net_tcp_input(NET_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip);
 unsigned short net_tcp_checksum(IP_ADDR *source_ip, IP_ADDR *dest_ip, NET_MBUF *mbuf, int offset);
 

@@ -1,6 +1,6 @@
 <!DOCTYPE CrossStudio_Project_File>
-<solution Name="exos_lpc177x_8x" target="8" version="2">
-  <project Name="exos_experiment_lpc177x_8x">
+<solution Name="net_177x" target="8" version="2">
+  <project Name="net_lpc177x">
     <configuration Name="Common" Target="LPC1778" arm_architecture="v7M" arm_core_type="Cortex-M3" arm_instruction_set="Thumb" arm_library_instruction_set="Thumb" arm_linker_heap_size="8192" arm_linker_process_stack_size="512" arm_linker_stack_size="256" arm_simulator_memory_simulation_filename="$(TargetsDir)/LPC1000/LPC1000SimulatorMemory.dll" arm_simulator_memory_simulation_parameter="LPC177x_8x;0x80000;0x10000;0x8000" arm_target_debug_interface_type="ADIv5" arm_target_flash_loader_file_path="$(TargetsDir)/LPC1000/Release/Loader_rpc.elf" arm_target_flash_loader_type="LIBMEM RPC Loader" arm_target_loader_parameter="12000000" build_intermediate_directory=".output/$(Configuration)" build_output_directory=".output/$(Configuration)" c_only_additional_options="-fms-extensions" c_system_include_directories="$(TargetsDir)/LPC1000/include;$(TargetsDir)/CMSIS_3/CMSIS/Include" c_user_include_directories="$(ProjectDir);$(ProjectDir)/include;$(ProjectDir)/kernel/driver" gcc_entry_point="Reset_Handler" link_IOLibraryName="none" link_include_standard_libraries="No" link_include_startup_code="No" linker_additional_files="$(StudioDir)/lib/libc$(LibExt)$(LIB)" linker_memory_map_file="$(TargetsDir)/LPC1000/LPC1778_MemoryMap.xml" linker_patch_build_command="&quot;$(StudioDir)/bin/crossscript&quot; &quot;load(\&quot;$(TargetsDir)/LPC1000/LPC1000_LinkPatch.js\&quot;);patch(\&quot;$(TargetPath)\&quot;);&quot;" oscillator_frequency="12MHz" project_directory="" project_type="Executable" property_groups_file_path="$(TargetsDir)/LPC1000/propertyGroups177x_8x.xml" target_reset_script="FLASHReset()"/>
     <folder Name="Source Files">
       <configuration Name="Common" filter="c;cpp;cxx;cc;h;s;asm;inc"/>
@@ -23,10 +23,6 @@
         <file file_name="kernel/list.c"/>
         <file file_name="kernel/panic.c"/>
         <file file_name="kernel/signal.c"/>
-        <folder Name="tests" file_name="">
-          <file file_name="kernel/tests/threading_tests.c"/>
-          <file file_name="kernel/tests/memory_tests.c"/>
-        </folder>
         <file file_name="kernel/thread.c"/>
         <file file_name="kernel/timer.c"/>
         <folder Name="posix" file_name="">
@@ -76,9 +72,6 @@
           </folder>
           <folder Name="usb">
             <file file_name="kernel/driver/usb/usb.c"/>
-            <folder Name="test" file_name="">
-              <file file_name="kernel/driver/usb/test/usbhost_test.c"/>
-            </folder>
             <file file_name="kernel/driver/usb/host.c"/>
             <file file_name="kernel/driver/usb/enumerate.c"/>
             <folder Name="classes">
@@ -122,14 +115,11 @@
             <file file_name="support/usb/driver/msc.c"/>
             <file file_name="support/usb/driver/usbprint.c"/>
             <file file_name="support/usb/driver/ftdi.c"/>
-            <file file_name="support/usb/driver/iap2.c"/>
-            <file file_name="support/usb/driver/hid.c"/>
           </folder>
         </folder>
         <folder Name="misc">
           <file file_name="support/misc/mac_24xx02.c"/>
           <file file_name="support/misc/eeprom.c"/>
-          <file file_name="support/misc/apple_cp20.c"/>
         </folder>
       </folder>
       <folder Name="modules">
@@ -140,7 +130,7 @@
           </folder>
         </folder>
       </folder>
-      <file file_name="support/usb/driver/iap2.h"/>
+      <file file_name="kernel/posix/tests/tcp_test.c"/>
     </folder>
     <folder Name="System Files">
       <file file_name="$(TargetsDir)/LPC1000/LPC177x_8x_Target.js">
@@ -160,4 +150,7 @@
   <configuration Name="Mioboard" c_preprocessor_definitions="BOARD_MIOBOARD;EEPROM_I2C_MODULE=0;EEPROM_SIZE=256;EEPROM_PAGE_SIZE=8" hidden="Yes"/>
   <configuration Name="Mioboard Debug" inherited_configurations="Debug;Mioboard"/>
   <configuration Name="Mioboard Release" inherited_configurations="Mioboard;Release"/>
+  <configuration Name="UDP" c_preprocessor_definitions="RFGATE_UDP" hidden="Yes"/>
+  <configuration Name="Mioboard UDP Debug" inherited_configurations="Debug;Mioboard;UDP"/>
+  <configuration Name="Mioboard UDP Release" inherited_configurations="Mioboard;Release;UDP"/>
 </solution>
