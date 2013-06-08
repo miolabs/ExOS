@@ -8,6 +8,7 @@
 #include <kernel/tree.h>
 #include <support/board_hal.h>
 #include <stdio.h>
+#include <support/misc/apple_cp20.h>
 
 COMM_IO_ENTRY _comm;
 TCP_IO_ENTRY _socket;
@@ -19,6 +20,7 @@ unsigned char _snd_buffer[TCP_BUFFER_SIZE] __attribute__((section(".dma")));
 
 void main()
 {
+	apple_cp20_initialize(0);
 	usb_host_initialize();
 	int err = 0;
 	int done = 0;
