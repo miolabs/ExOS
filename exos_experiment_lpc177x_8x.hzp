@@ -129,6 +129,7 @@
         <folder Name="misc">
           <file file_name="support/misc/mac_24xx02.c"/>
           <file file_name="support/misc/eeprom.c"/>
+          <file file_name="support/misc/apple_cp20.c"/>
         </folder>
       </folder>
       <folder Name="modules">

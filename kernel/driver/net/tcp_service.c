@@ -136,16 +136,22 @@ int net_tcp_close(TCP_IO_ENTRY *io)
 	TCP_INCOMING_CONN *conn;
 	int run_service = 0;
 	exos_mutex_lock(&io->Mutex);
-	if (io->State != TCP_STATE_CLOSED)
+	if (io->State == TCP_STATE_LISTEN)
+	{
+		while(NULL != (conn = (TCP_INCOMING_CONN *)exos_fifo_dequeue(&io->AcceptQueue)))
+		{
+			exos_fifo_queue(&_free_incoming_connections, (EXOS_NODE *)conn);
+		}
+		exos_mutex_lock(&_entries_mutex);
+		list_remove((EXOS_NODE *)io);
+		io->State = TCP_STATE_CLOSED;
+		exos_event_set(&io->CloseEvent);
+		exos_mutex_unlock(&_entries_mutex);
+	}
+	else if (io->State != TCP_STATE_CLOSED)
 	{
 		switch(io->State)
 		{
-			case TCP_STATE_LISTEN:
-				while(NULL != (conn = (TCP_INCOMING_CONN *)exos_fifo_dequeue(&io->AcceptQueue)))
-				{
-					exos_fifo_queue(&_free_incoming_connections, (EXOS_NODE *)conn);
-				}
-				break;
 			case TCP_STATE_CLOSE_WAIT:
 				io->SndFlags = (TCP_FLAGS) { .FIN = 1, .ACK = 1 };
 				io->State = TCP_STATE_LAST_ACK;
@@ -278,7 +284,7 @@ static void _handle(TCP_IO_ENTRY *io)
 		case TCP_STATE_TIME_WAIT:
 			if (io->SndFlags.ACK && io->ServiceRetry == 0)	
 			{
-				// NOTE: send pending ack when coming from TIME_WAIT_2
+				// NOTE: send pending ack when coming from FIN_WAIT_2
 				io->ServiceWait = 2000;	// FIXME: should be 2MSL
 			}
 			else io->State = TCP_STATE_CLOSED;
@@ -325,11 +331,8 @@ static void *_service(void *arg)
 		FOREACH(node, &_entries)
 		{
 			TCP_IO_ENTRY *io = (TCP_IO_ENTRY *)node;
-
-			if (io->State == TCP_STATE_LISTEN) 
-			{
-   				io->State = TCP_STATE_CLOSED;
-			}
+			if (io->State == TCP_STATE_LISTEN)
+				continue;
 
 			if (io->State != TCP_STATE_CLOSED)
 			{
@@ -337,7 +340,6 @@ static void *_service(void *arg)
 				if (rem <= 0)
 				{
 					_handle(io);
-
 					rem = io->ServiceWait; 
 				}
 				if (rem < rem_min)

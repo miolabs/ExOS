@@ -127,7 +127,7 @@ void *exos_mem_alloc(unsigned long size, EXOS_MEM_FLAGS flags)
 				if (flags & EXOS_MEMF_CLEAR) __mem_set(header->Contents, header->Contents + size, 0);
 				segment = header->Contents;
 			}
-			exos_mutex_lock(&region->FreeListMutex);
+			exos_mutex_unlock(&region->FreeListMutex);
 
 			if (segment != NULL) break;
 		}
