@@ -1,0 +1,68 @@
+<!DOCTYPE CrossStudio_Project_File>
+<solution Name="leopard_test" target="8" version="2">
+  <project Name="leopard_test">
+    <configuration Name="Common" Placement="SRAM" arm_architecture="v5TE" arm_core_type="ARM926EJ-S" arm_linker_jtag_pad_post_dr="1" arm_linker_jtag_pad_post_ir="4" arm_linker_jtag_pad_pre_dr="1" arm_linker_jtag_pad_pre_ir="6" arm_target_debug_interface_type="ARM9TDI" arm_target_loader_applicable_loaders="" arm_target_loader_default_loader="" gcc_entry_point="Reset_Handler" linker_memory_map_file="$(TargetsDir)/TMS320DM3x/TMS320DM3x_MemoryMap.xml" linker_section_placement_file="$(StudioDir)/targets/internal_sram_placement.xml" project_directory="" project_type="Executable" property_groups_file_path="$(TargetsDir)/TMS320DM3x/propertyGroups.xml" target_TAP_reset_script="ResetTAP()" target_connect_script="Connect()" target_debug_interface_reset_script="ResetDebugInterface()" target_reset_script="SRAMReset()"/>
+    <folder Name="Source Files" file_name="">
+      <configuration Name="Common" filter="c;cpp;cxx;cc;h;s;asm;inc"/>
+      <file file_name="leopard_test.c"/>
+      <folder Name="kernel" file_name="">
+        <file file_name="../../../kernel/thread.c"/>
+        <file file_name="../../../kernel/signal.c"/>
+        <file file_name="../../../kernel/panic.c"/>
+        <file file_name="../../../kernel/list.c"/>
+        <file file_name="../../../kernel/startup.c"/>
+        <file file_name="../../../kernel/memory.c"/>
+        <file file_name="../../../kernel/mutex.c"/>
+        <file file_name="../../../kernel/port.c"/>
+        <file file_name="../../../kernel/io.c"/>
+        <file file_name="../../../kernel/tree.c"/>
+        <file file_name="../../../kernel/timer.c"/>
+        <folder Name="driver" file_name="">
+          <folder Name="comm" file_name="">
+            <file file_name="../../../kernel/driver/comm/comm.c"/>
+          </folder>
+        </folder>
+      </folder>
+      <folder Name="machine" file_name="">
+        <folder Name="armv4" file_name="">
+          <file file_name="../../../kernel/machine/armv4/kernel_armv4.s"/>
+        </folder>
+        <folder Name="dm36x" file_name="">
+          <file file_name="../../../kernel/machine/dm36x/machine_dm36x.c"/>
+          <file file_name="../../../kernel/machine/dm36x/startup_dm36x.s"/>
+        </folder>
+        <file file_name="../../../kernel/machine/hal.c"/>
+        <file file_name="../../../kernel/machine/dm36x/time_dm36x.c"/>
+      </folder>
+      <folder Name="support" file_name="">
+        <folder Name="dm36x" file_name="">
+          <file file_name="../aemif.c"/>
+          <file file_name="../emif.c"/>
+          <file file_name="../gpio.c"/>
+          <file file_name="../system.c"/>
+          <file file_name="../timer.c"/>
+          <file file_name="../intc.c"/>
+        </folder>
+        <file file_name="../../onfi.c"/>
+        <folder Name="board" file_name="">
+          <file file_name="../../board/leopardboard.c"/>
+        </folder>
+        <configuration Name="Common" build_intermediate_directory=".output/$(Configuration)/support" build_output_directory=".output/$(Configuration)/support"/>
+      </folder>
+    </folder>
+    <folder Name="System Files">
+      <file file_name="$(TargetsDir)/TMS320DM3x/TMS320DM3x_Target.js">
+        <configuration Name="Common" file_type="Reset Script"/>
+      </file>
+    </folder>
+  </project>
+  <configuration Name="ARM Debug" inherited_configurations="ARM;Debug"/>
+  <configuration Name="ARM" Platform="ARM" arm_instruction_set="ARM" arm_library_instruction_set="ARM" c_preprocessor_definitions="__ARM" hidden="Yes"/>
+  <configuration Name="Debug" c_preprocessor_definitions="DEBUG" gcc_debugging_level="Level 2" gcc_optimization_level="None" hidden="Yes"/>
+  <configuration Name="ARM Release" inherited_configurations="ARM;Release"/>
+  <configuration Name="Release" c_preprocessor_definitions="NDEBUG" gcc_debugging_level="Level 1" gcc_optimization_level="Level 1" hidden="Yes"/>
+  <configuration Name="THUMB Debug" inherited_configurations="THUMB;Debug"/>
+  <configuration Name="THUMB" Platform="ARM" arm_instruction_set="THUMB" arm_library_instruction_set="THUMB" c_preprocessor_definitions="__THUMB" hidden="Yes"/>
+  <configuration Name="THUMB Release" inherited_configurations="THUMB;Release"/>
+  <configuration Name="Common" c_only_additional_options="-fms-extensions" c_preprocessor_definitions="__EXOS__;MAIN_THREAD_STACK=1024;MAIN_THREAD_PRI=0;OSCILLATOR_CLOCK_FREQUENCY = 24000000;EXOS_NO_NET" c_system_include_directories="$(StudioDir)/include;$(PackagesDir)/include;../../../;../../../kernel/driver/"/>
+</solution>
