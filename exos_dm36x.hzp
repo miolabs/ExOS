@@ -5,7 +5,7 @@
     <folder Name="Source Files" file_name="">
       <configuration Name="Common" filter="c;cpp;cxx;cc;h;s;asm;inc"/>
       <folder Name="support">
-        <folder Name="dm36x">
+        <folder Name="dm36x" file_name="">
           <file file_name="support/dm36x/emif.c"/>
           <file file_name="support/dm36x/gpio.c"/>
           <file file_name="support/dm36x/intc.c"/>
@@ -13,6 +13,7 @@
           <file file_name="support/dm36x/timer.c"/>
           <file file_name="support/dm36x/emac.c"/>
           <file file_name="support/dm36x/emac_mdio.c"/>
+          <file file_name="support/dm36x/aemif.c"/>
         </folder>
         <configuration Name="Common" build_intermediate_directory=".output/$(Configuration)/support" build_output_directory=".output/$(Configuration)/support"/>
         <folder Name="board" file_name="">
@@ -61,9 +62,10 @@
             <file file_name="kernel/driver/net/net_io.c"/>
             <file file_name="kernel/driver/net/net_service.c"/>
             <file file_name="kernel/driver/net/udp.c"/>
-            <folder Name="support">
+            <folder Name="support" file_name="">
               <file file_name="kernel/driver/net/support/apipa.c"/>
               <file file_name="kernel/driver/net/support/phy.c"/>
+              <file file_name="support/onfi.c"/>
             </folder>
             <file file_name="kernel/driver/net/tcp.c"/>
             <file file_name="kernel/driver/net/tcp_io.c"/>

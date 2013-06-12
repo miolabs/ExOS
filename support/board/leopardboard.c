@@ -17,6 +17,8 @@ static const ONFI_DRIVER _fl_driver = {
 
 static ONFI_STATUS _fl_status;
 
+volatile int i_am_here () { return 666; }
+
 void hal_board_initialize()
 {
 	gpio_initialize();
@@ -38,39 +40,44 @@ void hal_board_initialize()
 //	gpio_setup(31, GPIO_DIR_OUTPUT, 1);	// CLKOUT2 (PLLC1_SYSCLK9 * DIV)
 //	system_select_pinmux(31, 3);	// for testing purposes only
 
-	// PLL freq = 500 MHz
-	int ratios_pllc1[] = {
-		10,	// SYSCLK1 = 50 MHz (-USB Ref)
-		3,	// SYSCLK2 = 166.66 MHz (HDVICP+ARM9Core)
-		3,	// SYSCLK3 = 166.66 MHz (HDVICP IF+MJCP IF)
-		6,	// SYSCLK4 = 83.33 MHz (CFGBuf, VCLK, Peripheral)
-		4,	// SYSCLK5 = 125 MHz (VPSS)
-		10, // SYSCLK6 = (-VENC)
-		3,	// SYSCLK7 = 166.66 MHz (DDR2)
-		20, // SYSCLK8 = 25MHz (MMC/SD0)
-		10, // SYSCLK9 = (DIV * CLKOUT2)
-		}; 
-	pllc_setup(PLLC1, 5, 125, 1, ratios_pllc1, 9);
+	// Initialize SDRAM if the program is not already working there
+	unsigned int code = (unsigned int)&i_am_here;
+	if (( code & 0xf0000000) != 0x80000000)
+	{
+		// PLL freq = 500 MHz
+		int ratios_pllc1[] = {
+			10,	// SYSCLK1 = 50 MHz (-USB Ref)
+			3,	// SYSCLK2 = 166.66 MHz (HDVICP+ARM9Core)
+			3,	// SYSCLK3 = 166.66 MHz (HDVICP IF+MJCP IF)
+			6,	// SYSCLK4 = 83.33 MHz (CFGBuf, VCLK, Peripheral)
+			4,	// SYSCLK5 = 125 MHz (VPSS)
+			10, // SYSCLK6 = (-VENC)
+			3,	// SYSCLK7 = 166.66 MHz (DDR2)
+			20, // SYSCLK8 = 25MHz (MMC/SD0)
+			10, // SYSCLK9 = (DIV * CLKOUT2)
+			}; 
+		pllc_setup(PLLC1, 5, 125, 1, ratios_pllc1, 9);
 
-	EMIF_SPEC spec = (EMIF_SPEC) {
-		.tref = 7800, // 7.8 us)
-		.trfc = 128, // 127.5 ns
-		.trp = 20,
-		.trcd = 20,
-		.twr = 15,
-		.tras = 45,
-		.trc = 65,
-		.trrd = 10,
-		.twtr = 10,
-		.trasmax = 70000, // 70us
-		.txp = 2, // cycles
-		.txsnr = 138,	// 137.5 ns
-		.txsrd = 200, // cycles
-		.trtp = 8,	// 7.5 ns
-		.tcke = 3, // cycles
-		};
-	system_select_ddr2_clock(PLLC1);
-	emif_initialize_ddr2(&spec, 6); // 6ns clk (166MHz)
+		EMIF_SPEC spec = (EMIF_SPEC) {
+			.tref = 7800, // 7.8 us)
+			.trfc = 128, // 127.5 ns
+			.trp = 20,
+			.trcd = 20,
+			.twr = 15,
+			.tras = 45,
+			.trc = 65,
+			.trrd = 10,
+			.twtr = 10,
+			.trasmax = 70000, // 70us
+			.txp = 2, // cycles
+			.txsnr = 138,	// 137.5 ns
+			.txsrd = 200, // cycles
+			.trtp = 8,	// 7.5 ns
+			.tcke = 3, // cycles
+			};
+		system_select_ddr2_clock(PLLC1);
+		emif_initialize_ddr2(&spec, 6); // 6ns clk (166MHz)
+	}
 
 	AEMIF_SPEC spec2 = (AEMIF_SPEC) {
 		.trp = 20,
