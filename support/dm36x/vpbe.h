@@ -48,6 +48,54 @@ typedef volatile struct
     unsigned long CAPDE; // 0xa4
     unsigned long ATR0; // 0xa8 
     unsigned long ATR1; // 0xac
+    unsigned long ATR2; // 0xB0h
+    unsigned long RSV0; // 0xB4h
+    unsigned long VSTAT; // 0x B8h
+    unsigned long RAMADR; // 0x BCh
+	unsigned long RAMPORT; // 0x C0h
+    unsigned long DACTST; // 0xC4h
+	unsigned long YCOLVL; // 0xC8h
+	unsigned long SCPROG; // 0x CCh
+	unsigned long RSV1; // 0xD0h
+	unsigned long RSV2; // 0xD4h
+	unsigned long RSV3; // 0xD8h
+	unsigned long CVBS; // 0xDCh
+	unsigned long CMPNT; // 0xE0h
+	unsigned long ETMG0; // 0xE4h
+	unsigned long ETMG1; // 0xE8h
+	unsigned long ETMG2; // 0xECh
+	unsigned long ETMG3; // 0xF0h
+	unsigned long DACSEL; // 0xF4h
+	unsigned long ARGBX0; // 0x100h
+	unsigned long ARGBX1; // 0x104h
+	unsigned long ARGBX2; // 0x108h
+	unsigned long ARGBX3; // 0x10Ch
+	unsigned long ARGBX4; // 0x110h
+	unsigned long DRGBX0; // 0x114h
+	unsigned long DRGBX1; // 0x118h
+	unsigned long DRGBX2; // 0x11Ch
+	unsigned long DRGBX3; // 0x120h
+	unsigned long DRGBX4; // 0x124h
+	unsigned long VSTARTA; // 0x128h
+	unsigned long OSDCLK0; // 0x12Ch
+	unsigned long OSDCLK1; // 0x130h
+	unsigned long HVLDCL0; // 0x134h
+	unsigned long HVLDCL1; // 0x138h
+	unsigned long OSDHADV; // 0x13Ch
+	unsigned long CLKCTL; // 0x140h
+	unsigned long GAMCTL; // 0x144h
+	unsigned long VVALIDA; // 0x148h
+	unsigned long BATR0; // 0x14Ch
+	unsigned long BATR1; // 0x150h
+	unsigned long BATR2; // 0x154h
+	unsigned long BATR3; // 0x158h
+	unsigned long BATR4; // 0x15Ch
+	unsigned long BATR5; // 0x160h
+	unsigned long BATR6; // 0x164h
+	unsigned long BATR7; // 0x168h
+	unsigned long BATR8; // 0x16Ch
+	unsigned long DACAMP; // 0x170h
+	unsigned long XHINTVL; // 0x174h
 } VENC_CONTROLLER;
 
 
