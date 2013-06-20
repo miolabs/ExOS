@@ -18,7 +18,7 @@ static VENC_CONTROLLER *_venc = (VENC_CONTROLLER *)0x01C71E00;
 #define HDTV_720P  3
 
 #define DIGITAL_OUT_YCC16   0
-#define DIGITAL_OUT_ YCC8   1
+#define DIGITAL_OUT_YCC8    1
 #define DIGITAL_OUT_PAR_RGB 2
 #define DIGITAL_OUT_SER_RGB 3
 
@@ -60,7 +60,7 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 
 	_venc->VMOD = ( 1 << 0) |  // VENC enable
 	              (1 << 1) |   // Composite enable
-	              (0 << 3) |	  // Blanking normal/force
+	              (0 << 3) |   // Blanking normal/force
 	              (0 << 4) |  // Video timing: PAL/NTSC/HDTV or not standard
 	              (0 << 5) |  // Master mode
 	              (SDTV_PAL << 6) |   // Mode
@@ -70,27 +70,47 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 	              (0 << 11) |  // Non-interlace SDTV lines 312/313
 	              (DIGITAL_OUT_PAR_RGB << 12);  // Digital video output mode
 
-	// ??
-	//_venc->VIOCTL = 
+	// Video interface I/O control (can be all 0 for TV out)
+	_venc->VIOCTL = (0<<0) |  // YOUT/COUT I/O; output or input
+					(0<<2) |  // YOUT/COUT pin DC output mode; normal or DC level
+					(0<<3) |  // Swaps YOUT/COUT; normal or interchaqnge
+					(0<<4) |  // Digital data output mode: normal, inverse, L or H
+					(0<<8) |  // HSYNC/VSYNC pin I/O control: output or input
+					(0<<12) | // VCLK pin output enable: output or high impedance
+					(0<<13) | // VCLK output enable: ? or DCLK
+					(0<<14);	 // VCLK output polarity: normal or inverse
 
 	// Filtrado del OSD -> VENC
 	_venc->VDPRO = (0<<14) | // pre-filter select: no / 1+1 / 1+2+1 / reserved
 	               (0<<12) | // Y pre-filter: no / 1+1 / 1+2+1 / reserved
 	               (0<<11) | // pre-filter sampling freq: clock/2 or clock ?
-	               (0<<9) | // Color bar type: 75% or 100%
-	               (0<<8) | // Color bar mode, normal / color bar (!!??)
+	               (1<<9) | // Color bar type: 75% or 100%
+	               (1<<8) | // Color bar mode, normal / color bar
 	               (0<<7) | // DAC full-swing out normal / full swing
 	               (0<<6) | // RGB input attenuation no / REC601
 	               (0<<5) | // YCbCr input attenuation no / REC601
 	               (0<<4) | // Composite input attenuation no / REC601
 	               (0<<0);  // Chroma signal up sampling enable
 
-	// ??
-	//_vecn->SYNCCTL = (<<) |
+	// Synchronism control; can be all 0 for TV out?
+	_vecn->SYNCCTL = (0<<0) |  // Horizontal sync output enable
+					 (0<<1) |  // Vertical sync output enable
+					 (0<<2) |  // Horizontal sync output polarity. High or Low
+					 (0<<3) |  // Vertical sync output polarity
+					 (<<4) |  // VSYNC pin output signal select
+					 (0<<5) |  // Output sync select; normal or SYNCPLS
+					 (<<6) |  // Composite sync output enable. Off/On
+					 (<<7) |  // Composite sync output polarity. H or L
+					 (0<<8) |  // External horizontal sync input polarity. H or L
+					 (0<<9) |  // External vertical sync input polarity. H or L
+					 (0<<10) |  // External sync select. Effective in slave operation
+					 (0<<11) |  // External field input inversion. Effective in slave operation
+					 (0<<12) |  // External field input inversion. Effective in slave operation
+					 (0<<14); // OSD vsync delay. 0 or 0.5H
 
 	// ??
-	//_venc->HSPLS
-	//_venc->VSPLS
+	_venc->HSPLS
+	_venc->VSPLS
 
 	//_venc->HSTART
 	//_venc->HVALID	// number of ENC clocks
@@ -117,10 +137,12 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 	// _venc->PWM1
 
 	// Clock
+	// The VENC provides the sync signals to the OSD module
 	//_venc->OSDCLK0 = 
 	//_venc->OSDCLK1 = 
+
+	_venc->CLKCTL = 
 	//_venc->DCLK = 
-	//_venc->CLKCTL
 	//_venc->DCLKPTN0 = 
 	//_venc->DCLKPTN1 = 
 	//_venc->DCLKPTN2 = 
@@ -256,5 +278,19 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 	_venc->DACAMP = (0<<0) |
 	                (0<<10);
 
+/*
+	// Linux venc setup
 
+	// Reset video encoder module 
+	_venc->VMOD = 0;
+	// Enable Composite output and start video encoder 
+	_venc->VMOD = (1 << 0) |  // VENC enable
+	              (1 << 1);   // Composite enable;
+	// Set REC656 Mode 
+	_venc->YCCCTL = 0x1;
+	// Enable output mode and PAL 
+	_venc->VMOD = 0x1043;
+	// Enable all DACs 
+	_venc->DACTST = 0;
+*/
 }
