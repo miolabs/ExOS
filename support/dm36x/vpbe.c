@@ -1,6 +1,8 @@
 // VPBE Des-Controller for TMS320DM36x
 // by anonymous
 
+#include <assert.h>
+
 #include "vpbe.h"
 #include "vpss.h"
 #include "system.h"
@@ -43,12 +45,18 @@ static VENC_CONTROLLER *_venc = (VENC_CONTROLLER *)0x01C71E00;
 #define DAC_SELECT_PbB     4
 #define DAC_SELECT_PrR     5
 
+
+static inline void _reg_mod ( volatile unsigned long* reg, unsigned long val, unsigned long mask)
+{
+	*reg = (*reg & (~mask)) | (val & mask);
+}
+
 void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 {
 	int i;
 	// Reset VPBE
 	vpss_init (0);
-
+/*
 	// Configure OSD
 
 	// OSD enable
@@ -277,8 +285,23 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 	// DAC gain & offset (in DAC full range output mode DAFUL=1) ?errata en manual?
 	_venc->DACAMP = (0<<0) |
 	                (0<<10);
+*/
 
-/*
+
+#define VENC_VMOD_VENC				(1 << 0)
+
+#define VENC_VMOD_VMD_SHIFT			4
+#define VENC_VMOD_VMD				(1 << 4)
+
+#define VENC_VMOD_TVTYP_SHIFT			6
+#define VENC_VMOD_TVTYP				(3 << 6)
+
+#define VENC_VMOD_VIE				(1 << 1)
+#define VENC_VMOD_VIE_SHIFT			1
+
+#define VENC_SYNCCTL_OVD_SHIFT			14
+#define VENC_SYNCCTL_OVD			(1 << 14)
+
 	// Linux venc setup
 
 	// Reset video encoder module 
@@ -292,5 +315,65 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 	_venc->VMOD = 0x1043;
 	// Enable all DACs 
 	_venc->DACTST = 0;
-*/
+
+	// Setup clock at VPSS & VENC for SD 
+	vpss_enable_clock(4);
+
+	vpss_enable_clock ( VPSS_VENCCLKEN_ENABLE);
+	vpss_enable_clock ( VPSS_DACCLKEN_ENABLE);
+
+	// if (venc_type == VPBE_VERSION_2 && (type == VPBE_ENC_STD || (type == VPBE_ENC_DV_TIMINGS && pclock <= 27000000)))
+	vpss_enable_clock(4);
+	vpss_enable_clock(1);
+
+	_venc->VMOD = 0;
+	// disable VCLK output pin enable 
+	_venc->VIOCTL = 0x141;
+
+	// Disable output sync pins 
+	_venc->SYNCCTL = 0;
+
+	// Disable DCLOCK 
+	_venc->DCLKCTL = 0;
+	_venc->DRGBX1 = 0x0000057C;
+
+	// Disable LCD output control (accepting default polarity) 
+	_venc->LCDOUT = 0;
+	// _venc->CMPNT = 0x100; // VPBE_VERSION_3
+	_venc->HSPLS = 0;
+	_venc->HINTVL = 0;
+	_venc->HSTART = 0;
+	_venc->HVALID = 0;
+
+	_venc->VSPLS = 0;
+	_venc->VINTVL = 0;
+	_venc->VSTART = 0;
+	_venc->VVALID = 0;
+
+	_venc->HSDLY = 0;
+	_venc->VSDLY = 0;
+
+	_venc->YCCCTL = 0;
+	_venc->VSTARTA = 0;
+
+	// Set OSD clock and OSD Sync Adavance registers 
+	_venc->OSDCLK0 = 1;
+	_venc->OSDCLK1 = 2;
+
+	// VPBE_VERSION_2
+	_venc->CLKCTL = 0x1;
+	_venc->VIOCTL = 0;
+
+	_reg_mod(&_venc->SYNCCTL, 1 << VENC_SYNCCTL_OVD_SHIFT,VENC_SYNCCTL_OVD);
+	_venc->VMOD = 0;
+	_reg_mod(&_venc->VMOD,(1 << VENC_VMOD_VIE_SHIFT),VENC_VMOD_VIE);
+	_reg_mod(&_venc->VMOD,(0 << VENC_VMOD_VMD_SHIFT), VENC_VMOD_VMD);
+	_reg_mod(&_venc->VMOD,(1 << VENC_VMOD_TVTYP_SHIFT),VENC_VMOD_TVTYP);
+	_venc->DACTST = 0x0;
+	_reg_mod(&_venc->VMOD, VENC_VMOD_VENC, VENC_VMOD_VENC);
+
 }
+
+
+
+
