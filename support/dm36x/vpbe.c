@@ -56,7 +56,7 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 	int i;
 	// Reset VPBE
 	vpss_init (0);
-/*
+
 	// Configure OSD
 
 	// OSD enable
@@ -66,17 +66,17 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 	// VENC enable
 	// -----------
 
-	_venc->VMOD = ( 1 << 0) |  // VENC enable
+	_venc->VMOD = (1 << 0) |  // VENC enable
 	              (1 << 1) |   // Composite enable
 	              (0 << 3) |   // Blanking normal/force
 	              (0 << 4) |  // Video timing: PAL/NTSC/HDTV or not standard
 	              (0 << 5) |  // Master mode
 	              (SDTV_PAL << 6) |   // Mode
 	              (0 << 8) |  // SDTV / HDTV
-	              (1 << 9) |  // Non-standard modes: Progressive / interlaced
+	              (0 << 9) |  // Non-standard modes: Progressive / interlaced
 	              (0 << 10) |  // Standard modes: interlaced / non-interlaced
 	              (0 << 11) |  // Non-interlace SDTV lines 312/313
-	              (DIGITAL_OUT_PAR_RGB << 12);  // Digital video output mode
+	              (DIGITAL_OUT_YCC8 << 12);  // Digital video output mode
 
 	// Video interface I/O control (can be all 0 for TV out)
 	_venc->VIOCTL = (0<<0) |  // YOUT/COUT I/O; output or input
@@ -101,40 +101,39 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 	               (0<<0);  // Chroma signal up sampling enable
 
 	// Synchronism control; can be all 0 for TV out?
-	_vecn->SYNCCTL = (0<<0) |  // Horizontal sync output enable
+	_venc->SYNCCTL = (0<<0) |  // Horizontal sync output enable
 					 (0<<1) |  // Vertical sync output enable
 					 (0<<2) |  // Horizontal sync output polarity. High or Low
 					 (0<<3) |  // Vertical sync output polarity
-					 (<<4) |  // VSYNC pin output signal select
+					 (0<<4) |  // VSYNC pin output signal select
 					 (0<<5) |  // Output sync select; normal or SYNCPLS
-					 (<<6) |  // Composite sync output enable. Off/On
-					 (<<7) |  // Composite sync output polarity. H or L
+					 (1<<6) |  // Composite sync output enable. Off/On
+					 (0<<7) |  // Composite sync output polarity. H or L
 					 (0<<8) |  // External horizontal sync input polarity. H or L
 					 (0<<9) |  // External vertical sync input polarity. H or L
 					 (0<<10) |  // External sync select. Effective in slave operation
 					 (0<<11) |  // External field input inversion. Effective in slave operation
 					 (0<<12) |  // External field input inversion. Effective in slave operation
-					 (0<<14); // OSD vsync delay. 0 or 0.5H
+					 (1<<14); // OSD vsync delay. 0 or 0.5H 
 
 	// ??
-	_venc->HSPLS
-	_venc->VSPLS
+	_venc->HSPLS = 0; // Hor. sync. pulse width
+	_venc->VSPLS = 0; // vertical sync. pulse width
 
-	//_venc->HSTART
-	//_venc->HVALID	// number of ENC clocks
-	//_venc->VSTART
-	//_venc->VVALID // numer of lines
+	_venc->HINTVL = 0;  // for nonstardard mode
+	_venc->HSTART = 0; // Hor. valid data start position 
+	_venc->HVALID = 0; // number of ENC clocks
+	_venc->VINTVL = 0;  // for nonstandard-mode
+	_venc->VSTART = 0; // Ver. valid data start position 
+	_venc->VVALID = 0; // number of lines
 
-	//_venc->HINTVL  for nonstardard mode
-	//_venc->VINTVL	 for nonstandard-mode
-	//_venc->XHINTVL // Hor. interval extension. Effective only in 720p & 1080i
+	_venc->XHINTVL = 0; // Hor. interval extension. Effective only in 720p & 1080i
 
+	_venc->HSDLY = 0; // hsync delay in ENC clocks
+	_venc->HSDLY = 0; // vsync delay in ENC clocks
 
-	//_venc->HSDLY  // hsync delay in ENC clocks
-	//_venc->HSDLY  // vsync delay in ENC clocks
-
-	//_venc->LINECTL =  
-	//_venc->CULLLINE =  
+	_venc->LINECTL = 0;
+	_venc->CULLLINE = 0; 
 
 	//_venc->BRT0 =    // Bright pulse start position ??
 	//_venc->BRT1 =    // Bright pulse width  ??
@@ -146,31 +145,33 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 
 	// Clock
 	// The VENC provides the sync signals to the OSD module
-	//_venc->OSDCLK0 = 
-	//_venc->OSDCLK1 = 
+	_venc->OSDCLK0 = 1; // ?? 
+	_venc->OSDCLK1 = 2; // ??
 
-	_venc->CLKCTL = 
-	//_venc->DCLK = 
-	//_venc->DCLKPTN0 = 
-	//_venc->DCLKPTN1 = 
-	//_venc->DCLKPTN2 = 
-	//_venc->DCLKPTN3 = 
-	//_venc->DCLKPTN0A = 
-	//_venc->DCLKPTN1A = 
-	//_venc->DCLKPTN2A = 
-	//_venc->DCLKPTN3A = 
-	//_venc->DCLKHSTTA = // Horizontal mask start position (ENC)	
-	//_venc->DCLKHVLD = // Horizontal mask range (ENC)
-	//_venc->DCLKVSTTA = // Vertical mask start position (ENC)	
-	//_venc->DCLKVVLD = // Vertical mask range (ENC)
+	_venc->CLKCTL = (1<<0) | // Clock enable for video encoder
+					(0<<4) | // Clock enable for digital LCD encoder
+					(0<<8); // Clock enable for gamma correction table?
+	_venc->DCLKCTL = 0;
+	_venc->DCLKPTN0 = 0; 
+	_venc->DCLKPTN1 = 0;
+	_venc->DCLKPTN2 = 0;
+	_venc->DCLKPTN3 = 0;
+	_venc->DCLKPTN0A = 0;
+	_venc->DCLKPTN1A = 0;
+	_venc->DCLKPTN2A = 0;
+	_venc->DCLKPTN3A = 0;
+	_venc->DCLKHSTTA = 0; // Horizontal mask start position (ENC)	
+	_venc->DCLKHVLD = 0; // Horizontal mask range (ENC)
+	_venc->DCLKVSTT = 0; // Vertical mask start position (ENC)	
+	_venc->DCLKVVLD = 0; // Vertical mask range (ENC)
 
-	//_venc->YCOLVL = 0; // DC output mode, levels ??
+	_venc->YCOLVL = 0; // DC output mode, levels ??
 
-	//_venc->SCPROG = ??
+	_venc->SCPROG = 356; // Subcarrier initial phase NTSC 378 / PAL 356
 
 
 	// YCbCr control (chroma out?)
-	_venc->YCCCTL =   (0<<0); // REC656 mode no/yes
+	_venc->YCCCTL =  (1<<0); // REC656 mode no/yes
                      (0<<1) | // field toggle (REC656 mode)
                      (CHROMA_OUT_ORDER_8_BYRY <<2) |  // Yc output order
                      (0<<4);  // Chroma out: inmediate or latch
@@ -187,7 +188,6 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 	// RGB clipping
 	_venc->RGBCLP =  (0<<0) |	// Offset
                      (0xff<<8);	// upper limit
-
 
 	_venc->LCDOUT =  (0<<0) | // LCD_OE output control enable
                      (0<<1) | // Polarity H/L
@@ -232,11 +232,11 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 	// Component mode
 	_venc->CMPNT = 0;
 
-	// CVBS timing control
-	_venc->ETMG0 = 0; // ??
-	_venc->ETMG1 = 0; // ??
-	_venc->ETMG2 = 0; // ??
-	_venc->ETMG3 = 0; // ??
+	// CVBS timing control ??
+	_venc->ETMG0 = 0; // T1: PAL & NTSC
+	_venc->ETMG1 = 0; // T2: PAL 151 / NTSC 141   T3: P212/N210 T4: P263/N243 T5: P1703/N1683
+	_venc->ETMG2 = 0; // 
+	_venc->ETMG3 = 0; // 
 
 	_venc->DACSEL = (DAC_SELECT_CVBS<<0) |  // dac0 output select
 					(DAC_SELECT_CVBS<<4) |  // dac1 output select
@@ -260,7 +260,6 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 	// Horizontal Valid Culling Control 0 ??
 	_venc->HVLDCL0 = (0<<0) | // Horizontal valid culling pattern bit width.
 					 (0<<4); // Horizontal valid culling mode (normal / culling mode)
-
 	_venc->HVLDCL1 = 0; // Horizontal Valid Culling Pattern
 
 	_venc->OSDHADV = 0; // Horizontal Sync Advance  ??
@@ -285,9 +284,11 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 	// DAC gain & offset (in DAC full range output mode DAFUL=1) ?errata en manual?
 	_venc->DACAMP = (0<<0) |
 	                (0<<10);
-*/
+}
 
-
+#if 0
+void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
+{
 #define VENC_VMOD_VENC				(1 << 0)
 
 #define VENC_VMOD_VMD_SHIFT			4
@@ -329,6 +330,15 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 	_venc->VMOD = 0;
 	// disable VCLK output pin enable 
 	_venc->VIOCTL = 0x141;
+//                  0001 0100 0001
+//	_venc->VIOCTL = (1<<0) |  // YOUT/COUT I/O; output or input
+//					(0<<2) |  // YOUT/COUT pin DC output mode; normal or DC level
+//					(0<<3) |  // Swaps YOUT/COUT; normal or interchaqnge
+//					(0<<4) |  // Digital data output mode: normal, inverse, L or H
+//					(1<<8) |  // HSYNC/VSYNC pin I/O control: output or input
+//					(0<<12) | // VCLK pin output enable: output or high impedance
+//					(0<<13) | // VCLK output enable: ? or DCLK
+//					(0<<14);	 // VCLK output polarity: normal or inverse
 
 	// Disable output sync pins 
 	_venc->SYNCCTL = 0;
@@ -374,6 +384,7 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 
 }
 
+#endif
 
 
 
