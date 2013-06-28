@@ -3,7 +3,8 @@
 
 #include "system.h"
 
-static SYSTEM_CONTROLLER *_system = (SYSTEM_CONTROLLER *)0x01C40000;
+// Shared by leopardboard.c
+SYSTEM_CONTROLLER *_system = (SYSTEM_CONTROLLER *)0x01C40000;
 
 static PSC_CONTROLLER *_psc = (PSC_CONTROLLER *)0x01C41000;
 

@@ -45,26 +45,59 @@ static VENC_CONTROLLER *_venc = (VENC_CONTROLLER *)0x01C71E00;
 #define DAC_SELECT_PbB     4
 #define DAC_SELECT_PrR     5
 
-
 static inline void _reg_mod ( volatile unsigned long* reg, unsigned long val, unsigned long mask)
 {
 	*reg = (*reg & (~mask)) | (val & mask);
 }
 
-void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
+const int _basep_x = 132;
+const int _basep_y = 22;
+#define _width  (720)
+#define _height  (480)
+
+//static unsigned int videokk [_width * _height];
+
+typedef union { unsigned int* ptr; unsigned int ptrbits;} BRIDGE;
+
+static void _vpbe_config_osd ()
+{
+	// Configure OSD
+    _osd->MODE       = 0x000000fc;   // Blackground color blue using clut in ROM0
+
+    _osd->OSDWIN0MD  = 0;            // Disable both osd windows and cursor window
+    _osd->OSDWIN1MD  = 0;
+    _osd->RECTCUR    = 0;
+
+    // AKN: Address are specified in multiple of 32 
+    BRIDGE brg;
+	//brg.ptr = videokk;
+	brg.ptrbits = 0x80000000;
+    unsigned int video_buffer = brg.ptrbits >> 5;
+
+    _osd->VIDWIN0OFST = 0x1000 | (_width >> 4);
+    // High address is non-zero 
+    _osd->VIDWINADH = (video_buffer >> 16) & (0x7F); // 0x0000
+    // Added 16 bit address
+    _osd->VIDWIN0ADL = video_buffer & 0xFFFF; // Lower 16 bits
+
+    _osd->VIDWINADH  = 0x0000;
+    _osd->OSDWIN0ADL = 0x0000; /* Lower 16 bits */
+    _osd->BASEPX     = _basep_x;
+    _osd->BASEPY     = _basep_y;
+    _osd->VIDWIN0XP  = 0;
+    _osd->VIDWIN0YP  = 0;
+    _osd->VIDWIN0XL  = _width;
+    _osd->VIDWIN0YL  = _height >> 1;
+
+    _osd->VIDWINMD   = 0x00000003;   // Disable vwindow 1 and enable vwindow 0
+                                        // Frame mode with no up-scaling
+}
+
+
+// Configure VENC
+static void _vpbe_config_venc ()
 {
 	int i;
-	// Reset VPBE
-	vpss_init (0);
-
-	// Configure OSD
-
-	// OSD enable
-
-    // Configure VENC
-
-	// VENC enable
-	// -----------
 
 	_venc->VMOD = (1 << 0) |  // VENC enable
 	              (1 << 1) |   // Composite enable
@@ -230,7 +263,7 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 				  (0<<12); // delay adjust of Y signal
 
 	// Component mode
-	_venc->CMPNT = 0;
+	_venc->CMPNT = 0x8000; // NTSC??
 
 	// CVBS timing control ??
 	_venc->ETMG0 = 0; // T1: PAL & NTSC
@@ -241,6 +274,8 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 	_venc->DACSEL = (DAC_SELECT_CVBS<<0) |  // dac0 output select
 					(DAC_SELECT_CVBS<<4) |  // dac1 output select
 					(DAC_SELECT_CVBS<<8);   // dac2 output select
+	// Enable all DACs 
+	_venc->DACTST = 0;
 
 	_venc->ARGBX0 = 1024; // YCbCr->RGB matrix coefficient GY for analog RGB output. Default is 1024 (0x400)
 	_venc->ARGBX1 = 1404; // YCbCr->RGB matrix coefficient RV for analog RGB output. Default is 1404 (0x57C)
@@ -286,6 +321,22 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 	                (0<<10);
 }
 
+
+void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
+{
+	// Reset VPBE
+	vpss_init (0);
+
+	// OSD (frame buffer)
+	_vpbe_config_osd ();
+
+	// VENC (video encoder digital->video signal)
+    _vpbe_config_venc ();
+}
+
+
+
+
 #if 0
 void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 {
@@ -314,8 +365,6 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 	_venc->YCCCTL = 0x1;
 	// Enable output mode and PAL 
 	_venc->VMOD = 0x1043;
-	// Enable all DACs 
-	_venc->DACTST = 0;
 
 	// Setup clock at VPSS & VENC for SD 
 	vpss_enable_clock(4);
@@ -329,7 +378,7 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 
 	_venc->VMOD = 0;
 	// disable VCLK output pin enable 
-	_venc->VIOCTL = 0x141;
+	_venc->VIOCTL = 0x141; // 0x2000 ??
 //                  0001 0100 0001
 //	_venc->VIOCTL = (1<<0) |  // YOUT/COUT I/O; output or input
 //					(0<<2) |  // YOUT/COUT pin DC output mode; normal or DC level

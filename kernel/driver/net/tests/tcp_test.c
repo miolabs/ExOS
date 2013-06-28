@@ -1,3 +1,5 @@
+
+#if 1
 #include <net/tcp_io.h>
 #include <comm/comm.h>
 #include <kernel/tree.h>
@@ -8,18 +10,19 @@
 #include <stdio.h>
 
 
-
-
 int main()
 {
 	VPBE_SIMPLE_SPEC nil;
 
 	vpbe_initialize_simple  ( &nil);
 
+	hal_board_init_pinmux(HAL_RESOURCE_TVOUT, 0);
+
 	while (1)
 	{
 	}
 }
+#endif
 
 #if 0
 TCP_IO_ENTRY _socket;
