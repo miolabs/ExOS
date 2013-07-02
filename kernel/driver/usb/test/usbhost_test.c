@@ -1,14 +1,14 @@
 #include <usb/host.h>
 #include <support/usb/driver/usbprint.h>
 #include <support/usb/driver/ftdi.h>
-#include <support/usb/driver/iap2.h>
 #include <support/usb/driver/hid.h>
 #include <net/tcp_io.h>
 #include <comm/comm.h>
 #include <kernel/tree.h>
 #include <support/board_hal.h>
 #include <stdio.h>
-#include <support/misc/apple_cp20.h>
+#include <support/apple/cp20.h>
+#include <support/apple/iap2.h>
 
 COMM_IO_ENTRY _comm;
 TCP_IO_ENTRY _socket;
@@ -99,6 +99,7 @@ void usb_host_add_drivers()
 {
     usbprint_initialize();
 	ftdi_initialize();
-	iap2_initialize();
+	
 	usbd_hid_initialize();
+	iap2_initialize();
 }

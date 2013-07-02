@@ -93,7 +93,7 @@ int usb_host_start_pipe(USB_HOST_PIPE *pipe)
 int usb_host_bulk_transfer(USB_HOST_PIPE *pipe, void *data, int length)
 {
 	USB_HOST_DEVICE *device = pipe->Device;
-	exos_mutex_lock(&device->ControlMutex);
+//	exos_mutex_lock(&device->ControlMutex);
 	const USB_HOST_CONTROLLER_DRIVER *hcd = device->Controller;
 
 	int done = 0;
@@ -103,7 +103,7 @@ int usb_host_bulk_transfer(USB_HOST_PIPE *pipe, void *data, int length)
 	{
 		done = hcd->EndBulkTransfer(&urb);
 	}
-	exos_mutex_unlock(&device->ControlMutex);
+//	exos_mutex_unlock(&device->ControlMutex);
 	return done;
 }
 
@@ -115,9 +115,9 @@ int usb_host_begin_bulk_transfer(USB_REQUEST_BUFFER *urb, void *data, int length
 	USB_HOST_DEVICE *device = urb->Pipe->Device;
 	const USB_HOST_CONTROLLER_DRIVER *hcd = device->Controller;
 
-	exos_mutex_lock(&device->ControlMutex);
+//	exos_mutex_lock(&device->ControlMutex);
 	int done = hcd->BeginBulkTransfer(urb, data, length);
-	exos_mutex_unlock(&device->ControlMutex);
+//	exos_mutex_unlock(&device->ControlMutex);
 	return done;
 }
 
@@ -129,9 +129,9 @@ int usb_host_end_bulk_transfer(USB_REQUEST_BUFFER *urb)
 	USB_HOST_DEVICE *device = urb->Pipe->Device;
 	const USB_HOST_CONTROLLER_DRIVER *hcd = device->Controller;
 
-	exos_mutex_lock(&device->ControlMutex);
+//	exos_mutex_lock(&device->ControlMutex);
 	int done = hcd->EndBulkTransfer(urb);
-	exos_mutex_unlock(&device->ControlMutex);
+//	exos_mutex_unlock(&device->ControlMutex);
 	return done;
 }
 
@@ -148,12 +148,21 @@ int usb_host_ctrl_setup(USB_HOST_DEVICE *device, const USB_REQUEST *request, voi
     return done;
 }
 
-int usb_host_read_descriptor(USB_HOST_DEVICE *device, int desc_type, int desc_index, void *data, int length)
+int usb_host_read_device_descriptor(USB_HOST_DEVICE *device, int desc_type, int desc_index, void *data, int length)
 {
 	USB_REQUEST req = (USB_REQUEST) {
 		.RequestType = USB_REQTYPE_DEVICE_TO_HOST | USB_REQTYPE_RECIPIENT_DEVICE,
 		.RequestCode = USB_REQUEST_GET_DESCRIPTOR,
 		.Value = (desc_type << 8) | desc_index, .Index = 0, .Length = length };
+	return usb_host_ctrl_setup(device, &req, data, length);
+}
+
+int usb_host_read_if_descriptor(USB_HOST_DEVICE *device, int interface, int desc_type, int desc_index, void *data, int length)
+{
+	USB_REQUEST req = (USB_REQUEST) {
+		.RequestType = USB_REQTYPE_DEVICE_TO_HOST | USB_REQTYPE_RECIPIENT_INTERFACE,
+		.RequestCode = USB_REQUEST_GET_DESCRIPTOR,
+		.Value = (desc_type << 8) | desc_index, .Index = interface, .Length = length };
 	return usb_host_ctrl_setup(device, &req, data, length);
 }
 

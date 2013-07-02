@@ -21,7 +21,7 @@ typedef struct _USB_HOST_PIPE
 	unsigned char EndpointNumber;
 	unsigned char InterruptInterval;
 	unsigned char Reserved;
-	USB_REQUEST_BUFFER *Pending;
+//	USB_REQUEST_BUFFER *Pending;
 } USB_HOST_PIPE;
 
 typedef enum
@@ -114,7 +114,8 @@ int usb_host_begin_bulk_transfer(USB_REQUEST_BUFFER *urb, void *data, int length
 int usb_host_end_bulk_transfer(USB_REQUEST_BUFFER *urb);
 
 int usb_host_ctrl_setup(USB_HOST_DEVICE *device, const USB_REQUEST *request, void *data, int length);
-int usb_host_read_descriptor(USB_HOST_DEVICE *device, int desc_type, int desc_index, void *data, int length);
+int usb_host_read_device_descriptor(USB_HOST_DEVICE *device, int desc_type, int desc_index, void *data, int length);
+int usb_host_read_if_descriptor(USB_HOST_DEVICE *device, int interface, int desc_type, int desc_index, void *data, int length);
 int usb_host_set_address(USB_HOST_DEVICE *device, int addr);
 int usb_host_set_interface(USB_HOST_DEVICE *device, int interface, int alternate_setting);
 
