@@ -115,6 +115,7 @@ void hal_led_set(HAL_LED led, int state)
 int _setup_tvout ()
 {
 	//PINMUX1 = 0x00145555;  //  evmdm365.gel Video Cout, EXTCLK, FIELD
+	// 0001 0100 0101 0101 0101
 
 	//PINMUX1 &= ~0x00400000;  // Enable VCLK for PINMUX 
 	//PINMUX1 |= 0XAA00; // Enable COUT[0],COUT[1],COUT[2],COUT[3]
@@ -123,9 +124,16 @@ int _setup_tvout ()
     _system->PINMUX1bits.COUT1 = 1; // Enable COUT instead of GIO
     _system->PINMUX1bits.COUT2 = 1; // Enable COUT instead of GIO
     _system->PINMUX1bits.COUT3 = 1; // Enable COUT instead of GIO
+    _system->PINMUX1bits.COUT4 = 1; // Enable COUT instead of GIO
+    _system->PINMUX1bits.COUT5 = 1; // Enable COUT instead of GIO
+    _system->PINMUX1bits.COUT6 = 1; // Enable COUT instead of GIO
+    _system->PINMUX1bits.COUT7 = 1; // Enable COUT instead of GIO
+    _system->PINMUX1bits.FIELD = 1; // ?
     _system->PINMUX1bits.VCLK = 0; // Enable VCLK for PINMUX 
 	return 1;
 }
+
+
 
 int hal_board_init_pinmux(HAL_RESOURCE res, int unit)
 {

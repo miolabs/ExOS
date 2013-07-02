@@ -248,14 +248,6 @@ int system_get_sysclk(PLLC_INDEX plli, PLLC_SYSCLK_INDEX sysi)
 	return pllout / (plldiv + 1);
 }
 
-int system_vpss_enable_clock ( unsigned long mask)
-{
-	// desactivar ints?
-
-	_system->VPSS_CLK_CTRL |= mask;
-
-	// activar ints?
-}
 
 void system_video_regs( )
 {
@@ -270,12 +262,14 @@ void system_video_regs( )
 						(0<<19) | // Output interrupt signal when TVOUT shorts to ground
 						(0x101<<20)); // Reserved */
 
-	system_vpss_enable_clock( (VPSS_MUXSEL_VENC<<0) | // VPSS clock
-						  (0<<2) | // Invert VPFE pixel clock: normal or inverted
-						  (0<<3) | // VPBE/Video encoder clock enable
-						  (0<<4) | // DAC clock enable
-						  (VENC_CLK_SRC_PLLC1SYSCLK6<<5) | // 27/74.25 MHz input source
-						  (0<<7)); // DMA clock vs. VPSS clock ratio: 1:2 or 1:1
+	// Codigo xungo? VPSS_VPBE_CLK_CTRL = 0x00000011;   // Select enc_clk*1, turn on VPBE clk
+	_system->VPSS_CLK_CTRL = (VPSS_MUXSEL_VENC<<0) | // VPSS clock
+						     (0<<2) | // Invert VPFE pixel clock: normal or inverted
+						     (1<<3) | // VPBE/Video encoder clock enable
+						     (1<<4) | // DAC clock enable
+						     (VENC_CLK_SRC_PLLC2SYSCLK5<<5) | // 27/74.25 MHz input source
+						     (0<<7); // DMA clock vs. VPSS clock ratio: 1:2 or 1:1
+
 }
 
 

@@ -90,14 +90,24 @@ static void _vpbe_config_osd ()
     _osd->VIDWIN0YL  = _height >> 1;
 
     _osd->VIDWINMD   = 0x00000003;   // Disable vwindow 1 and enable vwindow 0
-                                        // Frame mode with no up-scaling
+                                     // Frame mode with no up-scaling
 }
 
 
 // Configure VENC
+
+// VENC enable requirements (from manual)
+//----------------------------------------
+//VPBE                  VPBE.CLK_OFF ??
+//VENC                  VMOD.VIE
+//Composite Analog Out  VMOD.VIE, CLKCTL.CLKENC
+//Digital Output        VIOCTL.DOMD, CLKCTL.CLKDIG
+
 static void _vpbe_config_venc ()
 {
 	int i;
+
+	_venc->VMOD = 0; // Reset video encoder
 
 	_venc->VMOD = (1 << 0) |  // VENC enable
 	              (1 << 1) |   // Composite enable
@@ -114,7 +124,7 @@ static void _vpbe_config_venc ()
 	// Video interface I/O control (can be all 0 for TV out)
 	_venc->VIOCTL = (0<<0) |  // YOUT/COUT I/O; output or input
 					(0<<2) |  // YOUT/COUT pin DC output mode; normal or DC level
-					(0<<3) |  // Swaps YOUT/COUT; normal or interchaqnge
+					(0<<3) |  // Swaps YOUT/COUT; normal or interchange
 					(0<<4) |  // Digital data output mode: normal, inverse, L or H
 					(0<<8) |  // HSYNC/VSYNC pin I/O control: output or input
 					(0<<12) | // VCLK pin output enable: output or high impedance
@@ -153,15 +163,14 @@ static void _vpbe_config_venc ()
 	_venc->HSPLS = 0; // Hor. sync. pulse width
 	_venc->VSPLS = 0; // vertical sync. pulse width
 
-	_venc->HINTVL = 0;  // for nonstardard mode
+	// Probably for nonstardard mode only
+	_venc->HINTVL = 0;  
 	_venc->HSTART = 0; // Hor. valid data start position 
 	_venc->HVALID = 0; // number of ENC clocks
-	_venc->VINTVL = 0;  // for nonstandard-mode
+	_venc->VINTVL = 0;  
 	_venc->VSTART = 0; // Ver. valid data start position 
 	_venc->VVALID = 0; // number of lines
-
 	_venc->XHINTVL = 0; // Hor. interval extension. Effective only in 720p & 1080i
-
 	_venc->HSDLY = 0; // hsync delay in ENC clocks
 	_venc->HSDLY = 0; // vsync delay in ENC clocks
 
@@ -178,12 +187,13 @@ static void _vpbe_config_venc ()
 
 	// Clock
 	// The VENC provides the sync signals to the OSD module
-	_venc->OSDCLK0 = 1; // ?? 
-	_venc->OSDCLK1 = 2; // ??
+	_venc->OSDCLK0 = 1; // 2 bits pattern
+	_venc->OSDCLK1 = 2; // Patter %10
 
 	_venc->CLKCTL = (1<<0) | // Clock enable for video encoder
 					(0<<4) | // Clock enable for digital LCD encoder
 					(0<<8); // Clock enable for gamma correction table?
+	// LCD clocks
 	_venc->DCLKCTL = 0;
 	_venc->DCLKPTN0 = 0; 
 	_venc->DCLKPTN1 = 0;
@@ -198,8 +208,9 @@ static void _vpbe_config_venc ()
 	_venc->DCLKVSTT = 0; // Vertical mask start position (ENC)	
 	_venc->DCLKVVLD = 0; // Vertical mask range (ENC)
 
-	_venc->YCOLVL = 0; // DC output mode, levels ??
+	_venc->YCOLVL = 0xffff; // For DC output mode only, levels	
 
+	//  Probably used only in nostandard mode
 	_venc->SCPROG = 356; // Subcarrier initial phase NTSC 378 / PAL 356
 
 
@@ -246,14 +257,29 @@ static void _vpbe_config_venc ()
 		_venc->RAMADR =  i, // Gamma correction table address. ??
 		_venc->RAMPORT = 0xffff;	// ??
 
+	// Enable all DACs, normal output mode 
 	_venc->DACTST = (0x3ff) | // DC level
-					(0<<10) | // ?? 
+					(0<<10) | // DC level enable (no)
 					(0<<11) | // DAC normal/inverse 
 					(0<<12) | // Power down: normal / power down 
 					(0<<13) | // Power down: normal / power down 
 					(0<<14);  // Power down: normal / power down 
 
-	// Composite mode fields ??
+	_venc->GAMCTL = (0<<0) | // Gamma correction enable: No
+					(0<<1) |  // Unique RGB gamma table mode
+					(0<<4) | // DAC0 full-swing output Normal/full
+					(0<<5) | // DAC1 full-swing output Normal/full
+					(0<<6); // DAC2 full-swing output Normal/full
+	// DAC gain & offset (in DAC full range output mode DAFUL=1) ?errata en manual?
+	_venc->DACAMP = (0<<0) |
+	                (0<<10);
+
+	// Composite video output (CVBS).
+	_venc->DACSEL = (DAC_SELECT_CVBS<<0) |  // dac0 output select
+					(DAC_SELECT_CVBS<<4) |  // dac1 output select
+					(DAC_SELECT_CVBS<<8);   // dac2 output select
+
+	// Composite mode fields. Probably not used in standard mode
 	_venc->CVBS = (0<<0) | // Sync build up time 140/200 microseconds
 				  (0<<1) | // blanking build up time 140/300 microseconds
 				  (0<<2) | // chroma low pass 1.5 mhz / 3 mhz
@@ -263,20 +289,15 @@ static void _vpbe_config_venc ()
 				  (0<<12); // delay adjust of Y signal
 
 	// Component mode
-	_venc->CMPNT = 0x8000; // NTSC??
+	//_venc->CMPNT = 0x8000; // For components video mode
 
-	// CVBS timing control ??
-	_venc->ETMG0 = 0; // T1: PAL & NTSC
-	_venc->ETMG1 = 0; // T2: PAL 151 / NTSC 141   T3: P212/N210 T4: P263/N243 T5: P1703/N1683
-	_venc->ETMG2 = 0; // 
-	_venc->ETMG3 = 0; // 
+	// CVBS timing control (for non-standard mode?)
+	//_venc->ETMG0 = 0; // T1: PAL & NTSC
+	//_venc->ETMG1 = 0; // T2: PAL 151 / NTSC 141   T3: P212/N210 T4: P263/N243 T5: P1703/N1683
+	//_venc->ETMG2 = 0; // 
+	//_venc->ETMG3 = 0; // 
 
-	_venc->DACSEL = (DAC_SELECT_CVBS<<0) |  // dac0 output select
-					(DAC_SELECT_CVBS<<4) |  // dac1 output select
-					(DAC_SELECT_CVBS<<8);   // dac2 output select
-	// Enable all DACs 
-	_venc->DACTST = 0;
-
+	// Color conversion matrices (unnecesary for CVBS)
 	_venc->ARGBX0 = 1024; // YCbCr->RGB matrix coefficient GY for analog RGB output. Default is 1024 (0x400)
 	_venc->ARGBX1 = 1404; // YCbCr->RGB matrix coefficient RV for analog RGB output. Default is 1404 (0x57C)
 	_venc->ARGBX2 = 345;  // YCbCr->RGB matrix coefficient GU for analog RGB output. Default is 345 (0x159)
@@ -289,21 +310,14 @@ static void _vpbe_config_venc ()
 	_venc->DRGBX3 = 715;  // YCbCr->RGB matrix coefficient GV for analog RGB output. Default is 715 (0x2CB).
 	_venc->DRGBX4 = 1774; // YCbCr->RGB matrix coefficient BU for analog RGB output. Default is 1774 (0x2CB)
 
-	_venc->VSTARTA = 0; // ?? Vertical data valid start position for even field. Specify the number of lines.
-	_venc->VVALIDA = 0x1fff; // ?? Vertical data valid range for even field. 
-
-	// Horizontal Valid Culling Control 0 ??
+	// Probably for non-standard mode
+	_venc->VSTARTA = 0; // Vertical data valid start position for even field. Specify the number of lines.
+	_venc->VVALIDA = 0x1fff; //  Vertical data valid range for even field. 
 	_venc->HVLDCL0 = (0<<0) | // Horizontal valid culling pattern bit width.
 					 (0<<4); // Horizontal valid culling mode (normal / culling mode)
 	_venc->HVLDCL1 = 0; // Horizontal Valid Culling Pattern
 
 	_venc->OSDHADV = 0; // Horizontal Sync Advance  ??
-
-	_venc->GAMCTL = (0<<0) | // Gamma correction enable: No
-					(0<<1) |  // Unique RGB gamma table mode
-					(0<<4) | // DAC0 full-swing output Normal/full
-					(0<<5) | // DAC1 full-swing output Normal/full
-					(0<<6); // DAC2 full-swing output Normal/full
 
 	// Attribute insertions
 	_venc->BATR0 = 0;
@@ -315,10 +329,6 @@ static void _vpbe_config_venc ()
 	_venc->BATR6 = 0;
 	_venc->BATR7 = 0;
 	_venc->BATR8 = 0;
-
-	// DAC gain & offset (in DAC full range output mode DAFUL=1) ?errata en manual?
-	_venc->DACAMP = (0<<0) |
-	                (0<<10);
 }
 
 
@@ -337,7 +347,7 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 
 
 
-#if 0
+/*
 void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 {
 #define VENC_VMOD_VENC				(1 << 0)
@@ -433,7 +443,7 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 
 }
 
-#endif
+*/
 
 
 

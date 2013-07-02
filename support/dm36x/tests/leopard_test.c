@@ -21,13 +21,13 @@ int main()
 	if (test == 0)
 		hal_led_set(1, 1);
 
-	while (1)
+	/*while (1)
 	{
 		exos_thread_sleep (500);
 		hal_led_set(1, 0);
 		exos_thread_sleep (500);
 		hal_led_set(1, 1);
-	}
+	}*/
 	
 	return 0;
 }
