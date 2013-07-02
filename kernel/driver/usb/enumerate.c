@@ -32,6 +32,29 @@ USB_ENDPOINT_DESCRIPTOR *usb_enumerate_find_endpoint_descriptor(USB_CONFIGURATIO
 	return NULL;
 }
 
+USB_DESCRIPTOR_HEADER *usb_enumerate_find_class_descriptor(USB_CONFIGURATION_DESCRIPTOR *conf_desc, USB_INTERFACE_DESCRIPTOR *if_desc,
+	unsigned char descriptor_type, unsigned char index)
+{
+	void *buffer = (void *)if_desc + if_desc->Header.Length;
+	void *end = (void *)conf_desc + USB16TOH(conf_desc->TotalLength);
+	
+	USB_ENDPOINT_DESCRIPTOR *ep_desc = NULL;
+	if (buffer > (void *)conf_desc)
+	{
+		while (buffer < end)
+		{
+			USB_DESCRIPTOR_HEADER *desc = (USB_DESCRIPTOR_HEADER *)buffer;
+			if (desc->DescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE) break;
+			if (desc->DescriptorType == descriptor_type)
+			{
+				if (index != 0) index--;	// skip coincidence
+				else return desc;
+			}
+			buffer += desc->Length;
+		}
+	}
+	return NULL;
+}
 
 static int _check_interface(USB_HOST_FUNCTION_DRIVER *driver, void *arg)
 {
@@ -60,9 +83,8 @@ static int _enum_interfaces(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTO
 {
 	void *buffer = (void *)conf_desc;
 	int offset = conf_desc->Header.Length;	// skip itself conf. descriptor
-	int rem_interfaces = conf_desc->NumInterfaces;
 	int done = 0;
-	while (offset < USB16TOH(conf_desc->TotalLength)) // && rem_interfaces > 0)
+	while (offset < USB16TOH(conf_desc->TotalLength))
 	{
 		USB_DESCRIPTOR_HEADER *fn_desc = (USB_DESCRIPTOR_HEADER *)(buffer + offset);
 		USB_HOST_ENUM_DATA enum_data = (USB_HOST_ENUM_DATA) {
@@ -73,7 +95,6 @@ static int _enum_interfaces(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTO
 		{
 			USB_INTERFACE_DESCRIPTOR *if_desc = (USB_INTERFACE_DESCRIPTOR *)fn_desc;
 			found_driver = usb_host_driver_enumerate(_check_interface, &enum_data);
-			rem_interfaces--;
 		}
 		else if (fn_desc->DescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE_ASSOCIATION)
 		{
@@ -105,7 +126,7 @@ static unsigned char _buffer[USB_ENUM_BUFFER_SIZE] __usb;
 
 static int _parse_configuration(USB_HOST_DEVICE *device, int conf_index)
 {
-	int done = usb_host_read_descriptor(device, USB_DESCRIPTOR_TYPE_CONFIGURATION, conf_index,
+	int done = usb_host_read_device_descriptor(device, USB_DESCRIPTOR_TYPE_CONFIGURATION, conf_index,
 		_buffer, sizeof(USB_CONFIGURATION_DESCRIPTOR));
 	if (done)
 	{
@@ -114,7 +135,7 @@ static int _parse_configuration(USB_HOST_DEVICE *device, int conf_index)
 		int total_length = USB16TOH(conf_desc->TotalLength);
 		if (total_length <= USB_ENUM_BUFFER_SIZE) 
 		{
-			done = usb_host_read_descriptor(device, USB_DESCRIPTOR_TYPE_CONFIGURATION, conf_index,
+			done = usb_host_read_device_descriptor(device, USB_DESCRIPTOR_TYPE_CONFIGURATION, conf_index,
 				_buffer, total_length);
 			if (done)
 			{

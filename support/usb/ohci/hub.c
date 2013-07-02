@@ -34,7 +34,7 @@ static int _enumerate(int port, USB_HOST_DEVICE_SPEED speed)
 	USB_DEVICE_DESCRIPTOR *dev_desc = &_dev_desc;
 
 	// read device descriptor (header)
-	int done = usb_host_read_descriptor((USB_HOST_DEVICE *)device, USB_DESCRIPTOR_TYPE_DEVICE, 0, dev_desc, 8);
+	int done = usb_host_read_device_descriptor((USB_HOST_DEVICE *)device, USB_DESCRIPTOR_TYPE_DEVICE, 0, dev_desc, 8);
 	if (done)
 	{
 		OHCI_SED *sed = (OHCI_SED *)pipe->Endpoint;
@@ -48,7 +48,7 @@ static int _enumerate(int port, USB_HOST_DEVICE_SPEED speed)
 			sed->HCED.ControlBits.FunctionAddress = device->Address;
 
 			// read device descriptor (complete) 
-			done = usb_host_read_descriptor((USB_HOST_DEVICE *)device, USB_DESCRIPTOR_TYPE_DEVICE, 0, 
+			done = usb_host_read_device_descriptor((USB_HOST_DEVICE *)device, USB_DESCRIPTOR_TYPE_DEVICE, 0, 
 				dev_desc, sizeof(USB_DEVICE_DESCRIPTOR));
 			
 			if (done)

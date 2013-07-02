@@ -122,14 +122,16 @@
             <file file_name="support/usb/driver/msc.c"/>
             <file file_name="support/usb/driver/usbprint.c"/>
             <file file_name="support/usb/driver/ftdi.c"/>
-            <file file_name="support/usb/driver/iap2.c"/>
             <file file_name="support/usb/driver/hid.c"/>
           </folder>
         </folder>
         <folder Name="misc">
           <file file_name="support/misc/mac_24xx02.c"/>
           <file file_name="support/misc/eeprom.c"/>
-          <file file_name="support/misc/apple_cp20.c"/>
+        </folder>
+        <folder Name="apple">
+          <file file_name="support/apple/cp20.c"/>
+          <file file_name="support/apple/iap2.c"/>
         </folder>
       </folder>
       <folder Name="modules">
@@ -140,7 +142,6 @@
           </folder>
         </folder>
       </folder>
-      <file file_name="support/usb/driver/iap2.h"/>
     </folder>
     <folder Name="System Files">
       <file file_name="$(TargetsDir)/LPC1000/LPC177x_8x_Target.js">
