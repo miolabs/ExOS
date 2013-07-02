@@ -21,7 +21,26 @@ struct _PERI_CLKCTL_BITS
 typedef volatile struct
 {
 	unsigned long PINMUX0;
-	unsigned long PINMUX1;
+	union
+	{
+		unsigned long PINMUX1;
+		struct
+		{
+			unsigned COUT7:2;
+			unsigned COUT6:2;
+			unsigned COUT5:2;
+			unsigned COUT4:2;
+			unsigned COUT3:2;
+			unsigned COUT2:2;
+			unsigned COUT1:2;
+			unsigned COUT0:2;
+			unsigned HVSYNC:1;
+			unsigned LCD_OE:1;
+			unsigned FIELD:2;
+			unsigned EXTCLK:2;
+			unsigned VCLK:1;
+		} PINMUX1bits;
+	};
 	unsigned long PINMUX2;
 	union
 	{
@@ -342,6 +361,14 @@ typedef volatile struct
 #define PLLSECCTL_TENABLE (1<<17)
 #define PLLSECCTL_TENABLEDIV (1<<18)
 
+// Defs. for SYSTEM_CONTROLLER::VPSS_CLK_CTRL
+#define VPSS_MUXSEL_VENC   1
+#define VPSS_MUXSEL_EXCTL  2
+#define VPSS_MUXSEL_PCLK   3
+#define VENC_CLK_SRC_PLLC1SYSCLK6 0
+#define VENC_CLK_SRC_PLLC2SYSCLK5 1
+#define VENC_CLK_SRC_MXI          2
+
 // prototypes
 void system_select_armss_clock(PLLC_INDEX plli);
 void system_select_ddr2_clock(PLLC_INDEX plli);
@@ -349,6 +376,8 @@ void system_perform_vtpio_calibration();
 void system_select_pinmux(int gio, int func);
 void system_select_intmux(int number, int func);
 int system_get_sysclk(PLLC_INDEX plli, PLLC_SYSCLK_INDEX sysi);
+void system_video_regs ();
+int  system_vpss_enable_clock ( unsigned long mask);
 
 void psc_set_module_state(PSC_MODULE module, PSC_MODULE_STATE state);
 

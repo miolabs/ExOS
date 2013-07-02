@@ -1,4 +1,5 @@
 
+#include <kernel/thread.h>
 #include <support/board_hal.h>
 #include <libmem_loader.h>
 //#include "driver.h"
@@ -22,6 +23,10 @@ int main()
 
 	while (1)
 	{
+		exos_thread_sleep (500);
+		hal_led_set(1, 0);
+		exos_thread_sleep (500);
+		hal_led_set(1, 1);
 	}
 	
 	return 0;

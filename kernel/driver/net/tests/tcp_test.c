@@ -1,9 +1,30 @@
+
+#if 1
 #include <net/tcp_io.h>
 #include <comm/comm.h>
 #include <kernel/tree.h>
 #include <support/board_hal.h>
+
+#include "support/dm36x/vpbe.h"
+
 #include <stdio.h>
 
+
+int main()
+{
+	VPBE_SIMPLE_SPEC nil;
+
+	vpbe_initialize_simple  ( &nil);
+
+	hal_board_init_pinmux(HAL_RESOURCE_TVOUT, 0);
+
+	while (1)
+	{
+	}
+}
+#endif
+
+#if 0
 TCP_IO_ENTRY _socket;
 unsigned char _buffer[1024];
 
@@ -16,7 +37,6 @@ COMM_IO_ENTRY _comm;
 int main()
 {
 	int err;
-
 	EXOS_IO_ENTRY *comm = NULL;
 	EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/comm0");
 	if (dev_node != NULL)
@@ -57,5 +77,5 @@ int main()
 
 	if (comm != NULL) comm_io_close((COMM_IO_ENTRY *)comm);
 }
-
+#endif
 
