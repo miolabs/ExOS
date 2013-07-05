@@ -249,27 +249,10 @@ int system_get_sysclk(PLLC_INDEX plli, PLLC_SYSCLK_INDEX sysi)
 }
 
 
-void system_video_regs( )
+void system_video_regs ( unsigned long vdac_config, unsigned long vpss_clk_ctl)
 {
-	// Vide DAC config (encontrado 0x101941DC, recomendado 0x081141CC para SD)
-    _system->VDAC_CONFIG = 0x081141CC; /*((0<<0) | // Power down channel A (down/normal)
-						(0<<1) | // Power down channel B (down/normal)
-						(1<<2) | // Power down channel C (down/normal)
-						(1<<3) | // Power down SD video buffer (down/normal)
-						(0<<4) | // TVINT circuit enable signal
-						(0<<5) | // Select HD DAC mode / SD Video Buffer mode for DAC CH-C (SD/HD)
-						(0x907<<6) | // reserved 
-						(0<<19) | // Output interrupt signal when TVOUT shorts to ground
-						(0x101<<20)); // Reserved */
-
-	// Codigo xungo? VPSS_VPBE_CLK_CTRL = 0x00000011;   // Select enc_clk*1, turn on VPBE clk
-	_system->VPSS_CLK_CTRL = (VPSS_MUXSEL_VENC<<0) | // VPSS clock
-						     (0<<2) | // Invert VPFE pixel clock: normal or inverted
-						     (1<<3) | // VPBE/Video encoder clock enable
-						     (1<<4) | // DAC clock enable
-						     (VENC_CLK_SRC_PLLC2SYSCLK5<<5) | // 27/74.25 MHz input source
-						     (0<<7); // DMA clock vs. VPSS clock ratio: 1:2 or 1:1
-
+    _system->VDAC_CONFIG   = vdac_config;
+	_system->VPSS_CLK_CTRL = vpss_clk_ctl;
 }
 
 

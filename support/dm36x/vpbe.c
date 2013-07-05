@@ -45,6 +45,8 @@ static VENC_CONTROLLER *_venc = (VENC_CONTROLLER *)0x01C71E00;
 #define DAC_SELECT_PbB     4
 #define DAC_SELECT_PrR     5
 
+typedef unsigned short OSD_PIXEL;
+
 static inline void _reg_mod ( volatile unsigned long* reg, unsigned long val, unsigned long mask)
 {
 	*reg = (*reg & (~mask)) | (val & mask);
@@ -62,7 +64,11 @@ typedef union { unsigned int* ptr; unsigned int ptrbits;} BRIDGE;
 static void _vpbe_config_osd ()
 {
 	// Configure OSD
-    _osd->MODE       = 0x000000fc;   // Blackground color blue using clut in ROM0
+    _osd->MODE       = (0xfc<<0) |   // Blackground color blue using clut in ROM0
+					   (0<<8) |		// ROM Clut
+					   (0<<9) |     // Field inversion
+					   (0<<10) |	// Windows expansions (5 bits)
+					   (0<<15);		// Color format Cb/Cr or Cr/Cb
 
     _osd->OSDWIN0MD  = 0;            // Disable both osd windows and cursor window
     _osd->OSDWIN1MD  = 0;
@@ -74,7 +80,8 @@ static void _vpbe_config_osd ()
 	brg.ptrbits = 0x80000000;
     unsigned int video_buffer = brg.ptrbits >> 5;
 
-    _osd->VIDWIN0OFST = 0x1000 | (_width >> 4);
+    _osd->VIDWIN0OFST = ((_width * sizeof(OSD_PIXEL)) >> 5) |	// No. of 32 byte burst spans
+						((brg.ptrbits >> 28) << 9); // Addr. 4 msb
     // High address is non-zero 
     _osd->VIDWINADH = (video_buffer >> 16) & (0x7F); // 0x0000
     // Added 16 bit address
@@ -89,8 +96,9 @@ static void _vpbe_config_osd ()
     _osd->VIDWIN0XL  = _width;
     _osd->VIDWIN0YL  = _height >> 1;
 
-    _osd->VIDWINMD   = 0x00000003;   // Disable vwindow 1 and enable vwindow 0
-                                     // Frame mode with no up-scaling
+	// Window0 enable, window1 disable, no expansions
+    _osd->VIDWINMD   =  (1<<0) | // Window0 enable
+						(1<<1);  // Window0 field or frame
 }
 
 

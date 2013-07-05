@@ -376,8 +376,8 @@ void system_perform_vtpio_calibration();
 void system_select_pinmux(int gio, int func);
 void system_select_intmux(int number, int func);
 int system_get_sysclk(PLLC_INDEX plli, PLLC_SYSCLK_INDEX sysi);
-void system_video_regs ();
-int  system_vpss_enable_clock ( unsigned long mask);
+void system_video_regs ( unsigned long vdac_config, unsigned long vpss_clk_ctl);
+//int  system_vpss_enable_clock ( unsigned long mask);
 
 void psc_set_module_state(PSC_MODULE module, PSC_MODULE_STATE state);
 
