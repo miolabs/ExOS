@@ -1,7 +1,7 @@
 
 #include "event_recording.h"
 
-#define LEN_EVENT_RECORDS  (100)
+#define LEN_EVENT_RECORDS  (128)
 #define RECORDS_MASK       (LEN_EVENT_RECORDS - 1)
 
 static int _input_pos = -1;

@@ -295,8 +295,12 @@ static void _read_send_analogic_inputs ( int status)
 		relays |= _adj_drive_mode << XCPU_BUTTON_ADJ_DRIVE_MODE_SHIFT;
 	unsigned int throttle = _ain[THROTTLE_IDX].scaled;
 	// Throttle only should work on dash screen, the rest are debug or intro screens
+	// Same with horn
 	if ( status != ST_DASH)
+	{
+		relays &= ~XCPU_BUTTON_HORN;
 		throttle = 0;
+	}
 
 	CAN_BUFFER buf = (CAN_BUFFER) { relays, 
 									throttle & 0xff, // Throttle low
@@ -575,7 +579,7 @@ static void _runtime_screens ( int* status)
 		case ST_ADJUST_DRIVE_MODE:
 			{
 				const char _hei [] = { 30, 45, 60};
-				const EVREC_CHECK speed_adj_exit[]= {{HORN_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
+				const EVREC_CHECK speed_adj_exit[]= {{CRUISE_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
 				const EVREC_CHECK mode_adj[]= {{BRAKE_RIGHT_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
 				int anm = (_frame_dumps & 0x7) >> 2;
 				_print_small ("DRIVE MODES", -1, 14);

@@ -58,7 +58,7 @@ void vpss_init ( int hard)
 									(0<<2) |  // VENC CLOCK /1 or /2
 									(0<<3) |  // LDC clock enable
 									(0<<6) |  // OSD Clock sel: OSD or ARM
-									(0<<7);   // LDC clock sel: OS or ARM
+									(0<<7);   // LDC clock sel: OSD or ARM
 
 		init = 1;
 	}
