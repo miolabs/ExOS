@@ -131,7 +131,7 @@ static void _draw_text ( const char* text, const SPRITE* font, int x, int y)
 		else
 			switch ( text [i])	// Hyper-hack
 			{
-				case '.': glyph = 10, glyph_w = font->w >> 1; break;
+				case '.': glyph = 10, glyph_w = (font->w >> 1)+1; break;
 				case '-': glyph = 11; break;
 			}
 		if ( glyph != -1)
@@ -236,7 +236,7 @@ static char _adj_up=0, _adj_down=0;
 static char _adj_throttle=0;
 static unsigned short _adj_throttle_max=0, _adj_throttle_min=0;
 static char _adj_drive_mode=0, _adj_drive_mode_cnt=0;
-static char _switch_units_cnt=0;
+static char _switch_units_cnt=0, _lights_off_cnt=0;
 
 static const EVREC_CHECK _maintenance_screen_access[]=
 {
@@ -276,7 +276,7 @@ static void _read_send_analogic_inputs ( int status)
 		_ain[i].scaled = _sensor_scale ( _ain[i].filtered, _ain[i].def_min, _ain[i].def_max, 0xfff);
 	}
 
-	unsigned char relays = 0;
+	unsigned short relays = 0;
 	if (_ain[CRUISE_IDX].filtered < 0x800) 
 		relays |= XCPU_BUTTON_CRUISE;
 	if (_ain[HORN_IDX].filtered < 0x800) 
@@ -293,6 +293,17 @@ static void _read_send_analogic_inputs ( int status)
 	if ( _adj_drive_mode_cnt > 0)
 		_adj_drive_mode_cnt--,
 		relays |= _adj_drive_mode << XCPU_BUTTON_ADJ_DRIVE_MODE_SHIFT;
+	if ( _lights_off_cnt > 0)
+		_lights_off_cnt--, 
+        relays |= XCPU_BUTTON_LIGHTS_OFF;
+
+	// Record inputs for sequence triggering (to start debug services)
+	 _input_status = (((_ain[THROTTLE_IDX].scaled & 0x80) >> 7) << 0) |
+					(((_ain[BRAKE_LEFT_IDX].scaled & 0x80) >> 7) << 1) |
+					(((_ain[BRAKE_RIGHT_IDX].scaled & 0x80) >> 7) << 2) |
+					(relays << 3);
+	event_record ( _input_status);
+
 	unsigned int throttle = _ain[THROTTLE_IDX].scaled;
 	// Throttle only should work on dash screen, the rest are debug or intro screens
 	// Same with horn
@@ -309,15 +320,8 @@ static void _read_send_analogic_inputs ( int status)
 									_ain[BRAKE_RIGHT_IDX].scaled >> 4, 
 									_adj_throttle_min >> 4, 
 									_adj_throttle_max >> 4,
-									8 };
+									relays >> 8};
 	hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
-
-	// Record inputs for sequence triggering (to start debug services)
-	 _input_status = (((_ain[THROTTLE_IDX].scaled & 0x80) >> 7) << 0) |
-					(((_ain[BRAKE_LEFT_IDX].scaled & 0x80) >> 7) << 1) |
-					(((_ain[BRAKE_RIGHT_IDX].scaled & 0x80) >> 7) << 2) |
-					(relays << 3);
-	event_record ( _input_status);
 }
 
 
@@ -422,9 +426,9 @@ static void _intro ( int* status, int* st_time_base, int time)
 #define POS_MI            102, 37
 
 #define POS_ADJUST_MSG    16, 2
-#define POS_ADJUST_MILES  84+0, 54-33
-#define POS_ADJUST_KM     84+8, 56-33
-#define POS_ADJUST_BAR    40,46
+#define POS_ADJUST_MILES  84, 18
+#define POS_ADJUST_KM     92, 20
+#define POS_ADJUST_BAR    40, 46
 #define POS_ADJUST_SPEED  36, 20
 
 static int _adjust_creen ( int status, char* str, int next, unsigned short* res)
@@ -544,23 +548,24 @@ static void _runtime_screens ( int* status)
 
 		case ST_FACTORY_MENU:
 			{
-				const char _hei [] = { 30, 45, 60};
+				const char _hei [] = { 26, 38, 50, 62, };
 				const EVREC_CHECK fact_menu_exit[]= {{HORN_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
 				const EVREC_CHECK menu_move[]= {{BRAKE_RIGHT_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
 				const EVREC_CHECK menu_press[]= {{CRUISE_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
 				int anm = (_frame_dumps & 0x7) >> 2;
-				_print_small ("OEM SETTINGS",    -1, 14);
-				_print_small ("Km/Mi",           -1, _hei[0]);
+				_print_small ("OEM SETTINGS",    -1, 10);
+				_print_small ("Km/Mi:",           -1, _hei[0]);
 				_print_small ("Wheel const.",    -1, _hei[1]);
-				_print_small ("Throttle adjust", -1, _hei[2]);
-                if ( _frame_dumps & 0x7)
-					_print_small ( ">>", 20, _hei[_fact_menu_mode]);
+				_print_small ("Throttle adjust", -1, _hei[2]);				
+				_print_small ("Lights off",      -1, _hei[3]);
+                if ( _frame_dumps & 0x8)
+					_print_small ( ">>", 20, _hei[_fact_menu_mode]-1);
                 if (_dash.status & XCPU_STATE_MILES)
 					mono_draw_sprite ( &_screen, &_mi_spr, POS_ADJUST_MILES);
 				else
 					mono_draw_sprite ( &_screen, &_km_spr, POS_ADJUST_KM);
                 if ( event_happening ( menu_move,1))
-					_fact_menu_mode++, _fact_menu_mode %= 3;
+					_fact_menu_mode++, _fact_menu_mode %= 4;
 				if ( event_happening ( menu_press,1))
 				{
 					switch ( _fact_menu_mode)
@@ -568,10 +573,14 @@ static void _runtime_screens ( int* status)
 						case 0:  _switch_units_cnt = RESEND_TIMES; break;
 						case 1: *status = ST_ADJUST_WHEEL_DIA;     break;
 						case 2: *status = ST_ADJUST_THROTTLE_MAX;  break;
-						default: assert (0);
+						case 3: _lights_off_cnt = RESEND_TIMES;
+						        *status = ST_DASH;
+						        break;
+						default: assert(0);
 					}
 				}
-				if ( event_happening ( fact_menu_exit,1))
+				//if ( event_happening ( fact_menu_exit,1))
+                if ( _input_status & HORN_MASK)
 					*status = ST_DASH;
 			}
 			break;
@@ -586,11 +595,11 @@ static void _runtime_screens ( int* status)
 				_print_small ("Soft",        -1, _hei[0]);
 				_print_small ("Eco",         -1, _hei[1]);
 				_print_small ("Racing",      -1, _hei[2]);
-                if ( _frame_dumps & 0x7)
+                if ( _frame_dumps & 0x8)
 					_print_small ( ">>", 24, _hei[_adj_drive_mode]);
                 if ( event_happening ( mode_adj,1))
 					_adj_drive_mode++, _adj_drive_mode %= 3;
-				if ( event_happening ( speed_adj_exit,1))
+				if ( event_happening ( speed_adj_exit,8))
 					_adj_drive_mode++, _adj_drive_mode_cnt = RESEND_TIMES, *status = ST_DASH;
 			}
 			break;
@@ -616,8 +625,9 @@ void main()
 	unsigned int prev_time = 0;
 
 	int screen_count = 0;
-    int initial_status = ST_DASH; //ST_LOGO_IN; //ST_DASH; 
-	                                      //ST_DEBUG_INPUT; // ST_ADJUST_WHEEL_DIA; //ST_FACTORY_MENU
+    int initial_status = ST_LOGO_IN; //ST_LOGO_IN; //ST_DASH; 
+	                                 //ST_DEBUG_INPUT; // ST_ADJUST_WHEEL_DIA; 
+									 //ST_FACTORY_MENU
 	int status =  initial_status;
 	int prev_cpu_state = 0;	// Default state is OFF, wait for master to start
 	while(1)

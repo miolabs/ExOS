@@ -28,7 +28,7 @@ static XCPU_MSG _can_msg[CAN_MSG_QUEUE];
 static int _lost_msgs = 0;
 #endif
 
-static XCPU_OUTPUT_MASK _output_state;
+static XCPU_OUTPUT_MASK _output_state = OUTPUT_NONE;
 
 static PID_K _pid_k; 
 static PID_STATE _pid;
@@ -79,10 +79,10 @@ void main()
 	xcpu_board_output(_output_state);
 #endif
 
-	unsigned char throttle = 0;
-	unsigned char brake_left, brake_right;
-	unsigned char throttle_adj_min, throttle_adj_max;
-	unsigned char buttons;
+	unsigned char  throttle = 0;
+	unsigned char  brake_left = 0, brake_right = 0;
+	unsigned char  throttle_adj_min = 0, throttle_adj_max = 0;
+	unsigned short buttons = 0;
 	CURVE_MODE    drive_mode = CURVE_SOFT;
 
 	unsigned char led = 0;
@@ -126,7 +126,8 @@ void main()
 			if (xmsg->CanMsg.EP.Id == 0x200)
 			{
 				CAN_BUFFER *data = &xmsg->CanMsg.Data;
-				buttons = data->u8[0];
+				buttons = data->u8[0] | ( data->u8[7] << 8);
+
 				unsigned int throttle_raw = data->u8[1] | ( data->u8[2] << 8);
 				brake_left = data->u8[3];
 				brake_right = data->u8[4];
@@ -165,6 +166,7 @@ void main()
 				_output_state = 0;
 				if (_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push_start, 10))
 				{
+					_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
 					_control_state = CONTROL_ON;
 					_state = (_storage.ConfigBits & XCPU_CONFIGF_MILES) ? XCPU_STATE_ON | XCPU_STATE_MILES : XCPU_STATE_ON;
                     _state |= XCPU_STATE_NEUTRAL;
@@ -188,7 +190,6 @@ void main()
 					}
 				}
 			case CONTROL_ON:
-				_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
 				if (brake_left > BRAKE_THRESHOLD || brake_right > BRAKE_THRESHOLD)
 				{
 					_output_state |= (OUTPUT_BRAKEL | OUTPUT_EBRAKE);
@@ -196,7 +197,9 @@ void main()
 				}
 				if (buttons & XCPU_BUTTON_HORN)
 					_output_state |= OUTPUT_HORN;
-				
+				//if (buttons & XCPU_BUTTON_LIGHTS_OFF)
+				//	_output_state &= ~(OUTPUT_HEADL | OUTPUT_TAILL);
+
 				if (_push_delay(buttons & XCPU_BUTTON_ADJUST_UP, &push_up, 5) &&
 					_storage.WheelRatioAdj < 10)
 				{
