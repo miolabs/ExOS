@@ -70,7 +70,8 @@ enum
 	//
     ST_DASH,
 	ST_DEBUG_INPUT,
-    ST_ADJUST_SPEED,
+	ST_FACTORY_MENU,
+    ST_ADJUST_WHEEL_DIA,
 	ST_ADJUST_THROTTLE_MAX,
 	ST_ADJUST_THROTTLE_MIN,
 	ST_ADJUST_DRIVE_MODE,
@@ -231,27 +232,16 @@ static ANALOGIC _ain[NUM_ADC_INPUTS]=
 #define HORN_IDX         (4)
 
 static unsigned int _input_status = 0;
-static char _adj_up=0, _adj_down=0, _adj_metrics=0;
+static char _adj_up=0, _adj_down=0;
 static char _adj_throttle=0;
 static unsigned short _adj_throttle_max=0, _adj_throttle_min=0;
 static char _adj_drive_mode=0, _adj_drive_mode_cnt=0;
+static char _switch_units_cnt=0;
 
 static const EVREC_CHECK _maintenance_screen_access[]=
 {
 	{BRAKE_RIGHT_MASK | HORN_MASK | CRUISE_MASK, CHECK_PRESSED},
 	{BRAKE_RIGHT_MASK | HORN_MASK | CRUISE_MASK, CHECK_RELEASED},
-	{0x00000000,CHECK_END},
-};
-
-static const EVREC_CHECK _throttle_screen_access[]=
-{
-	{BRAKE_RIGHT_MASK | BRAKE_RIGHT_MASK, CHECK_RELEASED},
-	{BRAKE_RIGHT_MASK | BRAKE_RIGHT_MASK, CHECK_PRESSED},
-	{BRAKE_RIGHT_MASK | BRAKE_RIGHT_MASK, CHECK_RELEASED},
-	{BRAKE_RIGHT_MASK | BRAKE_RIGHT_MASK, CHECK_PRESSED},
-	{BRAKE_RIGHT_MASK | BRAKE_RIGHT_MASK, CHECK_RELEASED},
-	//{CRUISE_MASK, CHECK_RELEASED},
-	//{CRUISE_MASK, CHECK_RELEASE},
 	{0x00000000,CHECK_END},
 };
 
@@ -295,7 +285,8 @@ static void _read_send_analogic_inputs ( int status)
 		relays |= XCPU_BUTTON_ADJUST_UP;
 	if ( _adj_down)
 		relays |= XCPU_BUTTON_ADJUST_DOWN;
-	if ( _adj_metrics)
+	if ( _switch_units_cnt > 0)
+		_switch_units_cnt--,
 		relays |= XCPU_BUTTON_SWITCH_UNITS;
 	if ( _adj_throttle > 0)
         relays |= XCPU_BUTTON_ADJ_THROTTLE, _adj_throttle--;
@@ -427,8 +418,8 @@ static void _intro ( int* status, int* st_time_base, int time)
 #define POS_MI            102, 37
 
 #define POS_ADJUST_MSG    16, 2
-#define POS_ADJUST_MILES  0, 54
-#define POS_ADJUST_KM     4, 57
+#define POS_ADJUST_MILES  84+0, 54-33
+#define POS_ADJUST_KM     84+8, 56-33
 #define POS_ADJUST_BAR    40,46
 #define POS_ADJUST_SPEED  36, 20
 
@@ -451,6 +442,8 @@ static int _adjust_creen ( int status, char* str, int next, unsigned short* res)
 	}
 	return status;
 }
+
+static int _fact_menu_mode = 0;
 
 static void _runtime_screens ( int* status)
 {
@@ -493,10 +486,8 @@ static void _runtime_screens ( int* status)
 				if (( _dash.speed == 0) && ( _dash.status & XCPU_STATE_NEUTRAL))
                 {
 					if ( event_happening ( _maintenance_screen_access, 50)) // 1 second
-						*status = ST_ADJUST_SPEED;
-					if ( event_happening ( _throttle_screen_access, 50)) // 1 second
-						*status = ST_ADJUST_THROTTLE_MAX;	
-					if ( event_happening ( _mode_screen_access, 50)) // 1 second
+						*status = ST_FACTORY_MENU;	
+					if ( event_happening ( _mode_screen_access, 100)) // 2 second
                     {
 						_adj_drive_mode = _dash.drive_mode - 1;
 						_adj_drive_mode = __LIMIT( _adj_drive_mode, 0, 2);
@@ -518,26 +509,20 @@ static void _runtime_screens ( int* status)
 				_draw_text ( _tmp, &_font_spr_small, 0, y);
 			}
 			break;
-		case ST_ADJUST_SPEED:
+		case ST_ADJUST_WHEEL_DIA:
 			{
-				const EVREC_CHECK speed_adj_exit[]= {{HORN_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
-				_adj_down = _adj_up = _adj_metrics = 0;
+				const EVREC_CHECK speed_adj_exit[]= {{CRUISE_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
+				_adj_down = _adj_up = 0;
 				if ( _input_status & BRAKE_LEFT_MASK)
 					_adj_down=1;
 				if ( _input_status & BRAKE_RIGHT_MASK)
 					_adj_up=1;
-				if ( _input_status & CRUISE_MASK)
-					_adj_metrics=1;
 
 				_dash.speed_adjust = __LIMIT( _dash.speed_adjust, -10, 10);
 				int bar = 0x80 + (_dash.speed_adjust * (0x80/10));
 				mono_draw_sprite ( &_screen, &_speed_adjust_spr, POS_ADJUST_MSG);
 				sprintf ( _tmp, "%d", _dash.speed_adjust);
 				_draw_text ( _tmp, &_font_spr_big, POS_ADJUST_SPEED);
-                if (_dash.status & XCPU_STATE_MILES)
-					mono_draw_sprite ( &_screen, &_mi_spr, POS_ADJUST_MILES);
-				else
-					mono_draw_sprite ( &_screen, &_km_spr, POS_ADJUST_KM);
 									
 				_horizontal_sprite_comb ( &_adjust_full_spr, &_adjust_empty_spr, bar, POS_ADJUST_BAR); 
                 if ( event_happening ( speed_adj_exit,1))
@@ -551,6 +536,40 @@ static void _runtime_screens ( int* status)
 		case ST_ADJUST_THROTTLE_MIN:
             *status = _adjust_creen ( *status, "Release throttle", ST_DASH, 
 										&_adj_throttle_min);
+			break;
+
+		case ST_FACTORY_MENU:
+			{
+				const char _hei [] = { 30, 45, 60};
+				const EVREC_CHECK fact_menu_exit[]= {{HORN_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
+				const EVREC_CHECK menu_move[]= {{BRAKE_RIGHT_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
+				const EVREC_CHECK menu_press[]= {{CRUISE_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
+				int anm = (_frame_dumps & 0x7) >> 2;
+				_print_small ("OEM SETTINGS",    -1, 14);
+				_print_small ("Km/Mi",           -1, _hei[0]);
+				_print_small ("Wheel const.",    -1, _hei[1]);
+				_print_small ("Throttle adjust", -1, _hei[2]);
+                if ( _frame_dumps & 0x7)
+					_print_small ( ">>", 20, _hei[_fact_menu_mode]);
+                if (_dash.status & XCPU_STATE_MILES)
+					mono_draw_sprite ( &_screen, &_mi_spr, POS_ADJUST_MILES);
+				else
+					mono_draw_sprite ( &_screen, &_km_spr, POS_ADJUST_KM);
+                if ( event_happening ( menu_move,1))
+					_fact_menu_mode++, _fact_menu_mode %= 3;
+				if ( event_happening ( menu_press,1))
+				{
+					switch ( _fact_menu_mode)
+					{
+						case 0:  _switch_units_cnt = RESEND_TIMES; break;
+						case 1: *status = ST_ADJUST_WHEEL_DIA;     break;
+						case 2: *status = ST_ADJUST_THROTTLE_MAX;  break;
+						default: assert (0);
+					}
+				}
+				if ( event_happening ( fact_menu_exit,1))
+					*status = ST_DASH;
+			}
 			break;
 
 		case ST_ADJUST_DRIVE_MODE:
@@ -593,7 +612,8 @@ void main()
 	unsigned int prev_time = 0;
 
 	int screen_count = 0;
-    int initial_status = ST_LOGO_IN; //ST_LOGO_IN; //ST_DASH; //ST_DEBUG_INPUT; // ST_ADJUST_SPEED
+    int initial_status = ST_DASH; //ST_LOGO_IN; //ST_DASH; 
+	                                      //ST_DEBUG_INPUT; // ST_ADJUST_WHEEL_DIA; //ST_FACTORY_MENU
 	int status =  initial_status;
 	int prev_cpu_state = 0;	// Default state is OFF, wait for master to start
 	while(1)

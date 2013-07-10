@@ -49,7 +49,7 @@ static XCPU_PERSIST_DATA _storage;
 
 
 void main()
- {
+{
 	int result;
 	hal_pwm_initialize(PWM_TIMER_MODULE, PWM_RANGE - 1, 200000);
 	hal_pwm_set_output(PWM_TIMER_MODULE, 0, 1025);
@@ -356,3 +356,4 @@ static int _push_delay(int push, unsigned char *state, int limit)
 static void _run_diag()
 {
 }
+
