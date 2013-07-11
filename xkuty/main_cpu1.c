@@ -29,6 +29,7 @@ static int _lost_msgs = 0;
 #endif
 
 static XCPU_OUTPUT_MASK _output_state = OUTPUT_NONE;
+static XCPU_OUTPUT_MASK _default_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
 
 static PID_K _pid_k; 
 static PID_STATE _pid;
@@ -110,6 +111,7 @@ void main()
 	_output_state = OUTPUT_NONE;
 	_state = XCPU_STATE_OFF;
 
+
 	float dt = 0;
 	float speed = 0;
 	float ratio = 0;
@@ -189,14 +191,14 @@ void main()
 					}
 				}
 			case CONTROL_ON:
-				_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
+				_output_state = _default_output_state;
 				if (brake_left > BRAKE_THRESHOLD || brake_right > BRAKE_THRESHOLD)
 				{
 					_output_state |= (OUTPUT_BRAKEL | OUTPUT_EBRAKE);
 					throttle = 0;
 				}
 				if ( buttons & XCPU_BUTTON_LIGHTS_OFF)
-					_output_state &= ~(OUTPUT_HEADL | OUTPUT_TAILL);
+					_default_output_state = OUTPUT_NONE;
 				if (buttons & XCPU_BUTTON_HORN)
 					_output_state |= OUTPUT_HORN;
 
