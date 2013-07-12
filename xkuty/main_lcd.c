@@ -513,20 +513,28 @@ static void _runtime_screens ( int* status)
 			break;
 
 		case ST_DEBUG_INPUT:
-			for (int i=0; i<NUM_ADC_INPUTS; i++)
 			{
-				int y=12*i;
-				/*if(( frame>>4) & 1)
-					sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].max);
-				else
-					sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].min);*/
-				//sprintf ( _tmp, "%d.%d %d", i, _ain[i].min, _ain[i].max);
-				//sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr, _ain[i].scaled >> 4);
-				sprintf ( _tmp, "%d.%d %d", i, _ain[i].filtered, _ain[i].scaled >> 4);
-				_draw_text ( _tmp, &_font_spr_small, 0, y);
+				int fact = 100;	// Transform 12 fixed point to "%"
+				int j, vv[4];
+				char* sensor_names[] = {"Throttle", "Brk. lf.", "Brk. rt.", "Cruise", "Horn"};
+				for (int i=0; i<NUM_ADC_INPUTS; i++)
+				{
+					int y=10 + 12*i;
+					vv[0] = _ain[i].curr; 
+					vv[1] = _ain[i].filtered;
+					vv[2] = _ain[i].scaled;
+					vv[3] = _ain[i].min;
+					vv[4] = _ain[i].max;
+					_print_small ( sensor_names[i], 0, y);
+					for (j=0; j<5; j++)
+					{
+						sprintf ( _tmp, "%d%%", (vv[j] * fact) >> 12);
+						_print_small ( _tmp, 36+j*20, y);
+					}
+				}
+				if (( _input_status & HORN_MASK) && ( _input_status & CRUISE_MASK))
+					*status = ST_DASH;
 			}
-            if ( _input_status & HORN_MASK)
-				*status = ST_DASH;
 			break;
 		case ST_ADJUST_WHEEL_DIA:
 			{
