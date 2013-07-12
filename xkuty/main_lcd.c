@@ -515,7 +515,7 @@ static void _runtime_screens ( int* status)
 		case ST_DEBUG_INPUT:
 			{
 				int fact = 100;	// Transform 12 fixed point to "%"
-				int j, vv[4];
+				int j, vv[5];
 				char* sensor_names[] = {"Throttle", "Brk. lf.", "Brk. rt.", "Cruise", "Horn"};
 				for (int i=0; i<NUM_ADC_INPUTS; i++)
 				{
