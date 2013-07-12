@@ -48,7 +48,6 @@ static XCPU_STATE _state; // comm state to share (with lcd)
 
 static XCPU_PERSIST_DATA _storage;
 
-
 void main()
 {
 	int result;

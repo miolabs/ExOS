@@ -260,20 +260,29 @@ static void _read_send_analogic_inputs ( int status)
 	if ( _fir_needs_init)
 	{
 		_fir_needs_init = 0;
+		#if 0
 		fir_init( &_ain[THROTTLE_IDX].fir,    6,  1, 500, 1);
 		fir_init( &_ain[BRAKE_LEFT_IDX].fir,  10, 1, 100, 3);
 		fir_init( &_ain[BRAKE_RIGHT_IDX].fir, 10, 1, 100, 5);
 		fir_init( &_ain[CRUISE_IDX].fir,      8, 0, 0, 0);
 		fir_init( &_ain[HORN_IDX].fir,        8, 0, 0, 0);
+		#else
+		fir_init( &_ain[THROTTLE_IDX].fir,    6, 1, 500, 2);
+		fir_init( &_ain[BRAKE_LEFT_IDX].fir,  6, 1, 100, 2);
+		fir_init( &_ain[BRAKE_RIGHT_IDX].fir, 6, 1, 100, 2);
+		fir_init( &_ain[CRUISE_IDX].fir,      6, 0, 0, 0);
+		fir_init( &_ain[HORN_IDX].fir,        6, 0, 0, 0);
+		#endif
 	}
 
 	for(int i=0; i<NUM_ADC_INPUTS; i++)
 	{
 		_ain[i].curr   = hal_adc_read(i) >> 4;	// 12 bit resolution
-		if ( _ain[i].curr > _ain[i].max) _ain[i].max = _ain[i].curr;
-		if ( _ain[i].curr < _ain[i].min) _ain[i].min = _ain[i].curr;
         _ain[i].filtered = fir_filter (& _ain[i].fir, _ain[i].curr);
 		_ain[i].scaled = _sensor_scale ( _ain[i].filtered, _ain[i].def_min, _ain[i].def_max, 0xfff);
+		int tocmp = _ain[i].filtered;
+		if ( tocmp > _ain[i].max) _ain[i].max = tocmp;
+		if ( tocmp < _ain[i].min) _ain[i].min = tocmp;
 	}
 
 	unsigned short relays = 0;
@@ -426,8 +435,6 @@ static void _intro ( int* status, int* st_time_base, int time)
 #define POS_MI            102, 37
 
 #define POS_ADJUST_MSG    16, 2
-#define POS_ADJUST_MILES  84, 18
-#define POS_ADJUST_KM     92, 20
 #define POS_ADJUST_BAR    40, 46
 #define POS_ADJUST_SPEED  36, 20
 
@@ -513,9 +520,13 @@ static void _runtime_screens ( int* status)
 					sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].max);
 				else
 					sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr,_ain[i].min);*/
+				//sprintf ( _tmp, "%d.%d %d", i, _ain[i].min, _ain[i].max);
+				//sprintf ( _tmp, "%d.%d %d", i, _ain[i].curr, _ain[i].scaled >> 4);
 				sprintf ( _tmp, "%d.%d %d", i, _ain[i].filtered, _ain[i].scaled >> 4);
 				_draw_text ( _tmp, &_font_spr_small, 0, y);
 			}
+            if ( _input_status & HORN_MASK)
+				*status = ST_DASH;
 			break;
 		case ST_ADJUST_WHEEL_DIA:
 			{
@@ -548,24 +559,25 @@ static void _runtime_screens ( int* status)
 
 		case ST_FACTORY_MENU:
 			{
-				const char _hei [] = { 26, 38, 50, 62, };
+				const char _hei [] = { 22, 31, 40, 49, 58 };
 				const EVREC_CHECK fact_menu_exit[]= {{HORN_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
 				const EVREC_CHECK menu_move[]= {{BRAKE_RIGHT_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
 				const EVREC_CHECK menu_press[]= {{CRUISE_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
 				int anm = (_frame_dumps & 0x7) >> 2;
-				_print_small ("OEM SETTINGS",    -1, 10);
-				_print_small ("Km/Mi:",           -1, _hei[0]);
+				_print_small ("OEM SETTINGS",    -1,  10);
+                if (_dash.status & XCPU_STATE_MILES)
+					_print_small ("Km/Mi: Miles", -1, _hei[0]);
+				else
+					_print_small ("Km/Mi: Km",    -1, _hei[0]);
 				_print_small ("Wheel const.",    -1, _hei[1]);
 				_print_small ("Throttle adjust", -1, _hei[2]);				
 				_print_small ("Lights off",      -1, _hei[3]);
+				_print_small ("Sensor monitor",  -1, _hei[4]);
                 if ( _frame_dumps & 0x8)
 					_print_small ( ">>", 20, _hei[_fact_menu_mode]-1);
-                if (_dash.status & XCPU_STATE_MILES)
-					mono_draw_sprite ( &_screen, &_mi_spr, POS_ADJUST_MILES);
-				else
-					mono_draw_sprite ( &_screen, &_km_spr, POS_ADJUST_KM);
+
                 if ( event_happening ( menu_move,1))
-					_fact_menu_mode++, _fact_menu_mode %= 4;
+					_fact_menu_mode++, _fact_menu_mode %= 5;
 				if ( event_happening ( menu_press,1))
 				{
 					switch ( _fact_menu_mode)
@@ -576,10 +588,10 @@ static void _runtime_screens ( int* status)
 						case 3: _lights_off_cnt = RESEND_TIMES;
 						        *status = ST_DASH;
 						        break;
+						case 4: *status = ST_DEBUG_INPUT; break;
 						default: assert(0);
 					}
 				}
-				//if ( event_happening ( fact_menu_exit,1))
                 if ( _input_status & HORN_MASK)
 					*status = ST_DASH;
 			}

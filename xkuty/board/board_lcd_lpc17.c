@@ -20,6 +20,8 @@ void hal_board_initialize()
 #if defined BOARD_MINILCD
 	LPC_GPIO1->FIOSET = (1<<18);
 	LPC_GPIO1->FIODIR |= (1<<18); // USB_LED
+	LPC_GPIO1->FIOCLR = (1<<24);
+	LPC_GPIO1->FIODIR |= (1<<24); // SENSOR_PWR
 #elif defined BOARD_LPC1766STK
 	LPC_GPIO1->FIODIR |= (1<<25);	// LED1
 	LPC_GPIO0->FIODIR |= (1<<4);	// LED2
