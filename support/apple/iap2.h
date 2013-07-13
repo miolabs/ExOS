@@ -1,0 +1,130 @@
+#ifndef USB_DRIVER_IAP2_H
+#define USB_DRIVER_IAP2_H
+
+#include <usb/host.h>
+#include <support/usb/driver/hid.h>
+
+typedef struct
+{
+	USB_HOST_FUNCTION;
+
+	const char *DeviceName;
+
+	USB_HOST_PIPE InputPipe;
+	USB_HOST_PIPE OutputPipe;
+	//EXOS_TREE_DEVICE KernelDevice;
+	unsigned char OutputBuffer[64];	// used for output and setup
+	unsigned char InputBuffer[64];
+
+	unsigned char Interface;
+	unsigned char Protocol;
+	unsigned char DeviceUnit;
+} IAP2_USB_FUNCTION;
+
+// link control byte flags
+#define IAP2_LCB_START (0)
+#define IAP2_LCB_CONTINUATION (1<<0)
+#define IAP2_LCB_MORE_TO_FOLLOW (1<<1)
+
+#define USB_IAP2_REQ_DEVICE_POWER_REQUEST 0x40
+
+typedef enum
+{
+	IAP2_LINGO_GENERAL = 0,
+} IAP2_LINGO_ID;
+
+typedef enum
+{
+	// General Lingo Commands
+	IAP2_CMD_REQUEST_IDENTIFY = 0,
+	IAP2_CMD_IDENTIFY_DEPRECATED,
+	IAP2_CMD_IPODACK,
+
+	IAP2_CMD_REQUEST_LINGO_PROTOCOL_VERSION = 0x0F,
+	IAP2_CMD_RETURN_LINGO_PROTOCOL_VERSION,
+	IAP2_CMD_REQUEST_TRANSPORT_MAX_PAYLOAD_SIZE,
+	IAP2_CMD_RETURN_TRANSPORT_MAX_PAYLOAD_SIZE,
+
+	IAP2_CMD_GET_ACC_AUTH_INFO = 0x14,
+	IAP2_CMD_RET_ACC_AUTH_INFO,
+	IAP2_CMD_ACK_ACC_AUTH_INFO,
+	IAP2_CMD_GET_ACC_AUTH_SIGNATURE,
+	IAP2_CMD_RET_ACC_AUTH_SIGNATURE,
+	IAP2_CMD_ACK_ACC_AUTH_STATUS,
+
+	IAP2_CMD_START_IDPS = 0x38,
+	IAP2_CMD_SET_FID_TOKEN_VALUES,
+	IAP2_CMD_ACK_FID_TOKEN_VALUES,
+	IAP2_CMD_END_IDPS,
+	IAP2_CMD_IDPS_STATUS,
+	
+	IAP2_CMD_OPEN_DATA_SESSION_FOR_PROTOCOL = 0x3F,
+	IAP2_CMD_CLOSE_DATA_SESSION,
+	IAP2_CMD_ACCESORY_ACK,
+	IAP2_CMD_ACCESORY_DATA_TRANSFER,
+	IAP2_CMD_IPOD_DATA_TRANSFER,
+	IAP2_CMD_IPOD_NOTIFICATION,
+} IAP2_CMD_ID;
+
+typedef enum
+{
+	IAP2_OK = 0,
+	IAP2_ERROR_UNKNOWN_CATEGORY_OR_SESSION_ID,
+	IAP2_ERROR_COMMAND_FAILED,
+	IAP2_ERROR_DEVICE_OUT_OF_RESOURCES,
+	IAP2_ERROR_BAD_PARAMETER,
+	IAP2_ERROR_UNKNOWN_ID,
+	IAP2_ERROR_COMMAND_PENDING,
+	IAP2_ERROR_NOT_AUTHENTICATED,
+	IAP2_ERROR_BAD_AUTH_VERSION,
+	IAP2_ERROR_POWER_MODE_REQ_FAILED,
+	IAP2_ERROR_CERTIFICATE_INVALID,
+	IAP2_ERROR_CERTIFICATE_PERMISSIONS_INVALID,
+	IAP2_ERROR_FILE_IN_USE,
+	IAP2_ERROR_INVALID_FILE_HANDLE,
+	IAP2_ERROR_DIRECTORY_NOT_EMPTY,
+	IAP2_ERROR_OPERATION_TIMED_OUT,
+	IAP2_ERROR_COMMAND_NOT_AVAILABLE,
+	// FIXME: incomplete
+} IAP2_CMD_STATUS;
+
+#define IAP2_MAX_PACKET_BUFFER 506
+typedef unsigned char IAP2_PAYLOAD_BUFFER[IAP2_MAX_PACKET_BUFFER]; 
+
+typedef struct
+{
+	unsigned char LingoID;
+	unsigned char Reserved;
+	unsigned short Transaction;
+	unsigned short CommandID;
+	unsigned short Length;
+	unsigned char *Data;
+} IAP2_CMD;
+
+typedef struct
+{
+	EXOS_NODE Node;
+	EXOS_EVENT CompletedEvent;
+	IAP2_CMD_STATUS ErrorCode;
+	IAP2_CMD *Input;
+	IAP2_CMD *Output;
+} IAP2_REQUEST;
+
+typedef struct
+{
+	HID_REPORT_INPUT *Input;
+	IAP2_REQUEST *Request;
+	unsigned short PayloadOffset;
+	unsigned char Checksum;
+} IAP2_PARSER_STATE;
+
+void iap2_initialize();
+IAP2_REQUEST *iap2_begin_req(IAP2_CMD *cmd, IAP2_CMD *resp);
+IAP2_CMD_STATUS iap2_end_req(IAP2_REQUEST *req, int timeout);
+IAP2_CMD_STATUS iap2_do_req(IAP2_CMD *cmd, IAP2_CMD *resp);
+IAP2_CMD_STATUS iap2_do_req2(IAP2_CMD_ID cmd_id, IAP2_CMD *resp);
+IAP2_CMD_STATUS iap2_do_req3(IAP2_CMD_ID cmd_id, unsigned char *cmd_data, int cmd_length, IAP2_CMD *resp);
+
+#endif // USB_DRIVER_IAP2_H
+
+

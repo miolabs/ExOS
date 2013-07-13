@@ -132,6 +132,7 @@
         <folder Name="apple">
           <file file_name="support/apple/cp20.c"/>
           <file file_name="support/apple/iap2.c"/>
+          <file file_name="support/apple/iap2_fid.c"/>
         </folder>
       </folder>
       <folder Name="modules">

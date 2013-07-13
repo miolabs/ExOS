@@ -57,11 +57,11 @@ __weak int __str_comp(const char *str1, const char *str2)
 	return (a < b) ? - 1 : 1;
 }
 
-static inline void _reverse_str ( char* str, int len)
+static inline void _reverse_str(char* str, int len)
 {
 	int p = 0;
 	int q = len-1;
-    while ( p < q)
+    while(p < q)
 	{
         char c = str[p];
 		str[p] = str[q];
