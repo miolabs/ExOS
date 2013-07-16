@@ -96,9 +96,9 @@ typedef struct
 	unsigned long Max;
 } USB_HID_ITEM_PARSE_STATE;
 
-static HID_REPORT_HANDLER *_match_handler(HID_FUNCTION *func, HID_REPORT_INPUT *input)
+static HID_REPORT_MANAGER *_match_handler(HID_FUNCTION *func, HID_REPORT_INPUT *input)
 {
-	HID_REPORT_HANDLER *matching = NULL;
+	HID_REPORT_MANAGER *matching = NULL;
 	exos_mutex_lock(&_manager_lock);
 	FOREACH(node, &_manager_list)
 	{
@@ -110,13 +110,9 @@ static HID_REPORT_HANDLER *_match_handler(HID_FUNCTION *func, HID_REPORT_INPUT *
 		if (driver->MatchDevice != NULL && !driver->MatchDevice(func->Device)) continue;
 		if (driver->MatchInputHandler)
 		{
-			HID_REPORT_HANDLER *hnd = driver->MatchInputHandler(func, input);
-			if (hnd != NULL)
+			if (driver->MatchInputHandler(func, input))
 			{
-				exos_event_create(&hnd->ReceiveEvent);
-				hnd->Function = func;
-				hnd->Input = input;
-				matching = hnd;
+				matching = manager;
 				break;
 			}
 		}
@@ -211,10 +207,10 @@ static void _parse_items(HID_FUNCTION *func, unsigned char *ptr, int length)
 								input->Max = state.Max;
 								input->InputFlags = value;
 
-								HID_REPORT_HANDLER *hnd = _match_handler(func, input);
-								if (hnd != NULL)
+								HID_REPORT_MANAGER *manager = _match_handler(func, input);
+								if (manager != NULL)
 								{
-									input->Handler = hnd;
+									input->Manager = manager;
 									list_add_tail(&func->Inputs, (EXOS_NODE *)input);
 								}
 								else
@@ -320,6 +316,7 @@ static void *_service(void *arg)
 		usb_host_begin_bulk_transfer(&urb, func->InputBuffer, report_bytes);
 		usb_host_end_bulk_transfer(&urb);
 
+		unsigned char buffer[64];
 		unsigned char *data;
 		unsigned char report_id;
 		if (func->MaxReportId != 0)
@@ -337,14 +334,15 @@ static void *_service(void *arg)
 		FOREACH(node, &func->Inputs)
 		{
 			HID_REPORT_INPUT *input = (HID_REPORT_INPUT *)node;
-			HID_REPORT_HANDLER *hnd = input->Handler;
-			if (hnd != NULL)
+			HID_REPORT_MANAGER *manager = input->Manager;
+			if (manager != NULL)
 			{
 				if (input->ReportId != report_id)
 					continue;
 
-				_read_field(input, data, hnd->Data);
-				exos_event_set(&hnd->ReceiveEvent);
+				_read_field(input, data, buffer);
+				const HID_REPORT_DRIVER *driver = manager->Driver;
+				driver->Notify(func, input, buffer);
 			}
 		}
 		exos_mutex_unlock(&func->InputLock);

@@ -19,12 +19,18 @@ typedef struct
 	unsigned char OutputBuffer[64];
 } HID_FUNCTION;
 
-typedef struct _HID_REPORT_HANDLER HID_REPORT_HANDLER;
+typedef struct __HID_REPORT_DRIVER HID_REPORT_DRIVER;
 
 typedef struct
 {
 	EXOS_NODE Node;
-	HID_REPORT_HANDLER *Handler;
+	const HID_REPORT_DRIVER *Driver;
+} HID_REPORT_MANAGER;
+
+typedef struct
+{
+	EXOS_NODE Node;
+	HID_REPORT_MANAGER *Manager;
 	unsigned char ReportId;
 	unsigned char Offset;
 	unsigned char UsagePage;
@@ -36,24 +42,21 @@ typedef struct
 	unsigned long InputFlags;
 } HID_REPORT_INPUT;
 
-typedef struct
+struct __HID_REPORT_DRIVER
 {
 	int (*MatchDevice)(USB_HOST_DEVICE *device);
-	HID_REPORT_HANDLER *(*MatchInputHandler)(HID_FUNCTION *func, HID_REPORT_INPUT *input);
+	int (*MatchInputHandler)(HID_FUNCTION *func, HID_REPORT_INPUT *input);
 	void (*EndReportEnum)(HID_FUNCTION *func);
-} HID_REPORT_DRIVER;
+	void (*Notify)(HID_FUNCTION *func, HID_REPORT_INPUT *input, unsigned char *data);
+};
 
-typedef struct
-{
-	EXOS_NODE Node;
-	const HID_REPORT_DRIVER *Driver;
-} HID_REPORT_MANAGER;
+
 
 
 struct _HID_REPORT_HANDLER
 {
-	EXOS_EVENT ReceiveEvent;
-	unsigned char *Data;
+	EXOS_NODE Node;
+	
 	HID_FUNCTION *Function;
 	HID_REPORT_INPUT *Input;
 };
