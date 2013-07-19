@@ -315,9 +315,9 @@ static void _read_send_analogic_inputs ( int status)
         relays |= XCPU_BUTTON_LIGHTS_OFF;
 
 	// Record inputs for sequence triggering (to start debug services)
-	 _input_status = (((_ain[THROTTLE_IDX].scaled & 0x80) >> 7) << 0) |
-					(((_ain[BRAKE_LEFT_IDX].scaled & 0x80) >> 7) << 1) |
-					(((_ain[BRAKE_RIGHT_IDX].scaled & 0x80) >> 7) << 2) |
+	 _input_status = (((_ain[THROTTLE_IDX].scaled & 0x800) >> 11) << 0) |
+					((_ain[BRAKE_LEFT_IDX].scaled > 0x180) ? (1<<1) : 0) |
+					((_ain[BRAKE_RIGHT_IDX].scaled > 0x180) ? (1<<2) : 0) |
 					((_ain[CRUISE_IDX].filtered < 0x800) ? (1<<3) : 0) |
 					((_ain[HORN_IDX].filtered < 0x800) ? (1<<4) : 0);
 
