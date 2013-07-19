@@ -109,17 +109,18 @@ typedef struct
 	float speed, dt, ratio, s_partial;
 } SPEED_DATA;
 
-static void _speed_calculation ( SPEED_DATA* sp)
+
+static void _speed_calculation ( SPEED_DATA* sp, float wheel_ratio_adj)
 {
 	static int 	speed_wait = 0;
-	float dt2 = 0;
+	float dt2 = 0.0f;
 	int space = speed_read(&dt2);
 	sp->dt += dt2;
 	if (space != 0)
 	{
 		sp->ratio = (_state & XCPU_STATE_MILES) ? WHEEL_RATIO_MPH : WHEEL_RATIO_KMH;
-		sp->ratio += sp->ratio * (float)_storage.WheelRatioAdj * 0.01F;
-		sp->speed = sp->dt != 0 ? (int)((space / sp->dt) *  sp->ratio) : 99;
+		sp->ratio += sp->ratio * 0.01F * wheel_ratio_adj;
+		sp->speed = sp->dt != 0 ? (int)((space / sp->dt) * sp->ratio) : 99;
 		sp->s_partial += space;
 		dt2 = sp->dt;
 		sp->dt = 0;
@@ -203,7 +204,6 @@ void main()
 
 	unsigned char led = 0;
 
-       
 	if (!persist_load(&_storage))
 	{
 		_storage = (XCPU_PERSIST_DATA) { .Magic = XCPU_PERSIST_MAGIC,
@@ -228,7 +228,7 @@ void main()
 		_read_can_messages ( drive_mode);
 
 		// read sensors
-		_speed_calculation ( &sp);
+        _speed_calculation ( &sp, (float)_storage.WheelRatioAdj);
 
 		switch(_control_state)
 		{
@@ -302,11 +302,14 @@ void main()
 					}
 					else
 					{
-						_pid.SetPoint = sp.speed;
-						_pid.Integral = _c_i.throttle / _pid_k.I;
+						if (sp.speed > 0)
+						{
+							_pid.SetPoint = sp.speed;
+							_pid.Integral = _c_i.throttle / _pid_k.I;
 
-						_state ^= XCPU_STATE_CRUISE_ON;
-						_control_state = _state & XCPU_STATE_CRUISE_ON ? CONTROL_CRUISE : CONTROL_ON;
+							_state ^= XCPU_STATE_CRUISE_ON;
+							_control_state = _state & XCPU_STATE_CRUISE_ON ? CONTROL_CRUISE : CONTROL_ON;
+						}
 					}
 				}
 
@@ -329,16 +332,17 @@ void main()
 					hal_pwm_set_output(PWM_TIMER_MODULE, 0, PWM_RANGE - ((th_lim * PWM_RANGE) >> 8));
 				}
 				break;                          
-			}
+		}
 
-			xcpu_board_led(led = !led);     // toggle led
+		xcpu_board_led(led = !led);     // toggle led
 
-			// Report info to the LCD module; takes 10 ms
-			_send_can_messages ( drive_mode, sp.speed,
-				(unsigned long)(((_storage.TotalSteps + sp.s_partial) * sp.ratio) / 100));
+		// Report info to the LCD module; takes 10 ms
+		float steps = _storage.TotalSteps + sp.s_partial;
+		float fdist = steps * sp.ratio * 0.01f;
+		_send_can_messages ( drive_mode, sp.speed, (unsigned long) fdist);
 
-			xcpu_board_output(_output_state);
-        }
+		xcpu_board_output(_output_state);
+	}
 }
 
 void hal_can_received_handler(int index, CAN_MSG *msg)
