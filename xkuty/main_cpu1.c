@@ -145,10 +145,10 @@ void main()
 		float dt2 = 0;
 		int space = speed_read(&dt2);
 		dt += dt2;
+		ratio = (_state & XCPU_STATE_MILES) ? WHEEL_RATIO_MPH : WHEEL_RATIO_KMH;
+		ratio += ratio * (float)_storage.WheelRatioAdj * 0.01F;
 		if (space != 0)
 		{
-			ratio = (_state & XCPU_STATE_MILES) ? WHEEL_RATIO_MPH : WHEEL_RATIO_KMH;
-			ratio += ratio * (float)_storage.WheelRatioAdj * 0.01F;
 			speed = dt != 0 ? (int)((space / dt) * ratio) : 99;
 			s_partial += space;
 			dt2 = dt;
@@ -235,11 +235,14 @@ void main()
 					}
 					else
 					{
-						_pid.SetPoint = speed;
-						_pid.Integral = throttle / _pid_k.I;
+						if ( speed > 0)
+						{
+							_pid.SetPoint = speed;
+							_pid.Integral = throttle / _pid_k.I;
 
-						_state ^= XCPU_STATE_CRUISE_ON;
-						_control_state = _state & XCPU_STATE_CRUISE_ON ? CONTROL_CRUISE : CONTROL_ON;
+							_state ^= XCPU_STATE_CRUISE_ON;
+							_control_state = _state & XCPU_STATE_CRUISE_ON ? CONTROL_CRUISE : CONTROL_ON;
+						}
 					}
 				}
 

@@ -242,6 +242,10 @@ static const EVREC_CHECK _maintenance_screen_access[]=
 {
 	{BRAKE_RIGHT_MASK | HORN_MASK | CRUISE_MASK, CHECK_PRESSED},
 	{BRAKE_RIGHT_MASK | HORN_MASK | CRUISE_MASK, CHECK_RELEASED},
+	{BRAKE_RIGHT_MASK, CHECK_PRESSED},
+    {HORN_MASK | CRUISE_MASK, CHECK_RELEASED},
+	{BRAKE_RIGHT_MASK, CHECK_PRESSED},
+	{BRAKE_RIGHT_MASK, CHECK_RELEASED},
 	{0x00000000,CHECK_END},
 };
 
@@ -286,8 +290,12 @@ static void _read_send_analogic_inputs ( int status)
 	}
 
 	unsigned short relays = 0;
-	if (_ain[CRUISE_IDX].filtered < 0x800) 
+	// When the horn is pressed at the same time of the cruise control, the user
+	// is trying to enter a special menu.
+	//if (_ain[CRUISE_IDX].filtered < 0x800)
+	if ((_ain[CRUISE_IDX].filtered < 0x800) && !(_ain[HORN_IDX].filtered < 0x800))
 		relays |= XCPU_BUTTON_CRUISE;
+
 	if (_ain[HORN_IDX].filtered < 0x800) 
 		relays |= XCPU_BUTTON_HORN;
 	if ( _adj_up)
@@ -310,7 +318,9 @@ static void _read_send_analogic_inputs ( int status)
 	 _input_status = (((_ain[THROTTLE_IDX].scaled & 0x80) >> 7) << 0) |
 					(((_ain[BRAKE_LEFT_IDX].scaled & 0x80) >> 7) << 1) |
 					(((_ain[BRAKE_RIGHT_IDX].scaled & 0x80) >> 7) << 2) |
-					(relays << 3);
+					((_ain[CRUISE_IDX].filtered < 0x800) ? (1<<3) : 0) |
+					((_ain[HORN_IDX].filtered < 0x800) ? (1<<4) : 0);
+
 	event_record ( _input_status);
 
 	unsigned int throttle = _ain[THROTTLE_IDX].scaled;
