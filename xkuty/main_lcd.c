@@ -264,7 +264,7 @@ static void _read_send_analogic_inputs ( int status)
 	if ( _fir_needs_init)
 	{
 		_fir_needs_init = 0;
-		#if 0
+		#ifdef GLITCHY_AD
 		fir_init( &_ain[THROTTLE_IDX].fir,    6,  1, 500, 1);
 		fir_init( &_ain[BRAKE_LEFT_IDX].fir,  10, 1, 100, 3);
 		fir_init( &_ain[BRAKE_RIGHT_IDX].fir, 10, 1, 100, 5);

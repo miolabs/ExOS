@@ -120,4 +120,7 @@
   <configuration Name="MINILCD" c_preprocessor_definitions="BOARD_MINILCD;LCD_SSP_MODULE=0;LCD_ST7565R;LCD_CAN_BUS=1" hidden="Yes"/>
   <configuration Name="MINILCD Debug" inherited_configurations="Debug;MINILCD"/>
   <configuration Name="MINILCD Release" inherited_configurations="MINILCD;Release"/>
+  <configuration Name="MINILCD v01" c_preprocessor_definitions="GLITCHY_AD" hidden="Yes"/>
+  <configuration Name="MINILCD v01 Debug" inherited_configurations="Debug;MINILCD;MINILCD v01"/>
+  <configuration Name="MINILCD v01 Release" inherited_configurations="Debug;MINILCD;MINILCD v01"/>
 </solution>
