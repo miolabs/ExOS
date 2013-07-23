@@ -550,9 +550,9 @@ static void _runtime_screens ( int* status)
 			{
 				const EVREC_CHECK speed_adj_exit[]= {{CRUISE_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
 				_adj_down = _adj_up = 0;
-				if ( _input_status & BRAKE_LEFT_MASK)
-					_adj_down=1;
 				if ( _input_status & BRAKE_RIGHT_MASK)
+					_adj_down=1;
+				if ( _input_status & BRAKE_LEFT_MASK)
 					_adj_up=1;
 
 				_dash.speed_adjust = __LIMIT( _dash.speed_adjust, -10, 10);
