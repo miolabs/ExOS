@@ -48,6 +48,39 @@ typedef struct
 
 static CAN_INPUT _c_i = {0,0,0,0,0,0};
 
+typedef struct
+{
+	float dt2, speed, dt, ratio, s_partial;
+} SPEED_DATA;
+
+static SPEED_DATA _sp = { 0.0f, 0.0f,  0.0f,  0.0f,  0.0f};
+
+static void _speed_calculation ( SPEED_DATA* sp, int mag_miles, float wheel_ratio_adjust)
+{
+	static int 	speed_wait = 0;
+	float dt2 = 0;
+	int space = speed_read(&dt2);
+	sp->dt += dt2;
+	if (space != 0)
+	{
+		// Magnitude miles, false (km) true (miles)
+		sp->ratio = mag_miles ? WHEEL_RATIO_MPH : WHEEL_RATIO_KMH;
+		sp->ratio += sp->ratio * wheel_ratio_adjust * 0.01F;
+		sp->speed = sp->dt != 0 ? (int)((space / sp->dt) *  sp->ratio) : 99;
+		sp->s_partial += space;
+		dt2 = sp->dt;
+		sp->dt = 0;
+		speed_wait = 0;
+	}
+	else
+	{
+		if (speed_wait < 50) 
+			speed_wait++;
+		else 
+			sp->speed = 0.0f;
+	}
+}
+
 typedef struct 
 {
 	unsigned char start;
@@ -119,13 +152,6 @@ void main()
 	_output_state = OUTPUT_NONE;
 	_state = XCPU_STATE_OFF;
 
-
-	float dt = 0;
-	float speed = 0;
-	float ratio = 0;
-	int speed_wait = 0;
-	unsigned long s_partial = 0;
-	int batt = 0;
 	int throttle_target = 0;
 	while(1)
 	{
@@ -151,24 +177,9 @@ void main()
 		}
 
 		// read sensors
-		float dt2 = 0;
-		int space = speed_read(&dt2);
-		dt += dt2;
-		ratio = (_state & XCPU_STATE_MILES) ? WHEEL_RATIO_MPH : WHEEL_RATIO_KMH;
-		ratio += ratio * (float)_storage.WheelRatioAdj * 0.01F;
-		if (space != 0)
-		{
-			speed = dt != 0 ? (int)((space / dt) * ratio) : 99;
-			s_partial += space;
-			dt2 = dt;
-			dt = 0;
-			speed_wait = 0;
-		}
-		else
-		{
-			if (speed_wait < 50) speed_wait++;
-			else speed = 0;
-		}
+		_speed_calculation ( &_sp, (_state & XCPU_STATE_MILES) ? 1:0, (float)_storage.WheelRatioAdj);
+
+		int space = speed_read(&_sp.dt2);
 
 		switch(_control_state)
 		{
@@ -186,7 +197,7 @@ void main()
 			case CONTROL_CRUISE:
 				{
 					int input_throttle = _c_i.throttle;
-					_c_i.throttle = pid(&_pid, speed, &_pid_k, 0.05F);
+					_c_i.throttle = pid(&_pid, _sp.speed, &_pid_k, 0.05F);
 					if (_c_i.throttle > 250)
 					{
 						_c_i.throttle--;
@@ -238,15 +249,15 @@ void main()
 
 				if (_push_delay(_c_i.buttons & XCPU_BUTTON_CRUISE, &push.cruise, 5))
 				{
-					if (speed == 0)
+					if ( _sp.speed == 0)
 					{
 						_state ^= XCPU_STATE_NEUTRAL;
 					}
 					else
 					{
-						if ( speed > 0)
+						if ( _sp.speed > 0)
 						{
-							_pid.SetPoint = speed;
+							_pid.SetPoint = _sp.speed;
 							_pid.Integral = _c_i.throttle / _pid_k.I;
 
 							_state ^= XCPU_STATE_CRUISE_ON;
@@ -258,12 +269,12 @@ void main()
 				if (_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push.start, 10) ||
 					_push_delay(_c_i.buttons & XCPU_BUTTON_CRUISE, &push.off, 100))
 				{
-					if (speed == 0)
+					if (_sp.speed == 0)
 					{
 						hal_pwm_set_output(PWM_TIMER_MODULE, 0, PWM_RANGE + 1); //      disable pwm
 
-						_storage.TotalSteps += s_partial;
-						s_partial = 0;
+						_storage.TotalSteps += _sp.s_partial;
+						_sp.s_partial = 0;
 						_storage.ConfigBits = XCPU_CONFIGF_NONE;
 						if (_state & XCPU_STATE_MILES) 
 							_storage.ConfigBits |= XCPU_CONFIGF_MILES;
@@ -305,11 +316,11 @@ void main()
 
 			exos_thread_sleep (5);  // Temporary fix; packets get overwritten
 
-			buf.u8[0] = speed;
+			buf.u8[0] = _sp.speed;
 			buf.u8[1] = _c_i.throttle; // batt
 			buf.u8[2] = _state;
 			buf.u8[3] = _storage.WheelRatioAdj;
-			buf.u32[1] = (unsigned long)(((_storage.TotalSteps + s_partial) * ( ratio / 3.6f)) / 100);
+			buf.u32[1] = (unsigned long)(((_storage.TotalSteps + _sp.s_partial) * ( _sp.ratio / 3.6f)) / 100);
 			hal_can_send((CAN_EP) { .Id = 0x300 }, &buf, 8, CANF_NONE);
 
 			exos_thread_sleep (5);  // IDEM
