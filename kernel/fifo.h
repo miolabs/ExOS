@@ -5,6 +5,9 @@
 
 typedef struct
 {
+#ifdef DEBUG
+	int Count;
+#endif
 	EXOS_LIST Items;
 	EXOS_EVENT *Event;
 } EXOS_FIFO;

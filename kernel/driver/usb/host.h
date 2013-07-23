@@ -79,6 +79,7 @@ struct _USB_REQUEST_BUFFER
 	void *Data;
 	unsigned short Length;
 	unsigned short Done;
+	unsigned long Timeout;
 	void *UserState;
 	URB_STATUS Status;
 };
