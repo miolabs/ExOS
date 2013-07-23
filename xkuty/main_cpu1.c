@@ -38,6 +38,27 @@ static EXOS_TIMER _timer;
 static void _run_diag();
 static int _push_delay(int push, unsigned char *state, int limit);
 
+typedef struct 
+{
+	unsigned short buttons;
+	unsigned char  throttle;
+	unsigned char  brake_left, brake_right;
+	unsigned char  throttle_adj_min, throttle_adj_max;
+} CAN_INPUT;
+
+static CAN_INPUT _c_i = {0,0,0,0,0,0};
+
+typedef struct 
+{
+	unsigned char start;
+	unsigned char cruise;
+	unsigned char off;
+	unsigned char up,down;
+	unsigned char swtch;
+	unsigned char mode;
+	unsigned char adj;
+} PUSH_CNT;
+
 static enum
 {
         CONTROL_OFF = 0,
@@ -54,6 +75,7 @@ void main()
 	hal_pwm_initialize(PWM_TIMER_MODULE, PWM_RANGE - 1, 200000);
 	hal_pwm_set_output(PWM_TIMER_MODULE, 0, 1025);
 
+	PUSH_CNT      push = { 0,0,0,0,0,0,0,0};
 
 	speed_initialize();
 	_pid_k = (PID_K) { .P = 5, .I = 5, .CMin = 0, .CMax = 255 };
@@ -79,22 +101,9 @@ void main()
 	xcpu_board_output(_output_state);
 #endif
 
-	unsigned short buttons = 0;
-	unsigned char throttle = 0;
-	unsigned char brake_left, brake_right;
-	unsigned char throttle_adj_min, throttle_adj_max;
-
 	CURVE_MODE    drive_mode = CURVE_SOFT;
 
 	unsigned char led = 0;
-	unsigned char push_start = 0;
-	unsigned char push_cruise = 0;
-	unsigned char push_off = 0;
-	unsigned char push_up = 0;
-	unsigned char push_down = 0;
-	unsigned char push_switch = 0;
-	unsigned char push_mode = 0;
-	unsigned char push_adj = 0;
         
 	if (!persist_load(&_storage))
 	{
@@ -128,14 +137,14 @@ void main()
 			if (xmsg->CanMsg.EP.Id == 0x200)
 			{
 				CAN_BUFFER *data = &xmsg->CanMsg.Data;
-				buttons = data->u8[0] | (data->u8[7] << 8);
+				_c_i.buttons = data->u8[0] | (data->u8[7] << 8);
 				unsigned int throttle_raw = data->u8[1] | ( data->u8[2] << 8);
-				brake_left = data->u8[3];
-				brake_right = data->u8[4];
-				throttle_adj_min = data->u8[5];
-				throttle_adj_max = data->u8[6];
+				_c_i.brake_left = data->u8[3];
+				_c_i.brake_right = data->u8[4];
+				_c_i.throttle_adj_min = data->u8[5];
+				_c_i.throttle_adj_max = data->u8[6];
 
-				throttle = get_curve_value ( throttle_raw, drive_mode ) >> 4;
+				_c_i.throttle = get_curve_value ( throttle_raw, drive_mode ) >> 4;
 			}
 
 			exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
@@ -165,7 +174,7 @@ void main()
 		{
 			case CONTROL_OFF:
 				_output_state = OUTPUT_NONE;
-				if (_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push_start, 10))
+				if (_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push.start, 10))
 				{
 					_control_state = CONTROL_ON;
 					_state = (_storage.ConfigBits & XCPU_CONFIGF_MILES) ? XCPU_STATE_ON | XCPU_STATE_MILES : XCPU_STATE_ON;
@@ -176,13 +185,13 @@ void main()
 				break;
 			case CONTROL_CRUISE:
 				{
-					int input_throttle = throttle;
-					throttle = pid(&_pid, speed, &_pid_k, 0.05F);
-					if (throttle > 250)
+					int input_throttle = _c_i.throttle;
+					_c_i.throttle = pid(&_pid, speed, &_pid_k, 0.05F);
+					if (_c_i.throttle > 250)
 					{
-						throttle--;
+						_c_i.throttle--;
 					}
-					int release = ( input_throttle - throttle) > 20;
+					int release = ( input_throttle - _c_i.throttle) > 20;
 					if ((_output_state & OUTPUT_BRAKEL) || release)
 					{
 						_control_state = CONTROL_ON;
@@ -191,43 +200,43 @@ void main()
 				}
 			case CONTROL_ON:
 				_output_state = _default_output_state;
-				if (brake_left > BRAKE_THRESHOLD || brake_right > BRAKE_THRESHOLD)
+				if (_c_i.brake_left > BRAKE_THRESHOLD || _c_i.brake_right > BRAKE_THRESHOLD)
 				{
 					_output_state |= (OUTPUT_BRAKEL | OUTPUT_EBRAKE);
-					throttle = 0;
+					_c_i.throttle = 0;
 				}
-				if ( buttons & XCPU_BUTTON_LIGHTS_OFF)
+				if ( _c_i.buttons & XCPU_BUTTON_LIGHTS_OFF)
 					_default_output_state = OUTPUT_NONE;
-				if (buttons & XCPU_BUTTON_HORN)
+				if (_c_i.buttons & XCPU_BUTTON_HORN)
 					_output_state |= OUTPUT_HORN;
 
-				if (_push_delay(buttons & XCPU_BUTTON_ADJUST_UP, &push_up, 5) &&
+				if (_push_delay(_c_i.buttons & XCPU_BUTTON_ADJUST_UP, &push.up, 5) &&
 					_storage.WheelRatioAdj < 10)
 				{
 					_storage.WheelRatioAdj++;
 				}
-				if (_push_delay(buttons & XCPU_BUTTON_ADJUST_DOWN, &push_down, 5) &&
+				if (_push_delay(_c_i.buttons & XCPU_BUTTON_ADJUST_DOWN, &push.down, 5) &&
 					_storage.WheelRatioAdj > -10)
 				{
 					_storage.WheelRatioAdj--;
 				}
-				if (_push_delay(buttons & XCPU_BUTTON_SWITCH_UNITS, &push_switch, 5))
+				if (_push_delay(_c_i.buttons & XCPU_BUTTON_SWITCH_UNITS, &push.swtch, 5))
 				{
 					_state ^= XCPU_STATE_MILES;
 				}
 
-				if (_push_delay( buttons & XCPU_BUTTON_ADJ_DRIVE_MODE, &push_mode, 5))
+				if (_push_delay( _c_i.buttons & XCPU_BUTTON_ADJ_DRIVE_MODE, &push.mode, 5))
 				{
-					drive_mode = (buttons & XCPU_BUTTON_ADJ_DRIVE_MODE) >> XCPU_BUTTON_ADJ_DRIVE_MODE_SHIFT;
+					drive_mode = (_c_i.buttons & XCPU_BUTTON_ADJ_DRIVE_MODE) >> XCPU_BUTTON_ADJ_DRIVE_MODE_SHIFT;
 				}
 
-				if (_push_delay( buttons & XCPU_BUTTON_ADJ_THROTTLE, &push_adj, 5))
+				if (_push_delay( _c_i.buttons & XCPU_BUTTON_ADJ_THROTTLE, &push.adj, 5))
 				{
-					_storage.ThrottleAdjMin = throttle_adj_min;
-					_storage.ThrottleAdjMax = throttle_adj_max;
+					_storage.ThrottleAdjMin = _c_i.throttle_adj_min;
+					_storage.ThrottleAdjMax = _c_i.throttle_adj_max;
 				}
 
-				if (_push_delay(buttons & XCPU_BUTTON_CRUISE, &push_cruise, 5))
+				if (_push_delay(_c_i.buttons & XCPU_BUTTON_CRUISE, &push.cruise, 5))
 				{
 					if (speed == 0)
 					{
@@ -238,7 +247,7 @@ void main()
 						if ( speed > 0)
 						{
 							_pid.SetPoint = speed;
-							_pid.Integral = throttle / _pid_k.I;
+							_pid.Integral = _c_i.throttle / _pid_k.I;
 
 							_state ^= XCPU_STATE_CRUISE_ON;
 							_control_state = _state & XCPU_STATE_CRUISE_ON ? CONTROL_CRUISE : CONTROL_ON;
@@ -246,8 +255,8 @@ void main()
 					}
 				}
 
-				if (_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push_start, 10) ||
-					_push_delay(buttons & XCPU_BUTTON_CRUISE, &push_off, 100))
+				if (_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push.start, 10) ||
+					_push_delay(_c_i.buttons & XCPU_BUTTON_CRUISE, &push.off, 100))
 				{
 					if (speed == 0)
 					{
@@ -277,7 +286,7 @@ void main()
 				if (_control_state != CONTROL_OFF)
 				{
 					unsigned char th_lim = (_state & XCPU_STATE_NEUTRAL) ? 0 
-							: MOTOR_OFFSET + ((throttle * MOTOR_RANGE) >> 8);
+							: MOTOR_OFFSET + (( _c_i.throttle * MOTOR_RANGE) >> 8);
 					hal_pwm_set_output(PWM_TIMER_MODULE, 0, PWM_RANGE - ((th_lim * PWM_RANGE) >> 8));
 				}
 				break;                          
@@ -297,7 +306,7 @@ void main()
 			exos_thread_sleep (5);  // Temporary fix; packets get overwritten
 
 			buf.u8[0] = speed;
-			buf.u8[1] = throttle; // batt
+			buf.u8[1] = _c_i.throttle; // batt
 			buf.u8[2] = _state;
 			buf.u8[3] = _storage.WheelRatioAdj;
 			buf.u32[1] = (unsigned long)(((_storage.TotalSteps + s_partial) * ( ratio / 3.6f)) / 100);
