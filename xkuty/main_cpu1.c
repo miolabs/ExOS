@@ -38,6 +38,16 @@ static EXOS_TIMER _timer;
 static void _run_diag();
 static int _push_delay(int push, unsigned char *state, int limit);
 
+static XCPU_PERSIST_DATA _storage;
+
+static enum
+{
+        CONTROL_OFF = 0,
+        CONTROL_ON,
+        CONTROL_CRUISE,
+} _control_state;
+static XCPU_STATE _state; // comm state to share (with lcd)
+
 typedef struct 
 {
 	unsigned short buttons;
@@ -47,6 +57,52 @@ typedef struct
 } CAN_INPUT;
 
 static CAN_INPUT _c_i = {0,0,0,0,0,0};
+
+static void _read_can_messages ( int drive_mode)
+{
+	XCPU_MSG *xmsg;
+	while(NULL != (xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0)))
+	{
+		if (xmsg->CanMsg.EP.Id == 0x200)
+		{
+			CAN_BUFFER *data = &xmsg->CanMsg.Data;
+			_c_i.buttons = data->u8[0] | (data->u8[7] << 8);
+			unsigned int throttle_raw = data->u8[1] | ( data->u8[2] << 8);
+			_c_i.brake_left = data->u8[3];
+			_c_i.brake_right = data->u8[4];
+			_c_i.throttle_adj_min = data->u8[5];
+			_c_i.throttle_adj_max = data->u8[6];
+
+			_c_i.throttle = get_curve_value ( throttle_raw, drive_mode ) >> 4;
+		}
+
+		exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
+	}
+}
+
+static void _send_can_messages ( int drive_mode, unsigned int speed, unsigned int distance)
+{
+	CAN_BUFFER buf;
+
+	buf.u32[0] = 0;
+	buf.u32[1] = 0;
+	buf.u8[0]  = _storage.ThrottleAdjMin;
+	buf.u8[1]  = _storage.ThrottleAdjMax;
+	buf.u16[1] = drive_mode;
+	hal_can_send((CAN_EP) { .Id = 0x301 }, &buf, 8, CANF_NONE);
+
+	exos_thread_sleep (5);  // Temporary fix; packets get overwritten
+
+	buf.u8[0] = speed;
+	buf.u8[1] = _c_i.throttle; // batt
+	buf.u8[2] = _state;
+	buf.u8[3] = _storage.WheelRatioAdj;
+	buf.u32[1] = distance;
+	hal_can_send((CAN_EP) { .Id = 0x300 }, &buf, 8, CANF_NONE);
+
+	exos_thread_sleep (5);  // IDEM
+}
+
 
 typedef struct
 {
@@ -92,15 +148,6 @@ typedef struct
 	unsigned char adj;
 } PUSH_CNT;
 
-static enum
-{
-        CONTROL_OFF = 0,
-        CONTROL_ON,
-        CONTROL_CRUISE,
-} _control_state;
-static XCPU_STATE _state; // comm state to share (with lcd)
-
-static XCPU_PERSIST_DATA _storage;
 
 void main()
 {
@@ -157,7 +204,8 @@ void main()
 	{
 		exos_timer_wait(&_timer);
 
-		XCPU_MSG *xmsg;
+		_read_can_messages ( drive_mode);
+		/*XCPU_MSG *xmsg;
 		while(NULL != (xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0)))
 		{
 			if (xmsg->CanMsg.EP.Id == 0x200)
@@ -174,7 +222,7 @@ void main()
 			}
 
 			exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
-		}
+		}*/
 
 		// read sensors
 		_speed_calculation ( &_sp, (_state & XCPU_STATE_MILES) ? 1:0, (float)_storage.WheelRatioAdj);
@@ -305,25 +353,8 @@ void main()
 
 			xcpu_board_led(led = !led);     // toggle led
 
-			CAN_BUFFER buf;
-
-			buf.u32[0] = 0;
-			buf.u32[1] = 0;
-			buf.u8[0]  = _storage.ThrottleAdjMin;
-			buf.u8[1]  = _storage.ThrottleAdjMax;
-			buf.u16[1] = drive_mode;
-			hal_can_send((CAN_EP) { .Id = 0x301 }, &buf, 8, CANF_NONE);
-
-			exos_thread_sleep (5);  // Temporary fix; packets get overwritten
-
-			buf.u8[0] = _sp.speed;
-			buf.u8[1] = _c_i.throttle; // batt
-			buf.u8[2] = _state;
-			buf.u8[3] = _storage.WheelRatioAdj;
-			buf.u32[1] = (unsigned long)(((_storage.TotalSteps + _sp.s_partial) * ( _sp.ratio / 3.6f)) / 100);
-			hal_can_send((CAN_EP) { .Id = 0x300 }, &buf, 8, CANF_NONE);
-
-			exos_thread_sleep (5);  // IDEM
+			float dist = (((_storage.TotalSteps + _sp.s_partial) * ( _sp.ratio / 3.6f)) / 100);
+			_send_can_messages ( drive_mode, _sp.speed, (unsigned long)dist);
 
 			xcpu_board_output(_output_state);
         }
