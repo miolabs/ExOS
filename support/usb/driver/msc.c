@@ -86,7 +86,7 @@ static void _start(USB_HOST_FUNCTION *usb_func)
 						.Device = (COMM_DEVICE *)func, // FIXME
 						.Unit = 0 };
 					
-                    exos_tree_add_device(&func->KernelDevice);
+                    exos_tree_add_device(&func->KernelDevice, "dev");
 				}
 				else done = 0;
 			}

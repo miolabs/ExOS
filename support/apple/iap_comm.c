@@ -24,10 +24,13 @@ static int _protocol_count = 0;
 	static APPLE_IAP_PROTOCOL_MANAGER _manager1 = { .Name = IAP_ACCESORY_EA_PROTOCOL_NAME };
 #endif
 
+static EXOS_TREE_GROUP _iap_device_node = { .Name = "iap" };
+
 void iap_comm_initialize()
 {
 	list_initialize(&_managers);
 	exos_mutex_create(&_managers_lock);
+	exos_tree_add_group(&_iap_device_node, "dev");
 
 #ifdef IAP_ACCESORY_EA_PROTOCOL_NAME
 	iap_comm_add_protocol(&_manager1);
@@ -41,10 +44,12 @@ void iap_comm_add_protocol(APPLE_IAP_PROTOCOL_MANAGER *iap)
 	iap->KernelDevice = (EXOS_TREE_DEVICE) { .Name = iap->Name, 
 		.DeviceType = EXOS_TREE_DEVICE_COMM, .Device = &_comm_device, 
 		.Unit = iap->ProtocolIndex - 1 };
+	iap->Entry = NULL;
+	iap->IOState = APPLE_IAP_IO_UNAVAILABLE;
 	list_add_tail(&_managers, (EXOS_NODE *)iap);
 	exos_mutex_unlock(&_managers_lock);
 
-	exos_tree_add_device(&iap->KernelDevice);
+	exos_tree_add_device(&iap->KernelDevice, "dev/iap");
 }
 
 int iap_comm_get_protocol_count()

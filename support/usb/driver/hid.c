@@ -283,8 +283,6 @@ static int _read_field(HID_REPORT_INPUT *input, unsigned char *report, unsigned 
 	return done;
 }
 
-int _hid_state = 0;
-
 static void *_service(void *arg)
 {
 	HID_FUNCTION *func = (HID_FUNCTION *)arg;
@@ -306,14 +304,10 @@ static void *_service(void *arg)
 	USB_REQUEST_BUFFER urb;
 	while(1)
 	{
-		_hid_state = 1;
-
 		usb_host_urb_create(&urb, &func->InputPipe);
 		// NOTE: it's not a bulk transfer, but processing is compatible using an int pipe
 		usb_host_begin_bulk_transfer(&urb, func->InputBuffer, report_bytes);
-		_hid_state = 2;
 		usb_host_end_bulk_transfer(&urb);
-		_hid_state = 3;
 
 		unsigned char buffer[64];
 		unsigned char *data;
@@ -330,7 +324,6 @@ static void *_service(void *arg)
 		}
 
 		exos_mutex_lock(&func->InputLock);
-		_hid_state = 4;
 		FOREACH(node, &func->Inputs)
 		{
 			HID_REPORT_INPUT *input = (HID_REPORT_INPUT *)node;

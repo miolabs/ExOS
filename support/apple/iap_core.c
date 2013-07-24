@@ -57,10 +57,12 @@ void iap_core_start()
 	exos_thread_create(&_thread, 0, _stack, THREAD_STACK, NULL, _service, NULL);
 }
 
+#ifdef DEBUG
 static void _warning()
 {
 	hal_led_set(0, 1);
 }
+#endif
 
 static IAP_CMD_NODE *_alloc_cmd()
 {
@@ -248,7 +250,9 @@ void iap_core_parse(unsigned char *data, int length)
 			{
 				exos_fifo_queue(&_incoming_cmds_fifo, (EXOS_NODE *)cmd_node);
 			}
+#ifdef DEBUG
 			else _warning();
+#endif
 		}
 		else 
 		{

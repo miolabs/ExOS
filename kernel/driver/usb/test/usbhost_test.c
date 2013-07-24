@@ -7,7 +7,6 @@
 #include <kernel/tree.h>
 #include <support/board_hal.h>
 #include <stdio.h>
-#include <support/apple/cp20.h>
 #include <support/apple/iap.h>
 
 COMM_IO_ENTRY _comm;
@@ -20,7 +19,6 @@ unsigned char _snd_buffer[TCP_BUFFER_SIZE] __attribute__((section(".dma")));
 
 void main()
 {
-	apple_cp20_initialize(0);
 	usb_host_initialize();
 	int err = 0;
 	int done = 0;
@@ -50,7 +48,7 @@ void main()
 		if (dev_node == NULL)
 			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/usbftdi0");
 		if (dev_node == NULL)
-			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/com.miolabs.iap2test");
+			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/iap/com.miolabs.iap2test");
 
 
 		if (dev_node != NULL)

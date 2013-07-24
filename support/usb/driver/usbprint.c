@@ -97,7 +97,7 @@ static void _start(USB_HOST_FUNCTION *usb_func)
 		.Device = &_comm_device,
 		.Unit = 0 };	// FIXME: allow more instances
 	
-	exos_tree_add_device(&func->KernelDevice);
+	exos_tree_add_device(&func->KernelDevice, "dev");
 }
 
 static void _stop(USB_HOST_FUNCTION *usb_func)
