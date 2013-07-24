@@ -264,30 +264,23 @@ static void _stop(USB_HOST_FUNCTION *usb_func)
 static int _read_field(HID_REPORT_INPUT *input, unsigned char *report, unsigned char *data)
 {
 	int length = input->Size * input->Count;
-	int count = 0;
+	int done = 0;
 	if (length != 0)
 	{
 		unsigned offset = input->Offset >> 3;
-		unsigned shift = input->Offset & 0x7;		
-		unsigned long acc = report[offset++] >> shift;
-		shift = 8 - shift;
-		if (length < shift) acc &= (1 << length) - 1;
-		length -= shift;
-		if (length != 0) while(1)
+		unsigned shift = (8 - (input->Offset + length)) & 0x7;
+		unsigned skip = input->Offset & 0x7;
+		unsigned acc = report[offset++] & (0xFF >> skip);
+		length -= 8 - (shift + skip);
+		while(length > 0)
 		{
-			acc |= report[offset++] << shift;
-			if (length < 8)
-			{
-				acc &= (1 << length) - 1;
-				break;
-			}
-			data[count++] = acc;
-			acc >>= 8;
+			acc = (acc << 8) | report[offset++];
+			data[done++] = acc >> (8 + shift);
 			length -= 8;
 		}
-		data[count++] = acc;
+		data[done++] = acc >> shift;
 	}
-	return count;
+	return done;
 }
 
 static void *_service(void *arg)

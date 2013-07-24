@@ -11,20 +11,22 @@ typedef enum
 	EXOS_TREE_NODE_MOUNT_POINT,
 } EXOS_TREE_NODE_TYPE;
 
-typedef struct _TREE_NODE
+typedef struct _TREE_GROUP EXOS_TREE_GROUP;
+
+typedef struct
 {
 	EXOS_NODE Node;
-	struct _TREE_NODE *Parent;
+	EXOS_TREE_GROUP *Parent;
 	EXOS_TREE_NODE_TYPE Type;
 	const char *Name;
 } EXOS_TREE_NODE;
 
-typedef struct
+struct _TREE_GROUP
 {
 	EXOS_TREE_NODE;
 	EXOS_LIST Children;
 	EXOS_MUTEX Mutex;
-} EXOS_TREE_GROUP;
+};
 
 typedef enum
 {
@@ -46,7 +48,9 @@ typedef struct
 
 void __tree_initialize();
 void exos_tree_add_child(EXOS_TREE_GROUP *group, EXOS_TREE_NODE *child);
-void exos_tree_add_device(EXOS_TREE_DEVICE *device);
 EXOS_TREE_NODE *exos_tree_find_node(EXOS_TREE_NODE *parent, const char *path);
+int exos_tree_add_child_path(EXOS_TREE_NODE *child, const char *parent_path);
+void exos_tree_add_group(EXOS_TREE_GROUP *group, const char *parent_path);
+void exos_tree_add_device(EXOS_TREE_DEVICE *device, const char *parent_path);
 
 #endif // EXOS_TREE_H

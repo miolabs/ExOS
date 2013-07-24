@@ -166,7 +166,7 @@ static void _start(USB_HOST_FUNCTION *usb_func)
 
 	func->AsyncHandle = (FTDI_HANDLE) { .State = FTDI_HANDLE_CLOSED };
 
-	exos_tree_add_device(&func->KernelDevice);
+	exos_tree_add_device(&func->KernelDevice, "dev");
 }
 
 static void _stop(USB_HOST_FUNCTION *usb_func)
@@ -236,7 +236,7 @@ static void _close(COMM_IO_ENTRY *io)
 			if (-1 == exos_event_wait(&event, 500))
 				kernel_panic(KERNEL_ERROR_UNKNOWN);
 #else
-			exos_event_wait(&event, EXOS_TIMEOUT_NONE);
+			exos_event_wait(&event, EXOS_TIMEOUT_NEVER);
 #endif
 			if (handle->State != FTDI_HANDLE_CLOSED)
 				kernel_panic(KERNEL_ERROR_UNKNOWN);

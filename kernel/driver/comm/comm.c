@@ -16,8 +16,7 @@ void comm_initialize()
 		NULL != (device = comm_board_get_device(index));
 		index++)
 	{
-		device->Type = EXOS_TREE_NODE_DEVICE;
-		exos_tree_add_device(device);
+		exos_tree_add_device(device, "dev");
 	}
 }
 

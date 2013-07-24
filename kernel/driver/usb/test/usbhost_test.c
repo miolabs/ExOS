@@ -7,8 +7,7 @@
 #include <kernel/tree.h>
 #include <support/board_hal.h>
 #include <stdio.h>
-#include <support/apple/cp20.h>
-#include <support/apple/iap2.h>
+#include <support/apple/iap.h>
 
 COMM_IO_ENTRY _comm;
 TCP_IO_ENTRY _socket;
@@ -20,7 +19,6 @@ unsigned char _snd_buffer[TCP_BUFFER_SIZE] __attribute__((section(".dma")));
 
 void main()
 {
-	apple_cp20_initialize(0);
 	usb_host_initialize();
 	int err = 0;
 	int done = 0;
@@ -44,13 +42,13 @@ void main()
 		err = net_io_listen((NET_IO_ENTRY *)&_socket);
 
 		err = net_io_accept((NET_IO_ENTRY *)&_socket, (NET_IO_ENTRY *)&_socket, &buffers);
-		hal_led_set(0, 1);
+//		hal_led_set(0, 1);
 
 		EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/usbprint");
 		if (dev_node == NULL)
 			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/usbftdi0");
 		if (dev_node == NULL)
-			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/comm0");
+			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/iap/com.miolabs.iap2test");
 
 
 		if (dev_node != NULL)
@@ -89,8 +87,8 @@ void main()
 				comm_io_close(&_comm);
 			}
 		}
-			
-		hal_led_set(0, 0);
+
+//		hal_led_set(0, 0);
 		net_io_close((NET_IO_ENTRY *)&_socket, &buffers);
 	}
 }
@@ -101,5 +99,5 @@ void usb_host_add_drivers()
 	ftdi_initialize();
 	
 	usbd_hid_initialize();
-	iap2_initialize();
+	iap_initialize();
 }
