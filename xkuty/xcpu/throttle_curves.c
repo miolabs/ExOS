@@ -7,17 +7,17 @@
 
 // Fixed point 15
 #define CFX(V)  ((unsigned short)(V * 32768.0f))
-
+/*
 static const unsigned short _curve_soft [ LEN_CURVES] =
 {
 	CFX(0.0),
-	CFX(0.15),
-	CFX(0.25),
-	CFX(0.4),
-	CFX(0.5),
+	CFX(0.02),
+	CFX(0.04),
+	CFX(0.06),
+	CFX(0.08),
+	CFX(0.1),
+	CFX(0.2),
 	CFX(0.6),
-	CFX(0.8),
-	CFX(0.9),
 	CFX(1.0)
 };
 
@@ -47,7 +47,49 @@ static const unsigned short _curve_racing [ LEN_CURVES] =
 
 	CFX(1.0)
 };
+*/
 
+static const unsigned short _curve_soft [ LEN_CURVES] =
+{
+	CFX(0.2),
+	CFX(0.3),
+	CFX(0.3),
+	CFX(0.4),
+	CFX(0.5),
+	CFX(0.6),
+	CFX(0.7),
+	CFX(0.8),
+
+	CFX(1.0)
+};
+
+static const unsigned short _curve_eco [ LEN_CURVES] =
+{
+	CFX(0.2),
+	CFX(0.3),
+	CFX(0.3),
+	CFX(0.4),
+	CFX(0.5),
+	CFX(0.6),
+	CFX(0.7),
+	CFX(0.8),
+
+	CFX(0.8)
+};
+
+static const unsigned short _curve_racing [ LEN_CURVES] =
+{
+	CFX(1.0),
+	CFX(1.0),
+	CFX(1.0),
+	CFX(1.0),
+	CFX(1.0),
+	CFX(1.0),
+	CFX(1.0),
+	CFX(1.0),
+
+	CFX(1.0)
+};
 
 
 static const unsigned short* _curves [] = 

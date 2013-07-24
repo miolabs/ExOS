@@ -10,11 +10,12 @@
 #include "xcpu/throttle_curves.h"
 #include "pid.h"
 
-
+#define MAX_SPEED (40)
 #define BRAKE_THRESHOLD 30
 #define PWM_RANGE 100
 #define MOTOR_OFFSET 50
-#define MOTOR_RANGE (160 - 50)
+#define MOTOR_RANGE (170 - MOTOR_OFFSET)
+//#define MOTOR_RANGE (160 - MOTOR_OFFSET)
 #define WHEEL_RATIO_KMH (12.9 / 47)
 #define WHEEL_RATIO_MPH (WHEEL_RATIO_KMH / 1.60934)
 
@@ -58,7 +59,7 @@ typedef struct
 
 static CAN_INPUT _c_i = {0,0,0,0,0,0};
 
-static void _read_can_messages ( int drive_mode)
+static void _read_can_messages ( int drive_mode, float speed)
 {
 	XCPU_MSG *xmsg;
 	while(NULL != (xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0)))
@@ -73,7 +74,10 @@ static void _read_can_messages ( int drive_mode)
 			_c_i.throttle_adj_min = data->u8[5];
 			_c_i.throttle_adj_max = data->u8[6];
 
-			_c_i.throttle = get_curve_value ( throttle_raw, drive_mode ) >> 4;
+			int curve_in = (int)(4096.f * (speed / (float) MAX_SPEED));
+			int throttle_factor = get_curve_value ( curve_in, drive_mode ) >> 4;
+			_c_i.throttle = ( throttle_raw * throttle_factor) >> 12;
+			//_c_i.throttle = get_curve_value ( throttle_raw, drive_mode ) >> 4;
 		}
 
 		exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
@@ -122,7 +126,7 @@ static void _speed_calculation ( SPEED_DATA* sp, int mag_miles, float wheel_rati
 		// Magnitude miles, false (km) true (miles)
 		sp->ratio = mag_miles ? WHEEL_RATIO_MPH : WHEEL_RATIO_KMH;
 		sp->ratio += sp->ratio * wheel_ratio_adjust * 0.01F;
-		sp->speed = sp->dt != 0 ? (int)((space / sp->dt) *  sp->ratio) : 99;
+		sp->speed = sp->dt != 0 ? ((space / sp->dt) *  sp->ratio) : 99.0f;
 		sp->s_partial += space;
 		dt2 = sp->dt;
 		sp->dt = 0;
@@ -130,7 +134,7 @@ static void _speed_calculation ( SPEED_DATA* sp, int mag_miles, float wheel_rati
 	}
 	else
 	{
-		if (speed_wait < 50) 
+		if (speed_wait < 10) 
 			speed_wait++;
 		else 
 			sp->speed = 0.0f;
@@ -154,6 +158,8 @@ void main()
 	int result;
 	hal_pwm_initialize(PWM_TIMER_MODULE, PWM_RANGE - 1, 200000);
 	hal_pwm_set_output(PWM_TIMER_MODULE, 0, 1025);
+
+	hal_adc_initialize(1000,16);
 
 	PUSH_CNT      push = { 0,0,0,0,0,0,0,0};
 
@@ -204,25 +210,7 @@ void main()
 	{
 		exos_timer_wait(&_timer);
 
-		_read_can_messages ( drive_mode);
-		/*XCPU_MSG *xmsg;
-		while(NULL != (xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0)))
-		{
-			if (xmsg->CanMsg.EP.Id == 0x200)
-			{
-				CAN_BUFFER *data = &xmsg->CanMsg.Data;
-				_c_i.buttons = data->u8[0] | (data->u8[7] << 8);
-				unsigned int throttle_raw = data->u8[1] | ( data->u8[2] << 8);
-				_c_i.brake_left = data->u8[3];
-				_c_i.brake_right = data->u8[4];
-				_c_i.throttle_adj_min = data->u8[5];
-				_c_i.throttle_adj_max = data->u8[6];
-
-				_c_i.throttle = get_curve_value ( throttle_raw, drive_mode ) >> 4;
-			}
-
-			exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
-		}*/
+		_read_can_messages ( drive_mode, _sp.speed);
 
 		// read sensors
 		_speed_calculation ( &_sp, (_state & XCPU_STATE_MILES) ? 1:0, (float)_storage.WheelRatioAdj);
@@ -262,7 +250,12 @@ void main()
 				if (_c_i.brake_left > BRAKE_THRESHOLD || _c_i.brake_right > BRAKE_THRESHOLD)
 				{
 					_output_state |= (OUTPUT_BRAKEL | OUTPUT_EBRAKE);
-					_c_i.throttle = 0;
+                    //  Rear brake disables throttling
+					int dis_throttle = _c_i.brake_right > BRAKE_THRESHOLD;
+					if ( drive_mode != CURVE_RACING)
+						dis_throttle |= _c_i.brake_left > BRAKE_THRESHOLD;
+					if ( dis_throttle)
+						_c_i.throttle = 0;
 				}
 				if ( _c_i.buttons & XCPU_BUTTON_LIGHTS_OFF)
 					_default_output_state = OUTPUT_NONE;
@@ -297,13 +290,13 @@ void main()
 
 				if (_push_delay(_c_i.buttons & XCPU_BUTTON_CRUISE, &push.cruise, 5))
 				{
-					if ( _sp.speed == 0)
+					if ( _sp.speed == 0.0f)	// 0.0f value is forced
 					{
 						_state ^= XCPU_STATE_NEUTRAL;
 					}
 					else
 					{
-						if ( _sp.speed > 0)
+						if ( _sp.speed > 10.0f)
 						{
 							_pid.SetPoint = _sp.speed;
 							_pid.Integral = _c_i.throttle / _pid_k.I;
@@ -317,7 +310,7 @@ void main()
 				if (_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push.start, 10) ||
 					_push_delay(_c_i.buttons & XCPU_BUTTON_CRUISE, &push.off, 100))
 				{
-					if (_sp.speed == 0)
+					if (_sp.speed == 0.0f)  // 0.0f value is forced
 					{
 						hal_pwm_set_output(PWM_TIMER_MODULE, 0, PWM_RANGE + 1); //      disable pwm
 
@@ -346,7 +339,8 @@ void main()
 				{
 					unsigned char th_lim = (_state & XCPU_STATE_NEUTRAL) ? 0 
 							: MOTOR_OFFSET + (( _c_i.throttle * MOTOR_RANGE) >> 8);
-					hal_pwm_set_output(PWM_TIMER_MODULE, 0, PWM_RANGE - ((th_lim * PWM_RANGE) >> 8));
+					int pwm_val = PWM_RANGE - ((th_lim * PWM_RANGE) >> 8);
+					hal_pwm_set_output(PWM_TIMER_MODULE, 0, pwm_val);
 				}
 				break;                          
 			}
@@ -354,7 +348,7 @@ void main()
 			xcpu_board_led(led = !led);     // toggle led
 
 			float dist = (((_storage.TotalSteps + _sp.s_partial) * ( _sp.ratio / 3.6f)) / 100);
-			_send_can_messages ( drive_mode, _sp.speed, (unsigned long)dist);
+			_send_can_messages ( drive_mode, (unsigned int)_sp.speed, (unsigned long)dist);
 
 			xcpu_board_output(_output_state);
         }

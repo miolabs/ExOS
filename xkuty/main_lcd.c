@@ -213,8 +213,8 @@ typedef struct
 static ANALOGIC _ain[NUM_ADC_INPUTS]=
 {
 	{0,0,0,0xffff, 587, 3109},	// 0 - Throtle  (16 bits)   2400->maximum accepted by motor controller, 1050->minimum 
-	{0,0,0,0xffff, 1765,2400},	// 1 - Brake left (16 bits)
-	{0,0,0,0xffff, 1900,2600},	// 2 - Brake right (16 bits)
+	{0,0,0,0xffff, 1810,2539},	// 1 - Brake left (16 bits)
+	{0,0,0,0xffff, 1810,2539},	// 2 - Brake right (16 bits)
 	{0,0,0,0xffff, 0,   4095},	// 3 - Cruise (bool)
 	{0,0,0,0xffff, 0,   4095},	// 4 - Horn  (bool)
 };
@@ -240,10 +240,10 @@ static char _switch_units_cnt=0, _lights_off_cnt=0;
 
 static const EVREC_CHECK _maintenance_screen_access[]=
 {
-	{BRAKE_RIGHT_MASK | HORN_MASK | CRUISE_MASK, CHECK_PRESSED},
-	{BRAKE_RIGHT_MASK | HORN_MASK | CRUISE_MASK, CHECK_RELEASED},
+	{BRAKE_RIGHT_MASK | BRAKE_LEFT_MASK | CRUISE_MASK, CHECK_PRESSED},
+	{BRAKE_RIGHT_MASK | BRAKE_LEFT_MASK | CRUISE_MASK, CHECK_RELEASED},
 	{BRAKE_RIGHT_MASK, CHECK_PRESSED},
-    {HORN_MASK | CRUISE_MASK, CHECK_RELEASED},
+    {BRAKE_LEFT_MASK | CRUISE_MASK, CHECK_RELEASED},
 	{BRAKE_RIGHT_MASK, CHECK_PRESSED},
 	{BRAKE_RIGHT_MASK, CHECK_RELEASED},
 	{0x00000000,CHECK_END},
@@ -251,13 +251,20 @@ static const EVREC_CHECK _maintenance_screen_access[]=
 
 static const EVREC_CHECK _mode_screen_access[]=
 {
-	{CRUISE_MASK | HORN_MASK, CHECK_RELEASED},
-	{CRUISE_MASK | HORN_MASK, CHECK_PRESSED},
-	{CRUISE_MASK | HORN_MASK, CHECK_RELEASED},
-	{CRUISE_MASK | HORN_MASK, CHECK_PRESSED},
-	{CRUISE_MASK | HORN_MASK, CHECK_RELEASED},
+	{BRAKE_LEFT_MASK | BRAKE_RIGHT_MASK, CHECK_RELEASED},
+	{BRAKE_LEFT_MASK | BRAKE_RIGHT_MASK, CHECK_PRESSED},
+	{BRAKE_LEFT_MASK | BRAKE_RIGHT_MASK, CHECK_RELEASED},
+	{BRAKE_LEFT_MASK | BRAKE_RIGHT_MASK, CHECK_PRESSED},
+	{BRAKE_LEFT_MASK | BRAKE_RIGHT_MASK, CHECK_RELEASED},
 	{0x00000000,CHECK_END},
 };
+
+static inline int brake_pressed ( int sensor_idx)
+{
+	const int brake_tresshold = (10 * 4096) / 100;	// 10%
+	int brk = _ain[sensor_idx].scaled > brake_tresshold;
+	return brk;
+}
 
 static void _read_send_analogic_inputs ( int status)
 {
@@ -290,10 +297,13 @@ static void _read_send_analogic_inputs ( int status)
 	}
 
 	unsigned short relays = 0;
-	// When the horn is pressed at the same time of the cruise control, the user
+	// When other keys are pressed at the same time of the cruise control, the user
 	// is trying to enter a special menu.
-	//if (_ain[CRUISE_IDX].filtered < 0x800)
-	if ((_ain[CRUISE_IDX].filtered < 0x800) && !(_ain[HORN_IDX].filtered < 0x800))
+	int neu = _ain[CRUISE_IDX].filtered < 0x800;
+	if ( _dash.status & XCPU_STATE_NEUTRAL)
+		if ( brake_pressed( BRAKE_LEFT_IDX) || brake_pressed( BRAKE_RIGHT_IDX) || ( _ain[HORN_IDX].filtered < 0x800))
+			neu = 0;
+	if ( neu)
 		relays |= XCPU_BUTTON_CRUISE;
 
 	if (_ain[HORN_IDX].filtered < 0x800) 
@@ -315,11 +325,11 @@ static void _read_send_analogic_inputs ( int status)
         relays |= XCPU_BUTTON_LIGHTS_OFF;
 
 	// Record inputs for sequence triggering (to start debug services)
-	 _input_status = (((_ain[THROTTLE_IDX].scaled & 0x800) >> 11) << 0) |
-					((_ain[BRAKE_LEFT_IDX].scaled > 0x180) ? (1<<1) : 0) |
-					((_ain[BRAKE_RIGHT_IDX].scaled > 0x180) ? (1<<2) : 0) |
-					((_ain[CRUISE_IDX].filtered < 0x800) ? (1<<3) : 0) |
-					((_ain[HORN_IDX].filtered < 0x800) ? (1<<4) : 0);
+	 _input_status = ((( _ain[THROTTLE_IDX].scaled & 0x800) >> 11) << 0) |
+					( brake_pressed( BRAKE_LEFT_IDX) ? (1<<1) : 0) |
+					( brake_pressed( BRAKE_RIGHT_IDX) ? (1<<2) : 0) |
+					(( _ain[CRUISE_IDX].filtered < 0x800) ? (1<<3) : 0) |
+					(( _ain[HORN_IDX].filtered < 0x800) ? (1<<4) : 0);
 
 	event_record ( _input_status);
 
