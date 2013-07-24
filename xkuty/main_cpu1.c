@@ -249,13 +249,16 @@ void main()
 				_output_state = _default_output_state;
 				if (_c_i.brake_left > BRAKE_THRESHOLD || _c_i.brake_right > BRAKE_THRESHOLD)
 				{
-					_output_state |= (OUTPUT_BRAKEL | OUTPUT_EBRAKE);
+					_output_state |= OUTPUT_BRAKEL;
                     //  Rear brake disables throttling
 					int dis_throttle = _c_i.brake_right > BRAKE_THRESHOLD;
 					if ( drive_mode != CURVE_RACING)
 						dis_throttle |= _c_i.brake_left > BRAKE_THRESHOLD;
 					if ( dis_throttle)
+					{
+						_output_state |= OUTPUT_EBRAKE;
 						_c_i.throttle = 0;
+					}
 				}
 				if ( _c_i.buttons & XCPU_BUTTON_LIGHTS_OFF)
 					_default_output_state = OUTPUT_NONE;
