@@ -37,6 +37,7 @@
             <file file_name="kernel/driver/comm/comm.c"/>
           </folder>
         </folder>
+        <file file_name="kernel/dispatch.c"/>
       </folder>
       <folder Name="support">
         <folder Name="lpc11" file_name="">
