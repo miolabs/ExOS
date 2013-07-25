@@ -1,6 +1,8 @@
+#include <assert.h>
 #include <support/board_hal.h>
 #include <support/lpc11/cpu.h>
 #include "board.h"
+
 
 #if defined BOARD_XKUTYCPU1
 
@@ -74,3 +76,36 @@ void xcpu_board_led(int led)
 {
 	LED_PORT->MASKED_ACCESS[LED_MASK] = led ? 0 : LED_MASK;	// led is active low
 }
+
+static int _setup_adc(int unit)
+{
+	unsigned adc_conf = 2 | //	Func. AD
+						(0<<3) | // No pull-up or pull-down
+						(0<<5) | // No hysteresis
+						(0<<7) | // Analog input
+						(0<<10); // Standar GPIO output
+
+	LPC_IOCON->R_PIO0_11 = adc_conf; // AD0
+	LPC_IOCON->R_PIO1_0 = adc_conf;	// AD1
+	//LPC_IOCON->R_PIO1_1 = adc_conf;	// AD2
+	//LPC_IOCON->R_PIO1_2 = adc_conf;	// AD3
+	//LPC_IOCON->SWDIO_PIO1_3 = adc_conf;	// AD4
+	//LPC_IOCON->PIO1_4 = adc_conf;	// AD5
+	LPC_IOCON->PIO1_10 = adc_conf; // AD6
+	LPC_IOCON->PIO1_11 = adc_conf; // AD7
+
+	return 0xc3;	// 0,1,6,7
+}
+
+
+int hal_board_init_pinmux(HAL_RESOURCE res, int unit)
+{
+	switch(res)
+	{
+		case HAL_RESOURCE_ADC: return _setup_adc(unit);
+		default:
+			assert(0);
+	}
+	return 0;
+}
+

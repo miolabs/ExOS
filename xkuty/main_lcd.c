@@ -139,7 +139,7 @@ static void _draw_text ( const char* text, const SPRITE* font, int x, int y)
 			spr.bitmap = font->bitmap + (spr.stride_bitmap * spr.h * glyph);
 			mono_draw_sprite ( &_screen, &spr, x, y);
 		}
-		x += glyph_w;
+		x += glyph_w + 1;
 		i++;
 	}
 }
@@ -213,21 +213,21 @@ typedef struct
 static ANALOGIC _ain[NUM_ADC_INPUTS]=
 {
 	{0,0,0,0xffff, 587, 3109},	// 0 - Throtle  (16 bits)   2400->maximum accepted by motor controller, 1050->minimum 
-	{0,0,0,0xffff, 1810,2539},	// 1 - Brake left (16 bits)
-	{0,0,0,0xffff, 1810,2539},	// 2 - Brake right (16 bits)
+	{0,0,0,0xffff, 1810,2539},	// 1 - Brake rear (16 bits)
+	{0,0,0,0xffff, 1810,2539},	// 2 - Brake front (16 bits)
 	{0,0,0,0xffff, 0,   4095},	// 3 - Cruise (bool)
 	{0,0,0,0xffff, 0,   4095},	// 4 - Horn  (bool)
 };
 
 #define THROTTLE_MASK    (1<<0)
-#define BRAKE_LEFT_MASK  (1<<1)
-#define BRAKE_RIGHT_MASK (1<<2)
+#define BRAKE_REAR_MASK  (1<<1)
+#define BRAKE_FRONT_MASK (1<<2)
 #define CRUISE_MASK      (1<<3)
 #define HORN_MASK        (1<<4)
 
 #define THROTTLE_IDX     (0)
-#define BRAKE_LEFT_IDX   (1)
-#define BRAKE_RIGHT_IDX  (2)
+#define BRAKE_REAR_IDX   (1)
+#define BRAKE_FRONT_IDX  (2)
 #define CRUISE_IDX       (3)
 #define HORN_IDX         (4)
 
@@ -240,22 +240,22 @@ static char _switch_units_cnt=0, _lights_off_cnt=0;
 
 static const EVREC_CHECK _maintenance_screen_access[]=
 {
-	{BRAKE_RIGHT_MASK | BRAKE_LEFT_MASK | CRUISE_MASK, CHECK_PRESSED},
-	{BRAKE_RIGHT_MASK | BRAKE_LEFT_MASK | CRUISE_MASK, CHECK_RELEASED},
-	{BRAKE_RIGHT_MASK, CHECK_PRESSED},
-    {BRAKE_LEFT_MASK | CRUISE_MASK, CHECK_RELEASED},
-	{BRAKE_RIGHT_MASK, CHECK_PRESSED},
-	{BRAKE_RIGHT_MASK, CHECK_RELEASED},
+	{BRAKE_FRONT_MASK | BRAKE_REAR_MASK | CRUISE_MASK, CHECK_PRESSED},
+	{BRAKE_FRONT_MASK | BRAKE_REAR_MASK | CRUISE_MASK, CHECK_RELEASED},
+	{BRAKE_FRONT_MASK, CHECK_PRESSED},
+    {BRAKE_REAR_MASK | CRUISE_MASK, CHECK_RELEASED},
+	{BRAKE_FRONT_MASK, CHECK_PRESSED},
+	{BRAKE_FRONT_MASK, CHECK_RELEASED},
 	{0x00000000,CHECK_END},
 };
 
 static const EVREC_CHECK _mode_screen_access[]=
 {
-	{BRAKE_LEFT_MASK | BRAKE_RIGHT_MASK, CHECK_RELEASED},
-	{BRAKE_LEFT_MASK | BRAKE_RIGHT_MASK, CHECK_PRESSED},
-	{BRAKE_LEFT_MASK | BRAKE_RIGHT_MASK, CHECK_RELEASED},
-	{BRAKE_LEFT_MASK | BRAKE_RIGHT_MASK, CHECK_PRESSED},
-	{BRAKE_LEFT_MASK | BRAKE_RIGHT_MASK, CHECK_RELEASED},
+	{BRAKE_REAR_MASK | BRAKE_FRONT_MASK, CHECK_RELEASED},
+	{BRAKE_REAR_MASK | BRAKE_FRONT_MASK, CHECK_PRESSED},
+	{BRAKE_REAR_MASK | BRAKE_FRONT_MASK, CHECK_RELEASED},
+	{BRAKE_REAR_MASK | BRAKE_FRONT_MASK, CHECK_PRESSED},
+	{BRAKE_REAR_MASK | BRAKE_FRONT_MASK, CHECK_RELEASED},
 	{0x00000000,CHECK_END},
 };
 
@@ -273,14 +273,14 @@ static void _read_send_analogic_inputs ( int status)
 		_fir_needs_init = 0;
 		#ifdef GLITCHY_AD
 		fir_init( &_ain[THROTTLE_IDX].fir,    6,  1, 500, 1);
-		fir_init( &_ain[BRAKE_LEFT_IDX].fir,  10, 1, 100, 3);
-		fir_init( &_ain[BRAKE_RIGHT_IDX].fir, 10, 1, 100, 5);
+		fir_init( &_ain[BRAKE_REAR_IDX].fir,  10, 1, 100, 3);
+		fir_init( &_ain[BRAKE_FRONT_IDX].fir, 10, 1, 100, 5);
 		fir_init( &_ain[CRUISE_IDX].fir,      8, 0, 0, 0);
 		fir_init( &_ain[HORN_IDX].fir,        8, 0, 0, 0);
 		#else
 		fir_init( &_ain[THROTTLE_IDX].fir,    6, 1, 500, 2);
-		fir_init( &_ain[BRAKE_LEFT_IDX].fir,  6, 1, 100, 2);
-		fir_init( &_ain[BRAKE_RIGHT_IDX].fir, 6, 1, 100, 2);
+		fir_init( &_ain[BRAKE_REAR_IDX].fir,  6, 1, 100, 2);
+		fir_init( &_ain[BRAKE_FRONT_IDX].fir, 6, 1, 100, 2);
 		fir_init( &_ain[CRUISE_IDX].fir,      6, 0, 0, 0);
 		fir_init( &_ain[HORN_IDX].fir,        6, 0, 0, 0);
 		#endif
@@ -301,7 +301,7 @@ static void _read_send_analogic_inputs ( int status)
 	// is trying to enter a special menu.
 	int neu = _ain[CRUISE_IDX].filtered < 0x800;
 	if ( _dash.status & XCPU_STATE_NEUTRAL)
-		if ( brake_pressed( BRAKE_LEFT_IDX) || brake_pressed( BRAKE_RIGHT_IDX) || ( _ain[HORN_IDX].filtered < 0x800))
+		if ( brake_pressed( BRAKE_REAR_IDX) || brake_pressed( BRAKE_FRONT_IDX) || ( _ain[HORN_IDX].filtered < 0x800))
 			neu = 0;
 	if ( neu)
 		relays |= XCPU_BUTTON_CRUISE;
@@ -326,8 +326,8 @@ static void _read_send_analogic_inputs ( int status)
 
 	// Record inputs for sequence triggering (to start debug services)
 	 _input_status = ((( _ain[THROTTLE_IDX].scaled & 0x800) >> 11) << 0) |
-					( brake_pressed( BRAKE_LEFT_IDX) ? (1<<1) : 0) |
-					( brake_pressed( BRAKE_RIGHT_IDX) ? (1<<2) : 0) |
+					( brake_pressed( BRAKE_REAR_IDX) ? (1<<1) : 0) |
+					( brake_pressed( BRAKE_FRONT_IDX) ? (1<<2) : 0) |
 					(( _ain[CRUISE_IDX].filtered < 0x800) ? (1<<3) : 0) |
 					(( _ain[HORN_IDX].filtered < 0x800) ? (1<<4) : 0);
 
@@ -345,8 +345,8 @@ static void _read_send_analogic_inputs ( int status)
 	CAN_BUFFER buf = (CAN_BUFFER) { relays, 
 									throttle & 0xff, // Throttle low
 									throttle >> 8,	// Throttle high
-									_ain[BRAKE_LEFT_IDX].scaled >> 4,
-									_ain[BRAKE_RIGHT_IDX].scaled >> 4, 
+									_ain[BRAKE_REAR_IDX].scaled >> 4,
+									_ain[BRAKE_FRONT_IDX].scaled >> 4, 
 									_adj_throttle_min >> 4, 
 									_adj_throttle_max >> 4,
 									relays >> 8};
@@ -358,6 +358,8 @@ static EXOS_PORT _can_rx_port;
 static EXOS_FIFO _can_free_msgs;
 #define CAN_MSG_QUEUE 10
 static XCPU_MSG _can_msg[CAN_MSG_QUEUE];
+
+int kk [4];
 
 static void _get_can_messages ()
 {
@@ -385,6 +387,11 @@ static void _get_can_messages ()
 				_ain[THROTTLE_IDX].def_min = tmsg->throttle_adj_min << 4;
 				_ain[THROTTLE_IDX].def_max = tmsg->throttle_adj_max << 4;
 				_dash.drive_mode           = tmsg->drive_mode;
+
+				kk[0] = xmsg->CanMsg.Data.u8[4];
+				kk[1] = xmsg->CanMsg.Data.u8[5];
+				kk[2] = xmsg->CanMsg.Data.u8[6];
+				kk[3] = xmsg->CanMsg.Data.u8[7];
 			}
 			break;
 		}
@@ -548,7 +555,8 @@ static void _runtime_screens ( int* status)
 					_print_small ( sensor_names[i], 0, y);
 					for (j=0; j<5; j++)
 					{
-						sprintf ( _tmp, "%d%%", (vv[j] * fact) >> 12);
+						sprintf ( _tmp, "%d%%", kk[i & 0x3]);
+						//sprintf ( _tmp, "%d%%", (vv[j] * fact) >> 12);
 						_print_small ( _tmp, 36+j*20, y);
 					}
 				}
@@ -560,9 +568,9 @@ static void _runtime_screens ( int* status)
 			{
 				const EVREC_CHECK speed_adj_exit[]= {{CRUISE_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
 				_adj_down = _adj_up = 0;
-				if ( _input_status & BRAKE_RIGHT_MASK)
+				if ( _input_status & BRAKE_FRONT_MASK)
 					_adj_down=1;
-				if ( _input_status & BRAKE_LEFT_MASK)
+				if ( _input_status & BRAKE_REAR_MASK)
 					_adj_up=1;
 
 				_dash.speed_adjust = __LIMIT( _dash.speed_adjust, -10, 10);
@@ -589,7 +597,7 @@ static void _runtime_screens ( int* status)
 			{
 				const char _hei [] = { 22, 31, 40, 49, 58 };
 				const EVREC_CHECK fact_menu_exit[]= {{HORN_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
-				const EVREC_CHECK menu_move[]= {{BRAKE_RIGHT_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
+				const EVREC_CHECK menu_move[]= {{BRAKE_FRONT_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
 				const EVREC_CHECK menu_press[]= {{CRUISE_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
 				int anm = (_frame_dumps & 0x7) >> 2;
 				_print_small ("OEM SETTINGS",    -1,  10);
@@ -629,7 +637,7 @@ static void _runtime_screens ( int* status)
 			{
 				const char _hei [] = { 30, 45, 60};
 				const EVREC_CHECK speed_adj_exit[]= {{CRUISE_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
-				const EVREC_CHECK mode_adj[]= {{BRAKE_RIGHT_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
+				const EVREC_CHECK mode_adj[]= {{BRAKE_FRONT_MASK, CHECK_RELEASE},{0x00000000,CHECK_END}};
 				int anm = (_frame_dumps & 0x7) >> 2;
 				_print_small ("DRIVE MODES", -1, 14);
 				_print_small ("Soft",        -1, _hei[0]);

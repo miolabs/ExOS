@@ -3,6 +3,7 @@
 #include <kernel/timer.h>
 #include <support/can_hal.h>
 #include <support/pwm_hal.h>
+#include <support/adc_hal.h>
 #include "xcpu.h"
 #include "xcpu/board.h"
 #include "xcpu/speed.h"
@@ -53,7 +54,7 @@ typedef struct
 {
 	unsigned short buttons;
 	unsigned char  throttle;
-	unsigned char  brake_left, brake_right;
+	unsigned char  brake_rear, brake_front;
 	unsigned char  throttle_adj_min, throttle_adj_max;
 } CAN_INPUT;
 
@@ -69,8 +70,8 @@ static void _read_can_messages ( int drive_mode, float speed)
 			CAN_BUFFER *data = &xmsg->CanMsg.Data;
 			_c_i.buttons = data->u8[0] | (data->u8[7] << 8);
 			unsigned int throttle_raw = data->u8[1] | ( data->u8[2] << 8);
-			_c_i.brake_left = data->u8[3];
-			_c_i.brake_right = data->u8[4];
+			_c_i.brake_rear = data->u8[3];
+			_c_i.brake_front = data->u8[4];
 			_c_i.throttle_adj_min = data->u8[5];
 			_c_i.throttle_adj_max = data->u8[6];
 
@@ -93,6 +94,12 @@ static void _send_can_messages ( int drive_mode, unsigned int speed, unsigned in
 	buf.u8[0]  = _storage.ThrottleAdjMin;
 	buf.u8[1]  = _storage.ThrottleAdjMax;
 	buf.u16[1] = drive_mode;
+
+	buf.u8[4] = hal_adc_read(0)>>2;
+	buf.u8[5] = hal_adc_read(1)>>2;
+	buf.u8[6] = hal_adc_read(2)>>2;
+	buf.u8[7] = hal_adc_read(3)>>2;
+
 	hal_can_send((CAN_EP) { .Id = 0x301 }, &buf, 8, CANF_NONE);
 
 	exos_thread_sleep (5);  // Temporary fix; packets get overwritten
@@ -239,7 +246,12 @@ void main()
 						_c_i.throttle--;
 					}
 					int release = ( input_throttle - _c_i.throttle) > 20;
-					if ((_output_state & OUTPUT_BRAKEL) || release)
+					release |= (_output_state & OUTPUT_BRAKEL); 
+					// Regenerative brake, because throttle is strongly reduced
+					//if (( input_throttle - _c_i.throttle) < -20)
+					//	_output_state |= OUTPUT_BRAKEL;
+
+					if ( release)
 					{
 						_control_state = CONTROL_ON;
 						_state &= ~XCPU_STATE_CRUISE_ON;
@@ -247,13 +259,13 @@ void main()
 				}
 			case CONTROL_ON:
 				_output_state = _default_output_state;
-				if (_c_i.brake_left > BRAKE_THRESHOLD || _c_i.brake_right > BRAKE_THRESHOLD)
+				if (_c_i.brake_rear > BRAKE_THRESHOLD || _c_i.brake_front > BRAKE_THRESHOLD)
 				{
 					_output_state |= OUTPUT_BRAKEL;
                     //  Rear brake disables throttling
-					int dis_throttle = _c_i.brake_right > BRAKE_THRESHOLD;
+					int dis_throttle = _c_i.brake_front > BRAKE_THRESHOLD;
 					if ( drive_mode != CURVE_RACING)
-						dis_throttle |= _c_i.brake_left > BRAKE_THRESHOLD;
+						dis_throttle |= _c_i.brake_rear > BRAKE_THRESHOLD;
 					if ( dis_throttle)
 					{
 						_output_state |= OUTPUT_EBRAKE;
@@ -311,7 +323,7 @@ void main()
 				}
 
 				if (_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push.start, 10) ||
-					_push_delay(_c_i.buttons & XCPU_BUTTON_CRUISE, &push.off, 100))
+					_push_delay(_c_i.buttons & XCPU_BUTTON_CRUISE, &push.off, 50))
 				{
 					if (_sp.speed == 0.0f)  // 0.0f value is forced
 					{

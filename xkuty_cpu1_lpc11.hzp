@@ -39,11 +39,13 @@
         </folder>
       </folder>
       <folder Name="support">
-        <folder Name="lpc11">
+        <folder Name="lpc11" file_name="">
           <file file_name="support/lpc11/c_can.c"/>
           <file file_name="support/lpc11/ssp.c"/>
           <file file_name="support/lpc11/timer32.c"/>
           <file file_name="support/lpc11/iap.c"/>
+          <file file_name="support/lpc11/adc.c"/>
+          <file file_name="support/lpc11/cpu.c"/>
         </folder>
         <folder Name="misc">
           <file file_name="support/misc/flash.c"/>
