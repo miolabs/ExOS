@@ -83,18 +83,19 @@ void exos_dispatch(EXOS_DISPATCHER_CONTEXT *context, unsigned long timeout)
 	{
 		if (count != 0) 
 		{
-			if (exos_event_wait_multiple(array, count, wait) == -1)	// timeout
+			if (exos_event_wait_multiple(array, count, wait) == 0)	// event occurred 
 			{
-				if (coming != NULL)
-					_call(context, coming);
-				
-				return;
+				coming = NULL;
 			}
 		}
 		else exos_thread_sleep(wait);
 	}
+	if (coming != NULL)
+	{
+		_call(context, coming);
+		return;
+	}
 
-	coming = NULL;
 	exos_mutex_lock(&context->Lock);
 	FOREACH(node, &context->Dispatchers)
 	{
