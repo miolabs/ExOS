@@ -454,7 +454,7 @@ static void _intro ( int* status, int* st_time_base, int time)
 #define POS_NEUTRAL       98,  7
 #define POS_FATAL         80,  12
 #define POS_SPEED_TEXT    124, 9
-#define POS_DISTANCE_TEXT 130, 50
+#define POS_DISTANCE_TEXT 124, 50
 #define POS_CRUISE        36,  8
 #define POS_WARNING       37,  28
 #define POS_KMH           100, 4
