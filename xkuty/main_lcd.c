@@ -457,6 +457,7 @@ static void _intro ( int* status, int* st_time_base, int time)
 #define POS_DISTANCE_TEXT 124, 50
 #define POS_CRUISE        36,  8
 #define POS_WARNING       37,  28
+#define POS_REGEN         37,  28
 #define POS_KMH           100, 4
 #define POS_KM            108, 41
 #define POS_MI            102, 37
@@ -517,8 +518,10 @@ static void _runtime_screens ( int* status)
 
 				if ( _dash.status & XCPU_STATE_CRUISE_ON)
 					mono_draw_sprite ( &_screen, &_cruisin_spr, POS_CRUISE);
-				if ( _dash.status & XCPU_STATE_WARNING)
-					mono_draw_sprite ( &_screen, &_warning_spr, POS_WARNING);
+				//if ( _dash.status & XCPU_STATE_WARNING)
+				//	mono_draw_sprite ( &_screen, &_warning_spr, POS_WARNING);
+				if ( _dash.status & XCPU_STATE_REGEN)
+					mono_draw_sprite ( &_screen, &_regen_spr, POS_REGEN);
 
 				//mono_draw_sprite ( &screen, &_kmh_spr, POS_KMH);
                 if (_dash.status & XCPU_STATE_MILES)

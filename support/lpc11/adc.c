@@ -1,15 +1,23 @@
-// Cortex M0 adc support
 
+#include <kernel/thread.h>
 #include "adc.h"
 #include "cpu.h"
+
+
 #include <support/adc_hal.h>
 #include <support/board_hal.h>
 
 static unsigned char _mask;
 static unsigned char _ch_table[8];
 
+extern void SystemCoreClockUpdate (void);
+
+extern uint32_t SystemCoreClock;
+
 unsigned long hal_adc_initialize(int rate, int bits)
 {	
+	//SystemCoreClockUpdate ();  // Get Core Clock Frequency
+
 	_mask = (unsigned char)hal_board_init_pinmux(HAL_RESOURCE_ADC, 0);
 	_mask &= 0xff;
 	int ch = 0;
@@ -24,14 +32,18 @@ unsigned long hal_adc_initialize(int rate, int bits)
 	}
 
 	// Power
-    LPC_SYSCON->PDRUNCFG = LPC_SYSCON->PDRUNCFG & 0xffffffef;  // Enable ADC block
+    LPC_SYSCON->PDRUNCFG = LPC_SYSCON->PDRUNCFG & ~(1<<4);  // Enable ADC block
+
+	exos_thread_sleep(50);
 
 	// AD conf.
 	// Accurate conversion requires 11 cycles
 	int clks = rate * 11; // * ch_count;
 	int pclk = cpu_pclk(SystemCoreClock, 0);
 	int clkdiv = (pclk / clks) - 1;
-	assert( clkdiv < 0x100);
+	if ( clkdiv > 0xff)
+		clkdiv = 0xff;	// cannot set an slower rate
+
 	LPC_ADC->CR = _mask | // AD pins to be sampled
 				  (clkdiv<<8) | //clkdiv
 				  (0<<16) | // burst mode
@@ -60,19 +72,12 @@ unsigned short hal_adc_read(int index)
 	unsigned short v = ((LPC_ADC->DR[channel] >> 6) & 0x3ff);
 	return v; // 10 bits AD value
 }
-	/*unsigned short value;
+
+/*
+{
+	unsigned short value;
 	int channel = _ch_table[index & 0x7];
 
-#ifndef ADC_BURST_MODE
-	unsigned long acr = LPC_ADC->ADCR & (0xFF << ADCR_CLKDIV_BIT); 
-	LPC_ADC->ADCR = acr | ((1 << channel) << ADCR_SEL_BIT) | 
-		(1 << ADCR_START_BIT) | ADCR_PDN;
-	unsigned long gdr;
-	do 
-	{ 
-		gdr = LPC_ADC->ADGDR; 
-	} while(!(gdr & ADDR_DONE));
-#endif
 	value = ((unsigned long *)&LPC_ADC->ADDR0)[channel] & 0xFFFF;
 
 	return value;

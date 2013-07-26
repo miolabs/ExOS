@@ -38,6 +38,7 @@ typedef enum
 	XCPU_STATE_WARNING = (1<<3),
 	XCPU_STATE_ERROR = (1<<4),
 	XCPU_STATE_MILES = (1<<5),	// Bit 0=KM, 1=MILES
+	XCPU_STATE_REGEN = (1<<6),
 } XCPU_STATE;
 
 

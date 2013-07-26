@@ -82,6 +82,14 @@ const static unsigned int _bmp_warning []  =
 0xffff000, 0x0, 0x0
 };
 
+const unsigned int bitmap_regen [] = {
+0x7f80000, 0xffc0000, 0xffe0000, 0x1fbe0000, 
+0x1f3c0000, 0x63d0000, 0xf8078000, 0x780f8000, 
+0xfc07c000, 0xfc07c000, 0xf003c000, 0x7f9f8000, 
+0x7fbf8000, 0x3fff0000, 0x1fbf0000, 0xfbe0000, 
+0x100000
+};
+
 const static unsigned int _bmp_fatal_error [] = 
 { 
 0x0, 0x3fc0000, 0x600000, 0xffc0000, 
@@ -453,6 +461,7 @@ static SPRITE _kmh_spr =  { 23, 7, _bmp_kmh, 0, 1,0, PIX_1_MONOCHROME, PIX_NONE}
 static SPRITE _mph_spr =  { 21, 10, _bmp_mph, 0, 1,0, PIX_1_MONOCHROME, PIX_NONE};
 static SPRITE _lock_spr =  { 30,25, _bmp_lock, 0, 1,0, PIX_1_MONOCHROME, PIX_NONE};
 static SPRITE _warning_spr =  { 24,19, _bmp_warning, 0, 1,0, PIX_1_MONOCHROME, PIX_NONE};
+static SPRITE _regen_spr = { 18, 17, bitmap_regen, 0, 1, 0, PIX_1_MONOCHROME, PIX_NONE};
 static SPRITE _fatal_error_spr =  { 20,17, _bmp_fatal_error, 0, 1,0, PIX_1_MONOCHROME, PIX_NONE};
 static SPRITE _cruisin_spr =  { 24,19, _bmp_cruisin, 0, 1,0, PIX_1_MONOCHROME, PIX_NONE};
 static SPRITE _speed_adjust_spr = { 94, 14, _bmp_speed_adjust, 0, 3,0, PIX_1_MONOCHROME, PIX_NONE};

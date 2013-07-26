@@ -182,5 +182,6 @@
 #define PDRUNCFG_WDTOSC_PD 0x40
 #define PDRUNCFG_SYSPLL_PD 0x80
 
+int cpu_pclk(int cclk, int setting);
 
 #endif // LPC11_CPU_H

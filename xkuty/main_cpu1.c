@@ -97,8 +97,8 @@ static void _send_can_messages ( int drive_mode, unsigned int speed, unsigned in
 
 	buf.u8[4] = hal_adc_read(0)>>2;
 	buf.u8[5] = hal_adc_read(1)>>2;
-	buf.u8[6] = hal_adc_read(2)>>2;
-	buf.u8[7] = hal_adc_read(3)>>2;
+	buf.u8[6] = 3; //hal_adc_read(2)>>2;
+	buf.u8[7] = 4; //hal_adc_read(3)>>2;
 
 	hal_can_send((CAN_EP) { .Id = 0x301 }, &buf, 8, CANF_NONE);
 
@@ -195,9 +195,9 @@ void main()
 #endif
 
 	CURVE_MODE    drive_mode = CURVE_SOFT;
-
 	unsigned char led = 0;
-        
+	unsigned char prev_throttle = 0;
+
 	if (!persist_load(&_storage))
 	{
 		_storage = (XCPU_PERSIST_DATA) { .Magic = XCPU_PERSIST_MAGIC,
@@ -242,9 +242,10 @@ void main()
 					int input_throttle = _c_i.throttle;
 					_c_i.throttle = pid(&_pid, _sp.speed, &_pid_k, 0.05F);
 					if (_c_i.throttle > 250)
-					{
 						_c_i.throttle--;
-					}
+					// If throttle reduction, enable regen brake
+					if ( _c_i.throttle < prev_throttle)
+						_output_state |= OUTPUT_EBRAKE;
 					int release = ( input_throttle - _c_i.throttle) > 20;
 					release |= (_output_state & OUTPUT_BRAKEL); 
 					// Regenerative brake, because throttle is strongly reduced
@@ -291,6 +292,10 @@ void main()
 				{
 					_state ^= XCPU_STATE_MILES;
 				}
+                if ( _output_state & OUTPUT_EBRAKE)
+					_state |= XCPU_STATE_REGEN;
+				else
+					_state &= ~XCPU_STATE_REGEN;
 
 				if (_push_delay( _c_i.buttons & XCPU_BUTTON_ADJ_DRIVE_MODE, &push.mode, 5))
 				{
@@ -364,6 +369,8 @@ void main()
 
 			float dist = (((_storage.TotalSteps + _sp.s_partial) * ( _sp.ratio / 3.6f)) / 100);
 			_send_can_messages ( drive_mode, (unsigned int)_sp.speed, (unsigned long)dist);
+
+			prev_throttle = _c_i.throttle;
 
 			xcpu_board_output(_output_state);
         }
