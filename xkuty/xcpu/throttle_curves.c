@@ -49,25 +49,11 @@ static const unsigned short _curve_racing [ LEN_CURVES] =
 };
 */
 
-/*
-Soft curve working ok without load
-	CFX(0.2),
-	CFX(0.3),
-	CFX(0.3),
-	CFX(0.4),
-	CFX(0.5),
-	CFX(0.6),
-	CFX(0.7),
-	CFX(0.8),
-
-	CFX(1.0)
-*/
-
 static const unsigned short _curve_soft [ LEN_CURVES] =
 {
 	CFX(0.3),
-	CFX(0.4),
-	CFX(0.4),
+	CFX(0.375),
+	CFX(0.425),
 	CFX(0.5),
 	CFX(0.6),
 	CFX(0.7),
@@ -79,13 +65,13 @@ static const unsigned short _curve_soft [ LEN_CURVES] =
 
 static const unsigned short _curve_eco [ LEN_CURVES] =
 {
-	CFX(0.2),
 	CFX(0.3),
-	CFX(0.3),
-	CFX(0.4),
+	CFX(0.375),
+	CFX(0.425),
 	CFX(0.5),
 	CFX(0.6),
 	CFX(0.7),
+	CFX(0.8),
 	CFX(0.8),
 
 	CFX(0.8)
