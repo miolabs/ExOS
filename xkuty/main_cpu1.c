@@ -34,7 +34,7 @@ static XCPU_OUTPUT_MASK _output_state = OUTPUT_NONE;
 static XCPU_OUTPUT_MASK _default_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
 
 static PID_K _pid_k; 
-static PID_STATE _pid;
+static PID_STATE _pid =  { 	.Integral = 0.0f, .Last = 0.0f, .SetPoint = 0.0f};
 
 static EXOS_TIMER _timer;
 static void _run_diag();
@@ -54,7 +54,7 @@ typedef struct
 {
 	unsigned short buttons;
 	unsigned char  throttle;
-	unsigned char  brake_rear, brake_front;
+	unsigned char  brake_front, brake_rear;
 	unsigned char  throttle_adj_min, throttle_adj_max;
 } CAN_INPUT;
 
@@ -70,8 +70,8 @@ static void _read_can_messages ( int drive_mode, float speed)
 			CAN_BUFFER *data = &xmsg->CanMsg.Data;
 			_c_i.buttons = data->u8[0] | (data->u8[7] << 8);
 			unsigned int throttle_raw = data->u8[1] | ( data->u8[2] << 8);
-			_c_i.brake_rear = data->u8[3];
-			_c_i.brake_front = data->u8[4];
+			_c_i.brake_front = data->u8[3];
+			_c_i.brake_rear = data->u8[4];
 			_c_i.throttle_adj_min = data->u8[5];
 			_c_i.throttle_adj_max = data->u8[6];
 
@@ -212,7 +212,8 @@ void main()
 	_output_state = OUTPUT_NONE;
 	_state = XCPU_STATE_OFF;
 
-	int throttle_target = 0;
+	char cruise_braking = 0;
+
 	while(1)
 	{
 		exos_timer_wait(&_timer);
@@ -239,34 +240,38 @@ void main()
 				break;
 			case CONTROL_CRUISE:
 				{
+					cruise_braking = 0;
+					int pid_sign = 0;
 					int input_throttle = _c_i.throttle;
 					_c_i.throttle = pid(&_pid, _sp.speed, &_pid_k, 0.05F);
 					if (_c_i.throttle > 250)
 						_c_i.throttle--;
-					// If throttle reduction, enable regen brake
-					if ( _c_i.throttle < prev_throttle)
-						_output_state |= OUTPUT_EBRAKE;
+					// If actual speed overcomes cruise speed, enable regen brake
+					//if (( _sp.speed - _pid.SetPoint) > 1.0f)
+					//	cruise_braking = 1, _c_i.throttle = 0;
+					if (_c_i.throttle == 0)
+						cruise_braking = 1;
+					// Exit cruise
 					int release = ( input_throttle - _c_i.throttle) > 20;
 					release |= (_output_state & OUTPUT_BRAKEL); 
-					// Regenerative brake, because throttle is strongly reduced
-					//if (( input_throttle - _c_i.throttle) < -20)
-					//	_output_state |= OUTPUT_BRAKEL;
-
 					if ( release)
 					{
+						cruise_braking = 0;
 						_control_state = CONTROL_ON;
 						_state &= ~XCPU_STATE_CRUISE_ON;
 					}
 				}
 			case CONTROL_ON:
 				_output_state = _default_output_state;
-				if (_c_i.brake_rear > BRAKE_THRESHOLD || _c_i.brake_front > BRAKE_THRESHOLD)
+                if ( cruise_braking)
+					_output_state |= OUTPUT_EBRAKE;
+				if (_c_i.brake_front > BRAKE_THRESHOLD || _c_i.brake_rear > BRAKE_THRESHOLD)
 				{
 					_output_state |= OUTPUT_BRAKEL;
                     //  Rear brake disables throttling
-					int dis_throttle = _c_i.brake_front > BRAKE_THRESHOLD;
+					int dis_throttle = _c_i.brake_rear > BRAKE_THRESHOLD;
 					if ( drive_mode != CURVE_RACING)
-						dis_throttle |= _c_i.brake_rear > BRAKE_THRESHOLD;
+						dis_throttle |= _c_i.brake_front > BRAKE_THRESHOLD;
 					if ( dis_throttle)
 					{
 						_output_state |= OUTPUT_EBRAKE;
