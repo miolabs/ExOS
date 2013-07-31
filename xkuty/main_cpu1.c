@@ -246,9 +246,7 @@ void main()
 					_c_i.throttle = pid(&_pid, _sp.speed, &_pid_k, 0.05F);
 					if (_c_i.throttle > 250)
 						_c_i.throttle--;
-					// If actual speed overcomes cruise speed, enable regen brake
-					//if (( _sp.speed - _pid.SetPoint) > 1.0f)
-					//	cruise_braking = 1, _c_i.throttle = 0;
+					// If actual throttles move back to 0, enable regen brake
 					if (_c_i.throttle == 0)
 						cruise_braking = 1;
 					// Exit cruise
@@ -328,6 +326,7 @@ void main()
 
 							_state ^= XCPU_STATE_CRUISE_ON;
 							_control_state = _state & XCPU_STATE_CRUISE_ON ? CONTROL_CRUISE : CONTROL_ON;
+                            cruise_braking = 0;
 						}
 					}
 				}
