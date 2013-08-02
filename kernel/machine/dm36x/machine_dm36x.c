@@ -27,23 +27,6 @@ void __machine_init()
 
 	hal_board_initialize();
 
-	// 432 MHz
-	int ratios_pllc2[] = { 
-		9,	// SYSCLK1 = 48 MHz (USB Ref)
-		2,	// SYSCLK2 = 216 MHz (ARM9)
-		18,	// SYSCLK3 = 24 MHz (-DDR2)
-		27,	// SYSCLK4 = 16 MHz (VoiceCodec)
-		16,	// SYSCLK5 = 27 MHz (VENC)
-		}; 
-	pllc_setup(PLLC2, 0, 9, 0, ratios_pllc2, 5);
-
-	system_select_armss_clock(PLLC2);
-
-/*	gpio_setup(35, GPIO_DIR_OUTPUT, 1);	// CLKOUT1
-	gpio_setup(31, GPIO_DIR_OUTPUT, 1);	// CLKOUT2 (PLLC1_SYSCLK9 * DIV)
-	system_select_pinmux(31, 3);	// for testing purposes only
-*/
-
 	// enable interrupts
 	__asm__ volatile (
 		"mrs r0, cpsr\n\t"
