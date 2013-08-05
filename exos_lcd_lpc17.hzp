@@ -68,10 +68,12 @@
         <folder Name="lcd" file_name="">
           <file file_name="support/lcd/lcd.c"/>
           <file file_name="support/lcd/splc501c.c"/>
-          <folder Name="test">
-            <file file_name="support/lcd/test/lcd_test.c"/>
-          </folder>
           <file file_name="support/lcd/st7565r.c"/>
+        </folder>
+      </folder>
+      <folder Name="tests">
+        <folder Name="support">
+          <file file_name="tests/support/lcd_test.c"/>
         </folder>
       </folder>
     </folder>
