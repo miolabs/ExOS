@@ -17,13 +17,15 @@ unsigned int fir_filter(FIR* fir, unsigned int newval)
 	if (fir->stored > 0)
 	{
 		unsigned int old_avg =  fir->total / fir->stored;
-		if (fir->discard && (fir->chained_discards < fir->max_chained_discards))
+		if (fir->discard && 
+			fir_out_of_range(old_avg, newval, fir->treshold) &&
+			fir->chained_discards < fir->max_chained_discards)
 		{
-			if (fir_out_of_range(old_avg, newval, fir->treshold))
-			{	
-				fir->chained_discards++;
-				return old_avg;
-			}
+			fir->chained_discards++;
+#ifdef DEBUG
+			fir->discarded++;
+#endif
+			return old_avg;
 		}
 
 		if (fir->chained_discards > 0) fir->chained_discards--;

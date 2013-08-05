@@ -120,8 +120,8 @@ static void _get_can_messages()
 			{
 				XCPU_MASTER_OUT2* tmsg = (XCPU_MASTER_OUT2*)&xmsg->CanMsg.Data.u8[0];
 				ANALOG_INPUT *ain_throttle = xanalog_input(THROTTLE_IDX);
-				ain_throttle->DefMin = tmsg->throttle_adj_min << 4;
-				ain_throttle->DefMax = tmsg->throttle_adj_max << 4;
+				ain_throttle->Min = tmsg->throttle_adj_min << 4;
+				ain_throttle->Max = tmsg->throttle_adj_max << 4;
 				_dash.ActiveConfig.DriveMode = tmsg->drive_mode;
 
 #ifdef DEBUG

@@ -272,24 +272,22 @@ void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 
 		case ST_DEBUG_INPUT:
 			{
-				int fact = 100;	// Transform 12 fixed point to "%"
-				int vv[5];
-				char* sensor_names[] = {"Throttle", "Brk. lf.", "Brk. rt.", "Cruise", "Horn"};
+				int vv[6];
+				char* sensor_names[] = {"Throttle", "R Brake", "F Brake", "Cruise", "Horn"};
 				for (int i = 0; i < ANALOG_INPUT_COUNT; i++)
 				{
 					int y = 10 + 12*i;
 					ANALOG_INPUT *ain = xanalog_input(i);
-					vv[0] = ain->Current;
-					vv[1] = ain->Filtered;
-					vv[2] = ain->Scaled;
-					vv[3] = ain->Min;
-					vv[4] = ain->Max;
+					int vv[] = { ain->Current, ain->Filtered, ain->Scaled, ain->Min, ain->Max, 0 };
+#ifdef DEBUG
+					vv[5] = ain->Fir.discarded;
+#endif
 					_print_small(sensor_names[i], 0, y);
-					for (int j = 0; j < 5; j++)
+					for (int j = 0; j < (sizeof(vv) / sizeof(*vv)); j++)
 					{
 						//sprintf(tmp, "%d%%", kk[i & 0x3]);
-						sprintf(tmp, "%d%%", (vv[j] * fact) >> 12);
-						_print_small(tmp, 36 + (j * 20), y);
+						sprintf(tmp, "%d%%", (vv[j] * 100) >> 12);
+						_print_small(tmp, 36 + (j * 16), y);
 					}
 				}
 			}

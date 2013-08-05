@@ -22,12 +22,11 @@ enum
 
 typedef struct
 {
-	unsigned short Current;				// Analog inputs, 12 bits
-	unsigned short Filtered;			// Filtered value of curr
-    unsigned short Scaled;				// Input re-scaled to def_min/def_max
-	unsigned short Max, Min;			// Run time register
-	unsigned short DefMin, DefMax;		// Factory registered min and max
-	FIR Fir;					
+	unsigned short Current;			// Analog inputs, 12 bits
+	unsigned short Filtered;		// Filtered value of curr
+    unsigned short Scaled;			// Input re-scaled to def_min/def_max
+	unsigned short Min, Max;		// For scaling
+	FIR Fir;
 } ANALOG_INPUT;
 
 
