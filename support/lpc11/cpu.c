@@ -1,4 +1,4 @@
-// LPC17xx sys/cpu support
+// LPC11xx sys/cpu support
 // by Miguel Fides
 
 #include "cpu.h"

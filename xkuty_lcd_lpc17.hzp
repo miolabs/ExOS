@@ -22,16 +22,9 @@
         <file file_name="kernel/list.c"/>
         <file file_name="kernel/panic.c"/>
         <file file_name="kernel/signal.c"/>
-        <folder Name="tests" file_name="">
-          <file file_name="kernel/tests/threading_tests.c"/>
-          <file file_name="kernel/tests/memory_tests.c"/>
-        </folder>
         <file file_name="kernel/thread.c"/>
         <file file_name="kernel/timer.c"/>
         <folder Name="posix" file_name="">
-          <folder Name="tests">
-            <file file_name="kernel/posix/tests/basic_pthread_tests.c"/>
-          </folder>
           <file file_name="kernel/posix/pthread_cond.c"/>
           <file file_name="kernel/posix/pthread_time.c"/>
           <file file_name="kernel/posix/posix.c"/>
@@ -78,6 +71,9 @@
           <file file_name="support/lcd/splc501c.c"/>
           <file file_name="support/lcd/st7565r.c"/>
         </folder>
+        <folder Name="apple">
+          <file file_name="support/apple/cp20.c"/>
+        </folder>
       </folder>
       <folder Name="xkuty" file_name="">
         <folder Name="board" file_name="">
@@ -87,6 +83,8 @@
         <file file_name="xkuty/xcpu.c"/>
         <file file_name="xkuty/fir.c"/>
         <file file_name="xkuty/event_recording.c"/>
+        <file file_name="xkuty/xdisplay.c"/>
+        <file file_name="xkuty/xanalog.c"/>
       </folder>
       <folder Name="modules">
         <folder Name="gfx" file_name="">

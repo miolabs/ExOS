@@ -4,6 +4,7 @@
 #include "cpu.h"
 #include <support/adc_hal.h>
 #include <support/board_hal.h>
+#include <assert.h>
 
 static unsigned char _mask;
 static unsigned char _ch_table[8];
@@ -23,26 +24,24 @@ unsigned long hal_adc_initialize(int rate, int bits)
 		_ch_table[ch++] = 0;
 	}
 
-	// Power
-    LPC_SYSCON->PDRUNCFG = LPC_SYSCON->PDRUNCFG & 0xffffffef;  // Enable ADC block
+    LPC_SYSCON->PDRUNCFG &= ~PDRUNCFG_ADC_PD;  // Enable ADC block
+	LPC_SYSCON->SYSAHBCLKCTRL |= SYSAHBCLKCTRL_ADC;	// Enable ADC clock
 
 	// AD conf.
 	// Accurate conversion requires 11 cycles
 	int clks = rate * 11; // * ch_count;
 	int pclk = cpu_pclk(SystemCoreClock, 0);
 	int clkdiv = (pclk / clks) - 1;
-	assert( clkdiv < 0x100);
+	if (clkdiv > 0xFF) clkdiv = 0xFF;
+
 	LPC_ADC->CR = _mask | // AD pins to be sampled
 				  (clkdiv<<8) | //clkdiv
-				  (0<<16) | // burst mode
-				  (0<<17) | // Clocks (0=11 clocks, max. precision)
-				  (0<<24) | // burst start, no
+				  ADCR_BURST | // burst mode FIXME: implement sw mode to save power
+				  (0<<ADCR_CLKDIV_BIT) | // Clocks (0=11 clocks, max. precision)
+				  (0<<ADCR_START_BIT) | // sw start
 				  (0<<27);  // burst edge start
 
 	LPC_ADC->INTEN = 0;	// No interrupts
-
-	// Enable clock
-	LPC_SYSCON->SYSAHBCLKCTRL |= (1<<13);	// Enable ADC clock
 }
 
 void ADC_IRQHandler()
@@ -54,10 +53,10 @@ unsigned short hal_adc_read(int index)
 	int channel = _ch_table[index & 0x7];
 	// = LPC_ADC->GDR; Global data register
 
-	unsigned st = LPC_ADC->STAT;
-	while (( st & (1<<index)) != 0);
-
-	unsigned short v = ((LPC_ADC->DR[channel] >> 6) & 0x3ff);
+	unsigned long dr;
+	do { dr = LPC_ADC->DR[channel]; }
+	while (!(dr & (1<<31)));
+	unsigned short v = (dr & 0xFFC0) >> 6; 
 	return v; // 10 bits AD value
 }
 	/*unsigned short value;

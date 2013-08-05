@@ -194,7 +194,7 @@ void main()
 	xcpu_board_output(_output_state);
 #endif
 
-	CURVE_MODE    drive_mode = CURVE_SOFT;
+	XCPU_DRIVE_MODE drive_mode = XCPU_DRIVE_MODE_SOFT;
 
 	unsigned char led = 0;
         
@@ -264,7 +264,7 @@ void main()
 					_output_state |= OUTPUT_BRAKEL;
                     //  Rear brake disables throttling
 					int dis_throttle = _c_i.brake_front > BRAKE_THRESHOLD;
-					if ( drive_mode != CURVE_RACING)
+					if ( drive_mode != XCPU_DRIVE_MODE_RACING)
 						dis_throttle |= _c_i.brake_rear > BRAKE_THRESHOLD;
 					if ( dis_throttle)
 					{
@@ -272,8 +272,8 @@ void main()
 						_c_i.throttle = 0;
 					}
 				}
-				if ( _c_i.buttons & XCPU_BUTTON_LIGHTS_OFF)
-					_default_output_state = OUTPUT_NONE;
+//				if ( _c_i.buttons & XCPU_BUTTON_LIGHTS_OFF)
+//					_default_output_state = OUTPUT_NONE;
 				if (_c_i.buttons & XCPU_BUTTON_HORN)
 					_output_state |= OUTPUT_HORN;
 

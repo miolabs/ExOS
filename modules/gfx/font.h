@@ -1,8 +1,8 @@
-#ifndef FONT_H
-#define FONT_H
+#ifndef GFX_FONT_H
+#define GFX_FONT_H
 
-#include "canvas.h"
-#include "mono.h"
+#include <modules/gfx/canvas.h>
+#include <modules/gfx/mono.h>
 
 typedef struct
 {
@@ -43,19 +43,20 @@ typedef struct
 	const SPRITE*   bitmaps[1];	// 1 supported, can be several for Chinese, etc...
 } FONT;
     
-enum
+typedef enum
 {
-	FONT_PROPORTIONAL = 1,	// Default: Monospace
+	FONT_MONOSPACE = 0,
+	FONT_PROPORTIONAL = 1,
 	FONT_KERNING = 2,
-};
+} FONT_FLAGS;
 
 // Y coordinate refers to font baseline
-void font_draw ( const CANVAS* canvas, const char* text, const FONT* font, 
-				 int print_flags, int x, int y);
+void font_draw(const CANVAS* canvas, const char* text, const FONT* font, 
+	FONT_FLAGS print_flags, int x, int y);
 
 // Calculate pixel length of a given text 
-int  font_calc_len ( const FONT* font, const char* text, int print_flags);
+int font_calc_len(const FONT* font, const char* text, FONT_FLAGS print_flags);
 
-#endif //FONT_H
+#endif // GFX_FONT_H
 
 

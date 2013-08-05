@@ -8,6 +8,7 @@
 #include <support/board_hal.h>
 #include <CMSIS/LPC17xx.h>
 
+static unsigned char _idle_data[SSP_MODULE_COUNT] __dma;
 static unsigned char _dma_busy[SSP_MODULE_COUNT];
 
 static inline SSP_MODULE *_get_module(int module)
@@ -38,6 +39,8 @@ void hal_ssp_initialize(int module, int bitrate, HAL_SSP_MODE mode, HAL_SSP_FLAG
 		SSP_CLK_MODE mode = flags & HAL_SSP_CLK_IDLE_HIGH ? 
 			(flags & HAL_SSP_CLK_PHASE_NEG ? SSP_CLK_POL1_PHA0 : SSP_CLK_POL1_PHA1) : // clk negative
 			(flags & HAL_SSP_CLK_PHASE_NEG ? SSP_CLK_POL0_PHA1 : SSP_CLK_POL0_PHA0); // clk positive
+
+		_idle_data[module] = flags & HAL_SSP_IDLE_HIGH ? 0xFF : 0;
 
 		ssp->CR1 = 0;	// disable module
 		ssp->CPSR = 2;	// prescaler
@@ -128,8 +131,7 @@ void hal_ssp_transmit(int module, unsigned char *outbuf, unsigned char *inbuf, i
 					.Dst = { .Burst = DMA_BURST_4, .Width = DMA_WIDTH_8BIT },
 					.Peripheral = _tx_periph[module], 
 					.Flow = DMA_FLOW_M2P_DMA };
-				dummy = 0;
-				dma_channel_enable_fast(dma[1], &dummy, (void *)&ssp->DR, length, 
+				dma_channel_enable_fast(dma[1], &_idle_data[module], (void *)&ssp->DR, length, 
 					&tx_config, 0, 0);
 			}
 

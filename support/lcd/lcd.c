@@ -55,7 +55,7 @@ static inline void _bit_exchange ( unsigned * a, unsigned * b, unsigned mask, in
     *a = r;
 }
 
-static inline void _tile_rotate ( unsigned char* dst, unsigned int* src, int src_stride)
+static inline void _tile_rotate(unsigned char *dst, const unsigned int *src, int src_stride)
 {
     unsigned d0, d1, d2, d3, d4, d5, d6, d7;
     d0 = *src; src += src_stride;
@@ -96,12 +96,12 @@ void lcd_bilevel_linear_2_vertical_bytes ( unsigned char* dst, const unsigned in
 {
     int bar, x;
     const int bars = h >> 3;
-    for (bar=0; bar<bars; bar++)
+    for (bar = 0; bar < bars; bar++)
     {
-        unsigned char* dst_bar_ptr = &dst [ bar * w];
-        unsigned int*  src_bar_ptr = &src [ bar * 8 * (w>>5)];
+        unsigned char *dst_bar_ptr = &dst[bar * w];
+        const unsigned int *src_bar_ptr = &src[bar * 8 * (w >> 5)];
         for (x=0; x<w; x+=32)
             _tile_rotate ( &dst_bar_ptr[x], 
-                           &src_bar_ptr[x>>5], w >> 5);
+                           &src_bar_ptr[x >> 5], w >> 5);
     }
 }

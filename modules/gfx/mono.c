@@ -35,8 +35,8 @@ static inline int _climit( int v, int min, int max)  { v=(v<min)?min:v; return (
 
 #define FX_EDGES (18)
 
-void mono_filled_polygon ( const MONO_POLY* poly, unsigned int* bitmap, 
-                           const unsigned int* pattern, MONO_POLY_COORDS* coords, int ncoords)
+void mono_filled_polygon(const MONO_POLY* poly, unsigned int* bitmap, 
+                         const unsigned int* pattern, MONO_POLY_COORDS* coords, int ncoords)
 {
 	int i, y;
 	assert(( ncoords>2) && ( ncoords<=8));
@@ -174,16 +174,16 @@ static inline void _mono_draw_sprite_box ( const CANVAS* canvas,
 		span_flags |= SPAN_TAIL;
 	int central_e = ( span_flags & SPAN_TAIL) ? scrspan_e : scrspan_e+1;
 
-	unsigned int* scrline  = (unsigned int* )(canvas->pixels + (canvas->stride_bytes * sprbox->yi));
-	const unsigned int* sprline  = spr->bitmap + spr->stride_bitmap * spr_1st_line;
-	const unsigned int* maskline = spr->mask   + spr->stride_mask   * spr_1st_line;
+	unsigned int* scrline  = (unsigned int* )(canvas->Pixels + (canvas->StrideBytes * sprbox->yi));
+	const unsigned int* sprline  = spr->Bitmap + spr->BitmapStride * spr_1st_line;
+	const unsigned int* maskline = spr->Mask + spr->MaskStride * spr_1st_line;
 	unsigned int mask_i = ones >> mod_i;
 	unsigned int mask_e = ones << (31 - mod_e);
-	int stride_mask = spr->stride_mask;
+	int stride_mask = spr->MaskStride;
 	// Unmasked case
 	static const unsigned int default_mask = 0xffffffff;
 	int mask_skipper = -1;
-	if ( spr->mask == 0)
+	if (spr->Mask == 0)
 		maskline = &default_mask, mask_skipper = 0, stride_mask = 0;
 
 	//if ((( span_flags & SPAN_HEAD_TAIL) == SPAN_HEAD_TAIL)  &&  ( scrspan_i == scrspan_e))
@@ -198,8 +198,8 @@ static inline void _mono_draw_sprite_box ( const CANVAS* canvas,
 				unsigned int sprpix  = sprline  [ tsprx] >> shift;
 				unsigned int mask    = mask_i & mask_e & sprmask;
 				scrline[scrspan_i] =  ( sprpix & mask) | ( scrline[scrspan_i] & (~mask)); 
-				scrline  += canvas->stride_bytes >> 2;
-				sprline  += spr->stride_bitmap;
+				scrline  += canvas->StrideBytes >> 2;
+				sprline  += spr->BitmapStride;
 				maskline += stride_mask;
 			}
 		else
@@ -215,8 +215,8 @@ static inline void _mono_draw_sprite_box ( const CANVAS* canvas,
 					sprmask = maskline [MSK(0)];
 				unsigned int mask    = mask_i & mask_e & sprmask;
 				scrline[scrspan_i] =  ( sprpix & mask) | ( scrline[scrspan_i] & (~mask)); 
-				scrline  += canvas->stride_bytes >> 2;
-				sprline  += spr->stride_bitmap;
+				scrline  += canvas->StrideBytes >> 2;
+				sprline  += spr->BitmapStride;
 				maskline += stride_mask;
 			}
 	}
@@ -293,40 +293,39 @@ static inline void _mono_draw_sprite_box ( const CANVAS* canvas,
 			}
 
 			// Next line
-            scrline  += canvas->stride_bytes >> 2;
-			sprline  += spr->stride_bitmap;
+            scrline  += canvas->StrideBytes >> 2;
+			sprline  += spr->BitmapStride;
 			maskline += stride_mask;
 		}	// for ( y...)
 	}
 }
 
-void mono_draw_sprite ( const CANVAS* canvas,
-                        const SPRITE* spr, int x, int y)
+void mono_draw_sprite(const CANVAS* canvas, const SPRITE* spr, int x, int y)
 {
-	assert(( spr->pix_type == PIX_1_MONOCHROME) && ( canvas->pix_type == PIX_1_MONOCHROME));
-	BOX scr = { -x, -x+canvas->w-1,  -y, -y+canvas->h-1};
-	BOX sub = { 0,  spr->w-1, 0, spr->h-1};
+	assert((spr->PixelType == PIX_1_MONOCHROME) && (canvas->PixelType == PIX_1_MONOCHROME));
+	BOX scr = { -x, -x+canvas->Width-1,  -y, -y+canvas->Height-1};
+	BOX sub = { 0,  spr->Width-1, 0, spr->Height-1};
 	BOX res;
-	if ( !_box_intersection ( &res, &scr, &sub))
+	if (!_box_intersection(&res, &scr, &sub))
 		return;
 
-	_mono_draw_sprite_box (canvas, spr,  x,  y, &res);
+	_mono_draw_sprite_box(canvas, spr,  x,  y, &res);
 }
 
 
-void mono_draw_sprite_part ( const CANVAS* canvas, const SPRITE* spr,
+void mono_draw_sprite_part(const CANVAS* canvas, const SPRITE* spr,
                              int x, int y, const BOX* part)
 {
-	assert(( spr->pix_type == PIX_1_MONOCHROME) && ( canvas->pix_type == PIX_1_MONOCHROME));
+	assert((spr->PixelType == PIX_1_MONOCHROME) && (canvas->PixelType == PIX_1_MONOCHROME));
 
 	// Check "part" is inside the bitmap
-	BOX bitm = { 0,  spr->w-1, 0, spr->h-1};
+	BOX bitm = { 0,  spr->Width-1, 0, spr->Height-1};
 	BOX bpart;
 	if ( !_box_intersection ( &bpart, part, &bitm))
 		return;
 
 	// 	Set the sprite square on screen
-	BOX scr = { -x, -x+canvas->w-1,  -y, -y+canvas->h-1};
+	BOX scr = { -x, -x+canvas->Width-1,  -y, -y+canvas->Height-1};
 	BOX sub = { 0, bpart.xe - bpart.xi, 
 	            0, bpart.ye - bpart.yi };
 	BOX res;

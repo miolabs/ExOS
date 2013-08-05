@@ -24,7 +24,7 @@ static inline void fir_init( FIR* fir, int num_regs,
 	fir->max_chained_discards = max_chained_discards;
 }
 
-unsigned int fir_filter ( FIR* fir, unsigned int newval);
+unsigned int fir_filter(FIR* fir, unsigned int newval);
 
 #endif // FIR_H
 

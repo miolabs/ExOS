@@ -1,7 +1,7 @@
-#include <kernel/types.h>
+#ifndef GFX_CANVAS_H
+#define GFX_CANVAS_H
 
-#ifndef CANVAS_H
-#define CANVAS_H
+#include <kernel/types.h>
 
 typedef enum
 {
@@ -14,10 +14,10 @@ typedef enum
 
 typedef struct
 {
-	unsigned char* pixels;
-	short w, h;
-	short stride_bytes;
-	short pix_type;		// See enum PIXEL_TYPES
+	unsigned char* Pixels;
+	short Width, Height;
+	short StrideBytes;
+	short PixelType;		// See enum PIXEL_TYPES
 } CANVAS;
 
 // Small utility to help with canvas
@@ -48,6 +48,6 @@ static inline int _box_intersection ( BOX* res, const BOX* a, const BOX* b)
 }
 
 
-#endif // CANVAS_H
+#endif // GFX_CANVAS_H
 
 

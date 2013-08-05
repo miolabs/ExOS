@@ -151,7 +151,9 @@ typedef struct __attribute__((__packed__))
 	DMA_FLOW Flow:8;
 } DMA_CONFIG;
 
-
+#ifndef __dma
+#define __dma __attribute__((__section__(".dma")))
+#endif
 
 // prototypes
 void dma_initialize();

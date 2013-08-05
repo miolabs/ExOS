@@ -1,7 +1,7 @@
-#include "canvas.h"
+#ifndef GFX_MONO_H
+#define GFX_MONO_H
 
-#ifndef LCD_MONO_H
-#define LCD_MONO_H
+#include <modules/gfx/canvas.h>
 
 typedef struct { short a, b; } MONO_POLY_SEGMENT; 
 typedef struct { short x, y; } MONO_POLY_COORDS;
@@ -31,19 +31,19 @@ void mono_filled_polygon ( const MONO_POLY* poly, unsigned int* bitmap, const un
 
 typedef struct
 {
-	short          w, h;
-	const unsigned int* bitmap;
-	const unsigned int* mask;
-	short          stride_bitmap, stride_mask;	// Stride in words of uint32
-	short          pix_type, alpha_pix_type;  // enum PIXEL_TYPES
+	short Width, Height;
+	const unsigned int* Bitmap;
+	const unsigned int* Mask;
+	short BitmapStride, MaskStride;	// Stride in words of uint32
+	short PixelType, AlphaPixelType;  // enum PIXEL_TYPES
 } SPRITE;
 
-void mono_draw_sprite ( const CANVAS* canvas,
-                        const SPRITE* spr, int x, int y);
+void mono_draw_sprite(const CANVAS *canvas,
+	const SPRITE *spr, int x, int y);
 
-void mono_draw_sprite_part ( const CANVAS* canvas, const SPRITE* spr,
-                             int x, int y, const BOX* part);
+void mono_draw_sprite_part(const CANVAS *canvas, const SPRITE *spr,
+	int x, int y, const BOX *part);
 
-#endif //LCD_MONO_H
+#endif // LCD_MONO_H
 
 
