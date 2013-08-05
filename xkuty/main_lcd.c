@@ -7,7 +7,9 @@
 #include <kernel/event.h>
 #include <kernel/timer.h>
 #include <support/can_hal.h>
+#include <support/apple/iap.h>
 #include <support/lcd/lcd.h>
+#include <usb/host.h>
 
 #include <stdio.h>
 #include <assert.h>
@@ -44,7 +46,6 @@ static const EVREC_CHECK _mode_screen_access[] =
 
 static int _adj_up = 0, _adj_down = 0;
 static int _switch_units_cnt = 0, _adj_throttle_cnt = 0, _adj_drive_mode_cnt = 0;
-static int _light_off = 0;
 
 static XCPU_BUTTONS _read_send_inputs(int state)
 {
@@ -62,8 +63,6 @@ static XCPU_BUTTONS _read_send_inputs(int state)
         buttons |= XCPU_BUTTON_ADJ_THROTTLE, _adj_throttle_cnt--;
 	if ( _adj_drive_mode_cnt > 0)
 		buttons |= _dash.Temp.DriveMode << XCPU_BUTTON_ADJ_DRIVE_MODE_SHIFT, _adj_drive_mode_cnt--;
-//	if ( _lights_off_cnt > 0)
-//		buttons |= XCPU_BUTTON_LIGHTS_OFF, _lights_off_cnt--;
 
 	// Record inputs for sequence triggering (to start debug services)
 	event_record(buttons & (XCPU_BUTTON_THROTTLE_OPEN |
@@ -72,13 +71,6 @@ static XCPU_BUTTONS _read_send_inputs(int state)
 
 	ANALOG_INPUT *ain_throttle = xanalog_input(THROTTLE_IDX);
 	unsigned int throttle = ain_throttle->Scaled;
-	// Throttle only should work on dash screen, the rest are debug or intro screens
-	// Same with horn
-	if (state != ST_DASH)
-	{
-		buttons &= ~XCPU_BUTTON_HORN;
-		throttle = 0;
-	}
 
 	ANALOG_INPUT *ain_brake_rear = xanalog_input(BRAKE_REAR_IDX);
 	ANALOG_INPUT *ain_brake_front = xanalog_input(BRAKE_FRONT_IDX);
@@ -92,6 +84,7 @@ static XCPU_BUTTONS _read_send_inputs(int state)
 									_dash.Temp.ThrottleMax >> 4,
 									buttons >> 8 };
 	hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
+	return buttons;
 }
 
 
@@ -234,6 +227,7 @@ static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 
 void main()
 {
+	usb_host_initialize();
 	xdisplay_initialize();
 
 	exos_port_create(&_can_rx_port, NULL);
@@ -251,9 +245,11 @@ void main()
 	unsigned int prev_time = 0;
 
 	int screen_count = 0;
-    DISPLAY_STATE init_state = ST_LOGO_IN; //ST_LOGO_IN; //ST_DASH; 
-	                                 //ST_DEBUG_INPUT; // ST_ADJUST_WHEEL_DIA; 
-									 //ST_FACTORY_MENU
+#ifdef DEBUG
+    DISPLAY_STATE init_state = ST_DEBUG_INPUT;
+#else
+    DISPLAY_STATE init_state = ST_LOGO_IN;
+#endif
 	DISPLAY_STATE state = init_state;
 
 	int prev_cpu_state = 0;	// Default state is OFF, wait for master to start
@@ -364,3 +360,8 @@ static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state)
 	return 0;
 }
 
+void usb_host_add_drivers()
+{
+	usbd_hid_initialize();
+	iap_initialize();
+}

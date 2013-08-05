@@ -107,6 +107,13 @@ static int _setup_usbhost(int unit)
 	PINSEL3bits.P1_22 = 2;		// USB_PWRD
 	PINSEL3bits.P1_27 = 2;		// _USB_OVRCR
 	return (1<<0);
+#elif defined BOARD_MINILCD
+	PINSEL1bits.P0_29 = 1;		// D+
+	PINSEL1bits.P0_30 = 1;		// D-
+	PINSEL3bits.P1_18 = 1;		// USB_UP_LED
+	PINSEL3bits.P1_19 = 2;		// _USB_PPWR
+	PINSEL3bits.P1_22 = 2;		// USB_PWRD
+//	PINSEL3bits.P1_27 = 2;		// _USB_OVRCR
 #else
 	return 0;
 #endif
