@@ -114,8 +114,8 @@ typedef struct
 
 typedef struct
 {
-	unsigned PCLK_QEI:2;
-	unsigned PCLK_GPIOINT:2;
+	unsigned PCLK_BAT_RAM:2;
+	unsigned PCLK_GPIO:2;
 	unsigned PCLK_PCB:2; 
 	unsigned PCLK_I2C1:2;
 
@@ -129,10 +129,10 @@ typedef struct
 	unsigned PCLK_I2C2:2;
 	unsigned PCLK_I2S:2;
 	
+	unsigned PCLK_MCI:2;
 	unsigned :2;
-	unsigned PCLK_RIT:2;
 	unsigned PCLK_SYSCON:2;
-	unsigned PCLK_MC:2;
+	unsigned :2;
 } _PCLKSEL1;
 
 #define PCLKSEL1bits (*(_PCLKSEL1 *) &LPC_SC->PCLKSEL1)
@@ -168,6 +168,8 @@ typedef enum
 	UART1_IRQn = 7,
     ENET_IRQn = 21,
 	USB_IRQn = 22,
+	MCI_IRQn = 24,
+	DMA_IRQn = 25,
     TIMER2_IRQn = 26,
     TIMER3_IRQn = 27,
 	UART2_IRQn = 28,

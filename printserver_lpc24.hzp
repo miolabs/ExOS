@@ -82,6 +82,7 @@
           <file file_name="support/lpc2k/usb_otg.c"/>
           <file file_name="support/lpc2k/i2c.c"/>
           <file file_name="support/lpc2k/uart.c"/>
+          <file file_name="support/lpc2k/dma.c"/>
         </folder>
         <configuration Name="Common" build_intermediate_directory=".output/$(Configuration)/support" build_output_directory=".output/$(Configuration)/support"/>
         <folder Name="board">
