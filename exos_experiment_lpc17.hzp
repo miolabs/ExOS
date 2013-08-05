@@ -15,19 +15,17 @@
             <file file_name="kernel/machine/lpc17/comm_lpc17.c"/>
           </folder>
           <file file_name="kernel/machine/hal.c"/>
+          <folder Name="armv7m">
+            <file file_name="kernel/machine/armv7m/kernel_armv7m.c"/>
+          </folder>
         </folder>
         <file file_name="kernel/startup.c"/>
         <file file_name="kernel/list.c"/>
         <file file_name="kernel/panic.c"/>
         <file file_name="kernel/signal.c"/>
-        <folder Name="tests" file_name="">
-          <file file_name="kernel/tests/threading_tests.c"/>
-          <file file_name="kernel/tests/memory_tests.c"/>
-        </folder>
         <file file_name="kernel/thread.c"/>
         <file file_name="kernel/timer.c"/>
         <folder Name="posix" file_name="">
-          <folder Name="tests"/>
           <file file_name="kernel/posix/pthread_cond.c"/>
           <file file_name="kernel/posix/pthread_time.c"/>
           <file file_name="kernel/posix/posix.c"/>
@@ -54,7 +52,6 @@
             <file file_name="kernel/driver/net/mbuf.c"/>
             <file file_name="kernel/driver/net/net.c"/>
             <file file_name="kernel/driver/net/udp.c"/>
-            <folder Name="tests"/>
             <file file_name="kernel/driver/net/adapter.c"/>
             <file file_name="kernel/driver/net/net_service.c"/>
             <file file_name="kernel/driver/net/net_io.c"/>
@@ -69,13 +66,9 @@
           </folder>
           <folder Name="comm">
             <file file_name="kernel/driver/comm/comm.c"/>
-            <folder Name="tests"/>
           </folder>
           <folder Name="usb">
             <file file_name="kernel/driver/usb/usb.c"/>
-            <folder Name="test" file_name="">
-              <file file_name="kernel/driver/usb/test/usbhost_test.c"/>
-            </folder>
             <file file_name="kernel/driver/usb/host.c"/>
             <file file_name="kernel/driver/usb/enumerate.c"/>
             <folder Name="classes">
@@ -99,6 +92,7 @@
           <file file_name="support/lpc17/uart.c"/>
           <file file_name="support/lpc17/usb_otg.c"/>
           <file file_name="support/lpc17/usb_host.c"/>
+          <file file_name="support/lpc17/ssp.c"/>
         </folder>
         <folder Name="board">
           <file file_name="support/board/nmine_lpc17.c"/>
@@ -119,6 +113,13 @@
             <file file_name="support/usb/driver/ftdi.c"/>
           </folder>
         </folder>
+        <folder Name="misc">
+          <folder Name="sdcard">
+            <file file_name="support/misc/sdcard/sdcard.c"/>
+            <file file_name="support/misc/sdcard/sdcard_spi.c"/>
+          </folder>
+          <file file_name="support/misc/crc16.c"/>
+        </folder>
       </folder>
       <folder Name="modules">
         <folder Name="services">
@@ -126,6 +127,11 @@
           <folder Name="bonjour">
             <file file_name="modules/services/bonjour/bonjour.c"/>
           </folder>
+        </folder>
+      </folder>
+      <folder Name="tests">
+        <folder Name="support">
+          <file file_name="tests/support/sdcard_test.c"/>
         </folder>
       </folder>
     </folder>
@@ -148,7 +154,7 @@
   <configuration Name="Common" c_preprocessor_definitions="MAIN_THREAD_STACK=1024;MAIN_THREAD_PRI=0;__EXOS__" linker_section_placement_file="$(ProjectDir)/support/lpc17/flash_placement_17xx.xml"/>
   <configuration Name="NANO2 Debug" inherited_configurations="Debug;NANO2"/>
   <configuration Name="NANO2 Release" inherited_configurations="NANO2;Release"/>
-  <configuration Name="NANO2" c_preprocessor_definitions="BOARD_NANO10;SDCARD_POWER_MASK=(1&lt;&lt;21);SDCARD_POWER_PORT=LPC_GPIO0;SDCARD_POWER_INVERTED" hidden="Yes"/>
+  <configuration Name="NANO2" c_preprocessor_definitions="BOARD_NANO10;EXOS_NO_NET;SDCARD_POWER_MASK=(1&lt;&lt;21);SDCARD_POWER_PORT=LPC_GPIO0;SDCARD_POWER_INVERTED;SDCARD_SPI_MODULE=0" hidden="Yes"/>
   <configuration Name="LandTiger" c_preprocessor_definitions="BOARD_LANDTIGER;SDCARD_POWER_PORT=LPC_GPIO3;SDCARD_POWER_MASK=(1&lt;&lt;26);SDCARD_POWER_INVERTED" hidden="Yes"/>
   <configuration Name="LandTiger Debug" inherited_configurations="Debug;LandTiger"/>
   <configuration Name="LandTiger Release" inherited_configurations="LandTiger;Release"/>

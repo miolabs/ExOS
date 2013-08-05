@@ -1,5 +1,5 @@
 #include "sdcard_mci.h"
-#include "hal/mci_hal.h"
+#include <support/mci_hal.h>
 
 unsigned short _rca;
 
