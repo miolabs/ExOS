@@ -72,14 +72,12 @@
             <file file_name="kernel/driver/net/tcp.c"/>
             <file file_name="kernel/driver/net/tcp_io.c"/>
             <file file_name="kernel/driver/net/udp_io.c"/>
-            <folder Name="tests">
-              <file file_name="kernel/driver/net/tests/tcp_test.c"/>
-            </folder>
             <file file_name="kernel/driver/net/tcp_service.c"/>
           </folder>
         </folder>
         <file file_name="kernel/port.c"/>
       </folder>
+      <file file_name="Tests/platform/dm36x/dm36x_test.c"/>
     </folder>
     <folder Name="System Files">
       <file file_name="support/dm36x/TMS320DM3x_Target.js">
