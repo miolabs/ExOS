@@ -1,5 +1,5 @@
-#ifndef LPC17_DMA_H
-#define LPC17_DMA_H
+#ifndef LPC2K_DMA_H
+#define LPC2K_DMA_H
 
 #include "cpu.h"
 
@@ -87,26 +87,9 @@ typedef enum
 	DMA_P_SSP0_RX = 1,
 	DMA_P_SSP1_TX = 2,
 	DMA_P_SSP1_RX = 3,
-	DMA_P_ADC = 4,
+	DMA_P_MCI = 4,
 	DMA_P_I2S_CH0 = 5,
 	DMA_P_I2S_CH1 = 6,
-	DMA_P_DAC = 7,
-	DMA_P_UART0_TX = 8,
-	DMA_P_UART0_RX = 9,
-	DMA_P_UART1_TX = 10,
-	DMA_P_UART1_RX = 11,
-	DMA_P_UART2_TX = 12,
-	DMA_P_UART2_RX = 13,
-	DMA_P_UART3_TX = 14,
-	DMA_P_UART3_RX = 15,
-	DMA_P_MAT0_0 = 8,
-	DMA_P_MAT0_1 = 9,
-	DMA_P_MAT1_0 = 10,
-	DMA_P_MAT1_1 = 11,
-	DMA_P_MAT2_0 = 12,
-	DMA_P_MAT2_1 = 13,
-	DMA_P_MAT3_0 = 14,
-	DMA_P_MAT3_1 = 15,
 } DMA_PERIPHERAL;
 
 typedef struct
@@ -133,7 +116,7 @@ typedef struct
 	};
 } DMA_CHANNEL;
 
-#define DMA_CHANNEL_COUNT 8
+#define DMA_CHANNEL_COUNT 2
 #define DMA_CHANNEL_MASK ((1<<DMA_CHANNEL_COUNT) - 1)
 
 typedef struct __attribute__((__packed__))
@@ -151,9 +134,7 @@ typedef struct __attribute__((__packed__))
 	DMA_FLOW Flow:8;
 } DMA_CONFIG;
 
-#ifndef __dma
-#define __dma __attribute__((__section__(".dma")))
-#endif
+
 
 // prototypes
 void dma_initialize();
@@ -166,4 +147,4 @@ void dma_channel_enable_fast(int ch, void *src_ptr, void *dst_ptr, int size,
 	const DMA_CONFIG *config, DMA_CALLBACK callback, void *state);
 void dma_channel_disable(int ch);
 
-#endif // LPC17_DMA_H
+#endif // LPC2K_DMA_H

@@ -10,6 +10,7 @@ typedef enum
 	HAL_SSP_CLK_IDLE_HIGH = (1<<0),
 	HAL_SSP_CLK_PHASE_NEG = (1<<1),	// sample on falling edge of clk
 	HAL_SSP_LENGTH_16BIT = (1<<2),
+	HAL_SSP_IDLE_HIGH = (1<<3),	// output 0xFF in unidirectional reading
 } HAL_SSP_FLAGS;
 
 typedef enum

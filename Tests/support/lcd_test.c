@@ -1,5 +1,5 @@
 #include <support/lcd/lcd.h>
-#include <support/lcd/mono.h>
+#include <modules/gfx/mono.h>
 #include <kernel/thread.h>
 #include <stdio.h>
 #include <assert.h>

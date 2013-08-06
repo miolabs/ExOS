@@ -2,6 +2,7 @@
 // by Miguel Fides
 
 #include "sdcard.h"
+#include <kernel/thread.h>
 
 static SD_INFO _info;
 static unsigned short _rca; // relative card address (not used in SPI mode)
@@ -23,14 +24,23 @@ int sd_initialize()
 
 	sd_hw_card_reset();
 	_state = SD_CARD_IDLE;
+	_card_version = 100;
+	_card_hc = 0;
 
 	// send CMD8 to detect V2.0 cards
 	#define VHS_2_7_TO_3_6 1
 	unsigned char r7[4];
 	unsigned long cmd8_arg = (VHS_2_7_TO_3_6 << 8) | 0xAA;
-	status = sd_send_cmd_resp(8, cmd8_arg, r7, 4);	// CMD8: SEND_IF_COND
-	_card_version = (status == SD_OK || status == SD_OK_IDLE) ? 200 : 100;
-	_card_hc = 0;
+	for (int i = 0; i < 3; i++)
+	{
+		status = sd_send_cmd_resp(8, cmd8_arg, r7, 4);	// CMD8: SEND_IF_COND
+		if (status == SD_OK || status == SD_OK_IDLE)
+		{
+			_card_version = 200;
+			break;
+		}
+		exos_thread_sleep(1000);
+	}
 
 	do
 	{

@@ -22,16 +22,9 @@
         <file file_name="kernel/list.c"/>
         <file file_name="kernel/panic.c"/>
         <file file_name="kernel/signal.c"/>
-        <folder Name="tests" file_name="">
-          <file file_name="kernel/tests/threading_tests.c"/>
-          <file file_name="kernel/tests/memory_tests.c"/>
-        </folder>
         <file file_name="kernel/thread.c"/>
         <file file_name="kernel/timer.c"/>
         <folder Name="posix" file_name="">
-          <folder Name="tests">
-            <file file_name="kernel/posix/tests/basic_pthread_tests.c"/>
-          </folder>
           <file file_name="kernel/posix/pthread_cond.c"/>
           <file file_name="kernel/posix/pthread_time.c"/>
           <file file_name="kernel/posix/posix.c"/>
@@ -75,11 +68,12 @@
         <folder Name="lcd" file_name="">
           <file file_name="support/lcd/lcd.c"/>
           <file file_name="support/lcd/splc501c.c"/>
-          <folder Name="test">
-            <file file_name="support/lcd/test/lcd_test.c"/>
-          </folder>
           <file file_name="support/lcd/st7565r.c"/>
-          <file file_name="support/lcd/mono.c"/>
+        </folder>
+      </folder>
+      <folder Name="tests">
+        <folder Name="support">
+          <file file_name="tests/support/lcd_test.c"/>
         </folder>
       </folder>
     </folder>
@@ -98,11 +92,11 @@
   </project>
   <configuration Name="Debug" build_debug_information="Yes" c_preprocessor_definitions="DEBUG;__THUMB" gcc_optimization_level="None" hidden="Yes" link_include_startup_code="No"/>
   <configuration Name="Release" build_debug_information="No" c_additional_options="-g1" c_preprocessor_definitions="NDEBUG" gcc_optimization_level="Level 1" hidden="Yes" link_include_startup_code="No"/>
-  <configuration Name="Common" c_preprocessor_definitions="__EXOS__;MAIN_THREAD_STACK=1024;MAIN_THREAD_PRI=0;EXOS_NO_NET;LCD_DPI=100;ADC_BURST_MODE" linker_section_placement_file="$(ProjectDir)/support/lpc17/lpc1769_flash_placement.xml"/>
+  <configuration Name="Common" c_preprocessor_definitions="__EXOS__;MAIN_THREAD_STACK=1024;MAIN_THREAD_PRI=0;EXOS_NO_NET;LCD_DPI=100;ADC_BURST_MODE" linker_section_placement_file="$(ProjectDir)/support/lpc17/flash_placement_17xx.xml"/>
   <configuration Name="LandTiger" c_preprocessor_definitions="BOARD_LANDTIGER" hidden="Yes"/>
   <configuration Name="LandTiger Debug" inherited_configurations="Debug;LandTiger"/>
   <configuration Name="LandTiger Release" inherited_configurations="LandTiger;Release"/>
-  <configuration Name="LPC1766-STK" c_preprocessor_definitions="BOARD_LPC1766STK;LCD_SSP_MODULE=1;LCD_SPLC501C" hidden="Yes"/>
+  <configuration Name="LPC1766-STK" c_preprocessor_definitions="BOARD_LPC1766STK;LCD_SSP_MODULE=1;_LCD_SPLC501C;LCD_ST7565R" hidden="Yes"/>
   <configuration Name="LPC1766-STK Debug" inherited_configurations="Debug;LPC1766-STK"/>
   <configuration Name="LPC1766-STK Release" inherited_configurations="LPC1766-STK;Release"/>
   <configuration Name="MINILCD" c_preprocessor_definitions="BOARD_MINILCD;LCD_SSP_MODULE=0;LCD_ST7565R" hidden="Yes"/>

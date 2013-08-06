@@ -29,6 +29,5 @@ typedef enum
 } MCI_BLOCK_SIZE; 
 
 
-
 #endif // SDCARD_MCI_H
 

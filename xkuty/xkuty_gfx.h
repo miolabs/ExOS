@@ -1,6 +1,7 @@
-#ifndef XCUTY_GFX_H
-#define XCUTY_GFX_H
+#ifndef XKUTY_GFX_H
+#define XKUTY_GFX_H
 
+#include <modules/gfx/mono.h>
 
 const static unsigned int _bmp_mi [] = 
 {
@@ -679,7 +680,7 @@ static const unsigned int _bmp_xkuty_pic [] =
 static SPRITE _xkuty_pic_spr = { 145, 160, _bmp_xkuty_pic, _dummy_mask, 5,0, , PIX_1_MONOCHROME, PIX_NONE};
 */
 
-#endif // XCUTY_GFX_H
+#endif // XKUTY_GFX_H
 
 
 

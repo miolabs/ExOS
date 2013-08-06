@@ -34,7 +34,7 @@ static XCPU_OUTPUT_MASK _output_state = OUTPUT_NONE;
 static XCPU_OUTPUT_MASK _default_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
 
 static PID_K _pid_k; 
-static PID_STATE _pid =  { 	.Integral = 0.0f, .Last = 0.0f, .SetPoint = 0.0f};
+static PID_STATE _pid;
 
 static EXOS_TIMER _timer;
 static void _run_diag();
@@ -54,7 +54,7 @@ typedef struct
 {
 	unsigned short buttons;
 	unsigned char  throttle;
-	unsigned char  brake_front, brake_rear;
+	unsigned char  brake_rear, brake_front;
 	unsigned char  throttle_adj_min, throttle_adj_max;
 } CAN_INPUT;
 
@@ -70,8 +70,8 @@ static void _read_can_messages ( int drive_mode, float speed)
 			CAN_BUFFER *data = &xmsg->CanMsg.Data;
 			_c_i.buttons = data->u8[0] | (data->u8[7] << 8);
 			unsigned int throttle_raw = data->u8[1] | ( data->u8[2] << 8);
-			_c_i.brake_front = data->u8[3];
-			_c_i.brake_rear = data->u8[4];
+			_c_i.brake_rear = data->u8[3];
+			_c_i.brake_front = data->u8[4];
 			_c_i.throttle_adj_min = data->u8[5];
 			_c_i.throttle_adj_max = data->u8[6];
 
@@ -97,8 +97,8 @@ static void _send_can_messages ( int drive_mode, unsigned int speed, unsigned in
 
 	buf.u8[4] = hal_adc_read(0)>>2;
 	buf.u8[5] = hal_adc_read(1)>>2;
-	buf.u8[6] = 3; //hal_adc_read(2)>>2;
-	buf.u8[7] = 4; //hal_adc_read(3)>>2;
+	buf.u8[6] = hal_adc_read(2)>>2;
+	buf.u8[7] = hal_adc_read(3)>>2;
 
 	hal_can_send((CAN_EP) { .Id = 0x301 }, &buf, 8, CANF_NONE);
 
@@ -194,10 +194,10 @@ void main()
 	xcpu_board_output(_output_state);
 #endif
 
-	CURVE_MODE    drive_mode = CURVE_SOFT;
-	unsigned char led = 0;
-	unsigned char prev_throttle = 0;
+	XCPU_DRIVE_MODE drive_mode = XCPU_DRIVE_MODE_SOFT;
 
+	unsigned char led = 0;
+        
 	if (!persist_load(&_storage))
 	{
 		_storage = (XCPU_PERSIST_DATA) { .Magic = XCPU_PERSIST_MAGIC,
@@ -212,8 +212,7 @@ void main()
 	_output_state = OUTPUT_NONE;
 	_state = XCPU_STATE_OFF;
 
-	char cruise_braking = 0;
-
+	int throttle_target = 0;
 	while(1)
 	{
 		exos_timer_wait(&_timer);
@@ -240,44 +239,41 @@ void main()
 				break;
 			case CONTROL_CRUISE:
 				{
-					cruise_braking = 0;
-					int pid_sign = 0;
 					int input_throttle = _c_i.throttle;
 					_c_i.throttle = pid(&_pid, _sp.speed, &_pid_k, 0.05F);
 					if (_c_i.throttle > 250)
+					{
 						_c_i.throttle--;
-					// If actual throttles move back to 0, enable regen brake
-					if (_c_i.throttle == 0)
-						cruise_braking = 1;
-					// Exit cruise
+					}
 					int release = ( input_throttle - _c_i.throttle) > 20;
 					release |= (_output_state & OUTPUT_BRAKEL); 
+					// Regenerative brake, because throttle is strongly reduced
+					//if (( input_throttle - _c_i.throttle) < -20)
+					//	_output_state |= OUTPUT_BRAKEL;
+
 					if ( release)
 					{
-						cruise_braking = 0;
 						_control_state = CONTROL_ON;
 						_state &= ~XCPU_STATE_CRUISE_ON;
 					}
 				}
 			case CONTROL_ON:
 				_output_state = _default_output_state;
-                if ( cruise_braking)
-					_output_state |= OUTPUT_EBRAKE;
-				if (_c_i.brake_front > BRAKE_THRESHOLD || _c_i.brake_rear > BRAKE_THRESHOLD)
+				if (_c_i.brake_rear > BRAKE_THRESHOLD || _c_i.brake_front > BRAKE_THRESHOLD)
 				{
 					_output_state |= OUTPUT_BRAKEL;
                     //  Rear brake disables throttling
-					int dis_throttle = _c_i.brake_rear > BRAKE_THRESHOLD;
-					if ( drive_mode != CURVE_RACING)
-						dis_throttle |= _c_i.brake_front > BRAKE_THRESHOLD;
+					int dis_throttle = _c_i.brake_front > BRAKE_THRESHOLD;
+					if ( drive_mode != XCPU_DRIVE_MODE_RACING)
+						dis_throttle |= _c_i.brake_rear > BRAKE_THRESHOLD;
 					if ( dis_throttle)
 					{
 						_output_state |= OUTPUT_EBRAKE;
 						_c_i.throttle = 0;
 					}
 				}
-				if ( _c_i.buttons & XCPU_BUTTON_LIGHTS_OFF)
-					_default_output_state = OUTPUT_NONE;
+//				if ( _c_i.buttons & XCPU_BUTTON_LIGHTS_OFF)
+//					_default_output_state = OUTPUT_NONE;
 				if (_c_i.buttons & XCPU_BUTTON_HORN)
 					_output_state |= OUTPUT_HORN;
 
@@ -295,10 +291,6 @@ void main()
 				{
 					_state ^= XCPU_STATE_MILES;
 				}
-                if ( _output_state & OUTPUT_EBRAKE)
-					_state |= XCPU_STATE_REGEN;
-				else
-					_state &= ~XCPU_STATE_REGEN;
 
 				if (_push_delay( _c_i.buttons & XCPU_BUTTON_ADJ_DRIVE_MODE, &push.mode, 5))
 				{
@@ -326,7 +318,6 @@ void main()
 
 							_state ^= XCPU_STATE_CRUISE_ON;
 							_control_state = _state & XCPU_STATE_CRUISE_ON ? CONTROL_CRUISE : CONTROL_ON;
-                            cruise_braking = 0;
 						}
 					}
 				}
@@ -373,8 +364,6 @@ void main()
 
 			float dist = (((_storage.TotalSteps + _sp.s_partial) * ( _sp.ratio / 3.6f)) / 100);
 			_send_can_messages ( drive_mode, (unsigned int)_sp.speed, (unsigned long)dist);
-
-			prev_throttle = _c_i.throttle;
 
 			xcpu_board_output(_output_state);
         }

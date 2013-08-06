@@ -5,7 +5,6 @@
 #include "cpu.h"
 #include <support/adc_hal.h>
 #include <support/board_hal.h>
-#include <kernel/thread.h>
 #include <CMSIS/LPC17xx.h>
 
 static unsigned char _mask;

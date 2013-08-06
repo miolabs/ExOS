@@ -1,9 +1,7 @@
 #ifndef HAL_MCI_HAL_H
 #define HAL_MCI_HAL_H
 
-#include <misc/sdcard_mci.h>
-
-
+#include <support/misc/sdcard/sdcard_mci.h>
 
 // prototypes
 void hal_mci_initialize();

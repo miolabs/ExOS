@@ -27,6 +27,10 @@ void hal_board_initialize()
 	hal_led_set(1, 0);
 #elif defined BOARD_LANDTIGER
 	LPC_GPIO2->FIODIR |= 0xFF;	// all 8 lower bits are outputs
+#elif defined BOARD_NANO10
+	LPC_GPIO2->FIODIR |= (1<<6);	// STATUS_LED
+	LPC_GPIO1->FIODIR |= (1<<18);	// USB_LED
+	LPC_GPIO3->FIODIR |= (1<<25);	// GPS_LED
 #else
 #error Unsupported Board
 #endif
@@ -120,7 +124,7 @@ static int _setup_usbdev(int unit)
 
 static int _setup_pwm(int unit)
 {
-#if defined BOARD_MINILCD 
+#if defined BOARD_MINILCD || defined BOARD_NANO10
 	PINSEL4bits.P2_0 = 1; // PWM1.1
 	PINSEL4bits.P2_1 = 1; // PWM1.2
 	PINSEL4bits.P2_2 = 1; // PWM1.3
@@ -137,7 +141,7 @@ static int _setup_pwm(int unit)
 
 static int _setup_cap(int unit)
 {
-#if defined BOARD_MINILCD
+#if defined BOARD_MINILCD || defined BOARD_NANO10
 	return 0;	// no cap
 #elif defined BOARD_LANDTIGER || defined BOARD_LPC1766STK
 	return 0;	// no cap
@@ -149,7 +153,7 @@ static int _setup_cap(int unit)
 
 static int _setup_mat(int unit)
 {
-#if defined BOARD_MINILCD
+#if defined BOARD_MINILCD || defined BOARD_NANO10
 	return 0;	// no pwm
 #elif defined BOARD_LANDTIGER || defined BOARD_LPC1766STK
 	return 0;	// no pwm
@@ -181,6 +185,13 @@ static int _setup_can(int unit)
 			PINSEL0bits.P0_5 = 2; // TD2
 			return 1;
 	}
+#elif defined BOARD_NANO10
+	if (unit == 1)
+	{
+		PINSEL0bits.P0_4 = 2; // RD2
+		PINSEL0bits.P0_5 = 2; // TD2
+		return 1;
+	}
 #elif defined BOARD_LPC1766STK
 	return 0;
 #else
@@ -195,12 +206,16 @@ static int _setup_uart(int unit)
 	return 0;
 #elif defined BOARD_LPC1766STK
 	return 0;
-#elif defined BOARD_LANDTIGER 
+#elif defined BOARD_LANDTIGER || defined BOARD_NANO10
 	switch(unit)
 	{
 		case 0:
 			PINSEL0bits.P0_2 = 1; // select TXD0
 			PINSEL0bits.P0_3 = 1; // select RXD0
+			return 1;
+		case 1:
+			PINSEL0bits.P0_15 = 1; // select TXD1
+			PINSEL1bits.P0_16 = 1; // select RXD1
 			return 1;
 	}
 #else
@@ -226,6 +241,12 @@ static int _setup_adc(int unit)
 #elif defined BOARD_LPC1766STK
 	PINSEL3bits.P1_31 = 3; // AN5
 	ch_mask = 1<<5;
+#elif defined BOARD_NANO10
+	PINSEL1bits.P0_23 = 1; // AN0
+	PINSEL1bits.P0_24 = 1; // AN1
+	PINSEL1bits.P0_25 = 1; // AN2
+	PINSEL1bits.P0_26 = 1; // AN3
+	ch_mask = 0x0F;
 #else
 #error "Unsupported board"
 #endif
@@ -255,15 +276,20 @@ void hal_led_set(HAL_LED led, int state)
 #include <support/lcd/lcd.h>
 #define LCD_CS_PORT LPC_GPIO1	// CS_UEXT = P1.26
 #define LCD_CS_MASK (1<<26)
-#define LCD_A0_PORT LPC_GPIO4	// TXD3 = P4.28
-#define LCD_A0_MASK (1<<28)
+
+//#define LCD_A0_PORT LPC_GPIO4	// TXD3 = P4.28
+//#define LCD_A0_MASK (1<<28)
+#define LCD_A0_PORT LPC_GPIO0	// MISO1 = P0.8
+#define LCD_A0_MASK (1<<8)
+
 #define LCD_RESET_PORT LPC_GPIO4	// RXD3 = P4.29
 #define LCD_RESET_MASK (1<<29)
 
 void lcdcon_gpo_initialize()
 {
 	PINSEL3bits.P1_26 = 0;
-	PINSEL9bits.P4_28 = 0;
+//	PINSEL9bits.P4_28 = 0;
+	PINSEL0bits.P0_8 = 0;
 	PINSEL9bits.P4_29 = 0;
 
 	LCD_CS_PORT->FIOSET = LCD_CS_MASK;
@@ -389,6 +415,33 @@ void lcdcon_gpo_backlight(int enable)
 }
 
 #endif
+
+#if defined(BOARD_NANO10)
+void hal_led_set(HAL_LED led, int state)
+{
+	switch(led)
+	{
+		case LED_STATUS:
+		case 0:
+			if (state) LPC_GPIO2->FIOSET = (1<<6);
+			else LPC_GPIO2->FIOCLR = (1<<6);
+			break;
+		case LED_GPS:
+		case 1:
+			if (state) LPC_GPIO3->FIOSET = (1<<25);
+			else LPC_GPIO3->FIOCLR = (1<<25);
+			break;
+		case LED_SDCARD:
+		case 2:
+			if (state) LPC_GPIO1->FIOSET = (1<<18);
+			else LPC_GPIO1->FIOCLR = (1<<18);
+			break;
+	}
+}
+
+#endif
+
+
 
 
 #if defined(SDCARD_POWER_PORT) && defined(SDCARD_POWER_MASK)

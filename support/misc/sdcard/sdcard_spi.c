@@ -8,14 +8,14 @@ void sd_hw_initialize()
 {
 	crc16_initialize(_crc16_table, 0x1021);
 
-	hal_ssp_initialize(SD_SPI_MODULE, 400000, HAL_SSP_MODE_SPI, HAL_SSP_CLK_IDLE_HIGH);
+	hal_ssp_initialize(SDCARD_SPI_MODULE, 400000, HAL_SSP_MODE_SPI, HAL_SSP_CLK_IDLE_HIGH | HAL_SSP_IDLE_HIGH);
 
 	sd_spi_power_control(1);
 }
 
 static inline unsigned char _transmit(unsigned char out)
 {
-	hal_ssp_transmit(SD_SPI_MODULE, &out, &out, 1); 
+	hal_ssp_transmit(SDCARD_SPI_MODULE, &out, &out, 1); 
 	return out;
 }
 
@@ -56,7 +56,7 @@ static SD_ERROR _read_data(unsigned char *result, unsigned long length)
 		unsigned char token = _wait_token(0x01, 0);
 		if (token != SD_SPI_START_TOKEN) return SD_ERROR_BAD_TOKEN;
 	
-		hal_ssp_rx_only(SD_SPI_MODULE, 0xFF, result, length);
+		hal_ssp_transmit(SDCARD_SPI_MODULE, 0, result, length);	// NOTE: unidirectional, this should transmit 0xFF
 		unsigned short crc_rcv = (_transmit(0xFF) << 8) | _transmit(0xFF);
 		unsigned short crc = 0;
 		for(int i = 0; i < length; i++) CRC16(_crc16_table, crc, result[i]);
@@ -67,7 +67,7 @@ static SD_ERROR _read_data(unsigned char *result, unsigned long length)
 
 static SD_ERROR _send_seq_r1(unsigned char *data, unsigned long length)
 {
-	hal_ssp_transmit(SD_SPI_MODULE, data, data, length);
+	hal_ssp_transmit(SDCARD_SPI_MODULE, data, data, length);
 	unsigned char stuff = _transmit(0xFF);
 	unsigned char r1 = _wait_token(0x80, 0x00);
 	return r1;
@@ -122,7 +122,7 @@ int sd_hw_card_identification(void *cid, unsigned short *prca)
 int sd_hw_select_card()
 {
 	// change bit rate for high speed
-	hal_ssp_initialize(SD_SPI_MODULE, 25000000, HAL_SSP_MODE_SPI, HAL_SSP_CLK_IDLE_HIGH);
+	hal_ssp_initialize(SDCARD_SPI_MODULE, 25000000, HAL_SSP_MODE_SPI, HAL_SSP_CLK_IDLE_HIGH);
 	return 1;
 }
 
@@ -200,7 +200,7 @@ static SD_ERROR _send_data(unsigned char start_token, unsigned char *data, unsig
 	_transmit(0xFF);
 	_transmit(start_token);
 	// send data
-	hal_ssp_tx_only(SD_SPI_MODULE, data, length);
+	hal_ssp_transmit(SDCARD_SPI_MODULE, data, 0, length);
 	unsigned short crc = 0;
 	for(int i = 0; i < length; i++) CRC16(_crc16_table, crc, data[i]);
 	// send crc16

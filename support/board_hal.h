@@ -27,6 +27,7 @@ typedef enum
 	LED_GPS,
 	LED_CAN,
 	LED_AUX,
+	LED_USB
 } HAL_LED;
 
 // prototypes

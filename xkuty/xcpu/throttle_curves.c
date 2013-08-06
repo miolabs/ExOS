@@ -1,4 +1,3 @@
-
 #include <assert.h>
 
 #include "throttle_curves.h"
@@ -94,14 +93,13 @@ static const unsigned short _curve_racing [ LEN_CURVES] =
 
 static const unsigned short* _curves [] = 
 {
-	_curve_soft, // DEFAULT
 	_curve_soft,
 	_curve_eco,
 	_curve_racing,
 };
 
 
-int get_curve_value ( int fx12_in, CURVE_MODE mode)
+int get_curve_value ( int fx12_in, XCPU_DRIVE_MODE mode)
 {
 	fx12_in = __LIMIT( fx12_in, 0, 0x1000);
 	int idx = fx12_in >> 9;		// 3 higher bits for array index
