@@ -231,6 +231,7 @@ static void _adjust_screen(DISPLAY_STATE state, char *str, unsigned char actual)
 }
 
 extern char _adj_drive_mode;
+extern unsigned short _adj_throttle_min, _adj_throttle_max;
 
 void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 {
@@ -305,10 +306,11 @@ void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 			}
 			break;
 		case ST_ADJUST_THROTTLE_MAX:
-			_adjust_screen(state, "Push max throttle", dash->ActiveConfig.ThrottleMax);
+			_adjust_screen(state, "Push max throttle", _adj_throttle_max >> 4);
+
 			break;		
 		case ST_ADJUST_THROTTLE_MIN:
-			_adjust_screen(state, "Release throttle", dash->ActiveConfig.ThrottleMin);
+			_adjust_screen(state, "Release throttle", _adj_throttle_min >> 4);
 			break;
 
 		case ST_FACTORY_MENU:

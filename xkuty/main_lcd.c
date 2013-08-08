@@ -45,6 +45,7 @@ static const EVREC_CHECK _mode_screen_access[] =
 	{0x00000000, CHECK_END},
 };
 
+unsigned short _adj_throttle_max=0, _adj_throttle_min=0;
 
 static char _configuring = 0;
 static char _switch_lights_cnt = 0;
@@ -63,6 +64,7 @@ static XCPU_BUTTONS _read_send_inputs(int state)
 	int events = 0;
 	if ( _configuring)
 		events |= XCPU_EVENT_CONFIGURING;
+
 	if (_adj_up)
 		events |= XCPU_EVENT_ADJUST_UP;
 	if (_adj_down)
@@ -75,8 +77,7 @@ static XCPU_BUTTONS _read_send_inputs(int state)
 	if ( _adj_throttle_cnt > 0)
         events |= XCPU_EVENT_ADJUST_THROTTLE, _adj_throttle_cnt--;
 	if ( _adj_drive_mode_cnt > 0)
-		_adj_drive_mode_cnt--,
-		events |= _adj_drive_mode << XCPU_EVENT_ADJUST_DRIVE_MODE_SHIFT;
+		events |= (_adj_drive_mode + 1)<< XCPU_EVENT_ADJUST_DRIVE_MODE_SHIFT, _adj_drive_mode_cnt--;
 
 	// Record inputs for sequence triggering (to start debug services)
 	 int input_status = (( buttons & XCPU_BUTTON_BRAKE_REAR) ? BRAKE_REAR_MASK : 0) |
@@ -92,13 +93,21 @@ static XCPU_BUTTONS _read_send_inputs(int state)
 	ANALOG_INPUT *ain_brake_rear = xanalog_input(BRAKE_REAR_IDX);
 	ANALOG_INPUT *ain_brake_front = xanalog_input(BRAKE_FRONT_IDX);
 
+	// Security
+	if ( _configuring)
+	{
+		throttle = 0;
+		buttons &= ~XCPU_BUTTON_HORN;
+		buttons &= ~XCPU_BUTTON_CRUISE;
+	}
+
 	CAN_BUFFER buf = (CAN_BUFFER) { buttons & 0xff, 
 									throttle & 0xff, // Throttle low
 									throttle >> 8,	// Throttle high
 									ain_brake_rear->Scaled >> 4,
 									ain_brake_front->Scaled >> 4, 
-									_dash.ActiveConfig.ThrottleMin >> 4, 
-									_dash.ActiveConfig.ThrottleMax >> 4,
+									_adj_throttle_min >> 4, 
+									_adj_throttle_max >> 4,
 									events & 0xff };
 	hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
 	return buttons;
@@ -165,7 +174,7 @@ static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 				}
 				else if (event_happening(_mode_screen_access, 100)) // 2 second
 				{
-					_adj_drive_mode = _dash.ActiveConfig.DriveMode - 1;
+					_adj_drive_mode = _dash.ActiveConfig.DriveMode;
 					_adj_drive_mode = __LIMIT( _adj_drive_mode, 0, 2);
 					*state = ST_ADJUST_DRIVE_MODE;
 				}
@@ -177,22 +186,22 @@ static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 			break;
 
 		case ST_ADJUST_WHEEL_DIA:
-			 _adj_up = (buttons & XCPU_BUTTON_BRAKE_REAR) ? 1 : 0;
+			_adj_up = (buttons & XCPU_BUTTON_BRAKE_REAR) ? 1 : 0;
 			_adj_down = (buttons & XCPU_BUTTON_BRAKE_FRONT) ? 1 : 0;
-			if (event_happening(_menu_exit, 1))
+			if ( event_happening(_menu_exit, 1) ||  event_happening(_menu_press, 1))
 				*state = ST_DASH;
 			break;
 
 		case ST_ADJUST_THROTTLE_MAX:
 			ain_throttle = xanalog_input(THROTTLE_IDX);
-			_dash.ActiveConfig.ThrottleMax = ain_throttle->Current >> 8;
-			if (event_happening(_menu_exit, 1))
+			_adj_throttle_max = ain_throttle->Current;
+			if (event_happening(_menu_press, 1))
 				*state = ST_ADJUST_THROTTLE_MIN;
 			break;
 		case ST_ADJUST_THROTTLE_MIN:
 			ain_throttle = xanalog_input(THROTTLE_IDX);
-			_dash.ActiveConfig.ThrottleMin = ain_throttle->Current >> 8;
-			if (event_happening(_menu_exit, 1))
+			_adj_throttle_min = ain_throttle->Current;
+			if (event_happening(_menu_press, 1))
 			{
 				_adj_throttle_cnt = RESEND_COUNTER;
 				*state = ST_DASH;
@@ -222,9 +231,8 @@ static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 			if (event_happening(_menu_move, 1))
 				_adj_drive_mode++, _adj_drive_mode %= 3;
 
-			if (event_happening(_menu_exit, 8))
+			if (event_happening(_menu_press, 8) || event_happening(_menu_exit, 8))
 			{
-				_adj_drive_mode++;
 				_adj_drive_mode_cnt = RESEND_COUNTER;
 				*state = ST_DASH;
 			}
