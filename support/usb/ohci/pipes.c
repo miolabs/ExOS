@@ -186,6 +186,22 @@ OHCI_STD *ohci_add_std(USB_REQUEST_BUFFER *urb, OHCI_STD *next_std, OHCI_TD_PID 
 	return std;
 }
 
+int ohci_remove_std(USB_REQUEST_BUFFER *urb)
+{
+	OHCI_STD *std = (OHCI_STD *)urb->UserState;
+#ifdef DEBUG
+	if (std->Request != urb)
+		kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
+#endif
+	
+	USB_HOST_PIPE *pipe = urb->Pipe;
+	int removed = 0;
+
+	// TODO
+
+	return removed;
+}
+
 int ohci_process_std(USB_REQUEST_BUFFER *urb, OHCI_TD_PID pid, OHCI_TD_TOGGLE toggle, void *data, int length)
 {
 #ifdef DEBUG
@@ -198,7 +214,7 @@ int ohci_process_std(USB_REQUEST_BUFFER *urb, OHCI_TD_PID pid, OHCI_TD_TOGGLE to
 	OHCI_STD *std = ohci_add_std(urb, NULL, pid, toggle);
 	if (std != NULL)
 	{
-		exos_event_wait(&urb->Event, EXOS_TIMEOUT_NEVER);	// FIXME: support timeouts
+		exos_event_wait(&urb->Event, EXOS_TIMEOUT_NEVER);	// FIXME: support timeouts, maybe using the urb begin/end framework in driver.c
 		ohci_buffers_release_std(std);
 	}
 	if (urb->Status == URB_STATUS_DONE) return 1;

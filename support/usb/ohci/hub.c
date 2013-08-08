@@ -60,12 +60,10 @@ static int _enumerate(int port, USB_HOST_DEVICE_SPEED speed)
     
 	if (!done)
 	{
-		// TODO: destroy device
+		ohci_device_destroy(port);
 	}
     return done;
 }
-
-
 
 static void *_service(void *arg)
 {
@@ -102,20 +100,12 @@ static void *_service(void *arg)
 				}
 				else 
 				{
-					// TODO: remove
+					ohci_device_destroy(port);
 				}
 			}
 			if (status & OHCIR_RH_PORT_PRSC)
 			{
 				_hc->RhPortStatus[port] = OHCIR_RH_PORT_PRSC;
-//				if (status & OHCIR_RH_PORT_CCS) 
-//				{
-//					USB_HOST_DEVICE_SPEED speed = (_hc->RhPortStatus[port] & OHCIR_RH_PORT_LSDA) ? 
-//						USB_HOST_DEVICE_LOW_SPEED : USB_HOST_DEVICE_FULL_SPEED;
-//					
-//					exos_thread_sleep(100);	// some devices need up to 100ms after port reset
-//					_enumerate(port, speed);
-//				}
 			}
 		}
 	}

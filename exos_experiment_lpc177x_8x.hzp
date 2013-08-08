@@ -23,10 +23,6 @@
         <file file_name="kernel/list.c"/>
         <file file_name="kernel/panic.c"/>
         <file file_name="kernel/signal.c"/>
-        <folder Name="tests" file_name="">
-          <file file_name="kernel/tests/threading_tests.c"/>
-          <file file_name="kernel/tests/memory_tests.c"/>
-        </folder>
         <file file_name="kernel/thread.c"/>
         <file file_name="kernel/timer.c"/>
         <folder Name="posix" file_name="">
@@ -76,9 +72,6 @@
           </folder>
           <folder Name="usb">
             <file file_name="kernel/driver/usb/usb.c"/>
-            <folder Name="test" file_name="">
-              <file file_name="kernel/driver/usb/test/usbhost_test.c"/>
-            </folder>
             <file file_name="kernel/driver/usb/host.c"/>
             <file file_name="kernel/driver/usb/enumerate.c"/>
             <folder Name="classes">
@@ -145,6 +138,11 @@
           </folder>
         </folder>
       </folder>
+      <folder Name="tests">
+        <folder Name="support">
+          <file file_name="tests/support/usb_iap_test.c"/>
+        </folder>
+      </folder>
     </folder>
     <folder Name="System Files">
       <file file_name="$(TargetsDir)/LPC1000/LPC177x_8x_Target.js">
@@ -160,7 +158,7 @@
   </project>
   <configuration Name="Debug" build_debug_information="Yes" c_preprocessor_definitions="DEBUG;__THUMB" gcc_optimization_level="None" hidden="Yes" link_include_startup_code="No"/>
   <configuration Name="Release" build_debug_information="No" c_additional_options="-g1" c_preprocessor_definitions="NDEBUG" gcc_optimization_level="Level 1" hidden="Yes" link_include_startup_code="No"/>
-  <configuration Name="Common" arm_instruction_set="Thumb" arm_library_instruction_set="Thumb" c_preprocessor_definitions="MAIN_THREAD_STACK=1024;MAIN_THREAD_PRI=0;__EXOS__;__THUMB;IAP_ACCESORY_EA_PROTOCOL_NAME = &quot;com.miolabs.iap2test&quot;" linker_section_placement_file="$(ProjectDir)/support/lpc17/flash_placement_17xx.xml"/>
+  <configuration Name="Common" arm_instruction_set="Thumb" arm_library_instruction_set="Thumb" c_preprocessor_definitions="MAIN_THREAD_STACK=1024;MAIN_THREAD_PRI=0;__EXOS__;__THUMB;IAP_ACCESORY_EA_PROTOCOL_NAME = &quot;com.miolabs.xkuty1&quot;" linker_section_placement_file="$(ProjectDir)/support/lpc17/flash_placement_17xx.xml"/>
   <configuration Name="Mioboard" c_preprocessor_definitions="BOARD_MIOBOARD;EEPROM_I2C_MODULE=0;EEPROM_SIZE=256;EEPROM_PAGE_SIZE=8" hidden="Yes"/>
   <configuration Name="Mioboard Debug" inherited_configurations="Debug;Mioboard"/>
   <configuration Name="Mioboard Release" inherited_configurations="Mioboard;Release"/>

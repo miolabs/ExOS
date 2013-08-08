@@ -150,7 +150,7 @@ static int _write(COMM_IO_ENTRY *io, const unsigned char *buffer, unsigned long 
 		int part = length - offset;
 		if (part > USBPRINT_BUFFER_SIZE) part = USBPRINT_BUFFER_SIZE;
 		__mem_copy(func->Buffer, func->Buffer + part, buffer + offset);
-		int done = usb_host_bulk_transfer(&func->BulkOutputPipe, func->Buffer, part);
+		int done = usb_host_bulk_transfer(&func->BulkOutputPipe, func->Buffer, part, EXOS_TIMEOUT_NEVER);
 		if (!done) return -1;
 		offset += part;
 	} while(offset < length);

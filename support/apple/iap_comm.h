@@ -1,5 +1,5 @@
-#ifndef APPLE_IAP2_COMM_H
-#define APPLE_IAP2_COMM_H
+#ifndef APPLE_IAP_COMM_H
+#define APPLE_IAP_COMM_H
 
 #include <kernel/tree.h>
 #include <kernel/io.h>
@@ -42,7 +42,7 @@ int iap_open_session(unsigned short session_id, unsigned short protocol);
 void iap_close_session(unsigned short session_id);
 void iap_comm_write(unsigned short session_id, unsigned char *buffer, int length);
 
-#endif // APPLE_IAP2_COMM_H
+#endif // APPLE_IAP_COMM_H
 
 
 
