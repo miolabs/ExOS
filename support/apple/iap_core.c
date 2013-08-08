@@ -284,6 +284,10 @@ IAP_REQUEST *iap_begin_req(IAP_CMD *cmd, unsigned char *cmd_data, IAP_CMD *resp,
 		if (iap_send_cmd(cmd, cmd_data))
 			return req;
 
+		exos_mutex_lock(&_busy_requests_lock);
+		list_remove((EXOS_NODE *)req);
+		exos_mutex_unlock(&_busy_requests_lock);
+
 		_free_request(req);
 	}
 #ifdef DEBUG

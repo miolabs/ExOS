@@ -6,18 +6,21 @@
 #define APPLE_CP20_I2C_MODULE 0
 #endif
 
-#ifndef APPLE_CP20_I2C_ADDRESS
-#define APPLE_CP20_I2C_ADDRESS 0x10
-#endif
+static int _addr;
 
 int apple_cp20_initialize()
 {
+	unsigned long auth_id;
 	int done;
 	hal_i2c_initialize(APPLE_CP20_I2C_MODULE, 400000);
-
-	unsigned long auth_id;
+	
+	_addr = 0x10;
 	done = apple_cp2_read_device_id(&auth_id);
-	return done && auth_id == 0x200;
+	if (done && auth_id == 0x200) return 1;
+	_addr = 0x11;
+	done = apple_cp2_read_device_id(&auth_id);
+	if (done && auth_id == 0x200) return 1;
+	return 0;
 }
 
 static int _read(CP20_REG reg, unsigned char *buffer, unsigned char length)
@@ -25,7 +28,7 @@ static int _read(CP20_REG reg, unsigned char *buffer, unsigned char length)
 	int err;
 	for (int retry = 0; retry < 3; retry++)
 	{
-		err = hal_i2c_master_frame(APPLE_CP20_I2C_MODULE, APPLE_CP20_I2C_ADDRESS, 
+		err = hal_i2c_master_frame(APPLE_CP20_I2C_MODULE, _addr, 
 			(unsigned char *)&reg, 1, 0);
 		if (err == 0) break;
 		exos_thread_sleep(1);
@@ -34,7 +37,7 @@ static int _read(CP20_REG reg, unsigned char *buffer, unsigned char length)
 	{
 		for (int retry = 0; retry < 10; retry++)
 		{
-			err = hal_i2c_master_frame(APPLE_CP20_I2C_MODULE, APPLE_CP20_I2C_ADDRESS, 
+			err = hal_i2c_master_frame(APPLE_CP20_I2C_MODULE, _addr, 
 				buffer, 0, length);
 			if (err == 0) return 1;
 			exos_thread_sleep(1);
@@ -52,7 +55,7 @@ static int _write(CP20_REG reg, unsigned char *buffer, unsigned char length)
 
 	for (int retry = 0; retry < 10; retry++)
 	{
-		err = hal_i2c_master_frame(APPLE_CP20_I2C_MODULE, APPLE_CP20_I2C_ADDRESS, 
+		err = hal_i2c_master_frame(APPLE_CP20_I2C_MODULE, _addr, 
 			buf2, length + 1, 0);
 		if (err == 0) return 1;
 		exos_thread_sleep(1);

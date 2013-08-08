@@ -25,7 +25,10 @@ void xiap_send_frame(DASH_DATA *dash)
 	}
 	else
 	{
-		XIAP_FRAME buffer = (XIAP_FRAME) { .Magic = XIAP_MAGIC, .Speed = dash->Speed, .Distance = dash->Distance };
+		XIAP_FRAME buffer = (XIAP_FRAME) { .Magic = XIAP_MAGIC, 
+		.Speed = dash->Speed, .StatusFlags = 1,
+		.Distance = dash->Distance,
+		.Battery = dash->battery_level_fx8 };
 		err = exos_io_write((EXOS_IO_ENTRY *)&_comm, &buffer, sizeof(buffer));
 		if (err < 0) _connected = 0;
 	}

@@ -168,7 +168,8 @@ static int _write(COMM_IO_ENTRY *io, const unsigned char *buffer, unsigned long 
 {
 	unsigned char resp_buffer[8];
 	APPLE_IAP_PROTOCOL_MANAGER *iap = _find_protocol(io->Port + 1);
-	if (iap != NULL)
+	if (iap != NULL &&
+		iap->IOState == APPLE_IAP_IO_OPENED)
 	{
 		int rem = length;
 		while(rem > 0)
