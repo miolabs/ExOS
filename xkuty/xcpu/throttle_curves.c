@@ -101,6 +101,10 @@ static const unsigned short* _curves [] =
 
 int get_curve_value ( int fx12_in, XCPU_DRIVE_MODE mode)
 {
+	if (mode < 0) 
+		mode = 0;
+	if (mode >= (sizeof(_curves)/sizeof(unsigned short*)))
+		mode = ( sizeof(_curves)/sizeof(unsigned short*)) - 1;
 	fx12_in = __LIMIT( fx12_in, 0, 0x1000);
 	int idx = fx12_in >> 9;		// 3 higher bits for array index
 	int fac = fx12_in & 0x1ff;  // 9 lower bits as linear interpolation
