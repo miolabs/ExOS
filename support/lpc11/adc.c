@@ -51,7 +51,6 @@ void ADC_IRQHandler()
 unsigned short hal_adc_read(int index)
 {
 	int channel = _ch_table[index & 0x7];
-	// = LPC_ADC->GDR; Global data register
 
 	unsigned long dr;
 	do { dr = LPC_ADC->DR[channel]; }
@@ -59,21 +58,4 @@ unsigned short hal_adc_read(int index)
 	unsigned short v = (dr & 0xFFC0) >> 6; 
 	return v; // 10 bits AD value
 }
-	/*unsigned short value;
-	int channel = _ch_table[index & 0x7];
-
-#ifndef ADC_BURST_MODE
-	unsigned long acr = LPC_ADC->ADCR & (0xFF << ADCR_CLKDIV_BIT); 
-	LPC_ADC->ADCR = acr | ((1 << channel) << ADCR_SEL_BIT) | 
-		(1 << ADCR_START_BIT) | ADCR_PDN;
-	unsigned long gdr;
-	do 
-	{ 
-		gdr = LPC_ADC->ADGDR; 
-	} while(!(gdr & ADDR_DONE));
-#endif
-	value = ((unsigned long *)&LPC_ADC->ADDR0)[channel] & 0xFFFF;
-
-	return value;
-}
-*/
+	
