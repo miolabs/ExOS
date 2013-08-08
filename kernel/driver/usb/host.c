@@ -60,13 +60,28 @@ void usb_host_create_device(USB_HOST_DEVICE *device, USB_HOST_CONTROLLER_DRIVER 
 	*pipe = (USB_HOST_PIPE) { .Device = device, .EndpointType = USB_TT_CONTROL, .MaxPacketSize = 8 }; 
 }
 
-void usb_host_create_function(USB_HOST_FUNCTION *func, USB_HOST_DEVICE *device, USB_HOST_FUNCTION_DRIVER *driver)
+void usb_host_destroy_device(USB_HOST_DEVICE *device)
+{
+	FOREACH(node, &device->Functions)
+	{
+		USB_HOST_FUNCTION *func = (USB_HOST_FUNCTION *)node;
+		usb_host_destroy_function(func);
+	}
+}
+
+void usb_host_create_function(USB_HOST_FUNCTION *func, USB_HOST_DEVICE *device, const USB_HOST_FUNCTION_DRIVER *driver)
 {
 	*func = (USB_HOST_FUNCTION) {
 #ifdef DEBUG
 		.Node = (EXOS_NODE) { .Type = EXOS_NODE_UNKNOWN },
 #endif
 		.Device = device, .Driver = driver };
+}
+
+void usb_host_destroy_function(USB_HOST_FUNCTION *func)
+{
+	const USB_HOST_FUNCTION_DRIVER *driver = func->Driver;
+    driver->Stop(func);
 }
 
 void usb_host_init_pipe_from_descriptor(USB_HOST_DEVICE *device, USB_HOST_PIPE *pipe, USB_ENDPOINT_DESCRIPTOR *ep_desc)
@@ -90,10 +105,9 @@ int usb_host_start_pipe(USB_HOST_PIPE *pipe)
 	return done;
 }
 
-int usb_host_bulk_transfer(USB_HOST_PIPE *pipe, void *data, int length)
+int usb_host_bulk_transfer(USB_HOST_PIPE *pipe, void *data, int length, unsigned long timeout)
 {
 	USB_HOST_DEVICE *device = pipe->Device;
-//	exos_mutex_lock(&device->ControlMutex);
 	const USB_HOST_CONTROLLER_DRIVER *hcd = device->Controller;
 
 	int done = 0;
@@ -101,9 +115,8 @@ int usb_host_bulk_transfer(USB_HOST_PIPE *pipe, void *data, int length)
 	usb_host_urb_create(&urb, pipe);
 	if (hcd->BeginBulkTransfer(&urb, data, length))
 	{
-		done = hcd->EndBulkTransfer(&urb);
+		done = hcd->EndBulkTransfer(&urb, timeout);
 	}
-//	exos_mutex_unlock(&device->ControlMutex);
 	return done;
 }
 
@@ -114,24 +127,18 @@ int usb_host_begin_bulk_transfer(USB_REQUEST_BUFFER *urb, void *data, int length
 	
 	USB_HOST_DEVICE *device = urb->Pipe->Device;
 	const USB_HOST_CONTROLLER_DRIVER *hcd = device->Controller;
-
-//	exos_mutex_lock(&device->ControlMutex);
 	int done = hcd->BeginBulkTransfer(urb, data, length);
-//	exos_mutex_unlock(&device->ControlMutex);
 	return done;
 }
 
-int usb_host_end_bulk_transfer(USB_REQUEST_BUFFER *urb)
+int usb_host_end_bulk_transfer(USB_REQUEST_BUFFER *urb, unsigned long timeout)
 {
 	if (urb == NULL || urb->Pipe == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
 	
 	USB_HOST_DEVICE *device = urb->Pipe->Device;
 	const USB_HOST_CONTROLLER_DRIVER *hcd = device->Controller;
-
-//	exos_mutex_lock(&device->ControlMutex);
-	int done = hcd->EndBulkTransfer(urb);
-//	exos_mutex_unlock(&device->ControlMutex);
+	int done = hcd->EndBulkTransfer(urb, timeout);
 	return done;
 }
 

@@ -36,6 +36,7 @@ void ohci_pipe_remove(USB_HOST_PIPE *pipe);
 void ohci_pipe_schedule(USB_HOST_PIPE *pipe);
 
 OHCI_STD *ohci_add_std(USB_REQUEST_BUFFER *urb, OHCI_STD *next_std, OHCI_TD_PID pid, OHCI_TD_TOGGLE toggle);
+int ohci_remove_std(USB_REQUEST_BUFFER *urb);
 int ohci_process_std(USB_REQUEST_BUFFER *urb, OHCI_TD_PID pid, OHCI_TD_TOGGLE toggle, void *data, int length);
 
 #endif // OHCI_PIPES_H

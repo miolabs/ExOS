@@ -135,7 +135,7 @@ void *_fill_cbw(USB_MSC_CBW *cbw, int direction, int data_length, int scsi_lengt
 int _do_scsi_cmd(MSC_FUNCTION *func, void *data)
 {
 	USB_MSC_CBW *cbw = &func->CBW;
-	int done = usb_host_bulk_transfer(&func->BulkOutputPipe, cbw, sizeof(USB_MSC_CBW));
+	int done = usb_host_bulk_transfer(&func->BulkOutputPipe, cbw, sizeof(USB_MSC_CBW), EXOS_TIMEOUT_NEVER);
 	if (done)
 	{
 		if (cbw->DataTransferLength != 0 && data != NULL)
@@ -143,12 +143,12 @@ int _do_scsi_cmd(MSC_FUNCTION *func, void *data)
 			if (cbw->FlagsBits.Input == 0)
 			{
 				// data output
-				done = usb_host_bulk_transfer(&func->BulkOutputPipe, data, cbw->DataTransferLength);
+				done = usb_host_bulk_transfer(&func->BulkOutputPipe, data, cbw->DataTransferLength, EXOS_TIMEOUT_NEVER);
 			}
 			else
 			{
 				// data input
-				done = usb_host_bulk_transfer(&func->BulkInputPipe, data, cbw->DataTransferLength);
+				done = usb_host_bulk_transfer(&func->BulkInputPipe, data, cbw->DataTransferLength, EXOS_TIMEOUT_NEVER);
 			}
 			if (!done)
 			{
@@ -158,7 +158,7 @@ int _do_scsi_cmd(MSC_FUNCTION *func, void *data)
 		}
 
 		USB_MSC_CSW *csw = &func->CSW;
-		done = usb_host_bulk_transfer(&func->BulkInputPipe, csw, sizeof(USB_MSC_CSW));
+		done = usb_host_bulk_transfer(&func->BulkInputPipe, csw, sizeof(USB_MSC_CSW), EXOS_TIMEOUT_NEVER);
 		if (done)
 		{
 			// check cmd result

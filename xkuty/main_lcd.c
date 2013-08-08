@@ -1,6 +1,7 @@
 #include "xdisplay.h"
 #include "xcpu.h"
 #include "xanalog.h"
+#include "xiap.h"
 #include "event_recording.h"
 
 #include <kernel/thread.h>
@@ -259,6 +260,7 @@ void main()
 		// Read CAN messages from master 
 		_get_can_messages();
 
+
 		if (_dash.CpuStatus & XCPU_STATE_ON)
 		{
 			if ((prev_cpu_state & XCPU_STATE_ON) == 0)
@@ -303,6 +305,8 @@ void main()
 			}
 			screen_count++;
 
+			xiap_send_frame(&_dash);
+	
 			if (elapsed_time < req_update_time)
 				exos_thread_sleep( req_update_time - elapsed_time);
 			prev_time = time;

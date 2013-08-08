@@ -271,7 +271,7 @@ static int _write(COMM_IO_ENTRY *io, const unsigned char *buffer, unsigned long 
 		int part = length - offset;
 		if (part > FTDI_USB_BUFFER) part = FTDI_USB_BUFFER;
 		__mem_copy(func->OutputBuffer, func->OutputBuffer + part, buffer + offset);
-		int done = usb_host_bulk_transfer(&func->BulkOutputPipe, func->OutputBuffer, part);
+		int done = usb_host_bulk_transfer(&func->BulkOutputPipe, func->OutputBuffer, part, EXOS_TIMEOUT_NEVER);
 		if (!done) return -1;
 		offset += part;
 	} while(offset < length);
@@ -324,7 +324,7 @@ static void *_service(void *arg)
 				case FTDI_HANDLE_READY:
 					if (urb->Status == URB_STATUS_DONE)
 					{
-						int done = usb_host_end_bulk_transfer(urb);
+						int done = usb_host_end_bulk_transfer(urb, EXOS_TIMEOUT_NEVER);
 						if (done > 2)
 						{
 							exos_io_buffer_write(&handle->IOBuffer, func->InputBuffer + 2, done - 2);
@@ -340,7 +340,7 @@ static void *_service(void *arg)
 					}
 					break;
 				case FTDI_HANDLE_CLOSING:
-					usb_host_end_bulk_transfer(urb);
+					usb_host_end_bulk_transfer(urb, EXOS_TIMEOUT_NEVER);
 					handle->State = FTDI_HANDLE_CLOSED;
 					list_remove(node);
 					if (handle->StateEvent != NULL) exos_event_set(handle->StateEvent);

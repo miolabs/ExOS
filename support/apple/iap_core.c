@@ -54,7 +54,7 @@ void iap_core_initialize()
 void iap_core_start()
 {
 	// FIXME 
-	exos_thread_create(&_thread, 0, _stack, THREAD_STACK, NULL, _service, NULL);
+	exos_thread_create(&_thread, 1, _stack, THREAD_STACK, NULL, _service, NULL);
 }
 
 #ifdef DEBUG

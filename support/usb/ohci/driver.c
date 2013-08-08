@@ -8,7 +8,7 @@ static int _ctrl_setup_read(USB_HOST_DEVICE *device, void *setup_data, int setup
 static int _ctrl_setup_write(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *out_data, int out_length);
 static int _start_pipe(USB_HOST_PIPE *pipe);
 static int _begin_bulk_transfer(USB_REQUEST_BUFFER *urb, void *data, int length);
-static int _end_bulk_transfer(USB_REQUEST_BUFFER *urb);
+static int _end_bulk_transfer(USB_REQUEST_BUFFER *urb, unsigned long timeout);
 
 const USB_HOST_CONTROLLER_DRIVER __ohci_driver = {
 	_ctrl_setup_read, _ctrl_setup_write, 
@@ -78,7 +78,7 @@ static int _begin_bulk_transfer(USB_REQUEST_BUFFER *urb, void *data, int length)
 	return (std != NULL);
 }
 
-static int _end_bulk_transfer(USB_REQUEST_BUFFER *urb)
+static int _end_bulk_transfer(USB_REQUEST_BUFFER *urb, unsigned long timeout)
 {
 	if (urb == NULL || urb->Pipe == NULL || urb->UserState == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
@@ -88,7 +88,13 @@ static int _end_bulk_transfer(USB_REQUEST_BUFFER *urb)
 	if (std->Request != urb)
 		kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
 #endif
-	exos_event_wait(&urb->Event, EXOS_TIMEOUT_NEVER);	// FIXME: support timeouts
+	if (exos_event_wait(&urb->Event, timeout) == -1)
+	{
+		int removed = ohci_remove_std(urb);
+		if (removed != 0) 
+			return -1;
+	}
+
 	ohci_buffers_release_std(std);
 	return (urb->Status == URB_STATUS_DONE) ? urb->Done : -1;
 }
@@ -105,6 +111,12 @@ USB_HOST_DEVICE *ohci_device_create(int port, USB_HOST_DEVICE_SPEED speed)
 		return device;
 	}
 	return NULL;
+}
+
+void ohci_device_destroy(int port)
+{
+	USB_HOST_DEVICE *device = &_devices[port];	// FIXME
+	usb_host_destroy_device(device);
 }
 
 static int _ctrl_setup_read(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *in_data, int in_length)
