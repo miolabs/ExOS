@@ -44,6 +44,7 @@ static const EVREC_CHECK _mode_screen_access[] =
 	{0x00000000, CHECK_END},
 };
 
+static int _configuring = 0;
 static int _adj_up = 0, _adj_down = 0;
 static int _switch_units_cnt = 0, _adj_throttle_cnt = 0, _adj_drive_mode_cnt = 0;
 
@@ -51,7 +52,8 @@ static XCPU_BUTTONS _read_send_inputs(int state)
 {
 	xanalog_update();
 	XCPU_BUTTONS buttons = xanalog_read_digital();
-	
+	if ( _configuring)
+		buttons |= XCPU_BUTTON_CONFIGURING;
 	if (_adj_up)
 		buttons |= XCPU_BUTTON_ADJUST_UP;
 	if (_adj_down)
@@ -93,9 +95,6 @@ static EXOS_FIFO _can_free_msgs;
 #define CAN_MSG_QUEUE 10
 static XCPU_MSG _can_msg[CAN_MSG_QUEUE];
 
-#ifdef DEBUG
-int _kk[4];
-#endif
 
 static void _get_can_messages()
 {
@@ -123,13 +122,6 @@ static void _get_can_messages()
 				ain_throttle->Min = tmsg->throttle_adj_min << 4;
 				ain_throttle->Max = tmsg->throttle_adj_max << 4;
 				_dash.ActiveConfig.DriveMode = tmsg->drive_mode;
-
-#ifdef DEBUG
-				_kk[0] = xmsg->CanMsg.Data.u8[4];
-				_kk[1] = xmsg->CanMsg.Data.u8[5];
-				_kk[2] = xmsg->CanMsg.Data.u8[6];
-				_kk[3] = xmsg->CanMsg.Data.u8[7];
-#endif
 			}
 			break;
 		}
@@ -146,9 +138,11 @@ static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 	static int menu_op = 0;
 
 	ANALOG_INPUT *ain_throttle;
+    _configuring = 1;
 	switch(*state)
 	{
 		case ST_DASH:
+			_configuring = 0;
 			if ((_dash.Speed == 0) && (_dash.CpuStatus & XCPU_STATE_NEUTRAL))
 			{
 				if (event_happening(_maintenance_screen_access, 50)) // 1 second
@@ -246,7 +240,7 @@ void main()
 
 	int screen_count = 0;
 #ifdef DEBUG
-    DISPLAY_STATE init_state = ST_DEBUG_INPUT;
+    DISPLAY_STATE init_state = ST_LOGO_IN;
 #else
     DISPLAY_STATE init_state = ST_LOGO_IN;
 #endif

@@ -276,7 +276,7 @@ void main()
 				}
 //				if ( _c_i.buttons & XCPU_BUTTON_LIGHTS_OFF)
 //					_default_output_state = OUTPUT_NONE;
-				if (_c_i.buttons & XCPU_BUTTON_HORN)
+				if ((_c_i.buttons & XCPU_BUTTON_HORN) && !(_c_i.buttons & XCPU_BUTTON_CONFIGURING))
 					_output_state |= OUTPUT_HORN;
 
 				if (_push_delay(_c_i.buttons & XCPU_BUTTON_ADJUST_UP, &push.up, 5) &&
