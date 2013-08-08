@@ -1,8 +1,9 @@
 
+#include <kernel/thread.h>
 #include "vpss.h"
 #include "system.h"
 
-static int init = 0;
+static char init = 0;
 
 typedef struct
 { 
@@ -52,13 +53,16 @@ void vpss_init ( int hard)
 			(VENC_CLK_SRC_PLLC2SYSCLK5<<5) | // 27/74.25 MHz input source
 			(0<<7)); // DMA clock vs. VPSS clock ratio: 1:2 or 1:1
 
-			// Codigo xungo? VPSS_VPBE_CLK_CTRL = 0x00000011;   // Select enc_clk*1, turn on VPBE clk
-			//   (LDC is some capture device)
-			_vpss->VPBE_CLK_CTRL =  (1<<0) |  // OSD,VENC enable
-									(0<<2) |  // VENC CLOCK /1 or /2
-									(0<<3) |  // LDC clock enable
-									(0<<6) |  // OSD Clock sel: OSD or ARM
-									(0<<7);   // LDC clock sel: OSD or ARM
+		// Codigo xungo? VPSS_VPBE_CLK_CTRL = 0x00000011;   // Select enc_clk*1, turn on VPBE clk
+		//   (LDC is some capture device)
+ссс
+		_vpss->VPBE_CLK_CTRL =  (1<<0) |  // OSD,VENC enable
+								(0<<2) |  // VENC CLOCK /1 or /2
+								(0<<3) |  // LDC clock enable
+								(0<<6) |  // OSD Clock sel: OSD or ARM
+								(0<<7);   // LDC clock sel: OSD or ARM
+
+		exos_thread_sleep ( 1);
 
 		init = 1;
 	}

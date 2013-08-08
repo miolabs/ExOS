@@ -1,4 +1,36 @@
 
+
+
+#if 1
+#include <net/tcp_io.h>
+#include <comm/comm.h>
+#include <kernel/tree.h>
+#include <support/board_hal.h>
+#include <kernel/thread.h>
+
+#include "support/dm36x/vpbe.h"
+
+#include <stdio.h>
+
+
+int main()
+{
+	VPBE_SIMPLE_SPEC nil;
+
+	hal_board_init_pinmux(HAL_RESOURCE_TVOUT, 0);
+
+	exos_thread_sleep (20);
+
+	vpbe_initialize_simple  ( &nil);
+
+	while (1)
+	{
+	}
+}
+#endif
+
+
+
 #if 0
 
 #include <kernel/tree.h>
@@ -25,8 +57,8 @@
 #define DDR_VIDMEM_SIZE     (0xA8C00U) /*720X480X2BPP*/
 
 #define VPSS_VPBE_CLK_CTRL    *( volatile unsigned long* )( 0x1c70200 )
-#define VDAC_CONFIG   *( volatile unsigned long* )( 0x01C40000 )
-#define VPSS_CLKCTL   *( volatile unsigned long* )( 0x01C40004 )
+#define VDAC_CONFIG   *( volatile unsigned long* )( 0x01C4002c )
+#define VPSS_CLKCTL   *( volatile unsigned long* )( 0x01C40044 )
 #define PLL0_CONFIG   *( volatile unsigned long* )(0x1c40084)
 
 #define OSD_BASE            (0x1c71c00)
@@ -148,8 +180,8 @@ static void vpbe_init( unsigned long colorbar_loopback_mode, unsigned long ntsc_
 
     VDAC_CONFIG         = /*0x081141CF*/0x101941DC;   // Take DACs out of power down mode
     VPSS_CLKCTL         = 0x00000038;   // Enable DAC and VENC clock, both at 27 MHz
-    VPSS_VPBE_CLK_CTRL  = 0x00000011;   // Select enc_clk*1, turn on VPBE clk
     VENC_CLKCTL         = 0x00000001;   // Enable venc & digital LCD clock
+    VPSS_VPBE_CLK_CTRL  = 0x00000011;   // Select enc_clk*1, turn on VPBE clk
 
 
     OSD_MODE       = 0x000000fc;   // Blackground color blue using clut in ROM0
@@ -208,7 +240,7 @@ int main( int argc, char** argv)
     unsigned long u32Cnt;
 
     /* Reconfigure SYSCLK6 divider for VENC = 27MHz */
-    Setup_PLL0_NTSC();
+    //Setup_PLL0_NTSC();
 
 #ifdef VPBE_ENABLE
     /* Setup Front-End */
@@ -248,30 +280,3 @@ int main( int argc, char** argv)
 
 
 
-
-#if 1
-#include <net/tcp_io.h>
-#include <comm/comm.h>
-#include <kernel/tree.h>
-#include <support/board_hal.h>
-
-#include "support/dm36x/vpbe.h"
-
-#include <stdio.h>
-
-
-
-
-int main()
-{
-	VPBE_SIMPLE_SPEC nil;
-
-	vpbe_initialize_simple  ( &nil);
-
-	hal_board_init_pinmux(HAL_RESOURCE_TVOUT, 0);
-
-	while (1)
-	{
-	}
-}
-#endif
