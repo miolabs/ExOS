@@ -34,9 +34,8 @@ typedef struct {
 	int CpuStatus;
 	int Speed;
 	unsigned long Distance;
-	int battery_level_fx8;	// FIXME
+	int battery_level_fx8;
 	DASH_CONFIG ActiveConfig;
-	DASH_CONFIG Temp;
 	int CurrentMenuOption;
 } DASH_DATA;
 

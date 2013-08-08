@@ -230,6 +230,8 @@ static void _adjust_screen(DISPLAY_STATE state, char *str, unsigned char actual)
 	_horizontal_sprite_comb(&_adjust_full_spr, &_adjust_empty_spr, actual, POS_ADJUST_BAR);
 }
 
+extern char _adj_drive_mode;
+
 void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 {
 	unsigned char tmp[20];
@@ -293,20 +295,20 @@ void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 			break;
 		case ST_ADJUST_WHEEL_DIA:
 			{
-				dash->Temp.SpeedAdjust = __LIMIT(dash->Temp.SpeedAdjust, -10, 10);
-				int bar = 0x80 + (dash->Temp.SpeedAdjust * (0x80 / 10));
+				dash->ActiveConfig.SpeedAdjust = __LIMIT(dash->ActiveConfig.SpeedAdjust, -10, 10);
+				int bar = 0x80 + (dash->ActiveConfig.SpeedAdjust * (0x80 / 10));
 				mono_draw_sprite ( &_screen, &_speed_adjust_spr, POS_ADJUST_MSG);
-				sprintf(tmp, "%d", dash->Temp.SpeedAdjust);
+				sprintf(tmp, "%d", dash->ActiveConfig.SpeedAdjust);
 				_draw_text(tmp, &_font_spr_big, POS_ADJUST_SPEED);
 									
 				_horizontal_sprite_comb ( &_adjust_full_spr, &_adjust_empty_spr, bar, POS_ADJUST_BAR); 
 			}
 			break;
 		case ST_ADJUST_THROTTLE_MAX:
-			_adjust_screen(state, "Push max throttle", dash->Temp.ThrottleMax);
+			_adjust_screen(state, "Push max throttle", dash->ActiveConfig.ThrottleMax);
 			break;		
 		case ST_ADJUST_THROTTLE_MIN:
-			_adjust_screen(state, "Release throttle", dash->Temp.ThrottleMin);
+			_adjust_screen(state, "Release throttle", dash->ActiveConfig.ThrottleMin);
 			break;
 
 		case ST_FACTORY_MENU:
@@ -324,7 +326,7 @@ void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 
 				_print_small("Wheel const.", -1, _hei[1]);
 				_print_small("Throttle adjust", -1, _hei[2]);
-				_print_small("Lights off", -1, _hei[3]);
+				_print_small("Switch lights", -1, _hei[3]);
 				_print_small("Sensor monitor", -1, _hei[4]);
 				if (_frame_dumps & 0x8)
 					_print_small(">>", 20, _hei[dash->CurrentMenuOption] - 1);
@@ -342,7 +344,7 @@ void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 				_print_small("Eco", -1, _hei[1]);
 				_print_small("Racing", -1, _hei[2]);
                 if (_frame_dumps & 0x8)
-					_print_small(">>", 24, _hei[dash->Temp.DriveMode]);
+					_print_small(">>", 24, _hei[_adj_drive_mode]);
 			}
 			break;
 	}

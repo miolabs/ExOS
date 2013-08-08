@@ -69,9 +69,6 @@ XCPU_BUTTONS xanalog_read_digital()
 	if (_ain[HORN_IDX].Filtered < 0x800)
 		buttons |= XCPU_BUTTON_HORN;
 
-	if (_ain[THROTTLE_IDX].Scaled > 200) // ~5%
-		buttons |= XCPU_BUTTON_THROTTLE_OPEN;
-
 	return buttons;
 }
 

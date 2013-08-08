@@ -53,13 +53,14 @@ static XCPU_STATE _state; // comm state to share (with lcd)
 
 typedef struct 
 {
-	unsigned short buttons;
+	unsigned char  buttons;
+	unsigned char  events;
 	unsigned char  throttle;
 	unsigned char  brake_rear, brake_front;
 	unsigned char  throttle_adj_min, throttle_adj_max;
 } CAN_INPUT;
 
-static CAN_INPUT _c_i = {0,0,0,0,0,0};
+static CAN_INPUT _c_i = {0,0,0,0,0,0,0};
 
 static void _read_can_messages ( int drive_mode, float speed)
 {
@@ -69,12 +70,13 @@ static void _read_can_messages ( int drive_mode, float speed)
 		if (xmsg->CanMsg.EP.Id == 0x200)
 		{
 			CAN_BUFFER *data = &xmsg->CanMsg.Data;
-			_c_i.buttons = data->u8[0] | (data->u8[7] << 8);
+			_c_i.buttons = data->u8[0];
 			unsigned int throttle_raw = data->u8[1] | ( data->u8[2] << 8);
 			_c_i.brake_rear = data->u8[3];
 			_c_i.brake_front = data->u8[4];
 			_c_i.throttle_adj_min = data->u8[5];
 			_c_i.throttle_adj_max = data->u8[6];
+   			_c_i.events = data->u8[7];
 
 			int curve_in = (int)(4096.f * (speed / (float) MAX_SPEED));
 			int throttle_factor = get_curve_value ( curve_in, drive_mode ) >> 4;
@@ -159,6 +161,7 @@ typedef struct
 	unsigned char swtch;
 	unsigned char mode;
 	unsigned char adj;
+	unsigned char lights;
 } PUSH_CNT;
 
 
@@ -170,7 +173,7 @@ void main()
 
 	hal_adc_initialize(1000,16);
 
-	PUSH_CNT      push = { 0,0,0,0,0,0,0,0};
+	PUSH_CNT      push = { 0,0,0,0,0,0,0,0,0};
 
 	speed_initialize();
 	_pid_k = (PID_K) { .P = 5, .I = 5, .CMin = 0, .CMax = 255 };
@@ -274,32 +277,38 @@ void main()
 						_c_i.throttle = 0;
 					}
 				}
-//				if ( _c_i.buttons & XCPU_BUTTON_LIGHTS_OFF)
-//					_default_output_state = OUTPUT_NONE;
-				if ((_c_i.buttons & XCPU_BUTTON_HORN) && !(_c_i.buttons & XCPU_BUTTON_CONFIGURING))
+
+				if (_push_delay(_c_i.events & XCPU_EVENT_SWITCH_LIGHTS, &push.lights, 5))
+					if ( _default_output_state == OUTPUT_NONE)
+						_default_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
+					else
+						_default_output_state = OUTPUT_NONE;
+		
+				if ((_c_i.buttons & XCPU_BUTTON_HORN) && !(_c_i.events & XCPU_EVENT_CONFIGURING))
 					_output_state |= OUTPUT_HORN;
 
-				if (_push_delay(_c_i.buttons & XCPU_BUTTON_ADJUST_UP, &push.up, 5) &&
+				if (_push_delay(_c_i.events & XCPU_EVENT_ADJUST_UP, &push.up, 5) &&
 					_storage.WheelRatioAdj < 10)
 				{
 					_storage.WheelRatioAdj++;
 				}
-				if (_push_delay(_c_i.buttons & XCPU_BUTTON_ADJUST_DOWN, &push.down, 5) &&
+				if (_push_delay(_c_i.events & XCPU_EVENT_ADJUST_DOWN, &push.down, 5) &&
 					_storage.WheelRatioAdj > -10)
 				{
 					_storage.WheelRatioAdj--;
 				}
-				if (_push_delay(_c_i.buttons & XCPU_BUTTON_SWITCH_UNITS, &push.swtch, 5))
+				if (_push_delay(_c_i.events & XCPU_EVENT_SWITCH_UNITS, &push.swtch, 5))
 				{
 					_state ^= XCPU_STATE_MILES;
 				}
 
-				if (_push_delay( _c_i.buttons & XCPU_BUTTON_ADJ_DRIVE_MODE, &push.mode, 5))
+				if (_push_delay( _c_i.events & XCPU_EVENT_ADJUST_DRIVE_MODE, &push.mode, 5))
 				{
-					drive_mode = (_c_i.buttons & XCPU_BUTTON_ADJ_DRIVE_MODE) >> XCPU_BUTTON_ADJ_DRIVE_MODE_SHIFT;
+					drive_mode = (_c_i.events & XCPU_EVENT_ADJUST_DRIVE_MODE) >> XCPU_EVENT_ADJUST_DRIVE_MODE_SHIFT;
+					drive_mode--;
 				}
 
-				if (_push_delay( _c_i.buttons & XCPU_BUTTON_ADJ_THROTTLE, &push.adj, 5))
+				if (_push_delay( _c_i.events & XCPU_EVENT_ADJUST_THROTTLE, &push.adj, 5))
 				{
 					_storage.ThrottleAdjMin = _c_i.throttle_adj_min;
 					_storage.ThrottleAdjMax = _c_i.throttle_adj_max;

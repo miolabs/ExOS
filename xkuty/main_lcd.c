@@ -44,38 +44,46 @@ static const EVREC_CHECK _mode_screen_access[] =
 	{0x00000000, CHECK_END},
 };
 
-static int _configuring = 0;
-static int _adj_up = 0, _adj_down = 0;
-static int _switch_units_cnt = 0, _adj_throttle_cnt = 0, _adj_drive_mode_cnt = 0;
+
+static char _configuring = 0;
+static char _switch_lights_cnt = 0;
+static char _switch_units_cnt = 0;
+char _adj_drive_mode = 0;
+static char _adj_drive_mode_cnt = 0;
+static char _adj_throttle_cnt = 0;
+static char _adj_up = 0, _adj_down = 0;
+
 
 static XCPU_BUTTONS _read_send_inputs(int state)
 {
 	xanalog_update();
 	XCPU_BUTTONS buttons = xanalog_read_digital();
+
+	int events = 0;
 	if ( _configuring)
-		buttons |= XCPU_BUTTON_CONFIGURING;
+		events |= XCPU_EVENT_CONFIGURING;
 	if (_adj_up)
-		buttons |= XCPU_BUTTON_ADJUST_UP;
+		events |= XCPU_EVENT_ADJUST_UP;
 	if (_adj_down)
-		buttons |= XCPU_BUTTON_ADJUST_DOWN;
+		events |= XCPU_EVENT_ADJUST_DOWN;
 
+	if ( _switch_lights_cnt > 0)
+		events |= XCPU_EVENT_SWITCH_LIGHTS, _switch_lights_cnt--;
 	if ( _switch_units_cnt > 0)
-		buttons |= XCPU_BUTTON_SWITCH_UNITS, _switch_units_cnt--;
+		events |= XCPU_EVENT_SWITCH_UNITS, _switch_units_cnt--;
 	if ( _adj_throttle_cnt > 0)
-        buttons |= XCPU_BUTTON_ADJ_THROTTLE, _adj_throttle_cnt--;
+        events |= XCPU_EVENT_ADJUST_THROTTLE, _adj_throttle_cnt--;
 	if ( _adj_drive_mode_cnt > 0)
-		buttons |= _dash.Temp.DriveMode << XCPU_BUTTON_ADJ_DRIVE_MODE_SHIFT, _adj_drive_mode_cnt--;
-
+		_adj_drive_mode_cnt--,
+		events |= _adj_drive_mode << XCPU_EVENT_ADJUST_DRIVE_MODE_SHIFT;
 
 	// Record inputs for sequence triggering (to start debug services)
-	 int input_status = ((( buttons & XCPU_BUTTON_THROTTLE_OPEN) ? THROTTLE_MASK : 0) |
-					(( buttons & XCPU_BUTTON_BRAKE_REAR) ? BRAKE_REAR_MASK : 0) |
+	 int input_status = (( buttons & XCPU_BUTTON_BRAKE_REAR) ? BRAKE_REAR_MASK : 0) |
 					(( buttons & XCPU_BUTTON_BRAKE_FRONT) ? BRAKE_FRONT_MASK : 0) |
 					(( buttons & XCPU_BUTTON_CRUISE) ? CRUISE_MASK : 0) |
-					(( buttons & XCPU_BUTTON_HORN) ? HORN_MASK : 0));
+					(( buttons & XCPU_BUTTON_HORN) ? HORN_MASK : 0);
 
 	event_record ( input_status);
-
 
 	ANALOG_INPUT *ain_throttle = xanalog_input(THROTTLE_IDX);
 	unsigned int throttle = ain_throttle->Scaled;
@@ -88,9 +96,9 @@ static XCPU_BUTTONS _read_send_inputs(int state)
 									throttle >> 8,	// Throttle high
 									ain_brake_rear->Scaled >> 4,
 									ain_brake_front->Scaled >> 4, 
-									_dash.Temp.ThrottleMin >> 4, 
-									_dash.Temp.ThrottleMax >> 4,
-									buttons >> 8 };
+									_dash.ActiveConfig.ThrottleMin >> 4, 
+									_dash.ActiveConfig.ThrottleMax >> 4,
+									events & 0xff };
 	hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
 	return buttons;
 }
@@ -138,10 +146,9 @@ static void _get_can_messages()
 
 static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 {
-	const EVREC_CHECK _adj_exit[] = {{CRUISE_MASK, CHECK_RELEASE}, {0x00000000, CHECK_END}};
+	const EVREC_CHECK _menu_exit[] = {{CRUISE_MASK, CHECK_RELEASE}, {0x00000000, CHECK_END}};
 	const EVREC_CHECK _menu_move[] = {{BRAKE_FRONT_MASK, CHECK_RELEASE}, {0x00000000, CHECK_END}};
 	const EVREC_CHECK _menu_press[]= {{HORN_MASK, CHECK_RELEASE}, {0x00000000, CHECK_END}};
-	static int menu_op = 0;
 
 	ANALOG_INPUT *ain_throttle;
     _configuring = 1;
@@ -153,41 +160,39 @@ static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 			{
 				if (event_happening(_maintenance_screen_access, 100)) // 2 second
 				{
-					_dash.Temp = _dash.ActiveConfig;
-					menu_op = 0;
 					*state = ST_FACTORY_MENU;
 				}
 				else if (event_happening(_mode_screen_access, 100)) // 2 second
 				{
-					_dash.Temp = _dash.ActiveConfig;
+					_adj_drive_mode = _dash.ActiveConfig.DriveMode - 1;
+					_adj_drive_mode = __LIMIT( _adj_drive_mode, 0, 2);
 					*state = ST_ADJUST_DRIVE_MODE;
 				}
 			}
 			break;
 		case ST_DEBUG_INPUT:
-			if ((buttons & XCPU_BUTTON_HORN) && (buttons & XCPU_BUTTON_CRUISE))
+			if (event_happening(_menu_exit, 1))
 				*state = ST_DASH;
 			break;
 
 		case ST_ADJUST_WHEEL_DIA:
-			_adj_down = (buttons & XCPU_BUTTON_BRAKE_REAR) ? 1 : 0;
-			_adj_up = (buttons & XCPU_BUTTON_BRAKE_FRONT) ? 1 : 0;
-			if (event_happening(_adj_exit, 1))
+			 _adj_up = (buttons & XCPU_BUTTON_BRAKE_REAR) ? 1 : 0;
+			_adj_down = (buttons & XCPU_BUTTON_BRAKE_FRONT) ? 1 : 0;
+			if (event_happening(_menu_exit, 1))
 				*state = ST_DASH;
 			break;
 
 		case ST_ADJUST_THROTTLE_MAX:
 			ain_throttle = xanalog_input(THROTTLE_IDX);
-			_dash.Temp.ThrottleMax = ain_throttle->Current >> 8;
-			if (event_happening(_adj_exit, 1))
+			_dash.ActiveConfig.ThrottleMax = ain_throttle->Current >> 8;
+			if (event_happening(_menu_exit, 1))
 				*state = ST_ADJUST_THROTTLE_MIN;
 			break;
 		case ST_ADJUST_THROTTLE_MIN:
 			ain_throttle = xanalog_input(THROTTLE_IDX);
-			_dash.Temp.ThrottleMin = ain_throttle->Current >> 8;
-			if (event_happening(_adj_exit, 1))
+			_dash.ActiveConfig.ThrottleMin = ain_throttle->Current >> 8;
+			if (event_happening(_menu_exit, 1))
 			{
-				_dash.ActiveConfig = _dash.Temp;
 				_adj_throttle_cnt = RESEND_COUNTER;
 				*state = ST_DASH;
 			}
@@ -203,21 +208,22 @@ static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 					case 0:  _switch_units_cnt = RESEND_COUNTER; break;
 					case 1: *state = ST_ADJUST_WHEEL_DIA; break;
 					case 2: *state = ST_ADJUST_THROTTLE_MAX; break;
-					case 3: _dash.CpuStatus ^= XCPU_STATE_LIGHT_OFF; break;
+					case 3: _switch_lights_cnt = RESEND_COUNTER; break;
 					case 4: *state = ST_DEBUG_INPUT; break;
 					default: assert(0);
 				}
 			}
-			if (event_happening(_adj_exit, 1))
+			if (event_happening(_menu_exit, 1))
 				*state = ST_DASH;
 			break;
 
 		case ST_ADJUST_DRIVE_MODE:
 			if (event_happening(_menu_move, 1))
-				_dash.Temp.DriveMode = ++_dash.Temp.DriveMode % 3;
-			if (event_happening(_adj_exit, 8))
+				_adj_drive_mode++, _adj_drive_mode %= 3;
+
+			if (event_happening(_menu_exit, 8))
 			{
-				_dash.ActiveConfig = _dash.Temp;
+				_adj_drive_mode++;
 				_adj_drive_mode_cnt = RESEND_COUNTER;
 				*state = ST_DASH;
 			}
