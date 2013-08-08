@@ -285,7 +285,6 @@ void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 					_print_small(sensor_names[i], 0, y);
 					for (int j = 0; j < (sizeof(vv) / sizeof(*vv)); j++)
 					{
-						//sprintf(tmp, "%d%%", kk[i & 0x3]);
 						sprintf(tmp, "%d%%", (vv[j] * 100) >> 12);
 						_print_small(tmp, 36 + (j * 16), y);
 					}

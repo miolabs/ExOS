@@ -1,6 +1,8 @@
 // System Block Controller for TMS320DM36x
 // by Miguel Fides
 
+#include <kernel/thread.h>
+
 #include "system.h"
 
 // Shared by leopardboard.c
@@ -251,8 +253,9 @@ int system_get_sysclk(PLLC_INDEX plli, PLLC_SYSCLK_INDEX sysi)
 
 void system_video_regs ( unsigned long vdac_config, unsigned long vpss_clk_ctl)
 {
-    _system->VDAC_CONFIG   = vdac_config;
 	_system->VPSS_CLK_CTRL = vpss_clk_ctl;
+	exos_thread_sleep (1);					// Wait for any clock enabling
+    _system->VDAC_CONFIG   = vdac_config;
 }
 
 

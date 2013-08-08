@@ -19,6 +19,7 @@
 //#define MOTOR_RANGE (160 - MOTOR_OFFSET)
 #define WHEEL_RATIO_KMH (12.9 / 47)
 #define WHEEL_RATIO_MPH (WHEEL_RATIO_KMH / 1.60934)
+#define BATT_VOLTAGE_RATIO  16.9f
 
 static const CAN_EP _eps[] = { {0x200, 0}, {0x201, 0} };
 static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
@@ -94,18 +95,19 @@ static void _send_can_messages ( int drive_mode, unsigned int speed, unsigned in
 	buf.u8[0]  = _storage.ThrottleAdjMin;
 	buf.u8[1]  = _storage.ThrottleAdjMax;
 	buf.u16[1] = drive_mode;
-
-	buf.u8[4] = hal_adc_read(0)>>2;
-	buf.u8[5] = hal_adc_read(1)>>2;
-	buf.u8[6] = hal_adc_read(2)>>2;
-	buf.u8[7] = hal_adc_read(3)>>2;
-
 	hal_can_send((CAN_EP) { .Id = 0x301 }, &buf, 8, CANF_NONE);
+
+	int batt = hal_adc_read(1);	// Battery voltage = Input adc / BATT_VOLTAGE_RATIO
+	const int bot = (int)(3.5f * 13.0f * BATT_VOLTAGE_RATIO);	// Discharged level 3.5v
+	const int top = (int)(4.0f * 13.0f * BATT_VOLTAGE_RATIO); // Charged value 4.0v
+	batt = ((batt - bot) * (0x10000 / (top - bot))) >> 8;
+	if (batt < 0) batt = 0;
+	if (batt > 0xff) batt = 0xff;
 
 	exos_thread_sleep (5);  // Temporary fix; packets get overwritten
 
 	buf.u8[0] = speed;
-	buf.u8[1] = _c_i.throttle; // batt
+	buf.u8[1] = batt; //_c_i.throttle;
 	buf.u8[2] = _state;
 	buf.u8[3] = _storage.WheelRatioAdj;
 	buf.u32[1] = distance;
@@ -274,7 +276,7 @@ void main()
 				}
 //				if ( _c_i.buttons & XCPU_BUTTON_LIGHTS_OFF)
 //					_default_output_state = OUTPUT_NONE;
-				if (_c_i.buttons & XCPU_BUTTON_HORN)
+				if ((_c_i.buttons & XCPU_BUTTON_HORN) && !(_c_i.buttons & XCPU_BUTTON_CONFIGURING))
 					_output_state |= OUTPUT_HORN;
 
 				if (_push_delay(_c_i.buttons & XCPU_BUTTON_ADJUST_UP, &push.up, 5) &&

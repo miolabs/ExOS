@@ -2,6 +2,7 @@
 // by anonymous
 
 #include <assert.h>
+#include <kernel/thread.h>
 
 #include "vpbe.h"
 #include "vpss.h"
@@ -115,6 +116,34 @@ static void _vpbe_config_venc ()
 {
 	int i;
 
+	// Clock
+	// The VENC provides the sync signals to the OSD module
+	_venc->CLKCTL = (1<<0) | // Clock enable for video encoder
+					(0<<4) | // Clock enable for digital LCD encoder
+					(0<<8); // Clock enable for gamma correction table?
+	
+	exos_thread_sleep (1);
+
+	_venc->OSDCLK0 = 1; // 2 bits pattern
+	_venc->OSDCLK1 = 2; // Patter %10
+
+	// LCD clocks
+	_venc->DCLKCTL = 0;
+	_venc->DCLKPTN0 = 0; 
+	_venc->DCLKPTN1 = 0;
+	_venc->DCLKPTN2 = 0;
+	_venc->DCLKPTN3 = 0;
+	_venc->DCLKPTN0A = 0;
+	_venc->DCLKPTN1A = 0;
+	_venc->DCLKPTN2A = 0;
+	_venc->DCLKPTN3A = 0;
+	_venc->DCLKHSTTA = 0; // Horizontal mask start position (ENC)	
+	_venc->DCLKHVLD = 0; // Horizontal mask range (ENC)
+	_venc->DCLKVSTT = 0; // Vertical mask start position (ENC)	
+	_venc->DCLKVVLD = 0; // Vertical mask range (ENC)
+
+	_venc->YCOLVL = 0xffff; // For DC output mode only, levels	
+
 	_venc->VMOD = 0; // Reset video encoder
 
 	_venc->VMOD = (1 << 0) |  // VENC enable
@@ -192,31 +221,6 @@ static void _vpbe_config_venc ()
 	//_venc->ACCTL = ??
 	// _venc->PWM0
 	// _venc->PWM1
-
-	// Clock
-	// The VENC provides the sync signals to the OSD module
-	_venc->OSDCLK0 = 1; // 2 bits pattern
-	_venc->OSDCLK1 = 2; // Patter %10
-
-	_venc->CLKCTL = (1<<0) | // Clock enable for video encoder
-					(0<<4) | // Clock enable for digital LCD encoder
-					(0<<8); // Clock enable for gamma correction table?
-	// LCD clocks
-	_venc->DCLKCTL = 0;
-	_venc->DCLKPTN0 = 0; 
-	_venc->DCLKPTN1 = 0;
-	_venc->DCLKPTN2 = 0;
-	_venc->DCLKPTN3 = 0;
-	_venc->DCLKPTN0A = 0;
-	_venc->DCLKPTN1A = 0;
-	_venc->DCLKPTN2A = 0;
-	_venc->DCLKPTN3A = 0;
-	_venc->DCLKHSTTA = 0; // Horizontal mask start position (ENC)	
-	_venc->DCLKHVLD = 0; // Horizontal mask range (ENC)
-	_venc->DCLKVSTT = 0; // Vertical mask start position (ENC)	
-	_venc->DCLKVVLD = 0; // Vertical mask range (ENC)
-
-	_venc->YCOLVL = 0xffff; // For DC output mode only, levels	
 
 	//  Probably used only in nostandard mode
 	_venc->SCPROG = 356; // Subcarrier initial phase NTSC 378 / PAL 356
