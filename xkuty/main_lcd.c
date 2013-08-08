@@ -25,12 +25,12 @@ static DASH_DATA _dash = { .ActiveConfig = { .DriveMode = XCPU_DRIVE_MODE_SOFT, 
 
 static const EVREC_CHECK _maintenance_screen_access[] =
 {
-	{BRAKE_FRONT_MASK | BRAKE_REAR_MASK | CRUISE_MASK, CHECK_PRESSED},
-	{BRAKE_FRONT_MASK | BRAKE_REAR_MASK | CRUISE_MASK, CHECK_RELEASED},
-	{BRAKE_FRONT_MASK, CHECK_PRESSED},
-    {BRAKE_REAR_MASK | CRUISE_MASK, CHECK_RELEASED},
+	{BRAKE_FRONT_MASK | BRAKE_REAR_MASK, CHECK_PRESSED},
+	{BRAKE_FRONT_MASK | BRAKE_REAR_MASK, CHECK_RELEASED},
 	{BRAKE_FRONT_MASK, CHECK_PRESSED},
 	{BRAKE_FRONT_MASK, CHECK_RELEASED},
+	{BRAKE_REAR_MASK, CHECK_RELEASED},
+	{BRAKE_REAR_MASK, CHECK_PRESSED},
 	{0x00000000, CHECK_END},
 };
 
@@ -66,10 +66,16 @@ static XCPU_BUTTONS _read_send_inputs(int state)
 	if ( _adj_drive_mode_cnt > 0)
 		buttons |= _dash.Temp.DriveMode << XCPU_BUTTON_ADJ_DRIVE_MODE_SHIFT, _adj_drive_mode_cnt--;
 
+
 	// Record inputs for sequence triggering (to start debug services)
-	event_record(buttons & (XCPU_BUTTON_THROTTLE_OPEN |
-					XCPU_BUTTON_BRAKE_REAR | XCPU_BUTTON_BRAKE_FRONT |
-					XCPU_BUTTON_CRUISE | XCPU_BUTTON_HORN));
+	 int input_status = ((( buttons & XCPU_BUTTON_THROTTLE_OPEN) ? THROTTLE_MASK : 0) |
+					(( buttons & XCPU_BUTTON_BRAKE_REAR) ? BRAKE_REAR_MASK : 0) |
+					(( buttons & XCPU_BUTTON_BRAKE_FRONT) ? BRAKE_FRONT_MASK : 0) |
+					(( buttons & XCPU_BUTTON_CRUISE) ? CRUISE_MASK : 0) |
+					(( buttons & XCPU_BUTTON_HORN) ? HORN_MASK : 0));
+
+	event_record ( input_status);
+
 
 	ANALOG_INPUT *ain_throttle = xanalog_input(THROTTLE_IDX);
 	unsigned int throttle = ain_throttle->Scaled;
@@ -145,7 +151,7 @@ static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 			_configuring = 0;
 			if ((_dash.Speed == 0) && (_dash.CpuStatus & XCPU_STATE_NEUTRAL))
 			{
-				if (event_happening(_maintenance_screen_access, 50)) // 1 second
+				if (event_happening(_maintenance_screen_access, 100)) // 2 second
 				{
 					_dash.Temp = _dash.ActiveConfig;
 					menu_op = 0;
