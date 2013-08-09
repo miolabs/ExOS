@@ -33,7 +33,7 @@ void vpss_init ( int hard)
 		psc_set_module_state( PSC_MODULE_PWM2, PSC_MODULE_ENABLE);
 		psc_set_module_state( PSC_MODULE_PWM3, PSC_MODULE_ENABLE);*/
 
-		// VDAC & VPS_CLK_CTRL
+		// VDAC & VPSS_CLK_CTRL
 		system_video_regs (
 			// Video DAC config (encontrado 0x101941DC, recomendado 0x081141CC para SD)
 			0x081141CC, /*((0<<0) | // Power down channel A (down/normal)
@@ -55,7 +55,7 @@ void vpss_init ( int hard)
 
 		// Codigo xungo? VPSS_VPBE_CLK_CTRL = 0x00000011;   // Select enc_clk*1, turn on VPBE clk
 		//   (LDC is some capture device)
-ссс
+сс
 		_vpss->VPBE_CLK_CTRL =  (1<<0) |  // OSD,VENC enable
 								(0<<2) |  // VENC CLOCK /1 or /2
 								(0<<3) |  // LDC clock enable
