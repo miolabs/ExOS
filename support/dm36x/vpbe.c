@@ -117,13 +117,6 @@ static void _vpbe_config_venc ()
 	int i;
 
 	// Clock
-	// The VENC provides the sync signals to the OSD module
-	_venc->CLKCTL = (1<<0) | // Clock enable for video encoder
-					(0<<4) | // Clock enable for digital LCD encoder
-					(0<<8); // Clock enable for gamma correction table?
-	
-	exos_thread_sleep (1);
-
 	_venc->OSDCLK0 = 1; // 2 bits pattern
 	_venc->OSDCLK1 = 2; // Patter %10
 
@@ -158,7 +151,7 @@ static void _vpbe_config_venc ()
 	              (0 << 11) |  // Non-interlace SDTV lines 312/313
 	              (DIGITAL_OUT_YCC8 << 12);  // Digital video output mode
 
-	// Video interface I/O control (can be all 0 for TV out)
+	// Video interface I/O control (can be all 0 for TV out?)
 	_venc->VIOCTL = (0<<0) |  // YOUT/COUT I/O; output or input
 					(0<<2) |  // YOUT/COUT pin DC output mode; normal or DC level
 					(0<<3) |  // Swaps YOUT/COUT; normal or interchange
@@ -348,6 +341,13 @@ void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
 {
 	// Reset VPBE
 	vpss_init (0);
+
+	// The VENC provides the sync signals to the OSD module
+	_venc->CLKCTL = (1<<0) | // Clock enable for video encoder
+					(0<<4) | // Clock enable for digital LCD encoder
+					(0<<8); // Clock enable for gamma correction table?
+	
+	exos_thread_sleep (1);
 
 	// OSD (frame buffer)
 	_vpbe_config_osd ();

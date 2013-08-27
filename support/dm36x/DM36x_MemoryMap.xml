@@ -413,7 +413,10 @@
           <Enum name="MXI oscillator" start="0x2"/>
           <Enum name="MXI oscillator" start="0x3"/>
         </BitField>        
-        <BitField size="1" name="VPSS_CLKMD" start="7" />
+        <BitField size="1" name="VPSS_CLKMD" start="7" >
+            <Enum name="Config/DMA clk vs. VPSS clk 1:2" start="0x0"/>
+            <Enum name="Config/DMA clk vs. VPSS clk 1:1" start="0x1"/>
+        </BitField>
       </Register>      
       <Register start="+0x048" size="0x4" name="PERI_CLKCTL">
         <BitField size="1" name="CLOCKOUT0EN" start="0" />
