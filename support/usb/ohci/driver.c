@@ -7,12 +7,13 @@
 static int _ctrl_setup_read(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *in_data, int in_length);
 static int _ctrl_setup_write(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *out_data, int out_length);
 static int _start_pipe(USB_HOST_PIPE *pipe);
+static int _stop_pipe(USB_HOST_PIPE *pipe);
 static int _begin_bulk_transfer(USB_REQUEST_BUFFER *urb, void *data, int length);
 static int _end_bulk_transfer(USB_REQUEST_BUFFER *urb, unsigned long timeout);
 
 const USB_HOST_CONTROLLER_DRIVER __ohci_driver = {
 	_ctrl_setup_read, _ctrl_setup_write, 
-	_start_pipe, _begin_bulk_transfer, _end_bulk_transfer,
+	_start_pipe, _stop_pipe, _begin_bulk_transfer, _end_bulk_transfer,
 	};
 
 static USB_HOST_DEVICE _devices[2] __usb;	// FIXME: allow more devices (each port can generate more than one)
@@ -69,6 +70,28 @@ static int _start_pipe(USB_HOST_PIPE *pipe)
 	return 0;
 }
 
+static int _stop_pipe(USB_HOST_PIPE *pipe)
+{
+	if (pipe == NULL || pipe->Device == NULL || pipe->Endpoint == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+	
+    OHCI_SED *sed = pipe->Endpoint;
+	if (sed->Pipe != pipe)
+		kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);	// sed or pipe is corrupted 
+
+	ohci_pipe_remove(pipe);
+
+	OHCI_HCED *hced = &sed->HCED;
+	volatile OHCI_HCTD *hctd = hced->HeadTD;
+#ifdef DEBUG
+	if (hctd != hced->TailTD)
+		kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);	// queue was not empty?
+#endif
+	ohci_buffers_release_std((OHCI_STD *)hctd);
+	ohci_buffers_release_sed(sed);
+	return 1;
+}
+
 static int _begin_bulk_transfer(USB_REQUEST_BUFFER *urb, void *data, int length)
 {
 	OHCI_TD_PID pid = urb->Pipe->Direction == USB_HOST_TO_DEVICE ? OHCI_TD_DIR_OUT : OHCI_TD_DIR_IN;
@@ -115,8 +138,13 @@ USB_HOST_DEVICE *ohci_device_create(int port, USB_HOST_DEVICE_SPEED speed)
 
 void ohci_device_destroy(int port)
 {
+	exos_mutex_lock(&_mutex);
 	USB_HOST_DEVICE *device = &_devices[port];	// FIXME
+
+	_stop_pipe(&device->ControlPipe);
+
 	usb_host_destroy_device(device);
+   	exos_mutex_unlock(&_mutex);
 }
 
 static int _ctrl_setup_read(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *in_data, int in_length)
@@ -141,7 +169,6 @@ static int _ctrl_setup_read(USB_HOST_DEVICE *device, void *setup_data, int setup
 	}
 
 	exos_mutex_unlock(&_mutex);
-
 	return done;
 }
 
@@ -167,7 +194,6 @@ static int _ctrl_setup_write(USB_HOST_DEVICE *device, void *setup_data, int setu
     }
 
 	exos_mutex_unlock(&_mutex);
-
 	return done;
 }
 

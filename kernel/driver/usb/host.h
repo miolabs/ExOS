@@ -88,6 +88,7 @@ struct _USB_HOST_CONTROLLER_DRIVER
 	int (*CtrlSetupRead)(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *in_data, int in_length);
 	int (*CtrlSetupWrite)(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *out_data, int out_length);
 	int (*StartPipe)(USB_HOST_PIPE *pipe);
+	int (*StopPipe)(USB_HOST_PIPE *pipe);
 	int (*BeginBulkTransfer)(USB_REQUEST_BUFFER *urb, void *data, int length);
 	int (*EndBulkTransfer)(USB_REQUEST_BUFFER *urb, unsigned long timeout);
 };
@@ -110,6 +111,7 @@ void usb_host_create_function(USB_HOST_FUNCTION *func, USB_HOST_DEVICE *device, 
 void usb_host_destroy_function(USB_HOST_FUNCTION *func);
 void usb_host_init_pipe_from_descriptor(USB_HOST_DEVICE *device, USB_HOST_PIPE *pipe, USB_ENDPOINT_DESCRIPTOR *ep_desc);
 int usb_host_start_pipe(USB_HOST_PIPE *pipe);
+int usb_host_stop_pipe(USB_HOST_PIPE *pipe);
 void usb_host_urb_create(USB_REQUEST_BUFFER *urb, USB_HOST_PIPE *pipe);
 int usb_host_bulk_transfer(USB_HOST_PIPE *pipe, void *data, int length, unsigned long timeout);
 int usb_host_begin_bulk_transfer(USB_REQUEST_BUFFER *urb, void *data, int length);

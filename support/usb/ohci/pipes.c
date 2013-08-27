@@ -12,11 +12,11 @@ void ohci_pipe_add(USB_HOST_PIPE *pipe)
 	{
 		case USB_TT_CONTROL:	
 			sed->HCED.Next = _hc->ControlHeadED;
-			_hc->ControlHeadED = sed;
+			_hc->ControlHeadED = &sed->HCED;
 			break;
 		case USB_TT_BULK:
 			sed->HCED.Next = _hc->BulkHeadED;
-			_hc->BulkHeadED = sed;
+			_hc->BulkHeadED = &sed->HCED;
 			break;
 		default:
 			_pipe_schedule(pipe);
@@ -28,39 +28,46 @@ void ohci_pipe_remove(USB_HOST_PIPE *pipe)
 {
 	OHCI_SED *sed = (OHCI_SED *)pipe->Endpoint;
 	// FIXME: look for the matching pipe pointer for removing
-	OHCI_HCED **hced;
+
+	OHCI_HCED **hced_ptr;
 	switch(pipe->EndpointType)
 	{
 		case USB_TT_CONTROL: 
-			hced = (OHCI_HCED **)&_hc->ControlHeadED;
+			hced_ptr = (OHCI_HCED **)&_hc->ControlHeadED;
 			_hc->ControlBits.CLE = 0;
 			break;
 		case USB_TT_BULK:
-			hced = (OHCI_HCED **)&_hc->BulkHeadED;
+			hced_ptr = (OHCI_HCED **)&_hc->BulkHeadED;
 			_hc->ControlBits.BLE = 0;
 			break;
 		default:
 			// TODO: Remove Interrupt/Iso EDs
 			return;
 	}
-	
-	// Wait current frame to end to be sure that endpoint is not in use
-	exos_thread_sleep(1); // FIXME: we should wait for EOF
-	
+
+	// Remove HCED from list
 	sed->HCED.ControlBits.sKip = 1;
-	while(*hced != NULL)
+	if (*hced_ptr == &sed->HCED)
 	{
-		if (*hced == (OHCI_HCED *)sed)
+		*hced_ptr = sed->HCED.Next;
+	} 
+	else
+	{
+		OHCI_HCED *hced = *hced_ptr;
+		while(hced != NULL)
 		{
-			// remove ed 
-			*hced = (OHCI_HCED *)sed->HCED.Next;
-			break;
-		}
-		else
-		{
-			// TODO
+			if (hced->Next == &sed->HCED)
+			{
+				hced->Next = sed->HCED.Next;
+				break;
+			}
+			hced = hced->Next;
 		}
 	}
+
+	sed->Pipe = NULL;
+
+	ohci_schedule_remove_hced(&sed->HCED);
 }
 
 
@@ -198,6 +205,9 @@ int ohci_remove_std(USB_REQUEST_BUFFER *urb)
 	int removed = 0;
 
 	// TODO
+	// pause HCED and wait SOF
+	// remove HCTD
+	// resume HCED
 
 	return removed;
 }

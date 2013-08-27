@@ -105,6 +105,16 @@ int usb_host_start_pipe(USB_HOST_PIPE *pipe)
 	return done;
 }
 
+int usb_host_stop_pipe(USB_HOST_PIPE *pipe)
+{
+	USB_HOST_DEVICE *device = pipe->Device;
+	exos_mutex_lock(&device->ControlMutex);
+	const USB_HOST_CONTROLLER_DRIVER *hcd = device->Controller;
+	int done = hcd->StopPipe(pipe);
+	exos_mutex_unlock(&device->ControlMutex);
+	return done;	
+}
+
 int usb_host_bulk_transfer(USB_HOST_PIPE *pipe, void *data, int length, unsigned long timeout)
 {
 	USB_HOST_DEVICE *device = pipe->Device;

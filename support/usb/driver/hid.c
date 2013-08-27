@@ -258,7 +258,14 @@ static void _stop(USB_HOST_FUNCTION *usb_func)
 {
 	HID_FUNCTION *func = (HID_FUNCTION *)usb_func;
 
-	//TODO
+	// TODO: stop thread:
+	// setup a non zero timeout in thread loop -> urb timeout support 
+	// check urb termination (due to timeout) with device detached
+	// exit thread with termination flag/state
+
+	usb_host_stop_pipe(&func->InputPipe);
+
+	// TODO
 }
 
 static int _read_field(HID_REPORT_INPUT *input, unsigned char *report, unsigned char *data)

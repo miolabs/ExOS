@@ -2,125 +2,10 @@
 #define OHCI_H
 
 #include <usb/usb.h>
+#include <kernel/event.h>
 
 // Root Hub Downstream Ports
 #define USB_HOST_ROOT_HUB_NDP 2
-
-typedef enum
-{
-	OHCI_OP_CONTROL_FS_RESET = 0,
-	OHCI_OP_CONTROL_FS_RESUME = 1,
-	OHCI_OP_CONTROL_FS_OPERATIONAL = 2,
-	OHCI_OP_CONTROL_FS_SUSPEND = 3,
-} OHCI_OP_CONTROL_FS;
-
-typedef struct _OHCI_OP_INTERRUPTS
-{
-	unsigned SO:1;		// Scheduling Overrun
-	unsigned WDH:1;		// Writeback Done Head
-	unsigned SF:1;		// Start of Frame
-	unsigned RD:1;		// Resume Detected
-	unsigned UE:1;		// Unrecoverable Error
-	unsigned FNO:1;		// Frame Number Overflow
-	unsigned RHSC:1;	// Roothub Status Change
-	unsigned :23;
-	unsigned OC:1;		// Ownership Changed
-	unsigned MIE:1;		// Master Interrupt Enable
-} OHCI_OP_INTERRUPTS;
-
-
-// OHCI Host Controller Operational Registers
-typedef struct
-{
-	volatile unsigned long Revision;
-	union
-	{
-		volatile unsigned long Control;
-		volatile struct
-		{
-			unsigned CBSR:2;	// Control-Bulk Service Ratio
-			unsigned PLE:1;		// Periodic List Enable
-			unsigned IE:1;		// Isochronous Enable
-			unsigned CLE:1;		// Control List Enable
-			unsigned BLE:1;		// Bulk List Enable
-			OHCI_OP_CONTROL_FS HCFS:2;	// Functional State
-			unsigned IR:1;		// Interrupt Routed
-			unsigned RWC:1;		// Remote Wakeup Connected
-			unsigned RWE:1;		// Remote Wakeup Enable 
-		} ControlBits;
-	};
-	volatile unsigned long CommandStatus;
-	union
-	{
-		volatile unsigned long InterruptStatus;
-		volatile OHCI_OP_INTERRUPTS InterruptStatusBits;
-	};
-	union
-	{
-		volatile unsigned long InterruptEnable;
-        volatile OHCI_OP_INTERRUPTS InterruptEnableBits;
-	};
-	union
-	{
-		volatile unsigned long InterruptDisable;
-        volatile OHCI_OP_INTERRUPTS InterruptDisableBits;
-	};
-	volatile void *HCCA;
-	volatile unsigned long PeriodCurrentED;
-	volatile void *ControlHeadED;
-	volatile void *ControlCurrentED;
-	volatile void *BulkHeadED;
-	volatile void *BulkCurrentED;
-	volatile unsigned long DoneHead;
-
-	volatile unsigned long FmInterval;
-	volatile unsigned long FmRemaining;
-	volatile unsigned long FmNumber;
-	volatile unsigned long PeriodicStart;
-	volatile unsigned long LSThreshold;
-
-	volatile unsigned long RhDescriptorA;
-	volatile unsigned long RhDescriptorB;
-	volatile unsigned long RhStatus;
-	volatile unsigned long RhPortStatus[USB_HOST_ROOT_HUB_NDP];
-} OHCI_OP_REGISTERS;
-
-// HcControl Register
-#define  OHCIR_CONTROL_PLE		0x00000004
-#define  OHCIR_CONTROL_IE		0x00000008
-#define  OHCIR_CONTROL_CLE		0x00000010
-#define  OHCIR_CONTROL_BLE		0x00000020
-#define  OHCIR_CONTROL_HCFS		0x000000C0
-#define  OHCIR_CONTROL_HC_OPER	0x00000080
-
-// HcCommandStatus Register
-#define  OHCIR_CMD_STATUS_HCR              0x00000001
-#define  OHCIR_CMD_STATUS_CLF              0x00000002
-#define  OHCIR_CMD_STATUS_BLF              0x00000004
-
-// HcInterruptStatus Register
-#define  OHCIR_INTR_STATUS_SO		0x00000001
-#define  OHCIR_INTR_STATUS_WDH		0x00000002
-#define  OHCIR_INTR_STATUS_UE		0x00000010
-#define  OHCIR_INTR_STATUS_RHSC		0x00000040
-
-// HcInterruptEnable Register
-#define  OHCIR_INTR_ENABLE_SO		0x00000001
-#define  OHCIR_INTR_ENABLE_WDH		0x00000002
-#define  OHCIR_INTR_ENABLE_UE		0x00000010
-#define  OHCIR_INTR_ENABLE_RHSC		0x00000040
-#define  OHCIR_INTR_ENABLE_MIE		0x80000000
-
-// HcRhStatus Register
-#define  OHCIR_RH_STATUS_LPS		0x00000001
-#define  OHCIR_RH_STATUS_LPSC		0x00010000
-
-// HcRhPortStatus Registers
-#define OHCIR_RH_PORT_CCS	0x00000001
-#define OHCIR_RH_PORT_PRS	0x00000010
-#define	OHCIR_RH_PORT_LSDA	0x00000200
-#define OHCIR_RH_PORT_CSC	0x00010000
-#define OHCIR_RH_PORT_PRSC	0x00100000
 
 typedef enum
 {
@@ -155,11 +40,11 @@ typedef enum
 } OHCI_TD_CC;
 
 //  Host Controller Transfer Descriptor
-typedef struct __attribute__((aligned(16))) _OHCI_HCTD
+typedef volatile struct __attribute__((aligned(16))) _OHCI_HCTD
 {
 	union
 	{
-		volatile int Control;
+		int Control;
 		struct
 		{
 			unsigned :18;
@@ -171,16 +56,16 @@ typedef struct __attribute__((aligned(16))) _OHCI_HCTD
 			OHCI_TD_CC ConditionCode:4;
 		} ControlBits;
 	};
-    volatile void *CurrBufPtr;
+    void *CurrBufPtr;
     volatile struct _OHCI_HCTD *Next;
-    volatile void *BufferEnd;
+    void *BufferEnd;
 } OHCI_HCTD;
 
-typedef struct __attribute__((aligned(32))) _OHCI_HCTD_ISO
+typedef volatile struct __attribute__((aligned(32))) _OHCI_HCTD_ISO
 {
 	union
 	{
-		volatile int Control;
+		int Control;
 		struct
 		{
 			unsigned StartingFrame:16;
@@ -191,9 +76,9 @@ typedef struct __attribute__((aligned(32))) _OHCI_HCTD_ISO
 			OHCI_TD_CC ConditionCode:4;
 		} ControlBits;
 	};
-    volatile void *BP0;
+    void *BP0;
     volatile struct _OHCI_HCTD_ISO *Next;
-    volatile void *BufferEnd;
+    void *BufferEnd;
 	union
 	{
 		unsigned short PSW[8];
@@ -210,7 +95,7 @@ typedef enum
 } OHCI_ED_DIRECTION;
 
 // Host Controller EndPoint Descriptor
-typedef struct _OHCI_HCED
+typedef volatile struct _OHCI_HCED
 {
 	union
 	{
@@ -226,11 +111,11 @@ typedef struct _OHCI_HCED
 			unsigned MaxPacketSize:11;
 		} ControlBits;
 	};
-    volatile OHCI_HCTD *TailTD;
+	OHCI_HCTD *TailTD;
 	union
 	{
-		volatile OHCI_HCTD *HeadTD;
-		volatile struct
+		OHCI_HCTD *HeadTD;
+		struct
 		{
 			unsigned Halted:1;
 			unsigned toggleCarry:1;
@@ -242,14 +127,141 @@ typedef struct _OHCI_HCED
 } OHCI_HCED;
 
 // Host Controller Communication Area
-typedef struct __attribute__((aligned(256))) _OHCI_HCCA 
+typedef volatile struct _OHCI_HCCA 
 {
-	volatile OHCI_HCED *IntTable[32];
-    volatile int FrameNumber;
-    volatile OHCI_HCTD *DoneHead;
-    volatile unsigned char Reserved[116];
-    volatile unsigned char Unknown[4];	// Unused
+	OHCI_HCED *IntTable[32];
+    int FrameNumber;
+    OHCI_HCTD *DoneHead;
+    unsigned char Reserved[116];
+    unsigned char Unknown[4];	// Unused
 } OHCI_HCCA;
+
+typedef enum
+{
+	OHCI_OP_CONTROL_FS_RESET = 0,
+	OHCI_OP_CONTROL_FS_RESUME = 1,
+	OHCI_OP_CONTROL_FS_OPERATIONAL = 2,
+	OHCI_OP_CONTROL_FS_SUSPEND = 3,
+} OHCI_OP_CONTROL_FS;
+
+typedef struct _OHCI_OP_INTERRUPTS
+{
+	unsigned SO:1;		// Scheduling Overrun
+	unsigned WDH:1;		// Writeback Done Head
+	unsigned SF:1;		// Start of Frame
+	unsigned RD:1;		// Resume Detected
+	unsigned UE:1;		// Unrecoverable Error
+	unsigned FNO:1;		// Frame Number Overflow
+	unsigned RHSC:1;	// Roothub Status Change
+	unsigned :23;
+	unsigned OC:1;		// Ownership Changed
+	unsigned MIE:1;		// Master Interrupt Enable
+} OHCI_OP_INTERRUPTS;
+
+
+// OHCI Host Controller Operational Registers
+typedef volatile struct
+{
+	unsigned long Revision;
+	union
+	{
+		unsigned long Control;
+		struct
+		{
+			unsigned CBSR:2;	// Control-Bulk Service Ratio
+			unsigned PLE:1;		// Periodic List Enable
+			unsigned IE:1;		// Isochronous Enable
+			unsigned CLE:1;		// Control List Enable
+			unsigned BLE:1;		// Bulk List Enable
+			OHCI_OP_CONTROL_FS HCFS:2;	// Functional State
+			unsigned IR:1;		// Interrupt Routed
+			unsigned RWC:1;		// Remote Wakeup Connected
+			unsigned RWE:1;		// Remote Wakeup Enable 
+		} ControlBits;
+	};
+	unsigned long CommandStatus;
+	union
+	{
+		unsigned long InterruptStatus;
+		OHCI_OP_INTERRUPTS InterruptStatusBits;
+	};
+	union
+	{
+		unsigned long InterruptEnable;
+        OHCI_OP_INTERRUPTS InterruptEnableBits;
+	};
+	union
+	{
+		unsigned long InterruptDisable;
+        OHCI_OP_INTERRUPTS InterruptDisableBits;
+	};
+	OHCI_HCCA *HCCA;
+	unsigned long PeriodCurrentED;
+	OHCI_HCED *ControlHeadED;
+	OHCI_HCED *ControlCurrentED;
+	OHCI_HCED *BulkHeadED;
+	OHCI_HCED *BulkCurrentED;
+	unsigned long DoneHead;
+
+	unsigned long FmInterval;
+	unsigned long FmRemaining;
+	unsigned long FmNumber;
+	unsigned long PeriodicStart;
+	unsigned long LSThreshold;
+
+	unsigned long RhDescriptorA;
+	unsigned long RhDescriptorB;
+	unsigned long RhStatus;
+	unsigned long RhPortStatus[USB_HOST_ROOT_HUB_NDP];
+} OHCI_OP_REGISTERS;
+
+// HcControl Register
+#define  OHCIR_CONTROL_PLE		0x00000004
+#define  OHCIR_CONTROL_IE		0x00000008
+#define  OHCIR_CONTROL_CLE		0x00000010
+#define  OHCIR_CONTROL_BLE		0x00000020
+#define  OHCIR_CONTROL_HCFS		0x000000C0
+#define  OHCIR_CONTROL_HC_OPER	0x00000080
+
+// HcCommandStatus Register
+#define  OHCIR_CMD_STATUS_HCR              0x00000001
+#define  OHCIR_CMD_STATUS_CLF              0x00000002
+#define  OHCIR_CMD_STATUS_BLF              0x00000004
+
+// HcInterruptStatus Register
+#define  OHCIR_INTR_STATUS_SO		0x00000001
+#define  OHCIR_INTR_STATUS_WDH		0x00000002
+#define  OHCIR_INTR_STATUS_SF		0x00000004
+#define  OHCIR_INTR_STATUS_UE		0x00000010
+#define  OHCIR_INTR_STATUS_RHSC		0x00000040
+
+// HcInterruptEnable Register
+#define  OHCIR_INTR_ENABLE_SO		0x00000001
+#define  OHCIR_INTR_ENABLE_WDH		0x00000002
+#define  OHCIR_INTR_ENABLE_SF		0x00000004
+#define  OHCIR_INTR_ENABLE_UE		0x00000010
+#define  OHCIR_INTR_ENABLE_RHSC		0x00000040
+#define  OHCIR_INTR_ENABLE_MIE		0x80000000
+
+// HcRhStatus Register
+#define  OHCIR_RH_STATUS_LPS		0x00000001
+#define  OHCIR_RH_STATUS_LPSC		0x00010000
+
+// HcRhPortStatus Registers
+#define OHCIR_RH_PORT_CCS	0x00000001
+#define OHCIR_RH_PORT_PRS	0x00000010
+#define	OHCIR_RH_PORT_LSDA	0x00000200
+#define OHCIR_RH_PORT_CSC	0x00010000
+#define OHCIR_RH_PORT_PRSC	0x00100000
+
+
+typedef struct _OHCI_SYNC_NODE
+{
+	struct _OHCI_SYNC_NODE *Next;
+	OHCI_HCED *HCED;
+	EXOS_EVENT Done;
+} OHCI_SYNC_NODE;
+
 
 extern OHCI_OP_REGISTERS *_hc;
 
@@ -261,6 +273,7 @@ void ohci_clear_hctd(OHCI_HCTD *hctd);
 void ohci_host_clear_hctd_iso(OHCI_HCTD_ISO *isotd);
 int ohci_init_hctd_iso(OHCI_HCTD_ISO *itd, int sf, void *buffer, int length, int packet_size);
 
+void ohci_schedule_remove_hced(OHCI_HCED *hced);
 unsigned short ohci_get_current_frame();
 
 #endif // OHCI_H
