@@ -42,12 +42,17 @@
       <folder Name="support" file_name="">
         <folder Name="lcd" file_name="">
           <file file_name="support/lcd/lcd.c"/>
-          <file file_name="support/lcd/mono.c"/>
           <file file_name="support/lcd/splc501c.c"/>
         </folder>
         <folder Name="lpc11">
           <file file_name="support/lpc11/c_can.c"/>
           <file file_name="support/lpc11/ssp.c"/>
+        </folder>
+      </folder>
+      <folder Name="modules">
+        <folder Name="gfx">
+          <file file_name="modules/gfx/font.c"/>
+          <file file_name="modules/gfx/mono.c"/>
         </folder>
       </folder>
     </folder>

@@ -6,6 +6,10 @@
 #define DISPW (128)
 #define DISPH (64)
 
+#ifndef LCD_ST7565R_FIRST_ROW
+#define LCD_ST7565R_FIRST_ROW 4
+#endif
+
 static unsigned char _scrrot [(DISPW*DISPH)/8];
 
 static void _write_cmd(unsigned char cmd);
@@ -96,7 +100,7 @@ void lcd_dump_screen ( unsigned char* pixels)
 
     for(int page = 0; page < 8; page++)
     {
-        _write_cmd(0xb0 | page); // select page
+        _write_cmd(0xb0 | ((page + LCD_ST7565R_FIRST_ROW) & 7)); // select page
         _write_cmd2(0x10, 0x00);
 
         _write_data( &_scrrot [page << 7], 128);
