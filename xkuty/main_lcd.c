@@ -160,6 +160,7 @@ static void	_get_iphone_messages ()
 	static unsigned char power_on_cnt = 0;
 	static unsigned char power_off_cnt = 0;
 	static unsigned char adjust_drive_mode_cnt = 0;
+	static unsigned char adjust_drive_mode_val = 0;
 	unsigned char evs = 0; 
 	unsigned char custom_curve[7];
 	XIAP_FRAME_FROM_IOS fromIOS;
@@ -171,7 +172,7 @@ static void	_get_iphone_messages ()
 		if ( fromIOS.Command == IOS_COMMAND_POWER_OFF)
 			power_off_cnt = RESEND_COUNTER;
 		if ( fromIOS.Command == IOS_COMMAND_ADJUST_DRIVE_MODE)
-			adjust_drive_mode_cnt = RESEND_COUNTER;
+			adjust_drive_mode_cnt = RESEND_COUNTER, adjust_drive_mode_val = fromIOS.Data[0];
 	}
 
 	if (power_on_cnt > 0)
@@ -181,7 +182,7 @@ static void	_get_iphone_messages ()
 	if ( adjust_drive_mode_cnt > 0)
 	{
 		evs |= XCPU_IOS_EVENT_ADJUST_DRIVE_MODE; 
-		custom_curve[0] = fromIOS.Data[0];	// multiplex
+		custom_curve[0] = adjust_drive_mode_val; 	// multiplex
 		adjust_drive_mode_cnt--;
 	}
 

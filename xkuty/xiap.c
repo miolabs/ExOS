@@ -36,6 +36,7 @@ void xiap_send_frame(DASH_DATA *dash)
 		.Distance = dash->Distance,
 		.Battery = dash->battery_level_fx8, 
 		.DriveMode = dash->ActiveConfig.DriveMode };
+
 		err = exos_io_write((EXOS_IO_ENTRY *)&_comm, &buffer, sizeof(buffer));
 		if (err < 0) _connected = 0;
 	}
@@ -48,22 +49,21 @@ int xiap_get_frame(XIAP_FRAME_FROM_IOS *fromIOS)
 {
 	unsigned char* raw = (unsigned char *)&_from_ios_temp;
 
-	if (!_connected)
-	{
-		_connect();
-	}
-	else
+	if (_connected)
 	{
 		int requested = sizeof(_from_ios_temp) - _from_ios_read;
-		int err = exos_io_read((EXOS_IO_ENTRY *)&_comm, raw, requested);
-		if (err == requested)
+		int done = exos_io_read((EXOS_IO_ENTRY *)&_comm, raw, requested);
+		if (done >= 0)
 		{
-			*fromIOS = _from_ios_temp;
-			_from_ios_read = 0;
-			return 1;
+			_from_ios_read += done;
+			if (_from_ios_read >= sizeof(_from_ios_temp))
+			{
+				*fromIOS = _from_ios_temp;
+				_from_ios_read = 0;
+				return 1;
+			}
 		}
-		else
-			_from_ios_read += err;
+		else _connected = 0;
 	}
 	return 0;
 }
