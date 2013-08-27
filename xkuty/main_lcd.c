@@ -110,6 +110,7 @@ static XCPU_BUTTONS _read_send_inputs(int state)
 									_adj_throttle_max >> 4,
 									events & 0xff };
 	hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
+
 	return buttons;
 }
 
@@ -153,6 +154,50 @@ static void _get_can_messages()
         xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0);
 	}
 }
+
+static void	_get_iphone_messages ()
+{
+	static unsigned char power_on_cnt = 0;
+	static unsigned char power_off_cnt = 0;
+	static unsigned char adjust_drive_mode_cnt = 0;
+	unsigned char evs = 0; 
+	unsigned char custom_curve[7];
+	XIAP_FRAME_FROM_IOS fromIOS;
+	int done = xiap_get_frame( &fromIOS);
+	if (done)
+	{
+		if ( fromIOS.Command == IOS_COMMAND_POWER_ON)
+			power_on_cnt = RESEND_COUNTER;
+		if ( fromIOS.Command == IOS_COMMAND_POWER_OFF)
+			power_off_cnt = RESEND_COUNTER;
+		if ( fromIOS.Command == IOS_COMMAND_ADJUST_DRIVE_MODE)
+			adjust_drive_mode_cnt = RESEND_COUNTER;
+	}
+
+	if (power_on_cnt > 0)
+		evs |= XCPU_IOS_EVENT_POWER_ON, power_on_cnt--;
+	if ( power_off_cnt > 0)
+		evs |= XCPU_IOS_EVENT_POWER_OFF, power_off_cnt--;
+	if ( adjust_drive_mode_cnt > 0)
+	{
+		evs |= XCPU_IOS_EVENT_ADJUST_DRIVE_MODE; 
+		custom_curve[0] = fromIOS.Data[0];	// multiplex
+		adjust_drive_mode_cnt--;
+	}
+
+	CAN_BUFFER buf = (CAN_BUFFER) { 
+									evs,
+									custom_curve[0], // multiplexed
+									custom_curve[1],
+									custom_curve[2],
+									custom_curve[3],
+									custom_curve[4],
+									custom_curve[5],
+									custom_curve[6]
+								  };
+	hal_can_send((CAN_EP) { .Id = 0x201, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
+}
+
 
 static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 {
@@ -274,6 +319,8 @@ void main()
 		// Read CAN messages from master 
 		_get_can_messages();
 
+		// get iPhone messages
+		_get_iphone_messages();
 
 		if (_dash.CpuStatus & XCPU_STATE_ON)
 		{
@@ -319,8 +366,6 @@ void main()
 			}
 			screen_count++;
 
-			xiap_send_frame(&_dash);
-	
 			if (elapsed_time < req_update_time)
 				exos_thread_sleep( req_update_time - elapsed_time);
 			prev_time = time;
@@ -338,6 +383,8 @@ void main()
 			}
 		}
 
+		xiap_send_frame(&_dash);
+	
         prev_cpu_state = _dash.CpuStatus;
 	}	// while (1)
 }

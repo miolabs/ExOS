@@ -58,6 +58,8 @@ typedef struct
 	unsigned char  throttle;
 	unsigned char  brake_rear, brake_front;
 	unsigned char  throttle_adj_min, throttle_adj_max;
+	unsigned char  ios_events;
+	unsigned char  ios_drive_mode;
 } CAN_INPUT;
 
 static CAN_INPUT _c_i = {0,0,0,0,0,0,0};
@@ -67,22 +69,35 @@ static void _read_can_messages ( int drive_mode, float speed)
 	XCPU_MSG *xmsg;
 	while(NULL != (xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0)))
 	{
-		if (xmsg->CanMsg.EP.Id == 0x200)
+		switch (xmsg->CanMsg.EP.Id)
 		{
-			CAN_BUFFER *data = &xmsg->CanMsg.Data;
-			_c_i.buttons = data->u8[0];
-			unsigned int throttle_raw = data->u8[1] | ( data->u8[2] << 8);
-			_c_i.brake_rear = data->u8[3];
-			_c_i.brake_front = data->u8[4];
-			_c_i.throttle_adj_min = data->u8[5];
-			_c_i.throttle_adj_max = data->u8[6];
-   			_c_i.events = data->u8[7];
+			case 0x200:
+			{
+				CAN_BUFFER *data = &xmsg->CanMsg.Data;
+				_c_i.buttons = data->u8[0];
+				unsigned int throttle_raw = data->u8[1] | ( data->u8[2] << 8);
+				_c_i.brake_rear = data->u8[3];
+				_c_i.brake_front = data->u8[4];
+				_c_i.throttle_adj_min = data->u8[5];
+				_c_i.throttle_adj_max = data->u8[6];
+				_c_i.events = data->u8[7];
 
-			int curve_in = (int)(4096.f * (speed / (float) MAX_SPEED));
-			int throttle_factor = get_curve_value ( curve_in, drive_mode ) >> 4;
-			_c_i.throttle = ( throttle_raw * throttle_factor) >> 12;
-			//_c_i.throttle = get_curve_value ( throttle_raw, drive_mode ) >> 4;
+				int curve_in = (int)(4096.f * (speed / (float) MAX_SPEED));
+				int throttle_factor = get_curve_value ( curve_in, drive_mode ) >> 4;
+				_c_i.throttle = ( throttle_raw * throttle_factor) >> 12;
+				//_c_i.throttle = get_curve_value ( throttle_raw, drive_mode ) >> 4;
+			}
+			break;
+
+			case 0x201:
+			{
+				CAN_BUFFER *data = &xmsg->CanMsg.Data;
+				_c_i.ios_events = data->u8[0];
+				_c_i.ios_drive_mode = data->u8[1];	// Multiplexed with custom curve val0
+			}
+			break;
 		}
+
 
 		exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
 	}
@@ -162,6 +177,8 @@ typedef struct
 	unsigned char mode;
 	unsigned char adj;
 	unsigned char lights;
+	unsigned char ios_power_on, ios_power_off;
+	unsigned char ios_mode;
 } PUSH_CNT;
 
 
@@ -173,7 +190,7 @@ void main()
 
 	hal_adc_initialize(1000,16);
 
-	PUSH_CNT      push = { 0,0,0,0,0,0,0,0,0};
+	PUSH_CNT      push = { 0,0,0,0,0,0,0,0,0,0,0,0};
 
 	speed_initialize();
 	_pid_k = (PID_K) { .P = 5, .I = 5, .CMin = 0, .CMax = 255 };
@@ -233,7 +250,8 @@ void main()
 		{
 			case CONTROL_OFF:
 				_output_state = OUTPUT_NONE;
-				if (_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push.start, 10))
+				if (_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push.start, 10) ||
+					(_push_delay(_c_i.ios_events & XCPU_IOS_EVENT_POWER_ON, &push.ios_power_on, 5)))
 				{
 					_control_state = CONTROL_ON;
 					_state = (_storage.ConfigBits & XCPU_CONFIGF_MILES) ? XCPU_STATE_ON | XCPU_STATE_MILES : XCPU_STATE_ON;
@@ -308,6 +326,11 @@ void main()
 					drive_mode--;
 				}
 
+				if ( _push_delay( _c_i.ios_events & XCPU_IOS_EVENT_ADJUST_DRIVE_MODE, &push.ios_mode, 5))
+				{
+					drive_mode = _c_i.ios_drive_mode;
+				}
+
 				if (_push_delay( _c_i.events & XCPU_EVENT_ADJUST_THROTTLE, &push.adj, 5))
 				{
 					_storage.ThrottleAdjMin = _c_i.throttle_adj_min;
@@ -334,7 +357,8 @@ void main()
 				}
 
 				if (_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push.start, 10) ||
-					_push_delay(_c_i.buttons & XCPU_BUTTON_CRUISE, &push.off, 50))
+					_push_delay(_c_i.buttons & XCPU_BUTTON_CRUISE, &push.off, 50) ||
+                    _push_delay(_c_i.ios_events & XCPU_BUTTON_CRUISE, &push.ios_power_off, 5))
 				{
 					if (_sp.speed == 0.0f)  // 0.0f value is forced
 					{
@@ -385,7 +409,8 @@ void hal_can_received_handler(int index, CAN_MSG *msg)
         XCPU_MSG *xmsg;
         switch(msg->EP.Id)
         {
-                case 0x200:
+                case 0x200:                
+				case 0x201:
                         xmsg = (XCPU_MSG *)exos_fifo_dequeue(&_can_free_msgs);
                         if (xmsg != NULL)
                         {
@@ -395,9 +420,6 @@ void hal_can_received_handler(int index, CAN_MSG *msg)
 #ifdef DEBUG
                         else _lost_msgs++;
 #endif
-                        break;
-                case 0x201:
-                        // TODO
                         break;
         }
 }
