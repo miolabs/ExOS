@@ -138,4 +138,7 @@
   <configuration Name="CR-2" c_preprocessor_definitions="BOARD_CR2;EEPROM_SIZE=32768;EEPROM_I2C_MODULE=0" hidden="Yes"/>
   <configuration Name="CR-2 Debug" inherited_configurations="CR-2;Debug;Flash"/>
   <configuration Name="CR-2 Release" inherited_configurations="CR-2;Flash;Release"/>
+  <configuration Name="ICDev-LPC2478" c_preprocessor_definitions="BOARD_ICDEV_LPC2478;EXOS_NO_NET;EEPROM_SIZE=32768;EEPROM_I2C_MODULE=0" hidden="Yes"/>
+  <configuration Name="ICDev-LPC2478 Debug" inherited_configurations="Debug;Flash;ICDev-LPC2478"/>
+  <configuration Name="ICDev-LPC2478 Release" inherited_configurations="Flash;ICDev-LPC2478;Release"/>
 </solution>

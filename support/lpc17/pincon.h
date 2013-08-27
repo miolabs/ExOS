@@ -26,6 +26,7 @@ typedef struct
 } _PINSEL0bits;
 
 #define PINSEL0bits (*(_PINSEL0bits *) &LPC_PINCON->PINSEL0)
+#define PINMODE0bits (*(_PINSEL0bits *) &LPC_PINCON->PINMODE0)
 
 typedef struct
 {
@@ -48,6 +49,7 @@ typedef struct
 } _PINSEL1bits;
 
 #define PINSEL1bits (*(_PINSEL1bits *) &LPC_PINCON->PINSEL1)
+#define PINMODE1bits (*(_PINSEL1bits *) &LPC_PINCON->PINMODE1)
 
 typedef struct
 {
@@ -225,7 +227,9 @@ typedef struct
 
 #define PINSEL9bits (*(_PINSEL9bits *) &LPC_PINCON->PINSEL9)
 
+
 #else
+
 
 typedef struct
 {

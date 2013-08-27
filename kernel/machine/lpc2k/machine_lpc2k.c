@@ -103,6 +103,23 @@ void *__machine_init_thread_stack(void *stack_end, unsigned long arg, unsigned l
 	return frame;
 }
 
+__attribute__((naked))
+int __machine_trylock(unsigned char *lock, unsigned char value)
+{
+	__asm__ volatile (
+		"mov r2, r0\n\t"
+		"swpb r0, r1, [r2]\n\t"
+		"ands r0, #1\n\t"
+		"moveq r0, #1\n\t"
+		"movne r0, #0\n\t"
+		"bx lr\n\t");
+}
+
+void __machine_unlock(unsigned char *lock)
+{
+	*lock = 0;
+}
+
 static int _memtest(void *base, int size)
 {
 	unsigned int i;

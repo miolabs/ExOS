@@ -124,3 +124,11 @@ void *__machine_init_thread_stack(void *stack_end, unsigned long arg, unsigned l
 	return frame;
 }
 
+void __machine_idle()
+{
+	while(1)
+	{
+		__asm__ volatile (
+			"wfi\n\t");	
+	}
+}

@@ -5,12 +5,15 @@
 #include "cpu.h"
 #include "dma.h"
 #include <support/mci_hal.h>
+#include <support/board_hal.h>
 #include <kernel/panic.h>
 
 static volatile unsigned long _int_status = 0;
 
 void hal_mci_initialize()
 {
+	hal_board_init_pinmux(HAL_RESOURCE_MCI, 0);
+
 	// peripheral clock selection
 	PCLKSEL1bits.PCLK_MCI = 3; // 0 = CCLK/4 (25MHz @100MHz)
 
@@ -37,7 +40,7 @@ void hal_mci_initialize()
 	VIC_EnableIRQ(MCI_IRQn);
 }
 
-static void _debug(MCI_ERROR error)
+static void _debug(SD_ERROR error)
 {
 	// debug / breakpoint placeholder
 }
@@ -134,7 +137,17 @@ SD_ERROR hal_mci_send_cmd(unsigned char cmd, unsigned long arg, MCI_WAIT_FLAGS f
 
 int hal_mci_read_resp(unsigned char *buf, int resp_bytes)
 {
-	return (unsigned long)MCIResponse0;
+	int length = 0;
+	unsigned char *resp = (unsigned char *)&MCIResponse0;
+	while((resp_bytes - length) >= 4)
+	{
+		*buf++ = resp[length + 3];
+		*buf++ = resp[length + 2];
+		*buf++ = resp[length + 1];
+		*buf++ = resp[length];
+		length += 4;
+	}
+	return length;
 }
 
 unsigned long hal_mci_read_short_resp()
@@ -166,25 +179,25 @@ SD_ERROR hal_mci_read_data_blocks(unsigned char *buf, int count, MCI_BLOCK_SIZE 
 		{
 			MCI_STATUS_BITS sta = _wait_status();
 	
-			if (sta.DataTimeout) error = MCI_ERROR_TIMEOUT;
-			else if (sta.DataCrcFail) error = MCI_ERROR_BADCRC;
-			else if (sta.RxOverrun) error = MCI_ERROR_OVERRUN;
-			else if (sta.StartBitErr) error = MCI_ERROR_IO;
+			if (sta.DataTimeout) error = SD_ERROR_TIMEOUT;
+			else if (sta.DataCrcFail) error = SD_ERROR_BAD_CRC;
+			else if (sta.RxOverrun) error = SD_ERROR_OVERFLOW;
+			else if (sta.StartBitErr) error = SD_ERROR_BAD_TOKEN;
 			if (sta.DataEnd)
 			{
 				break;
 			}
 		}
 
-		// FIXME: Wait dma end
 		if (error != SD_OK) 
 		{
-			MCIDataCtrl = 0;
-			dma_channel_disable(dma);
+			MCIDataCtrl = 0;	
 #ifdef DEBUG
 			_debug(error);
 #endif
 		}
+		// FIXME: Wait dma end
+		dma_channel_disable(dma);
 		return error;
 	}
 	kernel_panic(KERNEL_ERROR_NO_HARDWARE_RESOURCES);
@@ -209,31 +222,31 @@ SD_ERROR hal_mci_write_data_blocks(unsigned char *buf, int count, MCI_BLOCK_SIZE
 		MCIDataCtrl = MCI_DATACTRL_ENABLE_WRITE | MCIDataCtrl_DMAEnable |
 			((size << MCIDataCtrl_BlockSize_BIT) & MCIDataCtrl_BlockSize_MASK);
 		
-		MCI_ERROR error = MCI_OK;
-		while (error == MCI_OK)
+		SD_ERROR error = SD_OK;
+		while (error == SD_OK)
 		{
 			MCI_STATUS_BITS sta = _wait_status();
 	
 			// FIXME: detect datatimer timeout 
-			if (sta.DataTimeout) error = MCI_ERROR_TIMEOUT;
-			else if (sta.DataCrcFail) error = MCI_ERROR_BADCRC;
-			else if (sta.TxUnderrun) error = MCI_ERROR_UNDERRUN; 
+			if (sta.DataTimeout) error = SD_ERROR_TIMEOUT;
+			else if (sta.DataCrcFail) error = SD_ERROR_BAD_CRC;
+			else if (sta.TxUnderrun) error = SD_ERROR_OVERFLOW; 
 			if (sta.DataEnd)
 			{
-				if (!sta.DataBlockEnd) error = MCI_ERROR_BADCRC;
+				if (!sta.DataBlockEnd) error = SD_ERROR_BAD_CRC;
 				break;
 			}
 		}
 	
-		// FIXME: Wait dma end
-		if (error != MCI_OK) 
+		if (error != SD_OK) 
 		{
 			MCIDataCtrl = 0;
-			dma_channel_disable(dma);
 #ifdef DEBUG
 			_debug(error);
 #endif
 		}
+		// FIXME: Wait dma end
+		dma_channel_disable(dma);
 		return error;
 	}
 	kernel_panic(KERNEL_ERROR_NO_HARDWARE_RESOURCES);

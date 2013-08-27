@@ -19,7 +19,7 @@ int hal_can_initialize(int module, int bitrate)
 	// obtain a 12MHz CAN clock
 	unsigned long bit_clock = bitrate * 12;  
 	int brp = SystemCoreClock / bit_clock;
-	if ((SystemCoreClock % 12000000) != 0) return 0;	 // clock must be exact
+	if ((SystemCoreClock % bit_clock) != 0) return 0;	 // clock must be exact
 	_can->BT = C_CANBT_F((brp - 1), 1, 8, 1);  // BRP, SJW, TSEG1, TSEG2		
 	_can->BRPE = 0;
 		

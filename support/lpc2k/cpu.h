@@ -87,6 +87,9 @@ extern LPC_SC_TypeDef *LPC_SC;
 
 #define CCLKCFG_CCLKSEL_MASK 0x000000FF
 
+#define SCS_GPIOM	0x00000001
+#define SCS_MCIPWR	0x00000008
+
 typedef struct
 {
 	unsigned PCLK_WDT:2;

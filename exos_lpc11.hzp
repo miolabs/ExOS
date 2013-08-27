@@ -38,11 +38,17 @@
           </folder>
         </folder>
       </folder>
-      <file file_name="main.c"/>
       <folder Name="support">
         <folder Name="lpc11" file_name="">
           <file file_name="support/lpc11/c_can.c"/>
           <file file_name="support/lpc11/ssp.c"/>
+        </folder>
+      </folder>
+      <folder Name="tests">
+        <folder Name="platform">
+          <folder Name="lpc11">
+            <file file_name="tests/platform/lpc11/lpc11_test.c"/>
+          </folder>
         </folder>
       </folder>
     </folder>
@@ -65,4 +71,7 @@
   <configuration Name="MioRelay1 Release" inherited_configurations="Flash;MioRelay1;Release;THUMB"/>
   <configuration Name="MioRelay1 Debug" inherited_configurations="Debug;Flash;MioRelay1;THUMB"/>
   <configuration Name="Common" c_preprocessor_definitions="__EXOS__;EXOS_NO_NET;MAIN_THREAD_STACK=512;MAIN_THREAD_PRI=0"/>
+  <configuration Name="MioBMSv0.1" c_preprocessor_definitions="BOARD_BMS01" hidden="Yes"/>
+  <configuration Name="MioBMSv0.1 Debug" inherited_configurations="Debug;Flash;MioBMSv0.1;THUMB"/>
+  <configuration Name="MioBMSv0.1 Release" inherited_configurations="Flash;MioBMSv0.1;Release;THUMB"/>
 </solution>

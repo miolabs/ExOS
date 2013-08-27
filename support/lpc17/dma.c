@@ -2,6 +2,7 @@
 // by Miguel Fides
 
 #include "dma.h"
+#include <kernel/machine/hal.h>
 
 static DMA_CHANNEL *_channels[DMA_CHANNEL_COUNT] = { 
 	(DMA_CHANNEL *)LPC_GPDMACH0_BASE, (DMA_CHANNEL *)LPC_GPDMACH1_BASE, 
@@ -40,7 +41,7 @@ int dma_alloc_channels(int *array, int length)
 	int done = 0;
 	for(int ch = 0; ch < DMA_CHANNEL_COUNT; ch++)
 	{
-		if (cpu_trylock(&_allocated[ch], 1))
+		if (__machine_trylock(&_allocated[ch], 1))
 		{
 			array[done++] = ch;
 			if (done == length) return 1;
@@ -49,7 +50,7 @@ int dma_alloc_channels(int *array, int length)
 	while(done > 0)
 	{
 		int ch = array[done];
-		cpu_unlock(&_allocated[ch]);
+		__machine_unlock(&_allocated[ch]);
 	}
 	return 0;
 }
@@ -57,7 +58,7 @@ int dma_alloc_channels(int *array, int length)
 void dma_free_channel(int ch)
 {
 	dma_channel_disable(ch);
-	cpu_unlock(&_allocated[ch]);
+	__machine_unlock(&_allocated[ch]);
 }
 
 void GPDMA_IRQHandler()

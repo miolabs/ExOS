@@ -3,12 +3,18 @@
 
 #include <kernel/types.h>
 
+#ifndef __dma
+#define __dma __attribute__((__section__(".dma")))
+#endif
+
 extern const void *__machine_process_start;
 
 void __machine_init();
 void __machine_req_switch();
 void __machine_idle();
 void *__machine_init_thread_stack(void *stack_end, unsigned long arg, unsigned long pc, unsigned long lr);
+int __machine_trylock(unsigned char *lock, unsigned char value);
+void __machine_unlock(unsigned char *lock);
 
 void __mem_copy(void *start, void *stop, const void *source);
 void __mem_set(void *start, void *stop, unsigned char stuff_byte); 

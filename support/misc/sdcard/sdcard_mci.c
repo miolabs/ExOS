@@ -110,7 +110,7 @@ SD_ERROR sd_hw_read_blocks(unsigned long addr, unsigned long count, unsigned cha
 	int done = 0;
 	SD_ERROR error1, error2;
 	error1 = hal_mci_send_cmd(18, addr, MCI_WAIT_RESPONSE | MCI_WAIT_CRC | MCI_WAIT_CMD);	// CMD18: READ_MULTIPLE_BLOCK
-	if (error1 == MCI_OK)
+	if (error1 == SD_OK)
 	{
 		error1 = hal_mci_read_data_blocks(buf, count, MCI_BLOCK_512);
 		error2 = hal_mci_send_cmd(12, 0, MCI_WAIT_RESPONSE | MCI_WAIT_CRC | MCI_WAIT_CMD);

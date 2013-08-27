@@ -12,9 +12,11 @@ static int _setup_mat(int unit);
 static int _setup_can(int unit);
 static int _setup_uart(int unit);
 static int _setup_adc(int unit);
+static int _setup_mci(int unit);
 
 void hal_board_initialize()
 {
+	LPC_SC->SCS |= SCS_GPIOM;
 	dma_initialize();
 
 #if defined BOARD_EA2478_MOD
@@ -33,7 +35,10 @@ void hal_board_initialize()
 	LPC_GPIO3->FIODIR |= (1<<18);	// GPS_LED
 	hal_led_set(LED_GPS, 0);
 	LPC_GPIO4->FIODIR |= (1<<31);	// USB_LED
-	hal_led_set(LED_USB, 0);	
+	hal_led_set(LED_USB, 0);
+#elif defined BOARD_ICDEV_LPC2478
+	LPC_GPIO0->FIODIR |= (1<<13);	// USB_LED
+	hal_led_set(LED_USB, 0);
 #else
 #error Unsupported Board
 #endif
@@ -53,6 +58,7 @@ int hal_board_init_pinmux(HAL_RESOURCE res, int unit)
 		case HAL_RESOURCE_CAN:		return _setup_can(unit);
 		case HAL_RESOURCE_UART:		return _setup_uart(unit);
 		case HAL_RESOURCE_ADC:		return _setup_adc(unit);
+		case HAL_RESOURCE_MCI:		return _setup_mci(unit);
 	}
 	return 0;
 }
@@ -234,6 +240,22 @@ static int _setup_adc(int unit)
 	return ch_mask;
 }
 
+static int _setup_mci(int unit)
+{
+#if defined BOARD_ICDEV_LPC2478
+	PINSEL2bits.P1_2 = 2; // MCICLK
+	PINSEL2bits.P1_3 = 2; // MCICMD
+	PINSEL2bits.P1_5 = 2; // MCIPWR
+	PINSEL2bits.P1_6 = 2; // MCIDAT0
+	PINSEL2bits.P1_7 = 2; // MCIDAT1
+	PINSEL2bits.P1_11 = 2; // MCIDAT2
+	PINSEL2bits.P1_12 = 2; // MCIDAT3
+	LPC_SC->SCS &= ~SCS_MCIPWR; // MCIPWR Active Low
+	return 1;
+#endif
+	return 0;
+}
+
 #if defined BOARD_EA2478_MOD
 void hal_led_set(HAL_LED led, int state)
 {
@@ -299,7 +321,19 @@ void hal_led_set(HAL_LED led, int state)
 }
 #endif
 
-
+#if defined BOARD_ICDEV_LPC2478
+void hal_led_set(HAL_LED led, int state)
+{
+	switch(led)
+	{
+		case LED_USB:
+		case 0:
+			if (state) LPC_GPIO0->FIOCLR = (1<<13);
+			else LPC_GPIO0->FIOSET = (1<<13);
+			break;
+	}
+}
+#endif
 
 
 
