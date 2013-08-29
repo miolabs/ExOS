@@ -9,7 +9,8 @@ typedef enum
 	XCPU_DRIVE_MODE_SOFT = 0,
 	XCPU_DRIVE_MODE_ECO,
 	XCPU_DRIVE_MODE_RACING,
-	XCPU_DRIVE_MODE_CUSTOM
+	XCPU_DRIVE_MODE_CUSTOM,
+	XCPU_DRIVE_MODE_COUNT
 } XCPU_DRIVE_MODE;
 
 typedef struct 
@@ -28,6 +29,15 @@ typedef struct
 	unsigned short drive_mode;			// XCPU_DRIVE_MODE
 	unsigned long  reserved2;	
 } XCPU_MASTER_OUT2;
+
+typedef struct __attribute__((__packed__))
+{
+	unsigned char Cmd;	// XCPU_COMMANDS
+	union __attribute__((__packed__))
+	{
+		unsigned char Data[7]; 
+	};
+} XCPU_MASTER_INPUT2;
 
 typedef struct
 {
@@ -62,21 +72,20 @@ typedef enum
 	XCPU_EVENT_ADJUST_DOWN = (1<<1),
 	XCPU_EVENT_SWITCH_UNITS = (1<<2),
 	XCPU_EVENT_ADJUST_THROTTLE = (1<<3),
-	XCPU_EVENT_ADJUST_DRIVE_MODE = (3<<4),	// 1-3
+	XCPU_EVENT_TURN_ON = (1<<4),
+	XCPU_EVENT_TURN_OFF = (1<<5),
 	XCPU_EVENT_SWITCH_LIGHTS = (1<<6),
-	XCPU_EVENT_CONFIGURING = (1<<7), 
+	XCPU_EVENT_CONFIGURING = (1<<7),
 } XCPU_EVENTS;
 
 typedef enum
 {
-	XCPU_IOS_EVENT_POWER_ON = (1<<0),
-	XCPU_IOS_EVENT_POWER_OFF = (1<<1),
-	XCPU_IOS_EVENT_ADJUST_DRIVE_MODE= (1<<2),
-	XCPU_IOS_EVENT_SET_CURVE = (1<<3),
-} XCPU_IPHONE_EVENTS;
-
-#define XCPU_EVENT_ADJUST_DRIVE_MODE_SHIFT (4)
-
+	XCPU_CMD_NOP = 0,
+	XCPU_CMD_POWER_ON,
+	XCPU_CMD_POWER_OFF,
+	XCPU_CMD_SET_DRIVE_MODE,
+	XCPU_CMD_SET_CURVE,
+} XCPU_COMMANDS;
 
 
 #endif // XCPU_H

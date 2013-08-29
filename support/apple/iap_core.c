@@ -38,7 +38,7 @@ void iap_core_initialize()
 	list_initialize(&_busy_requests_list);
 
 	exos_fifo_create(&_free_cmds_fifo, NULL);
-	for(int i = 0; i < IAP_MAX_PENDING_REQUESTS; i++)
+	for(int i = 0; i < IAP_MAX_INCOMING_COMMANDS; i++)
 	{
 		IAP_CMD_NODE *cmd_node = &_incoming_cmds[i];
 		exos_fifo_queue(&_free_cmds_fifo, (EXOS_NODE *)cmd_node);

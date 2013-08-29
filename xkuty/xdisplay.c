@@ -346,7 +346,7 @@ void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 				_print_small("Eco", -1, _hei[1]);
 				_print_small("Racing", -1, _hei[2]);
                 if (_frame_dumps & 0x8)
-					_print_small(">>", 24, _hei[_adj_drive_mode]);
+					_print_small(">>", 24, _hei[dash->CurrentConfig.DriveMode]);
 			}
 			break;
 	}

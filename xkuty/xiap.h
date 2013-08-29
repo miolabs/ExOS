@@ -33,6 +33,6 @@ typedef enum
     IOS_COMMAND_SET_CUSTOM_CURVE = 4
 } IOS_COMMANDS;
 
-int xiap_get_frame(XIAP_FRAME_FROM_IOS *fromIOS);
+int xiap_get_frame(XIAP_FRAME_FROM_IOS *frame);
 
 #endif // XKUTY_IAP_H

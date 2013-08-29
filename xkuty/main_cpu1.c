@@ -50,60 +50,61 @@ static enum
         CONTROL_CRUISE,
 } _control_state;
 static XCPU_STATE _state; // comm state to share (with lcd)
+static XCPU_DRIVE_MODE _drive_mode = XCPU_DRIVE_MODE_SOFT;
 
 typedef struct 
 {
 	unsigned char  buttons;
 	unsigned char  events;
-	unsigned char  throttle;
+	unsigned char  throttle_raw;
 	unsigned char  brake_rear, brake_front;
 	unsigned char  throttle_adj_min, throttle_adj_max;
-	unsigned char  ios_events;
-	unsigned char  ios_drive_mode;
-} CAN_INPUT;
+} XLCD_INPUT;
 
-static CAN_INPUT _c_i = {0,0,0,0,0,0,0};
+static XLCD_INPUT _lcd = {0,0,0,0,0,0,0};
 
-static void _read_can_messages ( int drive_mode, float speed)
+static XCPU_EVENTS _do_lcd_command(XCPU_MASTER_INPUT2 *input)
 {
-	XCPU_MSG *xmsg;
-	while(NULL != (xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0)))
+	switch(input->Cmd)
 	{
+		case XCPU_CMD_POWER_ON:		return XCPU_EVENT_TURN_ON;
+		case XCPU_CMD_POWER_OFF:	return XCPU_EVENT_TURN_OFF;
+		case XCPU_CMD_SET_DRIVE_MODE:
+			_drive_mode = input->Data[0];
+			break;
+	}
+	return 0;
+}
+
+static XCPU_EVENTS _read_can_messages()
+{
+	XCPU_EVENTS cmd_events = 0;
+	XCPU_MSG *xmsg;
+	while(xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0), xmsg != NULL)
+	{
+		CAN_BUFFER *data = &xmsg->CanMsg.Data;
 		switch (xmsg->CanMsg.EP.Id)
 		{
 			case 0x200:
-			{
-				CAN_BUFFER *data = &xmsg->CanMsg.Data;
-				_c_i.buttons = data->u8[0];
-				unsigned int throttle_raw = data->u8[1] | ( data->u8[2] << 8);
-				_c_i.brake_rear = data->u8[3];
-				_c_i.brake_front = data->u8[4];
-				_c_i.throttle_adj_min = data->u8[5];
-				_c_i.throttle_adj_max = data->u8[6];
-				_c_i.events = data->u8[7];
-
-				int curve_in = (int)(4096.f * (speed / (float) MAX_SPEED));
-				int throttle_factor = get_curve_value ( curve_in, drive_mode ) >> 4;
-				_c_i.throttle = ( throttle_raw * throttle_factor) >> 12;
-				//_c_i.throttle = get_curve_value ( throttle_raw, drive_mode ) >> 4;
-			}
-			break;
+				_lcd.buttons = data->u8[0];
+				_lcd.throttle_raw = data->u8[1] | ( data->u8[2] << 8);
+				_lcd.brake_rear = data->u8[3];
+				_lcd.brake_front = data->u8[4];
+				_lcd.throttle_adj_min = data->u8[5];
+				_lcd.throttle_adj_max = data->u8[6];
+				_lcd.events = data->u8[7];
+				break;
 
 			case 0x201:
-			{
-				CAN_BUFFER *data = &xmsg->CanMsg.Data;
-				_c_i.ios_events = data->u8[0];
-				_c_i.ios_drive_mode = data->u8[1];	// Multiplexed with custom curve val0
-			}
-			break;
+				cmd_events |= _do_lcd_command((XCPU_MASTER_INPUT2 *)data);
+				break;
 		}
-
-
 		exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
 	}
+	return cmd_events;
 }
 
-static void _send_can_messages ( int drive_mode, unsigned int speed, unsigned int distance)
+static void _send_can_messages(unsigned int speed, unsigned int distance)
 {
 	CAN_BUFFER buf;
 
@@ -111,7 +112,7 @@ static void _send_can_messages ( int drive_mode, unsigned int speed, unsigned in
 	buf.u32[1] = 0;
 	buf.u8[0]  = _storage.ThrottleAdjMin;
 	buf.u8[1]  = _storage.ThrottleAdjMax;
-	buf.u16[1] = drive_mode;
+	buf.u16[1] = _drive_mode;
 	hal_can_send((CAN_EP) { .Id = 0x301 }, &buf, 8, CANF_NONE);
 
 	int batt = hal_adc_read(1);	// Battery voltage = Input adc / BATT_VOLTAGE_RATIO
@@ -134,14 +135,9 @@ static void _send_can_messages ( int drive_mode, unsigned int speed, unsigned in
 }
 
 
-typedef struct
-{
-	float dt2, speed, dt, ratio, s_partial;
-} SPEED_DATA;
+typedef struct { float speed, dt, ratio, s_partial; } SPEED_DATA;
 
-static SPEED_DATA _sp = { 0.0f, 0.0f,  0.0f,  0.0f,  0.0f};
-
-static void _speed_calculation ( SPEED_DATA* sp, int mag_miles, float wheel_ratio_adjust)
+static void _speed_calculation(SPEED_DATA* sp, int mag_miles, float wheel_ratio_adjust)
 {
 	static int 	speed_wait = 0;
 	float dt2 = 0;
@@ -177,8 +173,8 @@ typedef struct
 	unsigned char mode;
 	unsigned char adj;
 	unsigned char lights;
-	unsigned char ios_power_on, ios_power_off;
-	unsigned char ios_mode;
+//	unsigned char ios_power_on, ios_power_off;
+//	unsigned char ios_mode;
 } PUSH_CNT;
 
 
@@ -188,10 +184,10 @@ void main()
 	hal_pwm_initialize(PWM_TIMER_MODULE, PWM_RANGE - 1, 200000);
 	hal_pwm_set_output(PWM_TIMER_MODULE, 0, 1025);
 
-	hal_adc_initialize(1000,16);
+	hal_adc_initialize(1000, 16);
 
-	PUSH_CNT      push = { 0,0,0,0,0,0,0,0,0,0,0,0};
-
+	PUSH_CNT push = { };
+	SPEED_DATA sp = { .speed = 0 };
 	speed_initialize();
 	_pid_k = (PID_K) { .P = 5, .I = 5, .CMin = 0, .CMax = 255 };
 
@@ -216,8 +212,6 @@ void main()
 	xcpu_board_output(_output_state);
 #endif
 
-	XCPU_DRIVE_MODE drive_mode = XCPU_DRIVE_MODE_SOFT;
-
 	unsigned char led = 0;
         
 	if (!persist_load(&_storage))
@@ -239,116 +233,116 @@ void main()
 	{
 		exos_timer_wait(&_timer);
 
-		_read_can_messages ( drive_mode, _sp.speed);
+		XCPU_EVENTS events = _read_can_messages();
+		events |= _lcd.events;
+
+		int curve_in = (int)(4096.f * (sp.speed / (float) MAX_SPEED));
+		int throttle_factor = get_curve_value(curve_in, _drive_mode) >> 4;
+		unsigned char throttle = (_lcd.throttle_raw * throttle_factor) >> 12;
 
 		// read sensors
-		_speed_calculation ( &_sp, (_state & XCPU_STATE_MILES) ? 1:0, (float)_storage.WheelRatioAdj);
-
-		int space = speed_read(&_sp.dt2);
+		_speed_calculation (&sp, (_state & XCPU_STATE_MILES) ? 1:0, (float)_storage.WheelRatioAdj);
 
 		switch(_control_state)
 		{
 			case CONTROL_OFF:
 				_output_state = OUTPUT_NONE;
-				if (_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push.start, 10) ||
-					(_push_delay(_c_i.ios_events & XCPU_IOS_EVENT_POWER_ON, &push.ios_power_on, 5)))
+				if ((events & XCPU_EVENT_TURN_ON) ||
+					_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push.start, 10))
 				{
 					_control_state = CONTROL_ON;
 					_state = (_storage.ConfigBits & XCPU_CONFIGF_MILES) ? XCPU_STATE_ON | XCPU_STATE_MILES : XCPU_STATE_ON;
 					_state |= XCPU_STATE_NEUTRAL;
-					drive_mode = ( _storage.ConfigBits & XCPU_CONFIGG_DRIVE_MODE) >> XCPU_CONFIGG_DRIVE_MODE_SHIFT;
+					_drive_mode = ( _storage.ConfigBits & XCPU_CONFIGG_DRIVE_MODE) >> XCPU_CONFIGG_DRIVE_MODE_SHIFT;
 					_run_diag();
 				}
 				break;
 			case CONTROL_CRUISE:
 				{
-					int input_throttle = _c_i.throttle;
-					_c_i.throttle = pid(&_pid, _sp.speed, &_pid_k, 0.05F);
-					if (_c_i.throttle > 250)
+					int input_throttle = throttle;
+					throttle = pid(&_pid, sp.speed, &_pid_k, 0.05F);
+					if (throttle > 250)
 					{
-						_c_i.throttle--;
+						throttle--;
 					}
-					int release = ( input_throttle - _c_i.throttle) > 20;
-					release |= (_output_state & OUTPUT_BRAKEL); 
-					// Regenerative brake, because throttle is strongly reduced
-					//if (( input_throttle - _c_i.throttle) < -20)
-					//	_output_state |= OUTPUT_BRAKEL;
 
-					if ( release)
+					if (input_throttle > (throttle + 20) ||
+						(_output_state & OUTPUT_BRAKEL))
 					{
 						_control_state = CONTROL_ON;
 						_state &= ~XCPU_STATE_CRUISE_ON;
 					}
 				}
+				// NOTE: case fall down
 			case CONTROL_ON:
 				_output_state = _default_output_state;
-				if (_c_i.brake_rear > BRAKE_THRESHOLD || _c_i.brake_front > BRAKE_THRESHOLD)
+				if (_lcd.brake_rear > BRAKE_THRESHOLD || _lcd.brake_front > BRAKE_THRESHOLD)
 				{
 					_output_state |= OUTPUT_BRAKEL;
                     //  Rear brake disables throttling
-					int dis_throttle = _c_i.brake_front > BRAKE_THRESHOLD;
-					if ( drive_mode != XCPU_DRIVE_MODE_RACING)
-						dis_throttle |= _c_i.brake_rear > BRAKE_THRESHOLD;
-					if ( dis_throttle)
+					int dis_throttle = _lcd.brake_front > BRAKE_THRESHOLD;
+					if (_drive_mode != XCPU_DRIVE_MODE_RACING)
+						dis_throttle |= _lcd.brake_rear > BRAKE_THRESHOLD;
+					if (dis_throttle)
 					{
 						_output_state |= OUTPUT_EBRAKE;
-						_c_i.throttle = 0;
+						throttle = 0;
 					}
 				}
 
-				if (_push_delay(_c_i.events & XCPU_EVENT_SWITCH_LIGHTS, &push.lights, 5))
+				if (_push_delay(_lcd.events & XCPU_EVENT_SWITCH_LIGHTS, &push.lights, 5))
 					if ( _default_output_state == OUTPUT_NONE)
 						_default_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
 					else
 						_default_output_state = OUTPUT_NONE;
 		
-				if ((_c_i.buttons & XCPU_BUTTON_HORN) && !(_c_i.events & XCPU_EVENT_CONFIGURING))
+				if ((_lcd.buttons & XCPU_BUTTON_HORN) && !(_lcd.events & XCPU_EVENT_CONFIGURING))
 					_output_state |= OUTPUT_HORN;
 
-				if (_push_delay(_c_i.events & XCPU_EVENT_ADJUST_UP, &push.up, 5) &&
+				if (_push_delay(_lcd.events & XCPU_EVENT_ADJUST_UP, &push.up, 5) &&
 					_storage.WheelRatioAdj < 10)
 				{
 					_storage.WheelRatioAdj++;
 				}
-				if (_push_delay(_c_i.events & XCPU_EVENT_ADJUST_DOWN, &push.down, 5) &&
+				if (_push_delay(_lcd.events & XCPU_EVENT_ADJUST_DOWN, &push.down, 5) &&
 					_storage.WheelRatioAdj > -10)
 				{
 					_storage.WheelRatioAdj--;
 				}
-				if (_push_delay(_c_i.events & XCPU_EVENT_SWITCH_UNITS, &push.swtch, 5))
+				if (_push_delay(_lcd.events & XCPU_EVENT_SWITCH_UNITS, &push.swtch, 5))
 				{
 					_state ^= XCPU_STATE_MILES;
 				}
 
-				if (_push_delay( _c_i.events & XCPU_EVENT_ADJUST_DRIVE_MODE, &push.mode, 5))
+//				if (_push_delay(_lcd.events & XCPU_EVENT_ADJUST_DRIVE_MODE, &push.mode, 5))
+//				{
+//					drive_mode = (_lcd.events & XCPU_EVENT_ADJUST_DRIVE_MODE) >> XCPU_EVENT_ADJUST_DRIVE_MODE_SHIFT;
+//					drive_mode--;
+//				}
+
+//				if ( _push_delay( _c_i.ios_events & XCPU_IOS_EVENT_ADJUST_DRIVE_MODE, &push.ios_mode, 5))
+//				{
+//					drive_mode = _c_i.ios_drive_mode;
+//				}
+
+				if (_push_delay(_lcd.events & XCPU_EVENT_ADJUST_THROTTLE, &push.adj, 5))
 				{
-					drive_mode = (_c_i.events & XCPU_EVENT_ADJUST_DRIVE_MODE) >> XCPU_EVENT_ADJUST_DRIVE_MODE_SHIFT;
-					drive_mode--;
+					_storage.ThrottleAdjMin = _lcd.throttle_adj_min;
+					_storage.ThrottleAdjMax = _lcd.throttle_adj_max;
 				}
 
-				if ( _push_delay( _c_i.ios_events & XCPU_IOS_EVENT_ADJUST_DRIVE_MODE, &push.ios_mode, 5))
+				if (_push_delay(_lcd.buttons & XCPU_BUTTON_CRUISE, &push.cruise, 5))
 				{
-					drive_mode = _c_i.ios_drive_mode;
-				}
-
-				if (_push_delay( _c_i.events & XCPU_EVENT_ADJUST_THROTTLE, &push.adj, 5))
-				{
-					_storage.ThrottleAdjMin = _c_i.throttle_adj_min;
-					_storage.ThrottleAdjMax = _c_i.throttle_adj_max;
-				}
-
-				if (_push_delay(_c_i.buttons & XCPU_BUTTON_CRUISE, &push.cruise, 5))
-				{
-					if ( _sp.speed == 0.0f)	// 0.0f value is forced
+					if (sp.speed == 0.0f)	// 0.0f value is forced
 					{
 						_state ^= XCPU_STATE_NEUTRAL;
 					}
 					else
 					{
-						if ( _sp.speed > 10.0f)
+						if (sp.speed > 10.0f)
 						{
-							_pid.SetPoint = _sp.speed;
-							_pid.Integral = _c_i.throttle / _pid_k.I;
+							_pid.SetPoint = sp.speed;
+							_pid.Integral = throttle / _pid_k.I;
 
 							_state ^= XCPU_STATE_CRUISE_ON;
 							_control_state = _state & XCPU_STATE_CRUISE_ON ? CONTROL_CRUISE : CONTROL_ON;
@@ -356,21 +350,21 @@ void main()
 					}
 				}
 
-				if (_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push.start, 10) ||
-					_push_delay(_c_i.buttons & XCPU_BUTTON_CRUISE, &push.off, 50) ||
-                    _push_delay(_c_i.ios_events & XCPU_BUTTON_CRUISE, &push.ios_power_off, 5))
+				if ((events & XCPU_EVENT_TURN_OFF) ||
+					_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push.start, 10) ||
+					_push_delay(_lcd.buttons & XCPU_BUTTON_CRUISE, &push.off, 50))
 				{
-					if (_sp.speed == 0.0f)  // 0.0f value is forced
+					if (sp.speed == 0.0f)  // 0.0f value is forced
 					{
 						hal_pwm_set_output(PWM_TIMER_MODULE, 0, PWM_RANGE + 1); //      disable pwm
 
-						_storage.TotalSteps += _sp.s_partial;
-						_sp.s_partial = 0;
+						_storage.TotalSteps += sp.s_partial;
+						sp.s_partial = 0;
 						_storage.ConfigBits = XCPU_CONFIGF_NONE;
 						if (_state & XCPU_STATE_MILES) 
 							_storage.ConfigBits |= XCPU_CONFIGF_MILES;
 
-						_storage.ConfigBits |= drive_mode << XCPU_CONFIGG_DRIVE_MODE_SHIFT;
+						_storage.ConfigBits |= _drive_mode << XCPU_CONFIGG_DRIVE_MODE_SHIFT;
 
 						persist_save(&_storage);
 
@@ -388,7 +382,7 @@ void main()
 				if (_control_state != CONTROL_OFF)
 				{
 					unsigned char th_lim = (_state & XCPU_STATE_NEUTRAL) ? 0 
-							: MOTOR_OFFSET + (( _c_i.throttle * MOTOR_RANGE) >> 8);
+							: MOTOR_OFFSET + ((throttle * MOTOR_RANGE) >> 8);
 					int pwm_val = PWM_RANGE - ((th_lim * PWM_RANGE) >> 8);
 					hal_pwm_set_output(PWM_TIMER_MODULE, 0, pwm_val);
 				}
@@ -397,8 +391,8 @@ void main()
 
 			xcpu_board_led(led = !led);     // toggle led
 
-			float dist = (((_storage.TotalSteps + _sp.s_partial) * ( _sp.ratio / 3.6f)) / 100);
-			_send_can_messages ( drive_mode, (unsigned int)_sp.speed, (unsigned long)dist);
+			float dist = (((_storage.TotalSteps + sp.s_partial) * (sp.ratio / 3.6f)) / 100);
+			_send_can_messages((unsigned int)sp.speed, (unsigned long)dist);
 
 			xcpu_board_output(_output_state);
         }

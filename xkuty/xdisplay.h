@@ -36,6 +36,7 @@ typedef struct {
 	unsigned long Distance;
 	int battery_level_fx8;
 	DASH_CONFIG ActiveConfig;
+	DASH_CONFIG CurrentConfig;
 	int CurrentMenuOption;
 } DASH_DATA;
 
