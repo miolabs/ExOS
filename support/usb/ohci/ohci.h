@@ -274,6 +274,7 @@ void ohci_host_clear_hctd_iso(OHCI_HCTD_ISO *isotd);
 int ohci_init_hctd_iso(OHCI_HCTD_ISO *itd, int sf, void *buffer, int length, int packet_size);
 
 void ohci_schedule_remove_hced(OHCI_HCED *hced);
+void ohci_schedule_pause_hced(OHCI_HCED *hced, int pause);
 unsigned short ohci_get_current_frame();
 
 #endif // OHCI_H

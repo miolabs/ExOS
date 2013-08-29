@@ -67,7 +67,7 @@ void ohci_pipe_remove(USB_HOST_PIPE *pipe)
 
 	sed->Pipe = NULL;
 
-	ohci_schedule_remove_hced(&sed->HCED);
+//	ohci_schedule_remove_hced(&sed->HCED);
 }
 
 
@@ -202,13 +202,25 @@ int ohci_remove_std(USB_REQUEST_BUFFER *urb)
 #endif
 	
 	USB_HOST_PIPE *pipe = urb->Pipe;
+	OHCI_SED *sed = (OHCI_SED *)pipe->Endpoint;
+	
 	int removed = 0;
-
-	// TODO
-	// pause HCED and wait SOF
+//	ohci_schedule_pause_hced(&sed->HCED, 1);
 	// remove HCTD
-	// resume HCED
-
+	OHCI_HCTD *first = NULL;
+	OHCI_HCTD **ptd = (OHCI_HCTD **)&sed->HCED.HeadTD;
+    OHCI_HCTD *hctd;
+	while(hctd = (OHCI_HCTD *)((unsigned long)*ptd & 0xFFFFFFF0), hctd != sed->HCED.TailTD)
+	{
+		if (hctd == &std->HCTD)
+		{
+			*ptd = std->HCTD.Next;
+			std->HCTD.Next = first;
+			first = &std->HCTD;
+			break;
+		}
+	}
+//	ohci_schedule_pause_hced(&sed->HCED, 0);
 	return removed;
 }
 

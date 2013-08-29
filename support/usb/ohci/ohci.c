@@ -7,6 +7,7 @@
 // Host Controller Communications Area (must be 256-aligned)
 static volatile OHCI_HCCA _hcca __usb __attribute__((aligned(256)));
 static OHCI_SYNC_NODE *_rem_head = NULL;
+static OHCI_SYNC_NODE *_pause_head = NULL;
 static void _soft_reset();
 
 int ohci_initialize()
@@ -174,9 +175,14 @@ void ohci_isr()
 			while(_rem_head != NULL)
 			{
 				// TODO: remove HCED
-
 				exos_event_set(&_rem_head->Done);
 				_rem_head = _rem_head->Next;
+			}
+			while(_pause_head != NULL)
+			{
+				// TODO: pause HCED
+				exos_event_set(&_pause_head->Done);
+				_pause_head = _pause_head->Next;
 			}
 			_hc->InterruptDisable = OHCIR_INTR_ENABLE_SF;
 		}
@@ -186,29 +192,44 @@ void ohci_isr()
 	}      
 }
 
-void ohci_schedule_remove_hced(OHCI_HCED *hced)
-{
-	OHCI_SYNC_NODE node;
-	node.HCED = hced;
-	exos_event_create(&node.Done);
+//static void _add_sync_node(OHCI_SYNC_NODE **pptr, OHCI_SYNC_NODE *node)
+//{
+//	_hc->InterruptStatus = OHCIR_INTR_STATUS_SF;
+//
+//	OHCI_SYNC_NODE *i;
+//	while((i = *pptr) != NULL)
+//		pptr = &i->Next;
+//	node->Next = *pptr;
+//	*pptr = node;
+//
+//	_hc->InterruptEnable = OHCIR_INTR_ENABLE_SF;
+//}
 
-	_hc->InterruptStatus = OHCIR_INTR_STATUS_SF;
-
-	OHCI_SYNC_NODE **pptr = &_rem_head;
-	OHCI_SYNC_NODE *i;
-	while((i = *pptr) != NULL)
-		pptr = &i->Next;
-	node.Next = *pptr;
-	*pptr = &node;
-	
-	_hc->InterruptEnable = OHCIR_INTR_ENABLE_SF;
-
-	exos_event_wait(&node.Done, EXOS_TIMEOUT_NEVER);
-}
+//void ohci_schedule_remove_hced(OHCI_HCED *hced)
+//{
+//	OHCI_SYNC_NODE node;
+//	node.HCED = hced;
+//	exos_event_create(&node.Done);
+//	_add_sync_node(&_rem_head, &node);
+//	exos_event_wait(&node.Done, EXOS_TIMEOUT_NEVER);
+//}
+//
+//void ohci_schedule_pause_hced(OHCI_HCED *hced, int pause)
+//{
+//	OHCI_SYNC_NODE node;
+//	node.HCED = hced;
+//	exos_event_create(&node.Done);
+//	_add_sync_node(&_pause_head, &node);
+//	exos_event_wait(&node.Done, EXOS_TIMEOUT_NEVER);	
+//}
 
 unsigned short ohci_get_current_frame()
 {
 	return _hc->FmNumber;
 }
 
+void ohci_wait_sof()
+{
+//	exos_event_wait(&_sof_event);
+}
 

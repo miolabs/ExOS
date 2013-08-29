@@ -17,6 +17,7 @@ static int _function_busy = 0;
 static EXOS_THREAD _thread;
 static unsigned char _stack[THREAD_STACK] __attribute__((aligned(16)));
 static void *_service(void *arg);
+static EXOS_EVENT _exit_event;
 
 #ifndef HID_MAX_REPORT_DESCRIPTOR_SIZE
 #define HID_MAX_REPORT_DESCRIPTOR_SIZE 128
@@ -251,12 +252,16 @@ static void _start(USB_HOST_FUNCTION *usb_func)
 
 	usb_host_start_pipe(&func->InputPipe);
 
+	exos_event_create(&_exit_event);
 	exos_thread_create(&_thread, 0, _stack, THREAD_STACK, NULL, _service, func);
 }
 
 static void _stop(USB_HOST_FUNCTION *usb_func)
 {
 	HID_FUNCTION *func = (HID_FUNCTION *)usb_func;
+
+	exos_event_set(&_exit_event);
+	exos_thread_join(&_thread);
 
 	// TODO: stop thread:
 	// setup a non zero timeout in thread loop -> urb timeout support 

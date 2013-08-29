@@ -7,7 +7,7 @@
 #define DISPH (64)
 
 #ifndef LCD_ST7565R_FIRST_ROW
-#define LCD_ST7565R_FIRST_ROW 4
+#define LCD_ST7565R_FIRST_ROW 0
 #endif
 
 static unsigned char _scrrot [(DISPW*DISPH)/8];
