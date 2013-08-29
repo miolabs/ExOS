@@ -115,7 +115,7 @@ static void _send_can_messages(unsigned int speed, unsigned int distance)
 	buf.u16[1] = _drive_mode;
 	hal_can_send((CAN_EP) { .Id = 0x301 }, &buf, 8, CANF_NONE);
 
-	int batt = hal_adc_read(1);	// Battery voltage = Input adc / BATT_VOLTAGE_RATIO
+	int batt = hal_adc_read(1) >> 6;	// Battery voltage = Input adc / BATT_VOLTAGE_RATIO
 	const int bot = (int)(3.5f * 13.0f * BATT_VOLTAGE_RATIO);	// Discharged level 3.5v
 	const int top = (int)(4.0f * 13.0f * BATT_VOLTAGE_RATIO); // Charged value 4.0v
 	batt = ((batt - bot) * (0x10000 / (top - bot))) >> 8;
