@@ -50,6 +50,7 @@ __init __naked void Reset_Handler()
 
 __init __naked void Default_Handler()
 {
+	__machine_reset();
 	while(1);
 }
 

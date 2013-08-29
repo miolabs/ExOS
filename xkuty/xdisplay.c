@@ -337,14 +337,16 @@ void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 
 		case ST_ADJUST_DRIVE_MODE:
 			{
-				const char _hei[] = { 30, 45, 60 };
+				const char _hei[] = { 30, 40, 50, 60 };
 				const EVREC_CHECK speed_adj_exit[]= { { CRUISE_MASK, CHECK_RELEASE }, { 0x00000000, CHECK_END } };
 				const EVREC_CHECK mode_adj[]= { { BRAKE_FRONT_MASK, CHECK_RELEASE }, { 0x00000000, CHECK_END } };
 				int anm = (_frame_dumps & 0x7) >> 2;
 				_print_small("DRIVE MODES", -1, 14);
 				_print_small("Soft", -1, _hei[0]);
 				_print_small("Eco", -1, _hei[1]);
-				_print_small("Racing", -1, _hei[2]);
+				_print_small("Racing", -1, _hei[2]);				
+				_print_small("Custom", -1, _hei[3]);
+
                 if (_frame_dumps & 0x8)
 					_print_small(">>", 24, _hei[dash->CurrentConfig.DriveMode]);
 			}

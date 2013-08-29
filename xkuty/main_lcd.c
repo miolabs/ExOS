@@ -185,6 +185,7 @@ static void	_get_iphone_messages()
 		case IOS_COMMAND_ADJUST_DRIVE_MODE:
 			cmd_out.Cmd = XCPU_CMD_SET_DRIVE_MODE;
 			cmd_out.Data[0] = frame.Data[0];
+            cmd_resend_cnt = RESEND_COUNTER;
 			break;
 	}
 

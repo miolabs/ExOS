@@ -61,6 +61,7 @@ void iap_core_start()
 static void _warning()
 {
 	hal_led_set(0, 1);
+	__machine_reset();
 }
 #endif
 

@@ -56,7 +56,7 @@ typedef struct
 {
 	unsigned char  buttons;
 	unsigned char  events;
-	unsigned char  throttle_raw;
+	unsigned short  throttle_raw;
 	unsigned char  brake_rear, brake_front;
 	unsigned char  throttle_adj_min, throttle_adj_max;
 } XLCD_INPUT;

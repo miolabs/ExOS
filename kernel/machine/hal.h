@@ -15,6 +15,7 @@ void __machine_idle();
 void *__machine_init_thread_stack(void *stack_end, unsigned long arg, unsigned long pc, unsigned long lr);
 int __machine_trylock(unsigned char *lock, unsigned char value);
 void __machine_unlock(unsigned char *lock);
+void __machine_reset();
 
 void __mem_copy(void *start, void *stop, const void *source);
 void __mem_set(void *start, void *stop, unsigned char stuff_byte); 

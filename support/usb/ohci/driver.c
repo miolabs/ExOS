@@ -3,6 +3,7 @@
 #include <kernel/fifo.h>
 #include <kernel/memory.h>
 #include <kernel/panic.h>
+#include <kernel/machine/hal.h>
 
 static int _ctrl_setup_read(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *in_data, int in_length);
 static int _ctrl_setup_write(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *out_data, int out_length);
@@ -140,6 +141,8 @@ void ohci_device_destroy(int port)
 {
 	exos_mutex_lock(&_mutex);
 	USB_HOST_DEVICE *device = &_devices[port];	// FIXME
+
+	__machine_reset();	// FIXME: DIRTY HACK!
 
 	_stop_pipe(&device->ControlPipe);
 
