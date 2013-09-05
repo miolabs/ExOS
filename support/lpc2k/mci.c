@@ -7,12 +7,15 @@
 #include <support/mci_hal.h>
 #include <support/board_hal.h>
 #include <kernel/panic.h>
+#include <kernel/event.h>
 
 static volatile unsigned long _int_status = 0;
+static EXOS_EVENT _status_event;
 
 void hal_mci_initialize()
 {
 	hal_board_init_pinmux(HAL_RESOURCE_MCI, 0);
+	exos_event_create(&_status_event);
 
 	// peripheral clock selection
 	PCLKSEL1bits.PCLK_MCI = 3; // 0 = CCLK/4 (25MHz @100MHz)
@@ -50,21 +53,20 @@ void MCI_IRQHandler()
 	// a termination flag has been asserted
 	_int_status |= MCIStatus;
 	MCIClear = _int_status & MCIMask0;
-	//mci_set_status();
+	exos_event_set(&_status_event);
 }
 
 static inline void _reset_status()
 {
 	_int_status = 0;
 	MCIClear = MCIStatus & MCIMask0;	// clear static bits in status
-	//mci_reset_status(); // call weak event manager
+	exos_event_reset(&_status_event);
 }
 
 static inline MCI_STATUS_BITS _wait_status()
 {
-	//mci_wait_status();
-	unsigned long bits = MCIStatus | _int_status;
-	return *(MCI_STATUS_BITS *)&bits;
+	exos_event_wait(&_status_event, EXOS_TIMEOUT_NEVER);
+	return *(MCI_STATUS_BITS *)&_int_status;
 }
 
 static SD_ERROR _wait_resp(unsigned char cmd, MCI_WAIT_FLAGS flags)
@@ -196,8 +198,7 @@ SD_ERROR hal_mci_read_data_blocks(unsigned char *buf, int count, MCI_BLOCK_SIZE 
 			_debug(error);
 #endif
 		}
-		// FIXME: Wait dma end
-		dma_channel_disable(dma);
+		dma_free_channel(dma);
 		return error;
 	}
 	kernel_panic(KERNEL_ERROR_NO_HARDWARE_RESOURCES);
@@ -245,8 +246,7 @@ SD_ERROR hal_mci_write_data_blocks(unsigned char *buf, int count, MCI_BLOCK_SIZE
 			_debug(error);
 #endif
 		}
-		// FIXME: Wait dma end
-		dma_channel_disable(dma);
+		dma_free_channel(dma);
 		return error;
 	}
 	kernel_panic(KERNEL_ERROR_NO_HARDWARE_RESOURCES);

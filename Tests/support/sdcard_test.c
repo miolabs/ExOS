@@ -24,11 +24,12 @@ void main()
 	int bl = 0;
 	while(bl < blocks)
 	{
-		int count = (bl + BUFFER_BLOCKS) > size ? size - bl : BUFFER_BLOCKS;
+		int count = (bl + BUFFER_BLOCKS) > blocks ? blocks - bl : BUFFER_BLOCKS;
 		for (int i = 0; i < count; i++)
 			_init_block(&_buffers[i], bl + i);
 		err = sd_write_blocks(bl, count, (unsigned char *)_buffers);
 		if (err != SD_OK) break;
+		bl += count;
 	}
 }
 

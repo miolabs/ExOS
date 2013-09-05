@@ -132,7 +132,7 @@ SD_ERROR sd_hw_write_blocks(unsigned long addr, unsigned long count, unsigned ch
 {
 	int done = 0;
 	SD_ERROR error1, error2;
-	error1 = hal_mci_send_cmd(25, addr, MCI_WAIT_RESPONSE | MCI_WAIT_CRC | MCI_WAIT_CMD);	// CMD25: READ_MULTIPLE_BLOCK
+	error1 = hal_mci_send_cmd(25, addr, MCI_WAIT_RESPONSE | MCI_WAIT_CRC | MCI_WAIT_CMD);	// CMD25: WRITE_MULTIPLE_BLOCK
 	if (error1 == SD_OK)
 	{
 		error1 = hal_mci_write_data_blocks(buf, count, MCI_BLOCK_512);

@@ -127,12 +127,14 @@ SD_ERROR sd_read_blocks(unsigned long block, unsigned long count, unsigned char 
 
 SD_ERROR sd_write_blocks(unsigned long block, unsigned long count, unsigned char *buf)
 {
-	if (_state == SD_CARD_PROGRAMMING)
+	while (_state == SD_CARD_PROGRAMMING || _state == SD_CARD_RECEIVE_DATA)
 	{
 		SD_ERROR status = sd_hw_check_status(&_state);
 		if (status != SD_OK) return status;
 	}
-	if (_state != SD_CARD_TRANSFER) return SD_ERROR_BAD_STATE;
+	if (_state != SD_CARD_TRANSFER) 
+		return SD_ERROR_BAD_STATE;
+	
 	unsigned long addr = _card_hc ? block : (block << 9);
 	SD_ERROR status = (count == 1) ? 
 		sd_hw_write_single_block(addr, buf) :

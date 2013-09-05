@@ -23,3 +23,8 @@ void __machine_req_switch()
 	SCB->ICSR = (1 << 28);	// Set pending PendSV service (switch)
 }
 
+void __machine_reset()
+{
+	NVIC_SystemReset();
+}
+
