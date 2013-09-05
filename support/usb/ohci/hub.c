@@ -85,11 +85,10 @@ static void *_service(void *arg)
 				if (status & OHCIR_RH_PORT_CCS) 
 				{
                 	exos_thread_sleep(50);	// at least 50ms before reset as of USB 2.0 spec
-					_hc->RhPortStatus[port] = OHCIR_RH_PORT_PRS;	// assert reset
 					
+					_hc->RhPortStatus[port] = OHCIR_RH_PORT_PRS;	// assert reset
 					while(_hc->RhPortStatus[port] & OHCIR_RH_PORT_PRS)
 						exos_thread_sleep(1);
-					
 					exos_thread_sleep(100);	// some devices need up to 100ms after port reset
 					
 					_hc->RhPortStatus[port] = OHCIR_RH_PORT_PRSC;	// clear prsc
@@ -101,6 +100,9 @@ static void *_service(void *arg)
 				else 
 				{
 					ohci_device_destroy(port);
+//					_hc->RhPortStatus[port] = OHCIR_RH_PORT_PRS;	// assert reset
+//					while(_hc->RhPortStatus[port] & OHCIR_RH_PORT_PRS)
+//						exos_thread_sleep(1);
 				}
 			}
 			if (status & OHCIR_RH_PORT_PRSC)

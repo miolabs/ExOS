@@ -4,11 +4,12 @@
 
 static int _match_device(USB_HOST_DEVICE *device);
 static int _match_handler(HID_FUNCTION *func, HID_REPORT_INPUT *input);
-static void _end_enum(HID_FUNCTION *func);
+static void _start(HID_FUNCTION *func);
+static void _stop(HID_FUNCTION *func);
 static void _notify(HID_FUNCTION *func, HID_REPORT_INPUT *input, unsigned char *data);
 static const HID_REPORT_DRIVER _iap_hidd = { 
 	.MatchDevice = _match_device, .MatchInputHandler = _match_handler,
-	.EndReportEnum = _end_enum,
+	.Start = _start, .Stop = _stop,
 	.Notify = _notify };
 static HID_REPORT_MANAGER _hidd_manager = { .Driver = &_iap_hidd };
 
@@ -47,12 +48,21 @@ static int _match_handler(HID_FUNCTION *func, HID_REPORT_INPUT *input)
 	return 0;
 }
 
-static void _end_enum(HID_FUNCTION *func)
+static void _start(HID_FUNCTION *func)
 {
 	if (_hid_func == func)
 	{
 		// FIXME: check running state / support uninstalling
 		iap_core_start();
+	}
+}
+
+static void _stop(HID_FUNCTION *func)
+{
+	if (_hid_func == func)
+	{
+		iap_core_stop();
+		_inputs_count = 0;
 	}
 }
 

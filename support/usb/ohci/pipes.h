@@ -17,6 +17,7 @@ typedef enum
 	OHCI_STD_STA_READY,
 	OHCI_STD_STA_COMPLETED,
 	OHCI_STD_STA_ERROR,
+	OHCI_STD_STA_CANCELLED,
 } OHCI_STD_STATUS;
 
 typedef struct __attribute__((aligned(32))) _OHCI_STD
@@ -34,6 +35,7 @@ typedef struct __attribute__((aligned(32))) _OHCI_STD
 void ohci_pipe_add(USB_HOST_PIPE *pipe);
 void ohci_pipe_remove(USB_HOST_PIPE *pipe);
 void ohci_pipe_schedule(USB_HOST_PIPE *pipe);
+int ohci_pipe_flush(USB_HOST_PIPE *pipe, USB_REQUEST_BUFFER *urb);
 
 OHCI_STD *ohci_add_std(USB_REQUEST_BUFFER *urb, OHCI_STD *next_std, OHCI_TD_PID pid, OHCI_TD_TOGGLE toggle);
 int ohci_remove_std(USB_REQUEST_BUFFER *urb);

@@ -165,5 +165,6 @@ static int _fid_callback(IAP_FID_TOKEN_VALUES *values, unsigned char *buffer)
 				.Data = buffer, .DataLength = offset };
 			return 1;
 	}
+    _fid_index = 0;
 	return 0;
 }

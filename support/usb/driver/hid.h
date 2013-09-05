@@ -17,6 +17,7 @@ typedef struct
 
 	unsigned char InputBuffer[64];
 	unsigned char OutputBuffer[64];
+	int ExitFlag;
 } HID_FUNCTION;
 
 typedef struct __HID_REPORT_DRIVER HID_REPORT_DRIVER;
@@ -46,7 +47,8 @@ struct __HID_REPORT_DRIVER
 {
 	int (*MatchDevice)(USB_HOST_DEVICE *device);
 	int (*MatchInputHandler)(HID_FUNCTION *func, HID_REPORT_INPUT *input);
-	void (*EndReportEnum)(HID_FUNCTION *func);
+	void (*Start)(HID_FUNCTION *func);
+	void (*Stop)(HID_FUNCTION *func);
 	void (*Notify)(HID_FUNCTION *func, HID_REPORT_INPUT *input, unsigned char *data);
 };
 

@@ -4,6 +4,7 @@
 #include <kernel/panic.h>
 
 static void _pipe_schedule(USB_HOST_PIPE *pipe);
+static void _pipe_unschedule(USB_HOST_PIPE *pipe);
 
 void ohci_pipe_add(USB_HOST_PIPE *pipe)
 {
@@ -29,6 +30,7 @@ void ohci_pipe_remove(USB_HOST_PIPE *pipe)
 	OHCI_SED *sed = (OHCI_SED *)pipe->Endpoint;
 	// FIXME: look for the matching pipe pointer for removing
 
+	unsigned long old = _hc->Control;
 	OHCI_HCED **hced_ptr;
 	switch(pipe->EndpointType)
 	{
@@ -41,12 +43,13 @@ void ohci_pipe_remove(USB_HOST_PIPE *pipe)
 			_hc->ControlBits.BLE = 0;
 			break;
 		default:
-			// TODO: Remove Interrupt/Iso EDs
+			_pipe_unschedule(pipe);
 			return;
 	}
 
 	// Remove HCED from list
 	sed->HCED.ControlBits.sKip = 1;
+    ohci_wait_sof();
 	if (*hced_ptr == &sed->HCED)
 	{
 		*hced_ptr = sed->HCED.Next;
@@ -65,9 +68,47 @@ void ohci_pipe_remove(USB_HOST_PIPE *pipe)
 		}
 	}
 
-	sed->Pipe = NULL;
+	unsigned long mask = OHCIR_CONTROL_CLE | OHCIR_CONTROL_BLE;
+	_hc->Control = (_hc->Control & ~mask) | (old & mask); 
+}
 
-//	ohci_schedule_remove_hced(&sed->HCED);
+int ohci_pipe_flush(USB_HOST_PIPE *pipe, USB_REQUEST_BUFFER *urb)
+{
+	OHCI_SED *sed = (OHCI_SED *)pipe->Endpoint;
+	sed->HCED.ControlBits.sKip = 1;
+	ohci_wait_sof();
+
+	int removed = 0;
+	OHCI_HCTD **ptd = (OHCI_HCTD **)&sed->HCED.HeadTD;
+	OHCI_HCTD *td = (OHCI_HCTD *)((unsigned long)sed->HCED.HeadTD & ~0xF);
+	while(td != sed->HCED.TailTD)
+	{
+#ifdef DEBUG
+		if (td == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+		OHCI_STD *std = (OHCI_STD *)td;
+		USB_REQUEST_BUFFER *urb_td = std->Request;
+		if (urb == NULL ||
+			(urb_td != NULL && urb_td == urb))
+		{
+			if (urb_td != NULL && urb_td->Status != USB_STATUS_CANCELLED)
+			{
+				urb_td->Status = USB_STATUS_CANCELLED;
+				exos_event_set(&urb_td->Event);
+			}
+			td = td->Next;
+			*ptd = (OHCI_HCTD *)(((unsigned long)*ptd & 0xF) | (unsigned long)td);
+			std->Status = OHCI_STD_STA_CANCELLED;
+			removed++;
+		}
+		else
+		{
+			ptd = (OHCI_HCTD **)&td->Next;
+			td = *ptd;
+		}
+	}
+    sed->HCED.ControlBits.sKip = 0;
+	return removed;
 }
 
 
@@ -132,6 +173,29 @@ static void _pipe_schedule(USB_HOST_PIPE *pipe)
 			*hced_ptr = &sed->HCED;
 		}
 	}
+}
+
+static void _pipe_unschedule(USB_HOST_PIPE *pipe)
+{
+	OHCI_SED *sed = (OHCI_SED *)pipe->Endpoint;
+
+	for(int index = 0; index < 32; index++)
+	{
+		OHCI_HCED **hced_ptr = (OHCI_HCED **)ohci_get_periodic_ep(index);
+		OHCI_SED *link_sed = NULL;
+
+		while(*hced_ptr != NULL)
+		{
+			link_sed = (OHCI_SED *)*hced_ptr;
+			if (link_sed == sed)
+			{
+				*hced_ptr = link_sed->HCED.Next;
+				break;
+			}
+			hced_ptr = (OHCI_HCED **)&link_sed->HCED.Next;
+		}
+	}
+	ohci_wait_sof();
 }
 
 static void _init_hctd(OHCI_HCTD *hctd, OHCI_TD_PID pid, OHCI_TD_TOGGLE td_toggle, void *buffer, int length)
@@ -202,25 +266,7 @@ int ohci_remove_std(USB_REQUEST_BUFFER *urb)
 #endif
 	
 	USB_HOST_PIPE *pipe = urb->Pipe;
-	OHCI_SED *sed = (OHCI_SED *)pipe->Endpoint;
-	
-	int removed = 0;
-//	ohci_schedule_pause_hced(&sed->HCED, 1);
-	// remove HCTD
-	OHCI_HCTD *first = NULL;
-	OHCI_HCTD **ptd = (OHCI_HCTD **)&sed->HCED.HeadTD;
-    OHCI_HCTD *hctd;
-	while(hctd = (OHCI_HCTD *)((unsigned long)*ptd & 0xFFFFFFF0), hctd != sed->HCED.TailTD)
-	{
-		if (hctd == &std->HCTD)
-		{
-			*ptd = std->HCTD.Next;
-			std->HCTD.Next = first;
-			first = &std->HCTD;
-			break;
-		}
-	}
-//	ohci_schedule_pause_hced(&sed->HCED, 0);
+	int removed = ohci_pipe_flush(pipe, urb);
 	return removed;
 }
 

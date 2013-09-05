@@ -54,6 +54,7 @@ void usb_host_create_device(USB_HOST_DEVICE *device, USB_HOST_CONTROLLER_DRIVER 
 	device->Address = 0;
 
 	device->Vendor = device->Product = 0;
+	device->State = USB_HOST_DEVICE_CREATED;
 
 	// setup control pipe with initial 8 byte max transfer size
 	USB_HOST_PIPE *pipe = &device->ControlPipe;
@@ -154,6 +155,9 @@ int usb_host_end_bulk_transfer(USB_REQUEST_BUFFER *urb, unsigned long timeout)
 
 int usb_host_ctrl_setup(USB_HOST_DEVICE *device, const USB_REQUEST *request, void *data, int length)
 {
+	if (device == NULL || device->State != USB_HOST_DEVICE_ATTACHED) 
+		return 0;
+
 	exos_mutex_lock(&device->ControlMutex);
 	const USB_HOST_CONTROLLER_DRIVER *hcd = device->Controller;
 	device->ControlBuffer = *request;

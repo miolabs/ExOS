@@ -131,7 +131,7 @@ typedef volatile struct _OHCI_HCCA
 {
 	OHCI_HCED *IntTable[32];
     int FrameNumber;
-    OHCI_HCTD *DoneHead;
+    unsigned long DoneHead;
     unsigned char Reserved[116];
     unsigned char Unknown[4];	// Unused
 } OHCI_HCCA;
@@ -249,18 +249,12 @@ typedef volatile struct
 
 // HcRhPortStatus Registers
 #define OHCIR_RH_PORT_CCS	0x00000001
+#define OHCIR_RH_PORT_PES	0x00000002
 #define OHCIR_RH_PORT_PRS	0x00000010
+#define OHCIR_RH_PORT_PPS	0x00000100
 #define	OHCIR_RH_PORT_LSDA	0x00000200
 #define OHCIR_RH_PORT_CSC	0x00010000
 #define OHCIR_RH_PORT_PRSC	0x00100000
-
-
-typedef struct _OHCI_SYNC_NODE
-{
-	struct _OHCI_SYNC_NODE *Next;
-	OHCI_HCED *HCED;
-	EXOS_EVENT Done;
-} OHCI_SYNC_NODE;
 
 
 extern OHCI_OP_REGISTERS *_hc;
@@ -273,8 +267,7 @@ void ohci_clear_hctd(OHCI_HCTD *hctd);
 void ohci_host_clear_hctd_iso(OHCI_HCTD_ISO *isotd);
 int ohci_init_hctd_iso(OHCI_HCTD_ISO *itd, int sf, void *buffer, int length, int packet_size);
 
-void ohci_schedule_remove_hced(OHCI_HCED *hced);
-void ohci_schedule_pause_hced(OHCI_HCED *hced, int pause);
 unsigned short ohci_get_current_frame();
+void ohci_wait_sof();
 
 #endif // OHCI_H

@@ -4,12 +4,15 @@
 #include "iap_comm.h"
 #include <kernel/fifo.h>
 #include <kernel/panic.h>
+#include <kernel/machine/hal.h>
 #include <support/board_hal.h>
 
 #define THREAD_STACK 1536
 static EXOS_THREAD _thread;
 static unsigned char _stack[THREAD_STACK] __attribute__((aligned(16)));
 static void *_service(void *arg);
+static int _service_busy = 0;
+static int _service_exit = 0;
 
 static unsigned long _transaction = 1;
 
@@ -53,8 +56,18 @@ void iap_core_initialize()
 
 void iap_core_start()
 {
-	// FIXME 
-	exos_thread_create(&_thread, 1, _stack, THREAD_STACK, NULL, _service, NULL);
+	if (!_service_busy)
+	{
+		_service_busy = 1;
+		exos_thread_create(&_thread, 1, _stack, THREAD_STACK, NULL, _service, NULL);
+	}
+}
+
+void iap_core_stop()
+{
+	_service_exit = 1;
+	exos_thread_join(&_thread);
+	_service_busy = 0;
 }
 
 #ifdef DEBUG
@@ -291,9 +304,6 @@ IAP_REQUEST *iap_begin_req(IAP_CMD *cmd, unsigned char *cmd_data, IAP_CMD *resp,
 
 		_free_request(req);
 	}
-#ifdef DEBUG
-	_warning();
-#endif
 	return NULL;
 }
 
@@ -413,7 +423,7 @@ static int _slave_io()
 	int auth_started = 0;
 	int auth_done = 0;
 #endif
-	while(1)
+	while(!_service_exit)
 	{
 		cmd = (IAP_CMD) { .Length = sizeof(cmd_buffer) };
 		if (iap_get_incoming_cmd(&cmd, cmd_buffer, 1000))
@@ -529,10 +539,13 @@ static int _slave_io()
 
 static void *_service(void *arg)
 {
+	exos_thread_sleep(1000);
+
 	if (_identify())
 	{
 		_slave_io();
 	}
+	_service_exit = 0;
 }
 
 

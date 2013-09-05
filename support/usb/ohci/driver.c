@@ -82,8 +82,10 @@ static int _stop_pipe(USB_HOST_PIPE *pipe)
 
 	ohci_pipe_remove(pipe);
 
+	ohci_pipe_flush(pipe, NULL);
+
 	OHCI_HCED *hced = &sed->HCED;
-	volatile OHCI_HCTD *hctd = hced->HeadTD;
+	OHCI_HCTD *hctd = (OHCI_HCTD *)((unsigned long)hced->HeadTD & ~0xF);
 #ifdef DEBUG
 	if (hctd != hced->TailTD)
 		kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);	// queue was not empty?
@@ -131,7 +133,8 @@ USB_HOST_DEVICE *ohci_device_create(int port, USB_HOST_DEVICE_SPEED speed)
 	usb_host_create_device(device, &__ohci_driver, port, speed);
 
 	if (_start_pipe(&device->ControlPipe))
-	{			
+	{
+    	device->State = USB_HOST_DEVICE_ATTACHED;
 		return device;
 	}
 	return NULL;
@@ -142,8 +145,7 @@ void ohci_device_destroy(int port)
 	exos_mutex_lock(&_mutex);
 	USB_HOST_DEVICE *device = &_devices[port];	// FIXME
 
-	__machine_reset();	// FIXME: DIRTY HACK!
-
+	device->State = USB_HOST_DEVICE_DETACHED;
 	_stop_pipe(&device->ControlPipe);
 
 	usb_host_destroy_device(device);

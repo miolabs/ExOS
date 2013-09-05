@@ -94,6 +94,7 @@ typedef struct
 
 void iap_core_initialize();
 void iap_core_start();
+void iap_core_stop();
 void iap_core_parse(unsigned char *buffer, int length);
 
 IAP_REQUEST *iap_begin_req(IAP_CMD *cmd, unsigned char *cmd_data, IAP_CMD *resp, unsigned char *resp_data);

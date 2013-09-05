@@ -21,7 +21,6 @@ typedef struct _USB_HOST_PIPE
 	unsigned char EndpointNumber;
 	unsigned char InterruptInterval;
 	unsigned char Reserved;
-//	USB_REQUEST_BUFFER *Pending;
 } USB_HOST_PIPE;
 
 typedef enum
@@ -30,6 +29,13 @@ typedef enum
 	USB_HOST_DEVICE_FULL_SPEED = 1,
 	USB_HOST_DEVICE_HIGH_SPEED = 2,
 } USB_HOST_DEVICE_SPEED;
+
+typedef enum
+{
+	USB_HOST_DEVICE_CREATED = 0,
+	USB_HOST_DEVICE_ATTACHED,
+	USB_HOST_DEVICE_DETACHED,
+} USB_HOST_DEVICE_STATE;
 
 struct _USB_HOST_DEVICE
 {
@@ -47,6 +53,7 @@ struct _USB_HOST_DEVICE
 
 	unsigned short Vendor;
 	unsigned short Product;
+    USB_HOST_DEVICE_STATE State;
 };
 
 typedef enum
