@@ -156,7 +156,8 @@ static int _set_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
 static int _read(COMM_IO_ENTRY *io, unsigned char *buffer, unsigned long length)
 {
 	APPLE_IAP_PROTOCOL_MANAGER *iap = _find_protocol(io->Port + 1);
-	if (iap != NULL)
+	if (iap != NULL &&
+		iap->IOState == APPLE_IAP_IO_OPENED)
 	{
 		int done = exos_io_buffer_read(&iap->InputIOBuffer, buffer, length);
 		return done;
@@ -181,7 +182,8 @@ static int _write(COMM_IO_ENTRY *io, const unsigned char *buffer, unsigned long 
 			iap->OutputBuffer[offset++] = iap->SessionID & 0xFF;
 			for (int i = 0; i < fit; i++) iap->OutputBuffer[offset++] = *buffer++;
 			IAP_CMD_STATUS status = iap_do_req3(IAP_CMD_ACCESORY_DATA_TRANSFER, iap->OutputBuffer, fit + 2, &resp, resp_buffer);
-			if (status != IAP_OK) break;
+			if (status != IAP_OK)
+				break;
 			rem -= fit;
 		}
 		return rem == 0 ? length: -1;
@@ -230,6 +232,19 @@ void iap_close_session(unsigned short session_id)
 		if (io != NULL)	comm_io_close(io);
 		iap->IOState = APPLE_IAP_IO_UNAVAILABLE;
 	}
+}
+
+void iap_close_all()
+{
+	exos_mutex_lock(&_managers_lock);
+	FOREACH(node, &_managers)
+	{
+		APPLE_IAP_PROTOCOL_MANAGER *iap = (APPLE_IAP_PROTOCOL_MANAGER *)node;
+        COMM_IO_ENTRY *io = iap->Entry;
+		if (io != NULL)	comm_io_close(io);
+		iap->IOState = APPLE_IAP_IO_UNAVAILABLE;
+	}
+	exos_mutex_unlock(&_managers_lock);
 }
 
 

@@ -23,6 +23,9 @@ void __machine_req_switch()
 
 void __machine_reset()
 {
+#ifdef DEBUG
+	__BKPT(0);
+#endif
 	NVIC_SystemReset();
 }
 

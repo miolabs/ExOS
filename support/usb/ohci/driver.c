@@ -97,6 +97,8 @@ static int _stop_pipe(USB_HOST_PIPE *pipe)
 
 static int _begin_bulk_transfer(USB_REQUEST_BUFFER *urb, void *data, int length)
 {
+	// TODO: Add support for more than a single transfer per request
+
 	OHCI_TD_PID pid = urb->Pipe->Direction == USB_HOST_TO_DEVICE ? OHCI_TD_DIR_OUT : OHCI_TD_DIR_IN;
     urb->Data = data;
 	urb->Length = length;

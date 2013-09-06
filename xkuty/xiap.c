@@ -25,11 +25,11 @@ static void _connect()
 
 static void _disconnect()
 {
-	_connected = 0;
-	
-	// TODO: close io, but investigate the consequences of not doing it
-
-	NVIC_SystemReset();	// FIXME: DIRTY HACK!
+	if (_connected)
+	{
+		comm_io_close(&_comm);
+        _connected = 0;
+	}
 }
 
 void xiap_send_frame(DASH_DATA *dash)

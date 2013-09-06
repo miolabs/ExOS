@@ -220,6 +220,9 @@ OHCI_STD *ohci_add_std(USB_REQUEST_BUFFER *urb, OHCI_STD *next_std, OHCI_TD_PID 
 
 	USB_HOST_PIPE *pipe = urb->Pipe;
 	OHCI_SED *sed = (OHCI_SED *)pipe->Endpoint;
+	if (sed->HCED.HeadTDBits.Halted)
+		return NULL;
+
 	OHCI_STD *std = NULL;
 	OHCI_STD *tail_std = (OHCI_STD *)sed->HCED.TailTD;
 	if (tail_std != NULL)

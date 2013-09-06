@@ -544,6 +544,7 @@ static void *_service(void *arg)
 	if (_identify())
 	{
 		_slave_io();
+		iap_close_all();
 	}
 	_service_exit = 0;
 }

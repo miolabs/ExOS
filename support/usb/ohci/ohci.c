@@ -7,7 +7,6 @@
 // Host Controller Communications Area (must be 256-aligned)
 /*static*/ volatile OHCI_HCCA _hcca __usb __attribute__((aligned(256)));
 static EXOS_EVENT _sof_event;
-
 static void _soft_reset();
 
 int ohci_initialize()

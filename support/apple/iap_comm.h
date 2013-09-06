@@ -40,6 +40,7 @@ APPLE_IAP_PROTOCOL_MANAGER *iap_comm_get_protocol(int index);
 int iap_comm_get_protocol_count();
 int iap_open_session(unsigned short session_id, unsigned short protocol);
 void iap_close_session(unsigned short session_id);
+void iap_close_all();
 void iap_comm_write(unsigned short session_id, unsigned char *buffer, int length);
 
 #endif // APPLE_IAP_COMM_H
