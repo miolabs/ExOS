@@ -29,3 +29,7 @@ void __machine_reset()
 	NVIC_SystemReset();
 }
 
+void __kernel_panic()
+{
+	__machine_reset();
+}

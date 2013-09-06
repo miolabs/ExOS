@@ -312,8 +312,18 @@ IAP_CMD_STATUS iap_end_req(IAP_REQUEST *req, int timeout)
 	if (req == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
 
-	int error = exos_event_wait(&req->CompletedEvent, timeout);
-	IAP_CMD_STATUS status = error ? IAP_ERROR_OPERATION_TIMED_OUT : req->Response->ErrorCode;
+	int res = exos_event_wait(&req->CompletedEvent, timeout);
+	if (res == -1)
+	{
+		exos_mutex_lock(&_busy_requests_lock);
+		if (list_find_node(&_busy_requests_list, (EXOS_NODE *)req))
+			list_remove((EXOS_NODE *)req);
+		exos_mutex_unlock(&_busy_requests_lock);
+		_free_request(req);
+		return IAP_ERROR_OPERATION_TIMED_OUT;
+	}
+
+	IAP_CMD_STATUS status = req->Response->ErrorCode;
 	_free_request(req);
 	return status;
 }
