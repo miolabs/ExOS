@@ -9,6 +9,10 @@ static BLOCK _buffers[BUFFER_BLOCKS] __dma;
 
 static void _init_block(BLOCK *buf, unsigned long index)
 {
+	unsigned long *ptr = (unsigned long *)buf;
+	int size = sizeof(BLOCK) / sizeof(unsigned long);
+	for (int i = 0; i < size; i++) ptr[i] = index;
+	ptr[0] = 0xFF5555AA;
 }
 
 void main()
