@@ -21,6 +21,7 @@ struct __EXOS_DISPATCHER_CONTEXT
 {
 	EXOS_MUTEX Lock;
 	EXOS_LIST Dispatchers;
+	EXOS_EVENT WakeEvent;
 	int Count;
 };
 

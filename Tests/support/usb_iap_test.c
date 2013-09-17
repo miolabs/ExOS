@@ -65,14 +65,14 @@ void main()
 				{
 					EXOS_EVENT *input_events[] = { &_socket.InputEvent, &_comm.InputEvent };
 					done = exos_event_wait_multiple(input_events, 2, 100);
-					if (done == -1)
-					{
-						kk = (++kk)%40;
-						struct frame { unsigned long magic; unsigned long speed; unsigned long distance; unsigned char batt; };
-						struct frame buffer = (struct frame) { .magic = ('X' | ('K' << 8) | ('U' << 16) | ('1' << 24)), .speed = kk, .distance = kk, .batt = kk };
-						done = exos_io_write((EXOS_IO_ENTRY *)&_comm, &buffer, 13);
-						done = exos_io_write((EXOS_IO_ENTRY *)&_socket, &buffer, 13);
-					}
+//					if (done == -1)
+//					{
+//						kk = (++kk)%40;
+//						struct frame { unsigned long magic; unsigned long speed; unsigned long distance; unsigned char batt; };
+//						struct frame buffer = (struct frame) { .magic = ('X' | ('K' << 8) | ('U' << 16) | ('1' << 24)), .speed = kk, .distance = kk, .batt = kk };
+//						done = exos_io_write((EXOS_IO_ENTRY *)&_comm, &buffer, 13);
+//						done = exos_io_write((EXOS_IO_ENTRY *)&_socket, &buffer, 13);
+//					}
 
 					if (_socket.InputEvent.State)
 					{
