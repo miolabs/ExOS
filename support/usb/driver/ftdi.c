@@ -236,11 +236,13 @@ static int _open(COMM_IO_ENTRY *io)
 
 static int _get_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
 {
+	// TODO: support baud rate, etc.
 	return -1;
 }
 
 static int _set_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
 {
+	// TODO: support baud rate, etc.
 	return -1;
 }
 
@@ -341,8 +343,6 @@ static void _dispatch_io(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *disp
 			{
 				exos_io_buffer_write(&ftdi->IOBuffer, func->InputBuffer + 2, done - 2);
 			}
-
-			exos_thread_sleep(10);
 
 			usb_host_begin_bulk_transfer(urb, func->InputBuffer, FTDI_USB_BUFFER);
 			

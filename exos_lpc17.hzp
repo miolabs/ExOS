@@ -22,16 +22,9 @@
         <file file_name="kernel/list.c"/>
         <file file_name="kernel/panic.c"/>
         <file file_name="kernel/signal.c"/>
-        <folder Name="tests" file_name="">
-          <file file_name="kernel/tests/threading_tests.c"/>
-          <file file_name="kernel/tests/memory_tests.c"/>
-        </folder>
         <file file_name="kernel/thread.c"/>
         <file file_name="kernel/timer.c"/>
         <folder Name="posix" file_name="">
-          <folder Name="tests">
-            <file file_name="kernel/posix/tests/basic_pthread_tests.c"/>
-          </folder>
           <file file_name="kernel/posix/pthread_cond.c"/>
           <file file_name="kernel/posix/pthread_time.c"/>
           <file file_name="kernel/posix/posix.c"/>
@@ -50,7 +43,6 @@
         <folder Name="driver">
           <folder Name="comm">
             <file file_name="kernel/driver/comm/comm.c"/>
-            <folder Name="tests"/>
           </folder>
         </folder>
         <file file_name="kernel/tree.c"/>
@@ -71,7 +63,11 @@
         </folder>
         <configuration Name="Common" build_intermediate_directory=".output/$(Configuration)/support" build_output_directory=".output/$(Configuration)/support"/>
       </folder>
-      <file file_name="Tests/source/uart.c"/>
+      <folder Name="tests">
+        <folder Name="posix">
+          <file file_name="tests/posix/uart_test.c"/>
+        </folder>
+      </folder>
     </folder>
     <folder Name="System Files">
       <file file_name="$(TargetsDir)/LPC1000/LPC1700_Target.js">

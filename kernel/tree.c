@@ -69,7 +69,7 @@ static int _name_eq(const char **ppath, const char *name)
 	return 0;
 }
 
-EXOS_TREE_NODE *exos_tree_find_node(EXOS_TREE_NODE *parent, const char *path)
+EXOS_TREE_NODE *exos_tree_find_path(EXOS_TREE_NODE *parent, const char *path)
 {
 	if (parent == NULL) parent = (EXOS_TREE_NODE *)&__root;
 
@@ -113,7 +113,7 @@ EXOS_TREE_NODE *exos_tree_find_node(EXOS_TREE_NODE *parent, const char *path)
 
 int exos_tree_add_child_path(EXOS_TREE_NODE *child, const char *parent_path)
 {
-	EXOS_TREE_NODE *parent = exos_tree_find_node(NULL, parent_path);
+	EXOS_TREE_NODE *parent = exos_tree_find_path(NULL, parent_path);
 	if (parent != NULL &&
 		parent->Type == EXOS_TREE_NODE_GROUP)
 	{

@@ -39,7 +39,7 @@ int open(const char *path, int oflag, ...)
 
 	const char *dev_path = path;
 	if (*dev_path == '/') dev_path++;
-	EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, dev_path);
+	EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_path(NULL, dev_path);
 	if (dev_node == NULL || 
 		dev_node->Type != EXOS_TREE_NODE_DEVICE ||
 		dev_node->DeviceType != EXOS_TREE_DEVICE_COMM)

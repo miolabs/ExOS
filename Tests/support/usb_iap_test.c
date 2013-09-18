@@ -45,11 +45,11 @@ void main()
 		err = net_io_accept((NET_IO_ENTRY *)&_socket, (NET_IO_ENTRY *)&_socket, &buffers);
 //		hal_led_set(0, 1);
 
-		EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/usbprint");
+		EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_path(NULL, "dev/usbprint");
 		if (dev_node == NULL)
-			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/usbftdi0");
+			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_path(NULL, "dev/usbftdi0");
 		if (dev_node == NULL)
-			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/iap/com.miolabs.xkuty1");
+			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_path(NULL, "dev/iap/com.miolabs.xkuty1");
 
 
 		if (dev_node != NULL)
