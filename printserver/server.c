@@ -4,15 +4,11 @@
 #include <support/board_hal.h>
 #include <stdio.h>
 
-#define SERVER_THREAD_STACK 1024
+#define SERVER_THREAD_STACK 2048
 static EXOS_THREAD _thread0;
 static unsigned char _thread_stack0[SERVER_THREAD_STACK];
 static EXOS_THREAD _thread1;
 static unsigned char _thread_stack1[SERVER_THREAD_STACK];
-
-COMM_IO_ENTRY _comm;
-TCP_IO_ENTRY _socket;
-static unsigned char _buffer[1024] ;
 
 typedef struct
 {
@@ -42,6 +38,9 @@ static void *_server(void *arg)
 	int err;
 	int done;
 	int total;
+	COMM_IO_ENTRY comm;
+	TCP_IO_ENTRY socket;
+	static unsigned char buffer[1024];
 
 	while(1)
 	{
@@ -49,16 +48,16 @@ static void *_server(void *arg)
 			.RcvBuffer = cfg->RcvBuffer, .RcvBufferSize = TCP_BUFFER_SIZE,
 			.SndBuffer = cfg->SndBuffer, .SndBufferSize = TCP_BUFFER_SIZE };
 
-		net_tcp_io_create(&_socket, EXOS_IOF_WAIT);
+		net_tcp_io_create(&socket, EXOS_IOF_WAIT);
 
 		IP_PORT_ADDR local = (IP_PORT_ADDR) { .Address = IP_ADDR_ANY, .Port = cfg->Port };
-		err = net_io_bind((NET_IO_ENTRY *)&_socket, &local); 
-		err = net_io_listen((NET_IO_ENTRY *)&_socket);
+		err = net_io_bind((NET_IO_ENTRY *)&socket, &local); 
+		err = net_io_listen((NET_IO_ENTRY *)&socket);
 
-		err = net_io_accept((NET_IO_ENTRY *)&_socket, (NET_IO_ENTRY *)&_socket, &buffers);
+		err = net_io_accept((NET_IO_ENTRY *)&socket, (NET_IO_ENTRY *)&socket, &buffers);
 		hal_led_set(0, 1);
 		
-		exos_io_set_timeout((EXOS_IO_ENTRY *)&_socket, 2000); // NOTE: we didn't set timeout before because we don't want accept()  to timeout
+		exos_io_set_timeout((EXOS_IO_ENTRY *)&socket, 2000); // NOTE: we didn't set timeout before because we don't want accept()  to timeout
 
 		EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_path(NULL, "dev/usbprint");
 		if (dev_node == NULL)
@@ -68,40 +67,40 @@ static void *_server(void *arg)
 
 		if (dev_node != NULL)
 		{
-			comm_io_create(&_comm, dev_node->Device, dev_node->Unit, EXOS_IOF_WAIT); 
-			err = comm_io_open(&_comm);
+			comm_io_create(&comm, dev_node->Device, dev_node->Unit, EXOS_IOF_WAIT); 
+			err = comm_io_open(&comm);
 			if (err == 0)
 			{
 				total = 0;
 #ifdef DEBUG
-				done = sprintf(_buffer, "Connection accepted:\r\n");
-				done = exos_io_write((EXOS_IO_ENTRY *)&_comm, _buffer, done);				
+				done = sprintf(buffer, "Connection accepted:\r\n");
+				done = exos_io_write((EXOS_IO_ENTRY *)&comm, buffer, done);				
 #endif
 				
 				while(1)
 				{
-					int done = exos_io_read((EXOS_IO_ENTRY *)&_socket, _buffer, 1024);
+					int done = exos_io_read((EXOS_IO_ENTRY *)&socket, buffer, 1024);
 					if (done < 0) break;
 
 hal_led_set(1, 1);
 					total += done;
-					done = exos_io_write((EXOS_IO_ENTRY *)&_comm, _buffer, done);
+					done = exos_io_write((EXOS_IO_ENTRY *)&comm, buffer, done);
 hal_led_set(1, 0);
 					if (done < 0) break;
 				}
 
 #ifdef DEBUG
-				done = sprintf(_buffer, "Connection closed: %d bytes\r\n", total);
-				done = exos_io_write((EXOS_IO_ENTRY *)&_comm, _buffer, done);
+				done = sprintf(buffer, "Connection closed: %d bytes\r\n", total);
+				done = exos_io_write((EXOS_IO_ENTRY *)&comm, buffer, done);
 #endif
 
 				exos_thread_sleep(100);
-				comm_io_close(&_comm);
+				comm_io_close(&comm);
 			}
 		}
 			
 		hal_led_set(0, 0);
-		net_io_close((NET_IO_ENTRY *)&_socket, &buffers);
+		net_io_close((NET_IO_ENTRY *)&socket, &buffers);
 	}
 }
 
