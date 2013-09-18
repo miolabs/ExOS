@@ -70,6 +70,7 @@
         <folder Name="posix">
           <file file_name="kernel/posix/printf.c"/>
         </folder>
+        <file file_name="kernel/dispatch.c"/>
       </folder>
       <folder Name="support">
         <folder Name="lpc2k">
