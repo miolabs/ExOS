@@ -14,16 +14,17 @@ typedef struct
 {
 	unsigned char *RcvBuffer;
 	unsigned char *SndBuffer;
+	unsigned char *PortName;
 	unsigned short Port;
 } _SERVER_CFG;
 
 #define TCP_BUFFER_SIZE 4096
 static unsigned char _rcv_buffer0[TCP_BUFFER_SIZE]; 
 static unsigned char _snd_buffer0[TCP_BUFFER_SIZE] __attribute__((section(".dma")));
-static _SERVER_CFG _cfg0 = { .RcvBuffer = _rcv_buffer0, .SndBuffer = _snd_buffer0, .Port = 9000 };
+static _SERVER_CFG _cfg0 = { .RcvBuffer = _rcv_buffer0, .SndBuffer = _snd_buffer0, "dev/usbftdi0", .Port = 9000 };
 static unsigned char _rcv_buffer1[TCP_BUFFER_SIZE]; 
 static unsigned char _snd_buffer1[TCP_BUFFER_SIZE] __attribute__((section(".dma")));
-static _SERVER_CFG _cfg1 = { .RcvBuffer = _rcv_buffer1, .SndBuffer = _snd_buffer1, .Port = 9001 };
+static _SERVER_CFG _cfg1 = { .RcvBuffer = _rcv_buffer1, .SndBuffer = _snd_buffer1, "dev/usbftdi1", .Port = 9001 };
 static void *_server(void *);
 
 void server_start()
@@ -61,7 +62,7 @@ static void *_server(void *arg)
 
 		EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_path(NULL, "dev/usbprint");
 		if (dev_node == NULL)
-			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_path(NULL, "dev/usbftdi0");
+			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_path(NULL, cfg->PortName);
 		if (dev_node == NULL)
 			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_path(NULL, "dev/comm0");
 
