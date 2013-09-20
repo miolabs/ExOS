@@ -21,10 +21,6 @@ static void _dispatch_open(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *di
 static void _dispatch_close(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher);
 static void _dispatch_io(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher);
 
-static EXOS_EVENT _handle_event;
-static EXOS_MUTEX _handle_list_lock;
-static EXOS_LIST _handle_list;
-
 static USB_HOST_FUNCTION *_check_interface(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTOR *conf_desc, USB_DESCRIPTOR_HEADER *fn_desc);
 static void _start(USB_HOST_FUNCTION *func);
 static void _stop(USB_HOST_FUNCTION *func);
@@ -52,9 +48,6 @@ static const char *_device_names[] = { "usbftdi0", "usbftdi1", "usbftdi2", "usbf
 
 void ftdi_initialize()
 {
-	exos_event_create(&_handle_event);
-	exos_mutex_create(&_handle_list_lock);
-	list_initialize(&_handle_list);
 	for(int port = 0; port < FTDI_MAX_INSTANCES; port++)
 	{
 		_func_usage[port] = 0;

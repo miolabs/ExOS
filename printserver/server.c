@@ -37,7 +37,7 @@ static void *_server(void *arg)
 {
 	_SERVER_CFG *cfg = (_SERVER_CFG *)arg;
 	int err;
-	int done;
+	int done, done2;
 	int total;
 	COMM_IO_ENTRY comm;
 	TCP_IO_ENTRY socket;
@@ -80,19 +80,19 @@ static void *_server(void *arg)
 				
 				while(1)
 				{
-					int done = exos_io_read((EXOS_IO_ENTRY *)&socket, buffer, 1024);
+					done = exos_io_read((EXOS_IO_ENTRY *)&socket, buffer, 1024);
 					if (done < 0) break;
 
 hal_led_set(1, 1);
 					total += done;
-					done = exos_io_write((EXOS_IO_ENTRY *)&comm, buffer, done);
+					done2 = exos_io_write((EXOS_IO_ENTRY *)&comm, buffer, done);
 hal_led_set(1, 0);
-					if (done < 0) break;
+					if (done2 < 0) break;
 				}
 
 #ifdef DEBUG
-				done = sprintf(buffer, "Connection closed: %d bytes\r\n", total);
-				done = exos_io_write((EXOS_IO_ENTRY *)&comm, buffer, done);
+				int done3 = sprintf(buffer, "Connection closed: %d bytes\r\n", total);
+				done3 = exos_io_write((EXOS_IO_ENTRY *)&comm, buffer, done3);
 #endif
 
 				exos_thread_sleep(100);
