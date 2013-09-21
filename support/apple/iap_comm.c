@@ -102,6 +102,7 @@ static int _open(COMM_IO_ENTRY *io)
 {
 	APPLE_IAP_PROTOCOL_MANAGER *iap = _find_protocol(io->Port + 1);
 	if (iap != NULL &&
+		iap->Entry == NULL &&
 		iap->IOState == APPLE_IAP_IO_CLOSED)
 	{
 		exos_io_buffer_create(&iap->InputIOBuffer, iap->InputBuffer, APPLE_IAP_IO_BUFFER);
@@ -126,12 +127,15 @@ static void _close(COMM_IO_ENTRY *io)
 {
 	APPLE_IAP_PROTOCOL_MANAGER *iap = _find_protocol(io->Port + 1);
 	if (iap != NULL &&
+		iap->Entry == io &&
 		iap->IOState == APPLE_IAP_IO_OPENED)
 	{
 		// TODO
 
 		iap->IOState = APPLE_IAP_IO_CLOSED;
         iap->Entry = NULL;
+
+        exos_event_set(&io->InputEvent);
 	}
 }
 
