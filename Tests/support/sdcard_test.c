@@ -1,5 +1,6 @@
 #include <support/misc/sdcard/sdcard.h>
 #include <kernel/machine/hal.h>
+#include <fs/filestream.h>
 
 #define BUFFER_BLOCKS 24
 
@@ -15,9 +16,14 @@ static void _init_block(BLOCK *buf, unsigned long index)
 	ptr[0] = 0xFF5555AA;
 }
 
+FS_VOLUME _vol;
+
 void main()
 {
 	int done = sd_initialize();
+
+	FILE_IO_ENTRY file;
+	done = file_open(&file, "/dev/sdcard0", FS_LOCKF_WRITE);
 
 	SD_INFO info;
 	sd_get_info(&info);

@@ -3,12 +3,15 @@
 
 #include <kernel/list.h>
 #include <comm/comm.h>
+#ifdef EXOS_FS_IO
+#include <fs/block.h>
+#endif
 
 typedef enum
 {
 	EXOS_TREE_NODE_GROUP = 0,
 	EXOS_TREE_NODE_DEVICE,
-	EXOS_TREE_NODE_MOUNT_POINT,
+	EXOS_TREE_NODE_VOLUME,
 } EXOS_TREE_NODE_TYPE;
 
 typedef struct _TREE_GROUP EXOS_TREE_GROUP;
@@ -41,7 +44,10 @@ typedef struct
 	union
 	{
 		COMM_DEVICE *Device;
-//		BLOCK_DEVICE *BlockDevice;
+#ifdef EXOS_FS_IO
+		BLOCK_DEVICE *BlockDevice;
+//		FS_VOLUME *Volume;
+#endif
 	};
 	unsigned long Unit;
 } EXOS_TREE_DEVICE;
@@ -49,6 +55,7 @@ typedef struct
 void __tree_initialize();
 void exos_tree_add_child(EXOS_TREE_GROUP *group, EXOS_TREE_NODE *child);
 EXOS_TREE_NODE *exos_tree_find_path(EXOS_TREE_NODE *parent, const char *path);
+EXOS_TREE_NODE *exos_tree_parse_path(EXOS_TREE_NODE *parent, const char **psubpath);
 int exos_tree_add_child_path(EXOS_TREE_NODE *child, const char *parent_path);
 void exos_tree_add_group(EXOS_TREE_GROUP *group, const char *parent_path);
 void exos_tree_add_device(EXOS_TREE_DEVICE *device, const char *parent_path);

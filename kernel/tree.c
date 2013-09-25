@@ -71,11 +71,24 @@ static int _name_eq(const char **ppath, const char *name)
 
 EXOS_TREE_NODE *exos_tree_find_path(EXOS_TREE_NODE *parent, const char *path)
 {
-	if (parent == NULL) parent = (EXOS_TREE_NODE *)&__root;
-
 	if (path != NULL)
 	{
-		const char *subpath = path;
+		EXOS_TREE_NODE *node = exos_tree_parse_path(parent, &path);
+		return (*path == '\0') ? node : NULL; 
+	}
+	return parent;
+}
+
+EXOS_TREE_NODE *exos_tree_parse_path(EXOS_TREE_NODE *parent, const char **psubpath)
+{
+	if (psubpath == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+
+	if (parent == NULL) parent = (EXOS_TREE_NODE *)&__root;
+
+	const char *subpath = *psubpath;
+	if (subpath != NULL)
+	{
 		do
 		{
 #ifdef DEBUG
@@ -107,6 +120,8 @@ EXOS_TREE_NODE *exos_tree_find_path(EXOS_TREE_NODE *parent, const char *path)
 				break;
 			}
 		} while (parent != NULL);
+		
+		*psubpath = subpath;
 	}
 	return parent;
 }

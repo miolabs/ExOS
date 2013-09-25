@@ -52,7 +52,7 @@ void lcdcon_initialize(LCD_PROPERTIES *lcd)
 
 		for(int i = 0; i < 48; i++)
 		{
-#ifdef DEBUG
+#ifdef LCD_DEBUG
 			unsigned char data[] = {0x55,0xaa,0x55,0xaa };
 #else
 			unsigned char data[] = {0x0,0x0,0x0,0x0 };
