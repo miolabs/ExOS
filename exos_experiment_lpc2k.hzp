@@ -65,12 +65,17 @@
               <file file_name="kernel/driver/usb/classes/scsi.c"/>
             </folder>
           </folder>
-          <folder Name="fs"/>
+          <folder Name="fs">
+            <file file_name="kernel/driver/fs/fs.c"/>
+            <file file_name="kernel/driver/fs/filestream.c"/>
+            <file file_name="kernel/driver/fs/block.c"/>
+          </folder>
         </folder>
         <file file_name="kernel/port.c"/>
         <folder Name="posix">
           <file file_name="kernel/posix/printf.c"/>
         </folder>
+        <file file_name="kernel/datetime.c"/>
       </folder>
       <folder Name="support">
         <folder Name="lpc2k">
@@ -118,6 +123,7 @@
           <file file_name="tests/support/sdcard_test.c"/>
         </folder>
       </folder>
+      <file file_name="kernel/datetime.h"/>
     </folder>
     <folder Name="System Files">
       <file file_name="$(TargetsDir)/Philips_LPC210X/Philips_LPC210X_Target.js">

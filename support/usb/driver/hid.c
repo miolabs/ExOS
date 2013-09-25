@@ -313,8 +313,10 @@ static void *_service(void *arg)
 	{
 		usb_host_urb_create(&urb, &func->InputPipe);
 		// NOTE: it's not a bulk transfer, but processing is compatible using an int pipe
-		usb_host_begin_bulk_transfer(&urb, func->InputBuffer, report_bytes);
-		int done = usb_host_end_bulk_transfer(&urb, EXOS_TIMEOUT_NEVER);
+		int done;
+		if (usb_host_begin_bulk_transfer(&urb, func->InputBuffer, report_bytes))
+			done = usb_host_end_bulk_transfer(&urb, EXOS_TIMEOUT_NEVER);
+		else break;
 
 		if (done >= 0)
 		{

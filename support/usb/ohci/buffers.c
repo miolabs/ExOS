@@ -1,10 +1,8 @@
 #include "buffers.h"
 #include <kernel/fifo.h>
 
-
-
 #ifndef OHCI_MAX_BUFFERS
-#define OHCI_MAX_BUFFERS 8
+#define OHCI_MAX_BUFFERS 10	// at least MAX_PIPES + 1
 #endif
 #ifndef OHCI_MAX_PIPES
 #define OHCI_MAX_PIPES 8

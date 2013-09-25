@@ -230,7 +230,8 @@ OHCI_STD *ohci_add_std(USB_REQUEST_BUFFER *urb, OHCI_STD *next_std, OHCI_TD_PID 
 		if (next_std == NULL)
 		{
 			next_std = ohci_buffers_alloc_std();
-			if (next_std == NULL) return NULL;
+			if (next_std == NULL) 
+				return NULL;
 		}
 		std = tail_std;
 		_init_hctd(&std->HCTD, pid, toggle, urb->Data, urb->Length);

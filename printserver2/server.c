@@ -74,7 +74,7 @@ static void *_server(void *arg)
 			{
 				total = 0;
 #ifdef DEBUG
-				done = sprintf(buffer, "Connection accepted:\r\n");
+				done = sprintf(buffer, "Connection eth, accepted!\r\n");
 				done = exos_io_write((EXOS_IO_ENTRY *)&comm, buffer, done);				
 #endif
 				

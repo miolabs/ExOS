@@ -1,6 +1,7 @@
 #include <CMSIS/LPC11xx.h>
 #include <kernel/thread.h>
 #include <support/adc_hal.h>
+#include <support/can_hal.h>
 #include <support/misc/pca9635.h>
 
 #if defined BOARD_MIORELAY1
@@ -20,7 +21,10 @@ void main()
 {
 	int result;
 	pca9635_initialize(PCA9635_MODE_INVERT | PCA9635_MODE_TOTEMPOLE | PCA9635_MODE_OUTNE_2);
-	hal_adc_initialize(10000, 12); 
+	hal_adc_initialize(10000, 12);
+	hal_can_initialize(0, 250000);
+
+	CAN_BUFFER buffer;
 
 	LPC_GPIO3->DIR |= 0xf;
 	LPC_GPIO2->DIR |= (1<<5);
@@ -45,5 +49,9 @@ void main()
 		}
 
 		float vin = hal_adc_read(0) * (3.3f/65535) * 1;
+		buffer.u32[0] = (unsigned long)(vin * 65536);
+		buffer.u32[0] = (unsigned long)(total * 65536);
+
+        hal_can_send((CAN_EP) { .Id = 0x330 }, &buffer, 8, CANF_PRI_ANY);
 	}
 }

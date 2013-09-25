@@ -3,6 +3,7 @@
 
 #include <usb/host.h>
 #include <kernel/tree.h>
+#include <kernel/dispatch.h>
 #include <comm/comm.h>
 
 #define FTDI_USB_BUFFER 64
@@ -27,22 +28,39 @@ typedef enum
 	FTDI_REQUEST_GET_LATENCY_TIMER,
 } FTDI_REQUEST;
 
+typedef struct
+{
+	USB_HOST_FUNCTION;
+
+	USB_HOST_PIPE BulkInputPipe;
+	USB_HOST_PIPE BulkOutputPipe;
+	unsigned char OutputBuffer[FTDI_USB_BUFFER];	// used for output and setup
+	unsigned char InputBuffer[FTDI_USB_BUFFER];
+
+	unsigned char Interface;
+	unsigned char Protocol;
+	unsigned char DeviceUnit;
+	unsigned char Reserved;
+} FTDI_FUNCTION;
+
 typedef enum
 {
-	FTDI_HANDLE_CLOSED = 0,
+	FTDI_HANDLE_NOT_MOUNTED = 0,
+	FTDI_HANDLE_CLOSED,
 	FTDI_HANDLE_OPENING,
 	FTDI_HANDLE_READY,
-	FTDI_HANDLE_CLOSING,
 	FTDI_HANDLE_ERROR,
 } FTDI_HANDLE_STATE;
 
 typedef struct
 {
-	EXOS_NODE Node;
 	COMM_IO_ENTRY *Entry;
-	EXOS_MUTEX Lock;
+	EXOS_DISPATCHER Dispatcher;
+	EXOS_TREE_DEVICE KernelDevice;
+	const char *DeviceName;
+	FTDI_FUNCTION *Function;
+
 	FTDI_HANDLE_STATE State;
-	EXOS_EVENT *StateEvent;
    	USB_REQUEST_BUFFER Request;
 	EXOS_IO_BUFFER IOBuffer;
    	unsigned char Buffer[FTDI_IO_BUFFER];	
@@ -50,22 +68,9 @@ typedef struct
 
 typedef struct
 {
-	USB_HOST_FUNCTION;
-
-	const char *DeviceName;
-
-	USB_HOST_PIPE BulkInputPipe;
-	USB_HOST_PIPE BulkOutputPipe;
-	EXOS_TREE_DEVICE KernelDevice;
-	unsigned char OutputBuffer[FTDI_USB_BUFFER];	// used for output and setup
-	unsigned char InputBuffer[FTDI_USB_BUFFER];
-
-	FTDI_HANDLE AsyncHandle; // TODO: move out to conventional memory
-	
-	unsigned char Interface;
-	unsigned char Protocol;
-	unsigned char DeviceUnit;
-} FTDI_FUNCTION;
+	FTDI_HANDLE *Handle;
+	EXOS_EVENT DoneEvent;
+} FTDI_HANDLE_REQUEST;
 
 // prototypes
 void ftdi_initialize();

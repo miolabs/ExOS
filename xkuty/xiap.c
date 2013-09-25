@@ -11,7 +11,7 @@ static int _connected = 0;
 static void _connect()
 {
 	int err;
-	EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/iap/com.miolabs.xkuty1");
+	EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_path(NULL, "dev/iap/com.miolabs.xkuty1");
 	if (dev_node != NULL)
 	{
 		comm_io_create(&_comm, dev_node->Device, dev_node->Unit, EXOS_IOF_NONE);	// don't wait

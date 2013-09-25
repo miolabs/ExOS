@@ -23,16 +23,9 @@
         <file file_name="kernel/list.c"/>
         <file file_name="kernel/panic.c"/>
         <file file_name="kernel/signal.c"/>
-        <folder Name="tests" file_name="">
-          <file file_name="kernel/tests/threading_tests.c"/>
-          <file file_name="kernel/tests/memory_tests.c"/>
-        </folder>
         <file file_name="kernel/thread.c"/>
         <file file_name="kernel/timer.c"/>
         <folder Name="posix" file_name="">
-          <folder Name="tests">
-            <file file_name="kernel/posix/tests/tcp_test.c"/>
-          </folder>
           <file file_name="kernel/posix/pthread_cond.c"/>
           <file file_name="kernel/posix/pthread_time.c"/>
           <file file_name="kernel/posix/posix.c"/>
@@ -59,7 +52,6 @@
             <file file_name="kernel/driver/net/mbuf.c"/>
             <file file_name="kernel/driver/net/net.c"/>
             <file file_name="kernel/driver/net/udp.c"/>
-            <folder Name="tests"/>
             <file file_name="kernel/driver/net/adapter.c"/>
             <file file_name="kernel/driver/net/net_service.c"/>
             <file file_name="kernel/driver/net/net_io.c"/>
@@ -74,7 +66,6 @@
           </folder>
           <folder Name="comm">
             <file file_name="kernel/driver/comm/comm.c"/>
-            <folder Name="tests"/>
           </folder>
         </folder>
         <file file_name="kernel/io.c"/>
@@ -104,6 +95,11 @@
           <folder Name="bonjour">
             <file file_name="modules/services/bonjour/bonjour.c"/>
           </folder>
+        </folder>
+      </folder>
+      <folder Name="tests">
+        <folder Name="posix">
+          <file file_name="tests/posix/tcp_test.c"/>
         </folder>
       </folder>
     </folder>

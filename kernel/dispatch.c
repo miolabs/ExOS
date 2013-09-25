@@ -7,6 +7,7 @@ void exos_dispatcher_context_create(EXOS_DISPATCHER_CONTEXT *context)
 	exos_mutex_create(&context->Lock);
 	list_initialize(&context->Dispatchers);
 	context->Count = 0;
+	exos_event_create(&context->WakeEvent);
 }
 
 void exos_dispatcher_add(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher, unsigned long timeout)
@@ -21,10 +22,12 @@ void exos_dispatcher_add(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *disp
 	if (list_find_node(&context->Dispatchers, (EXOS_NODE *)dispatcher))
 		kernel_panic(KERNEL_ERROR_LIST_ALREADY_CONTAINS_NODE);
 #endif
-	dispatcher->Alarm = exos_timer_time() + timeout;
+	dispatcher->Alarm = exos_timer_time() + timeout;	// NOTE: TIMEOUT_NEVER (=0) means immediate dispatch
 	list_add_tail(&context->Dispatchers, (EXOS_NODE *)dispatcher);
 	context->Count++;
 	exos_mutex_unlock(&context->Lock);
+
+	exos_event_reset(&context->WakeEvent);
 }
 
 static int _remove(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher)
@@ -57,11 +60,13 @@ void exos_dispatch(EXOS_DISPATCHER_CONTEXT *context, unsigned long timeout)
 {
 	exos_mutex_lock(&context->Lock);
 	
+	EXOS_EVENT *array[context->Count + 1];
+	int count = 0;
+	array[count++] = &context->WakeEvent;
+
 	EXOS_DISPATCHER *coming = NULL;
 	int wait = timeout != 0 ? timeout : MAXINT;
 	unsigned long time = exos_timer_time();
-	EXOS_EVENT *array[context->Count];
-	int count = 0;
 	FOREACH(node, &context->Dispatchers)
 	{
 		EXOS_DISPATCHER *dispatcher = (EXOS_DISPATCHER *)node;
@@ -81,14 +86,10 @@ void exos_dispatch(EXOS_DISPATCHER_CONTEXT *context, unsigned long timeout)
 
 	if (wait > 0)
 	{
-		if (count != 0) 
+		if (exos_event_wait_multiple(array, count, wait) == 0)	// event occurred 
 		{
-			if (exos_event_wait_multiple(array, count, wait) == 0)	// event occurred 
-			{
-				coming = NULL;
-			}
+			coming = NULL;
 		}
-		else exos_thread_sleep(wait);
 	}
 	if (coming != NULL)
 	{

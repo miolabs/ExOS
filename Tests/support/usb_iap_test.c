@@ -45,11 +45,11 @@ void main()
 		err = net_io_accept((NET_IO_ENTRY *)&_socket, (NET_IO_ENTRY *)&_socket, &buffers);
 //		hal_led_set(0, 1);
 
-		EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/usbprint");
+		EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_path(NULL, "dev/usbprint");
 		if (dev_node == NULL)
-			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/usbftdi0");
+			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_path(NULL, "dev/usbftdi0");
 		if (dev_node == NULL)
-			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, "dev/iap/com.miolabs.xkuty1");
+			dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_path(NULL, "dev/iap/com.miolabs.xkuty1");
 
 
 		if (dev_node != NULL)
@@ -65,14 +65,14 @@ void main()
 				{
 					EXOS_EVENT *input_events[] = { &_socket.InputEvent, &_comm.InputEvent };
 					done = exos_event_wait_multiple(input_events, 2, 100);
-					if (done == -1)
-					{
-						kk = (++kk)%40;
-						struct frame { unsigned long magic; unsigned long speed; unsigned long distance; unsigned char batt; };
-						struct frame buffer = (struct frame) { .magic = ('X' | ('K' << 8) | ('U' << 16) | ('1' << 24)), .speed = kk, .distance = kk, .batt = kk };
-						done = exos_io_write((EXOS_IO_ENTRY *)&_comm, &buffer, 13);
-						done = exos_io_write((EXOS_IO_ENTRY *)&_socket, &buffer, 13);
-					}
+//					if (done == -1)
+//					{
+//						kk = (++kk)%40;
+//						struct frame { unsigned long magic; unsigned long speed; unsigned long distance; unsigned char batt; };
+//						struct frame buffer = (struct frame) { .magic = ('X' | ('K' << 8) | ('U' << 16) | ('1' << 24)), .speed = kk, .distance = kk, .batt = kk };
+//						done = exos_io_write((EXOS_IO_ENTRY *)&_comm, &buffer, 13);
+//						done = exos_io_write((EXOS_IO_ENTRY *)&_socket, &buffer, 13);
+//					}
 
 					if (_socket.InputEvent.State)
 					{

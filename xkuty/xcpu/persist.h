@@ -1,13 +1,15 @@
 #ifndef XCPU_PERSIST_H
 #define XCPU_PERSIST_H
 
-#define XCPU_PERSIST_MAGIC (('X') | ('C' << 8) | ('P' << 16) | (1 << 24))
+#define XCPU_PERSIST_MAGIC (('X') | ('C' << 8) | ('P' << 16) | (2 << 24))
 
 typedef struct
 {
 	unsigned long Magic;
 	unsigned long TotalSteps;
 	unsigned char ConfigBits;
+	unsigned char DriveMode;
+	unsigned char Reserved;
 	signed char WheelRatioAdj;
 	unsigned char ThrottleAdjMin, ThrottleAdjMax;
 	unsigned char CustomCurve[7];
@@ -17,10 +19,7 @@ typedef enum
 {
 	XCPU_CONFIGF_NONE = 0,
 	XCPU_CONFIGF_MILES = (1<<0),
-	XCPU_CONFIGG_DRIVE_MODE = (3<<1)
 } XCPU_CONFIG_FLAGS;
-
-#define XCPU_CONFIGG_DRIVE_MODE_SHIFT  (1)
 
 // prototypes
 int persist_load(XCPU_PERSIST_DATA *data);
