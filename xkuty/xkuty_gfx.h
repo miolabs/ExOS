@@ -25,7 +25,7 @@ const static unsigned int _bmp_mph [] =
 0x49249000, 0x49249000, 0x49389000, 0x200000, 
 0x200000, 0x0
 };
-
+/*
 const static unsigned int _bmp_battery [] = 
 {
 0x0, 0x0, 0x1fff000, 0x1fff000, 
@@ -44,6 +44,7 @@ const static unsigned int _bmp_battery [] =
 0x3fffff80, 0x3fffff80, 0x3fffff80, 0x3fffff80, 
 0x3fffff80, 0x0, 0x0
 };
+
 const static unsigned int _bmp_battery_empty [] = 
 { 
 0x0, 0x0, 0x1fff000, 0x1803000, 
@@ -62,6 +63,46 @@ const static unsigned int _bmp_battery_empty [] =
 0x30000180, 0x30000180, 0x30000180, 0x3fffff80, 
 0x3fffff80, 0x0, 0x0
 };
+*/
+
+const unsigned int _bmp_battery [] = {
+0x0, 
+0x0, 0x1fff000, 0x1fff000, 0x3fffff80, 
+0x3fffff80, 0x3fffff80, 0x3fffff80, 0x3fffff80, 
+0x3fffff80, 0x3fffff80, 0x3fffff80, 0x3fffff80, 
+0x3fffff80, 0x3fffff80, 0x3fffff80, 0x0, 
+0x3fffff80, 0x3fffff80, 0x3fffff80, 0x3fffff80, 
+0x3fffff80, 0x3fffff80, 0x3fffff80, 0x3fffff80, 
+0x3fffff80, 0x3fffff80, 0x3fffff80, 0x3fffff80, 
+0x0, 0x3fffff80, 0x3fffff80, 0x3fffff80, 
+0x3fffff80, 0x3fffff80, 0x3fffff80, 0x3fffff80, 
+0x3fffff80, 0x3fffff80, 0x3fffff80, 0x3fffff80, 
+0x3fffff80, 0x0, 0x3fffff80, 0x3fffff80, 
+0x3fffff80, 0x3fffff80, 0x3fffff80, 0x3fffff80, 
+0x3fffff80, 0x3fffff80, 0x3fffff80, 0x3fffff80, 
+0x3fffff80, 0x3fffff80, 0x0, 0x0, 
+0x0, 0x0
+};
+
+
+const unsigned int _bmp_battery_empty [] = {
+0x0, 0x0, 0x1fff000, 0x1001000, 
+0x3f001f80, 0x20000080, 0x20000080, 0x20000080, 
+0x20000080, 0x20000080, 0x20000080, 0x20000080, 
+0x20000080, 0x20000080, 0x20000080, 0x3fffff80, 
+0x0, 0x3fffff80, 0x20000080, 0x20000080, 
+0x20000080, 0x20000080, 0x20000080, 0x20000080, 
+0x20000080, 0x20000080, 0x20000080, 0x20000080, 
+0x3fffff80, 0x0, 0x3fffff80, 0x20000080, 
+0x20000080, 0x20000080, 0x20000080, 0x20000080, 
+0x20000080, 0x20000080, 0x20000080, 0x20000080, 
+0x20000080, 0x3fffff80, 0x0, 0x3fffff80, 
+0x20000080, 0x20000080, 0x20000080, 0x20000080, 
+0x20000080, 0x20000080, 0x20000080, 0x20000080, 
+0x20000080, 0x20000080, 0x3fffff80, 0x0, 
+0x0, 0x0, 0x0
+};
+
 
 const static unsigned int _bmp_lock []  = 
 {
@@ -467,8 +508,10 @@ static SPRITE _fatal_error_spr =  { 20,17, _bmp_fatal_error, 0, 1,0, PIX_1_MONOC
 static SPRITE _cruisin_spr =  { 24,19, _bmp_cruisin, 0, 1,0, PIX_1_MONOCHROME, PIX_NONE};
 static SPRITE _speed_adjust_spr = { 94, 14, _bmp_speed_adjust, 0, 3,0, PIX_1_MONOCHROME, PIX_NONE};
 
-static SPRITE _battery_full  = { 27, 59, _bmp_battery, 0, 1,0, PIX_1_MONOCHROME, PIX_NONE};
-static SPRITE _battery_empty = { 27, 59, _bmp_battery_empty, 0, 1,0, PIX_1_MONOCHROME, PIX_NONE};
+static SPRITE _battery_empty = { 27, 59, _bmp_battery_empty, 0, 1, 0, PIX_1_MONOCHROME, PIX_NONE};
+static SPRITE _battery_full = { 27, 59, _bmp_battery, 0, 1, 0, PIX_1_MONOCHROME, PIX_NONE};
+
+
 static SPRITE _adjust_full_spr  = { 50, 18, _bmp_adjust_bar_full, 0, 2, 0, PIX_1_MONOCHROME, PIX_NONE};
 static SPRITE _adjust_empty_spr = { 50, 18, _bmp_adjust_bar_empty, 0, 2, 0, PIX_1_MONOCHROME, PIX_NONE};
 
