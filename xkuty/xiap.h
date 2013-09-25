@@ -13,6 +13,7 @@ typedef struct __attribute__((__packed__))
 	unsigned long Distance;
 	unsigned char Battery;
     unsigned char DriveMode;
+	unsigned char CustomCurve[7];
 } XIAP_FRAME_TO_IOS;
 
 void xiap_send_frame(DASH_DATA *dash);

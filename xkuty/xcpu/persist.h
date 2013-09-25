@@ -10,6 +10,7 @@ typedef struct
 	unsigned char ConfigBits;
 	signed char WheelRatioAdj;
 	unsigned char ThrottleAdjMin, ThrottleAdjMax;
+	unsigned char CustomCurve[7];
 } XCPU_PERSIST_DATA;
 
 typedef enum

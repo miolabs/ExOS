@@ -28,6 +28,7 @@ typedef struct {
 	XCPU_DRIVE_MODE DriveMode;
 	unsigned char ThrottleMin;
 	unsigned char ThrottleMax;
+	unsigned char CustomCurve[7];
 } DASH_CONFIG;
 
 typedef struct {

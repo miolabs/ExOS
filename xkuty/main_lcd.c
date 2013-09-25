@@ -20,9 +20,9 @@
 
 static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
 
-static const CAN_EP _eps[] = {{0x300, LCD_CAN_BUS}, {0x301, LCD_CAN_BUS} };
+static const CAN_EP _eps[] = {{0x300, LCD_CAN_BUS}, {0x301, LCD_CAN_BUS}, {0x302, LCD_CAN_BUS} };
 
-static DASH_DATA _dash = { .ActiveConfig = { .DriveMode = XCPU_DRIVE_MODE_SOFT, .ThrottleMin = 0, .ThrottleMax = 0 }};
+static DASH_DATA _dash = { .ActiveConfig = { .DriveMode = XCPU_DRIVE_MODE_SOFT, .ThrottleMin = 0, .ThrottleMax = 0, .CustomCurve = {0,0,0,0,0,0,0}}};
 
 static const EVREC_CHECK _maintenance_screen_access[] =
 {
@@ -160,6 +160,15 @@ static void _get_can_messages()
 				_dash.ActiveConfig.DriveMode = tmsg->drive_mode;
 			}
 			break;
+	
+			case 0x302:
+			{
+				int i;
+				for(i = 0; i < 7; i++)
+					_dash.ActiveConfig.CustomCurve[i] = xmsg->CanMsg.Data.u8[i];
+			}
+			break;
+
 		}
 		exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
         xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0);

@@ -65,12 +65,17 @@ static XLCD_INPUT _lcd = {0,0,0,0,0,0,0};
 
 static XCPU_EVENTS _do_lcd_command(XCPU_MASTER_INPUT2 *input)
 {
+	int i;
 	switch(input->Cmd)
 	{
 		case XCPU_CMD_POWER_ON:		return XCPU_EVENT_TURN_ON;
 		case XCPU_CMD_POWER_OFF:	return XCPU_EVENT_TURN_OFF;
 		case XCPU_CMD_SET_DRIVE_MODE:
 			_drive_mode = input->Data[0];
+			break;
+		case XCPU_CMD_SET_CURVE:
+			for(i = 0; i < 7; i++)
+				_storage.CustomCurve[i] = input->Data[i];
 			break;
 	}
 	return 0;
@@ -104,34 +109,45 @@ static XCPU_EVENTS _read_can_messages()
 	return cmd_events;
 }
 
-static void _send_can_messages(unsigned int speed, unsigned int distance)
+static int _batt_level ()
 {
-	CAN_BUFFER buf;
-
-	buf.u32[0] = 0;
-	buf.u32[1] = 0;
-	buf.u8[0]  = _storage.ThrottleAdjMin;
-	buf.u8[1]  = _storage.ThrottleAdjMax;
-	buf.u16[1] = _drive_mode;
-	hal_can_send((CAN_EP) { .Id = 0x301 }, &buf, 8, CANF_NONE);
-
 	int batt = hal_adc_read(1) >> 6;	// Battery voltage = Input adc / BATT_VOLTAGE_RATIO
 	const int bot = (int)(3.5f * 13.0f * BATT_VOLTAGE_RATIO);	// Discharged level 3.5v
 	const int top = (int)(4.0f * 13.0f * BATT_VOLTAGE_RATIO); // Charged value 4.0v
 	batt = ((batt - bot) * (0x10000 / (top - bot))) >> 8;
 	if (batt < 0) batt = 0;
 	if (batt > 0xff) batt = 0xff;
+	return batt;
+}
 
-	exos_thread_sleep (5);  // Temporary fix; packets get overwritten
+static void _send_can_messages(unsigned int speed, unsigned int distance)
+{
+	int i;
+	CAN_BUFFER buf;
+
+	for(i = 0; i< 7; i++)
+		buf.u8[i] = _storage.CustomCurve[i];
+
+	hal_can_send((CAN_EP) { .Id = 0x302 }, &buf, 8, CANF_NONE);
+
+	exos_thread_sleep (4);  // Temporary fix; packets get overwritten
+
+	buf.u32[0] = buf.u32[1] = 0;
+	buf.u8[0]  = _storage.ThrottleAdjMin;
+	buf.u8[1]  = _storage.ThrottleAdjMax;
+	buf.u16[1] = _drive_mode;
+	hal_can_send((CAN_EP) { .Id = 0x301 }, &buf, 8, CANF_NONE);
+
+	exos_thread_sleep (4);  // IDEM
 
 	buf.u8[0] = speed;
-	buf.u8[1] = batt; //_c_i.throttle;
+	buf.u8[1] = _batt_level();
 	buf.u8[2] = _state;
 	buf.u8[3] = _storage.WheelRatioAdj;
 	buf.u32[1] = distance;
 	hal_can_send((CAN_EP) { .Id = 0x300 }, &buf, 8, CANF_NONE);
 
-	exos_thread_sleep (5);  // IDEM
+	exos_thread_sleep (4);  // IDEM
 }
 
 
@@ -221,8 +237,11 @@ void main()
 				.ConfigBits = XCPU_CONFIGF_NONE,
 				.WheelRatioAdj = 0,
 				.ThrottleAdjMin = 66, 
-				.ThrottleAdjMax = 166};
+				.ThrottleAdjMax = 166,
+				.CustomCurve = {255,255,255,255,255,255,255} };
 	}
+
+	set_custom_curve_ptr(&_storage.CustomCurve);
 
 	_control_state = CONTROL_OFF;
 	_output_state = OUTPUT_NONE;
