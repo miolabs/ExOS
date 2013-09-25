@@ -7,6 +7,7 @@
 
 static COMM_IO_ENTRY _comm;
 static int _connected = 0;
+static int _wait = 0;
 
 static void _connect()
 {
@@ -19,6 +20,7 @@ static void _connect()
 		if (err == 0)
 		{
 			_connected = 1;
+			_wait = 0;
 		}
 	}
 }
@@ -41,16 +43,22 @@ void xiap_send_frame(DASH_DATA *dash)
 	}
 	else
 	{
-		XIAP_FRAME_TO_IOS buffer = (XIAP_FRAME_TO_IOS) { 
-			.Magic = XIAP_MAGIC, 
-			.Speed = dash->Speed, .StatusFlags = dash->CpuStatus,
-			.Distance = dash->Distance,
-			.Battery = dash->battery_level_fx8, 
-			.DriveMode = dash->ActiveConfig.DriveMode };
-
-		err = exos_io_write((EXOS_IO_ENTRY *)&_comm, &buffer, sizeof(buffer));
-		if (err < 0)
-			_disconnect();
+		if (_wait == 0)
+		{
+			XIAP_FRAME_TO_IOS buffer = (XIAP_FRAME_TO_IOS) { 
+				.Magic = XIAP_MAGIC, 
+				.Speed = dash->Speed, .StatusFlags = dash->CpuStatus,
+				.Distance = dash->Distance,
+				.Battery = dash->battery_level_fx8, 
+				.DriveMode = dash->ActiveConfig.DriveMode };
+	
+			err = exos_io_write((EXOS_IO_ENTRY *)&_comm, &buffer, sizeof(buffer));
+			if (err < 0)
+				_disconnect();
+			
+			_wait = 1;
+		}
+		else _wait--;
 	}
 }
 

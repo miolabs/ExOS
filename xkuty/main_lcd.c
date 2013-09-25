@@ -311,7 +311,7 @@ void main()
 
 	int screen_count = 0;
 #ifdef DEBUG
-	DISPLAY_STATE init_state = ST_LOGO_IN;
+	DISPLAY_STATE init_state = ST_EXOS_IN;
 #else
 	DISPLAY_STATE init_state = ST_LOGO_IN;
 #endif
