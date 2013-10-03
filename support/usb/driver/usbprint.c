@@ -47,7 +47,8 @@ static int _protocol_matches(USB_INTERFACE_DESCRIPTOR *if_desc, USBPRINT_PROTOCO
 
 static int _device_if_matches(USB_HOST_DEVICE *device, USB_INTERFACE_DESCRIPTOR *if_desc, USBPRINT_PROTOCOL *pproto)
 {
-	return 0;
+        int val = (device->Vendor == 0x1cbe && device->Product == 0x0002);
+	return val;
 }
 
 static USB_HOST_FUNCTION *_check_interface(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTOR *conf_desc, USB_DESCRIPTOR_HEADER *fn_desc)
