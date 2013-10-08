@@ -1,6 +1,57 @@
 #ifndef DM36X_VPBE_H
 #define DM36X_VPBE_H
 
+#define VMOD_VDMD_BIT 12
+#define VDMD_VDMD_YCC16 0
+#define VDMD_VDMD_YCC8 1
+#define VDMD_VDMD_PRGB 2
+#define VDMD_VDMD_SRGB 3
+#define VMOD_ITLCL (1<<11)	// Non-interlace line count 
+#define VMOD_ITLC (1<<10)	// Interlaced modes non-interlace
+#define VMOD_NSIT (1<<9)	// Non-std interlace
+#define VMOD_TVTYP_BIT 6
+#define VMOD_TVTYP_NTSC 0
+#define VMOD_TVTYP_PAL 1
+#define VMOD_TVTYP_525P 0
+#define VMOD_TVTYP_625P 1
+#define VMOD_TVTYP_1080I 2
+#define VMOD_TVTYP_720P 3
+#define VMOD_SLAVE (1<<5)
+#define VMOD_VMD (1<<4)	// Non-std modes
+#define VMOD_BLNK (1<<3) // Force blanking
+#define VMOD_VIE (1<<1) // Normal composite mode
+#define VMOD_VENC (1<<0) // Video encoder enable
+
+#define VDPRO_PFLTC_BIT 14
+#define VDPRO_PFLTC_NOFILTER 0
+#define VDPRO_PFLTC_1_1 1
+#define VDPRO_PFLTC_1_2_1 2
+#define VDPRO_PFLTY_BIT 12
+#define VDPRO_PFLTY_NOFILTER 0
+#define VDPRO_PFLTY_1_1 1
+#define VDPRO_PFLTY_1_2_1 2
+#define VDPRO_PFLTR (1<<11)
+#define VDPRO_CBTYP (1<<9)	// Color-bar 100%
+#define VDPRO_CBMD (1<<8)	// Color-bar mode enable
+#define VDPRO_DAFUL (1<<7)	// Full-swing output
+#define VDPRO_ATRGB (1<<6)	// RGB attenuation REC601
+#define VDPRO_ATYCC (1<<5)	// YCbCr attenuation REC601
+#define VDPRO_ATCOM (1<<4)	// Composite attenuation REC601
+#define VDPRO_CUPS (1<<1)	// Chroma up-sampling
+#define VDPRO_YUPS (1<<0)	// Y signal up-sampling
+
+struct _CVBS_BITS
+{
+	unsigned CSBLD:1;
+	unsigned CBBLD:1;
+	unsigned CRCUT:1;
+	unsigned CBLS:1;
+	unsigned CSTUP:1;
+	unsigned CVLVL:1;
+	unsigned :6;
+	signed CYDLY:3;
+};
+
 // VENC video encoder registers
 typedef volatile struct
 {
@@ -59,13 +110,19 @@ typedef volatile struct
 	unsigned long RSV1; // 0xD0h
 	unsigned long RSV2; // 0xD4h
 	unsigned long RSV3; // 0xD8h
-	unsigned long CVBS; // 0xDCh
+	union
+	{
+		unsigned long CVBS; // 0xDCh
+		struct _CVBS_BITS CVBSbits;
+	};
 	unsigned long CMPNT; // 0xE0h
 	unsigned long ETMG0; // 0xE4h
 	unsigned long ETMG1; // 0xE8h
 	unsigned long ETMG2; // 0xECh
 	unsigned long ETMG3; // 0xF0h
 	unsigned long DACSEL; // 0xF4h
+	unsigned long ReservedF8;
+	unsigned long ReservedFC;
 	unsigned long ARGBX0; // 0x100h
 	unsigned long ARGBX1; // 0x104h
 	unsigned long ARGBX2; // 0x108h
@@ -98,6 +155,38 @@ typedef volatile struct
 	unsigned long XHINTVL; // 0x174h
 } VENC_CONTROLLER;
 
+#define OSDWIN_MD_BITMAP 0
+#define OSDWIN_MD_RGB565 1
+#define OSDWIN_MD_RGB888 2
+#define OSDWIN_MD_YC 3
+
+#define OSDWIN_ZOOM_X1 0
+#define OSDWIN_ZOOM_X2 1
+#define OSDWIN_ZOOM_X4 2
+
+#define OSDWIN_BMW_1BIT 0
+#define OSDWIN_BMW_2BIT 1
+#define OSDWIN_BMW_4BIT 2
+#define OSDWIN_BMW_8BIT 3
+
+#define OSDWIN0MD_OACT0 (1<<0)
+#define OSDWIN0MD_OFF0 (1<<1)
+#define OSDWIN0MD_TE0 (1<<2)
+#define OSDWIN0MD_BLND0_BIT 3
+#define OSDWIN0MD_BMW0_BIT 6
+#define OSDWIN0MD_OVZ0_BIT 8
+#define OSDWIN0MD_OHZ0_BIT 10
+#define OSDWIN0MD_CLUT_RAM (1<<12)
+#define OSDWIN0MD_BMP0MD_BIT 13
+#define OSDWIN0MD_BMPMDE (1<<15)
+
+struct _WINADH_BITS
+{
+	unsigned O0AH:7;
+	unsigned :1;
+	unsigned O1AH:7;
+	unsigned :1;
+};
 
 typedef volatile struct 
 {
@@ -111,10 +200,18 @@ typedef volatile struct
 	unsigned long VIDWIN1OFST; // 0x1C
 	unsigned long OSDWIN0OFST; // 0x20
 	unsigned long OSDWIN1OFST; // 0x24
-	unsigned long VIDWINADH; // 0x28
+	union
+	{
+		unsigned long VIDWINADH; // 0x28
+		struct _WINADH_BITS VIDWINADHbits;
+	};
 	unsigned long VIDWIN0ADL; // 0x2C 
 	unsigned long VIDWIN1ADL; // 0x30
-	unsigned long OSDWINADH; // 0x34
+	union
+	{
+		unsigned long OSDWINADH; // 0x34
+		struct _WINADH_BITS OSDWINADHbits;
+	};
 	unsigned long OSDWIN0ADL; // 0x38
 	unsigned long OSDWIN1ADL; // 0x3C
 	unsigned long BASEPX; // 0x40
@@ -182,10 +279,12 @@ typedef enum
 // Simple single screen configuration
 typedef struct
 {
-  unsigned char a;
-
+	unsigned short Width;
+	unsigned short Height;
+	unsigned short Stride;
+	void *Bitmap;
 } VPBE_SIMPLE_SPEC;
 
-void vpbe_initialize_simple (VPBE_SIMPLE_SPEC *spec);
+void vpbe_initialize_simple(VPBE_SIMPLE_SPEC *spec);
 
 #endif // DM36X_VPBE_H

@@ -135,6 +135,13 @@ void psc_set_module_state(PSC_MODULE module, PSC_MODULE_STATE state)
 	while(_psc->PTSTAT & PTSTAT_GOSTAT);
 }
 
+PSC_MODULE_STATE psc_get_module_state(PSC_MODULE module)
+{
+	while(_psc->PTSTAT & PTSTAT_GOSTAT);
+	PSC_MODULE_STATE state = _psc->MDCTL[module] & 0x3;
+	return state;
+}
+
 static void _wait(int count)
 {
 	for (int volatile i = 0; i < count; i++);

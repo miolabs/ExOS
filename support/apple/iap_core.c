@@ -74,7 +74,7 @@ void iap_core_stop()
 static void _warning()
 {
 	hal_led_set(0, 1);
-	__machine_reset();
+	kernel_panic(KERNEL_ERROR_UNKNOWN);
 }
 #endif
 
@@ -243,7 +243,9 @@ void iap_core_parse(unsigned char *data, int length)
 		}
 		else 
 		{
-			//_warning();
+#ifdef DEBUG
+			_warning();	// input buffer couldn't be allocated 
+#endif
 			break;
 		}
 
@@ -254,7 +256,7 @@ void iap_core_parse(unsigned char *data, int length)
 				exos_mutex_lock(&_busy_requests_lock);
 #ifdef DEBUG
 				if (!list_find_node(&_busy_requests_list, (EXOS_NODE *)req))
-					_warning();
+					_warning();	// matching request is not pending
 #endif
 				list_remove((EXOS_NODE *)req);
 				exos_mutex_unlock(&_busy_requests_lock);
@@ -265,7 +267,7 @@ void iap_core_parse(unsigned char *data, int length)
 				exos_fifo_queue(&_incoming_cmds_fifo, (EXOS_NODE *)cmd_node);
 			}
 #ifdef DEBUG
-			else _warning();
+			else _warning();	// received packet checksum mismatch
 #endif
 		}
 		else 
@@ -507,7 +509,7 @@ static int _slave_io()
 #endif
 						break;
 					case IAP_CMD_OPEN_DATA_SESSION_FOR_PROTOCOL:
-						// FIXME: we are ignoring protocol field
+						// FIXME: ensure we are not ignoring protocol field
 						done = iap_open_session((cmd_buffer[0] << 8) | cmd_buffer[1], cmd_buffer[2]);
 						resp_buffer[offset++] = done ? IAP_OK : IAP_ERROR_BAD_PARAMETER;
 						resp_buffer[offset++] = cmd.CommandID;

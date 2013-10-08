@@ -1,34 +1,45 @@
-
-
-
-#if 1
 #include <net/tcp_io.h>
 #include <comm/comm.h>
 #include <kernel/tree.h>
 #include <support/board_hal.h>
 #include <kernel/thread.h>
 
-#include "support/dm36x/vpbe.h"
+#include <support/dm36x/vpbe.h>
 
 #include <stdio.h>
 
+static OSD_CONTROLLER *_osd = (OSD_CONTROLLER *)0x01C71C00;
+
+static unsigned short _bitmap[720*576] __attribute__((__aligned__(32)));
+
+#define RGB565(r,g,b) (((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3))
 
 int main()
 {
-	VPBE_SIMPLE_SPEC nil;
+	VPBE_SIMPLE_SPEC test = (VPBE_SIMPLE_SPEC) { .Width = 720, .Height = 676, .Stride = 720 * 2, .Bitmap = _bitmap };
 
-	hal_board_init_pinmux(HAL_RESOURCE_TVOUT, 0);
+	//hal_board_init_pinmux(HAL_RESOURCE_TVOUT, 0);
 
-	exos_thread_sleep (20);
+	exos_thread_sleep(20);
 
-	vpbe_initialize_simple  ( &nil);
-
+	int off = 0;
+	for(int r = 0; r < 16; r++)
+	{
+		for (int g = 0; g < 16; g++)
+		{
+			for (int b = 0; b < 16; b++)
+			{
+				_bitmap[off++] = RGB565(r << 4, g << 4, b << 4);
+			}
+		}
+		off += (720 - 256);
+	}
+	
+	vpbe_initialize_simple(&test);
 	while (1)
 	{
 	}
 }
-#endif
-
 
 
 #if 0

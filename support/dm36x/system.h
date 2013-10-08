@@ -18,6 +18,39 @@ struct _PERI_CLKCTL_BITS
 	unsigned PRTCCLKS:1;
 };
 
+struct _VDAC_CONFIG_BITS
+{
+	unsigned PWD_A:1;
+	unsigned PWD_B:1;
+	unsigned PWD_C:1;
+	unsigned PWDNBUFZ:1;
+	unsigned PWDNZ_TVDETECT:1;
+	unsigned XDMODE:1;
+	unsigned :13;
+	unsigned PDTVSHORTZ:1;
+	unsigned :10;
+	unsigned TVINT:1;
+	unsigned TVSHORT:1;
+};
+
+struct _VPSS_CLK_CTRL_BITS
+{
+	unsigned VPSS_MUXSEL:2;
+	unsigned PCLK_INV:1;
+	unsigned VENCLKEN:1;
+	unsigned DACCLKEN:1;
+	unsigned VENC_CLK_SRC:2;
+	unsigned VPSS_CLKMD:1;
+};
+
+#define VPSS_MUXSEL_PLLC_CLK 0
+#define VPSS_MUXSEL_EXTCLK 2
+#define VPSS_MUXSEL_PCLK 3
+
+#define VENC_CLK_SRC_PLLC1SYSCLK6 0
+#define VENC_CLK_SRC_PLLC2SYSCLK5 1
+#define VENC_CLK_SRC_MXI 2
+
 typedef volatile struct
 {
 	unsigned long PINMUX0;
@@ -138,13 +171,21 @@ typedef volatile struct
    	unsigned long Reserved20;
 	unsigned long HPI_CTL;
 	unsigned long DEVICE_ID;
-	unsigned long VDAC_CONFIG;
+	union
+	{
+		unsigned long VDAC_CONFIG;
+        struct _VDAC_CONFIG_BITS VDAC_CONFIGbits;
+	};
 	unsigned long TIMER64_CTL;
 	unsigned long USB_PHY_CTRL;
     unsigned long MISC;
     unsigned long MSTPRI0;
 	unsigned long MSTPRI1;
-	unsigned long VPSS_CLK_CTRL;
+	union
+	{
+		unsigned long VPSS_CLK_CTRL;
+		struct _VPSS_CLK_CTRL_BITS VPSS_CLK_CTRLbits;
+	};
 	union
 	{
 		unsigned long PERI_CLKCTL;
@@ -361,14 +402,6 @@ typedef volatile struct
 #define PLLSECCTL_TENABLE (1<<17)
 #define PLLSECCTL_TENABLEDIV (1<<18)
 
-// Defs. for SYSTEM_CONTROLLER::VPSS_CLK_CTRL
-#define VPSS_MUXSEL_VENC   1
-#define VPSS_MUXSEL_EXCTL  2
-#define VPSS_MUXSEL_PCLK   3
-#define VENC_CLK_SRC_PLLC1SYSCLK6 0
-#define VENC_CLK_SRC_PLLC2SYSCLK5 1
-#define VENC_CLK_SRC_MXI          2
-
 // prototypes
 void system_select_armss_clock(PLLC_INDEX plli);
 void system_select_ddr2_clock(PLLC_INDEX plli);
@@ -376,10 +409,11 @@ void system_perform_vtpio_calibration();
 void system_select_pinmux(int gio, int func);
 void system_select_intmux(int number, int func);
 int system_get_sysclk(PLLC_INDEX plli, PLLC_SYSCLK_INDEX sysi);
-void system_video_regs ( unsigned long vdac_config, unsigned long vpss_clk_ctl);
+
 //int  system_vpss_enable_clock ( unsigned long mask);
 
 void psc_set_module_state(PSC_MODULE module, PSC_MODULE_STATE state);
+PSC_MODULE_STATE psc_get_module_state(PSC_MODULE module);
 
 void pllc_set_divider(PLLC_INDEX plli, PLLC_SYSCLK_INDEX index, int ratio);
 void pllc_setup(PLLC_INDEX plli, int pre_div, int multiplier, int post_div, int sysclkdiv[], int sysclkdiv_count);

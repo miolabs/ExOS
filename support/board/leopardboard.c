@@ -26,40 +26,44 @@ void hal_board_initialize()
 	gpio_initialize();
    	gpio_setup(LED1, GPIO_DIR_OUTPUT, 0);
 	gpio_setup(LED2, GPIO_DIR_OUTPUT, 0);
+	system_select_armss_clock(PLLC1);
 
 	// PLL freq = 432 MHz
 	int ratios_pllc2[] = { 
 		9,	// SYSCLK1 = 48 MHz (USB Ref)
 		2,	// SYSCLK2 = 216 MHz (ARM9)
-		18,	// SYSCLK3 = 24 MHz (-DDR2)
+		3,	// SYSCLK3 = 144.33 MHz (-DDR2)
 		27,	// SYSCLK4 = 16 MHz (VoiceCodec)
 		16,	// SYSCLK5 = 27 MHz (VENC)
 		}; 
-	pllc_setup(PLLC2, 0, 9, 0, ratios_pllc2, 5);
+//	pllc_setup(PLLC2, 0, 9, 0, ratios_pllc2, 5);
+	pllc_setup(PLLC2, 0, 27, 2, ratios_pllc2, 5);
 
 	system_select_armss_clock(PLLC2);
+    system_select_ddr2_clock(PLLC2);
 //	gpio_setup(35, GPIO_DIR_OUTPUT, 1);	// CLKOUT1
 //	gpio_setup(31, GPIO_DIR_OUTPUT, 1);	// CLKOUT2 (PLLC1_SYSCLK9 * DIV)
 //	system_select_pinmux(31, 3);	// for testing purposes only
 
-	// Initialize SDRAM if the program is not already working there
-	unsigned int code = (unsigned int)&i_am_here;
-	if (( code & 0xf0000000) != 0x80000000)
-	{
 		// PLL freq = 500 MHz
 		int ratios_pllc1[] = {
 			10,	// SYSCLK1 = 50 MHz (-USB Ref)
 			3,	// SYSCLK2 = 166.66 MHz (HDVICP+ARM9Core)
 			3,	// SYSCLK3 = 166.66 MHz (HDVICP IF+MJCP IF)
 			6,	// SYSCLK4 = 83.33 MHz (CFGBuf, VCLK, Peripheral)
-			4,	// SYSCLK5 = 125 MHz (VPSS)
+			3,	// SYSCLK5 = 166.66 MHz (VPSS)
 			10, // SYSCLK6 = (-VENC)
 			3,	// SYSCLK7 = 166.66 MHz (DDR2)
 			20, // SYSCLK8 = 25MHz (MMC/SD0)
 			10, // SYSCLK9 = (DIV * CLKOUT2)
 			}; 
 		pllc_setup(PLLC1, 5, 125, 1, ratios_pllc1, 9);
+		system_select_ddr2_clock(PLLC1);
 
+	// Initialize SDRAM if the program is not already working there
+	unsigned int code = (unsigned int)&i_am_here;
+	if ((code & 0xf0000000) != 0x80000000)
+	{
 		EMIF_SPEC spec = (EMIF_SPEC) {
 			.tref = 7800, // 7.8 us)
 			.trfc = 128, // 127.5 ns
@@ -77,9 +81,16 @@ void hal_board_initialize()
 			.trtp = 8,	// 7.5 ns
 			.tcke = 3, // cycles
 			};
-		system_select_ddr2_clock(PLLC1);
 		emif_initialize_ddr2(&spec, 6); // 6ns clk (166MHz)
 	}
+
+#ifdef DM36X_ENABLE_VENC
+	_system->VDAC_CONFIG = 0x8001c; // 0x101941DC;
+	_system->VPSS_CLK_CTRLbits.VENC_CLK_SRC = VENC_CLK_SRC_PLLC2SYSCLK5;
+	_system->VPSS_CLK_CTRLbits.VPSS_MUXSEL = VPSS_MUXSEL_PLLC_CLK;
+	_system->VPSS_CLK_CTRLbits.VENCLKEN = 1;
+	_system->VPSS_CLK_CTRLbits.DACCLKEN = 1;
+#endif	
 
 	AEMIF_SPEC spec2 = (AEMIF_SPEC) {
 		.trp = 20,
@@ -114,22 +125,17 @@ void hal_led_set(HAL_LED led, int state)
 
 int _setup_tvout ()
 {
-	//PINMUX1 = 0x00145555;  //  evmdm365.gel Video Cout, EXTCLK, FIELD
-	// 0001 0100 0101 0101 0101
-
-	//PINMUX1 &= ~0x00400000;  // Enable VCLK for PINMUX 
-	//PINMUX1 |= 0XAA00; // Enable COUT[0],COUT[1],COUT[2],COUT[3]
-
-    _system->PINMUX1bits.COUT0 = 1; // Enable COUT instead of GIO
-    _system->PINMUX1bits.COUT1 = 1; // Enable COUT instead of GIO
-    _system->PINMUX1bits.COUT2 = 1; // Enable COUT instead of GIO
-    _system->PINMUX1bits.COUT3 = 1; // Enable COUT instead of GIO
-    _system->PINMUX1bits.COUT4 = 1; // Enable COUT instead of GIO
-    _system->PINMUX1bits.COUT5 = 1; // Enable COUT instead of GIO
-    _system->PINMUX1bits.COUT6 = 1; // Enable COUT instead of GIO
-    _system->PINMUX1bits.COUT7 = 1; // Enable COUT instead of GIO
-    _system->PINMUX1bits.FIELD = 1; // ?
-    _system->PINMUX1bits.VCLK = 0; // Enable VCLK for PINMUX 
+//NOTE: actually not needed in DM36x as tvout is a fixed function pin
+//    _system->PINMUX1bits.COUT0 = 1; // Enable COUT instead of GIO
+//    _system->PINMUX1bits.COUT1 = 1; // Enable COUT instead of GIO
+//    _system->PINMUX1bits.COUT2 = 1; // Enable COUT instead of GIO
+//    _system->PINMUX1bits.COUT3 = 1; // Enable COUT instead of GIO
+//    _system->PINMUX1bits.COUT4 = 1; // Enable COUT instead of GIO
+//    _system->PINMUX1bits.COUT5 = 1; // Enable COUT instead of GIO
+//    _system->PINMUX1bits.COUT6 = 1; // Enable COUT instead of GIO
+//    _system->PINMUX1bits.COUT7 = 1; // Enable COUT instead of GIO
+//    _system->PINMUX1bits.FIELD = 1; // ?
+//    _system->PINMUX1bits.VCLK = 0; // Enable VCLK for PINMUX 
 	return 1;
 }
 

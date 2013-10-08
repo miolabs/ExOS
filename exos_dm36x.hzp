@@ -96,5 +96,5 @@
   <configuration Name="SRAM Release" inherited_configurations="LeopardBoard;Release;SRAM"/>
   <configuration Name="DDR Debug" inherited_configurations="DDR;Debug;LeopardBoard"/>
   <configuration Name="DDR Release" inherited_configurations="DDR;LeopardBoard;Release"/>
-  <configuration Name="LeopardBoard" c_preprocessor_definitions="BOARD_LEOPARDBOARD" hidden="Yes"/>
+  <configuration Name="LeopardBoard" c_preprocessor_definitions="BOARD_LEOPARDBOARD;DM36X_ENABLE_VENC" hidden="Yes"/>
 </solution>
