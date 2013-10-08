@@ -526,6 +526,7 @@ static int _slave_io()
 						resp = (IAP_CMD) { .CommandID = IAP_CMD_ACCESORY_ACK, .Length = offset, .Transaction = cmd.Transaction };
                         iap_send_cmd(&resp, resp_buffer);
 #ifdef DEBUG		
+						// echo received bytes back to device
 //						resp = (IAP_CMD) { .CommandID = IAP_CMD_ACCESORY_DATA_TRANSFER, .Length = cmd.Length, .Transaction = _transaction++ };
 //						iap_send_cmd(&resp, cmd_buffer);
 #endif

@@ -75,7 +75,7 @@ static void *_server(void *arg)
 									(buffer[done - 1] != 10 && buffer[done - 2] != 10))
 								{
 									done2 = sprintf(buffer, "\r\n");
-									done2 = exos_io_write((EXOS_IO_ENTRY *)&comm, buffer, done2);					
+									done2 = exos_io_write((EXOS_IO_ENTRY *)&comm, buffer, done2);
 								}
 #endif
 							}
