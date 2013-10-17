@@ -46,7 +46,7 @@ int sprintf(char *restrict s, const char *restrict format, ...)
 				done += __str_copy(s + done, va_arg(args, char *), -1);
 				break;
 			case 'd':
-				done += __int32_decl ( s + done, va_arg(args, int)); 
+				done += __int32_decl(s + done, va_arg(args, int)); 
 				break;
 			case 'x':
 				switch (size)

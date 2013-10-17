@@ -80,13 +80,13 @@ static void _start(USB_HOST_FUNCTION *usb_func)
 					long long size = func->NumBlocks * func->BlockSize;
 					if (size == 0 || func->BlockSize != 512) done = 0;	// FIXME: invalid size!
 					
-					func->KernelDevice = (EXOS_TREE_DEVICE) {
-						.Name = "usbdisk",
-						.DeviceType = EXOS_TREE_DEVICE_BLOCK,
-						.Device = (COMM_DEVICE *)func, // FIXME
-						.Unit = 0 };
-					
-                    exos_tree_add_device(&func->KernelDevice, "dev");
+//					func->KernelDevice = (EXOS_TREE_DEVICE) {
+//						.Name = "usbdisk",
+//						.DeviceType = EXOS_TREE_DEVICE_BLOCK,
+//						//.Device = func, FIXME: mount rawfs
+//						.Unit = 0 };
+//					
+//                    exos_tree_add_device(&func->KernelDevice, "dev");
 				}
 				else done = 0;
 			}
