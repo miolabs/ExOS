@@ -1286,6 +1286,497 @@
     <RegisterGroup start="0x01C69000" name="PRTCIF" />
     <RegisterGroup start="0x01C69400" name="KEYSCAN" />
     <RegisterGroup start="0x01C69800" name="HPI" />
+    <RegisterGroup start="0x01C70000" name="ISP">
+      <Register start="+0x00" size="0x4" name="PID"/>
+      <Register start="+0x04" size="0x4" name="PCCR">
+        <BitField size="1" name="BL_CLK_ENABLE" start="0"/>
+        <BitField size="1" name="ISIF_CLK_ENABLE" start="1"/>
+        <BitField size="1" name="H3A_CLK_ENABLE" start="2"/>
+        <BitField size="1" name="RSZ_CLK_ENABLE" start="3"/>
+        <BitField size="1" name="IPIPE_CLK_ENABLE" start="4"/>
+        <BitField size="1" name="IPIPEIF_CLK_ENABLE" start="5"/>
+      </Register>
+      <Register start="+0x08" size="0x4" name="BCR">
+        <BitField size="1" name="SRC_SEL_IPIPE_LDC" start="0"/>
+        <BitField size="1" name="SRC_SEL_ISIF_IPIPE" start="1"/>
+        <BitField size="3" name="CPRIORITY_R" start="2"/>
+        <BitField size="3" name="CPRIORITY_W" start="5"/>
+      </Register>
+      <Register start="+0x0C" size="0x4" name="INTSTAT">
+        <BitField size="1" name="ISIF_INT0" start="0"/>
+        <BitField size="1" name="ISIF_INT1" start="1"/>
+        <BitField size="1" name="ISIF_INT2" start="2"/>
+        <BitField size="1" name="ISIF_INT3" start="3"/>
+        <BitField size="1" name="IPIPE_INT_REG" start="4"/>
+        <BitField size="1" name="IPIPE_INT_LAST_PIX" start="5"/>
+        <BitField size="1" name="IPIPE_INT_BSC" start="7"/>
+        <BitField size="1" name="IPIPE_INT_HSC" start="8"/>
+        <BitField size="1" name="IPIPEIF_INT" start="9"/>
+        <BitField size="1" name="AEW_INT" start="10"/>
+        <BitField size="1" name="AF_INT" start="11"/>
+        <BitField size="1" name="RSZ_INT_REG" start="13"/>
+        <BitField size="1" name="RSZ_INT_LAST_PIX" start="14"/>
+        <BitField size="1" name="RSZ_INT_CYC_RZA" start="16"/>
+        <BitField size="1" name="RSZ_INT_CYC_RZB" start="17"/>
+        <BitField size="1" name="OSD_INT" start="20"/>
+        <BitField size="1" name="VENC_INT" start="21"/>
+        <BitField size="1" name="RSZ_INT_EOF0" start="22"/>
+        <BitField size="1" name="RSZ_INT_EOF1" start="23"/>
+        <BitField size="1" name="H3A_INT_EOF" start="24"/>
+        <BitField size="1" name="IPIPE_INT_EOF" start="25"/>
+        <BitField size="1" name="LCD_INT_EOF" start="26"/>
+        <BitField size="1" name="IPIPE_INT_PDC_INI" start="27"/>
+        <BitField size="1" name="IPIPE_INT_PDC_RNEW0" start="28"/>
+        <BitField size="1" name="IPIPE_INT_PDC_RNEW1" start="29"/>
+      </Register>
+      <Register start="+0x10" size="0x4" name="INTSEL1">
+        <BitField size="5" name="INTSEL0" start="0">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+        <BitField size="5" name="INTSEL0" start="8">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+        <BitField size="5" name="INTSEL0" start="16">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+        <BitField size="5" name="INTSEL0" start="24">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+      </Register>
+      <Register start="+0x14" size="0x4" name="INTSEL2">
+        <BitField size="5" name="INTSEL4" start="0">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+        <BitField size="5" name="INTSEL5" start="8">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+        <BitField size="5" name="INTSEL6" start="16">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+        <BitField size="5" name="INTSEL7" start="24">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+      </Register>
+      <Register start="+0x18" size="0x4" name="INTSEL3">
+        <BitField size="5" name="INTSEL8" start="0">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+      </Register>
+      <Register start="+0x1C" size="0x4" name="EVTSEL">
+        <BitField size="5" name="EVTSEL0" start="0">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+        <BitField size="5" name="EVTSEL1" start="8">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+        <BitField size="5" name="EVTSEL2" start="16">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+        <BitField size="5" name="EVTSEL3" start="24">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+      </Register>
+      <Register start="+0x2C" size="0x4" name="MPSR">
+        <BitField size="1" name="LIN_TB" start="1"/>
+        <BitField size="1" name="LS_TB0" start="2"/>
+        <BitField size="1" name="LS_TB1" start="3"/>
+        <BitField size="1" name="DCLAMP" start="4"/>
+        <BitField size="1" name="DPC_TB" start="5"/>
+        <BitField size="1" name="GMM_TBB" start="6"/>
+        <BitField size="1" name="GMM_TBG" start="7"/>
+        <BitField size="1" name="GMM_TBR" start="8"/>
+        <BitField size="1" name="YEE_TB" start="9"/>
+        <BitField size="1" name="GBC_TB" start="10"/>
+        <BitField size="1" name="D3L_TB0" start="11"/>
+        <BitField size="1" name="D3L_TB1" start="12"/>
+        <BitField size="1" name="D3L_TB2" start="13"/>
+        <BitField size="1" name="D3L_TB3" start="14"/>
+        <BitField size="1" name="HST_TB0" start="15"/>
+        <BitField size="1" name="HST_TB1" start="16"/>
+        <BitField size="1" name="HST_TB2" start="17"/>
+        <BitField size="1" name="HST_TB3" start="18"/>
+        <BitField size="1" name="BSC_TB0" start="19"/>
+        <BitField size="1" name="BSC_TB1" start="20"/>
+        <BitField size="1" name="RGBCOPY" start="24"/>
+      </Register>
+    </RegisterGroup>
     <RegisterGroup start="0x01C70200" name="VPSS">
       <Register start="+0x00" size="0x4" name="VPBE_CLK_CTL">
         <BitField size="1" name="VPBE_CLK_ENABLE" start="0" />
@@ -1378,10 +1869,22 @@
       <Register start="+0x0C" size="0x4" name="OSDATRMD"/>
       <Register start="+0x10" size="0x4" name="RECTCUR"/>
       <Register start="+0x14" size="0x4" name="RSV0"/>
-      <Register start="+0x18" size="0x4" name="VIDWIN0OFST"/>
-      <Register start="+0x1C" size="0x4" name="VIDWIN1OFST"/>
-      <Register start="+0x20" size="0x4" name="OSDWIN0OFST"/>
-      <Register start="+0x24" size="0x4" name="OSDWIN1OFST"/>
+      <Register start="+0x18" size="0x4" name="VIDWIN0OFST">
+        <BitField size="9" name="LO" start="0"/>
+        <BitField size="4" name="AH" start="9"/>
+      </Register>
+      <Register start="+0x1C" size="0x4" name="VIDWIN1OFST">
+        <BitField size="9" name="LO" start="0"/>
+        <BitField size="4" name="AH" start="9"/>
+      </Register>
+      <Register start="+0x20" size="0x4" name="OSDWIN0OFST">
+        <BitField size="9" name="LO" start="0"/>
+        <BitField size="4" name="AH" start="9"/>
+      </Register>
+      <Register start="+0x24" size="0x4" name="OSDWIN1OFST">
+        <BitField size="9" name="LO" start="0"/>
+        <BitField size="4" name="AH" start="9"/>
+      </Register>
       <Register start="+0x28" size="0x4" name="VIDWINADH"/>
       <Register start="+0x2C" size="0x4" name="VIDWIN0ADL"/>
       <Register start="+0x30" size="0x4" name="VIDWIN1ADL"/>
@@ -1590,6 +2093,13 @@
         <BitField size="1" name="CLKENC" start="0" />
         <BitField size="1" name="CLKDIG" start="4" />
         <BitField size="1" name="CLKGAM" start="8" />
+      </Register>
+      <Register start="+0x144" size="0x4" name="GAMCTL">
+        <BitField size="1" name="GAMON" start="0"/>
+        <BitField size="1" name="GAMUQ" start="1"/>
+        <BitField size="1" name="DAFUL0" start="4"/>
+        <BitField size="1" name="DAFUL1" start="5"/>
+        <BitField size="1" name="DAFUL2" start="6"/>
       </Register>
       <Register start="+0x148" size="0x4" name="VVALIDA"/>
       <Register start="+0x14C" size="0x4" name="BATR0"/>
