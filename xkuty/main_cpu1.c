@@ -189,6 +189,8 @@ typedef struct
 	unsigned char mode;
 	unsigned char adj;
 	unsigned char lights;
+    unsigned char auto_shutdow;
+	unsigned char auto_lights_off;
 //	unsigned char ios_power_on, ios_power_off;
 //	unsigned char ios_mode;
 } PUSH_CNT;
@@ -216,7 +218,7 @@ void main()
 	hal_can_initialize(0, 250000);
 	hal_fullcan_setup(_can_setup, NULL);
 
-#ifdef DEBUG
+#if 0 //def DEBUG Disabled by Emilio's request! 
 	xcpu_board_output(_output_state);
 	exos_thread_sleep(500);
 	xcpu_board_output(_output_state | OUTPUT_HORN);
@@ -242,7 +244,7 @@ void main()
 				.CustomCurve = {255,255,255,255,255,255,255} };
 	}
 
-	set_custom_curve_ptr(&_storage.CustomCurve);
+	set_custom_curve_ptr(_storage.CustomCurve);
 
 	_control_state = CONTROL_OFF;
 	_output_state = OUTPUT_NONE;
@@ -298,6 +300,16 @@ void main()
 				// NOTE: case fall down
 			case CONTROL_ON:
 				_output_state = _default_output_state;
+
+				// Shut down when activity ceases for 60 seconds 
+				int no_activity = (_lcd.buttons == 0) && (events == 0) && (sp.speed == 0);
+				if(_push_delay(no_activity, &push.auto_shutdow, 50 * 60))
+					events |= XCPU_EVENT_TURN_OFF;
+				// Lights of when activity ceases for 30 seconds
+				if((_default_output_state & (OUTPUT_HEADL | OUTPUT_TAILL)) &&
+					_push_delay(no_activity, &push.auto_lights_off, 50 * 30))
+					_default_output_state = OUTPUT_NONE;
+
 				if (_lcd.brake_rear > BRAKE_THRESHOLD || _lcd.brake_front > BRAKE_THRESHOLD)
 				{
 					_output_state |= OUTPUT_BRAKEL;
@@ -420,51 +432,51 @@ void main()
 
 void hal_can_received_handler(int index, CAN_MSG *msg)
 {
-        XCPU_MSG *xmsg;
-        switch(msg->EP.Id)
-        {
-                case 0x200:                
-				case 0x201:
-                        xmsg = (XCPU_MSG *)exos_fifo_dequeue(&_can_free_msgs);
-                        if (xmsg != NULL)
-                        {
-                                xmsg->CanMsg = *msg;
-                                exos_port_send_message(&_can_rx_port, (EXOS_MESSAGE *)xmsg);
-                        }
+	XCPU_MSG *xmsg;
+	switch(msg->EP.Id)
+	{
+		case 0x200:                
+		case 0x201:
+		xmsg = (XCPU_MSG *)exos_fifo_dequeue(&_can_free_msgs);
+		if (xmsg != NULL)
+		{
+			xmsg->CanMsg = *msg;
+			exos_port_send_message(&_can_rx_port, (EXOS_MESSAGE *)xmsg);
+		}
 #ifdef DEBUG
-                        else _lost_msgs++;
+		else _lost_msgs++;
 #endif
-                        break;
-        }
+		break;
+	}
 }
 
 static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state)
 {
-        int count = sizeof(_eps) / sizeof(CAN_EP);
-        if (index < count)
-        {
-                *ep = _eps[index];
-                *pflags = CANF_RXINT;
-                return 1;
-        }
-        return 0;
+	int count = sizeof(_eps) / sizeof(CAN_EP);
+	if (index < count)
+	{
+		*ep = _eps[index];
+		*pflags = CANF_RXINT;
+		return 1;
+	}
+	return 0;
 }
 
 static int _push_delay(int push, unsigned char *state, int limit)
 {
-        int count = *state;
-        count = push ? count + 1 : 0;
-        if (count < limit)
-        {
-                *state = count;
-                return 0;
-        }
-        if (count == limit)
-        {
-                *state = count;
-                return 1;
-        }
-        return 0;
+	int count = *state;
+	count = push ? count + 1 : 0;
+	if (count < limit)
+	{
+		*state = count;
+		return 0;
+	}
+	if (count == limit)
+	{
+		*state = count;
+		return 1;
+	}
+	return 0;
 }
 
 static void _run_diag()
