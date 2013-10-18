@@ -84,12 +84,18 @@ EXOS_TREE_NODE *exos_tree_parse_path(EXOS_TREE_NODE *parent, const char **psubpa
 	if (psubpath == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
 
-	if (parent == NULL) parent = (EXOS_TREE_NODE *)&__root;
-
 	const char *subpath = *psubpath;
+	if (*subpath == '/') 
+	{
+		subpath++;
+		parent = (EXOS_TREE_NODE *)&__root;
+	}
+	else if (parent == NULL) 
+		parent = (EXOS_TREE_NODE *)&__root;
+
 	if (subpath != NULL)
 	{
-		do
+		while(1)
 		{
 #ifdef DEBUG
 			if (parent->Node.Type != EXOS_NODE_TREE_NODE)
@@ -112,14 +118,15 @@ EXOS_TREE_NODE *exos_tree_parse_path(EXOS_TREE_NODE *parent, const char **psubpa
 					}
 				}
 				exos_mutex_unlock(&group->Mutex);
-	
-				parent = found;
+
+				if (found != NULL) 
+				{
+					parent = found;
+					continue;
+				}	
 			}
-			else 
-			{
-				break;
-			}
-		} while (parent != NULL);
+			break;
+		}
 		
 		*psubpath = subpath;
 	}
@@ -146,8 +153,21 @@ void exos_tree_add_group(EXOS_TREE_GROUP *group, const char *parent_path)
 	exos_tree_add_child_path((EXOS_TREE_NODE *)group, parent_path);
 }
 
-void exos_tree_add_device(EXOS_TREE_DEVICE *device, const char *parent_path)
+int exos_tree_valid_name(const char *name)
 {
-	device->Type = EXOS_TREE_NODE_DEVICE;
-	exos_tree_add_child_path((EXOS_TREE_NODE *)device, parent_path);
+	int length = 0;
+	char c;
+	while(c = name[length], c != '\0')
+	{
+		if ((c >= '0' && c <= '9') ||
+			(c >= 'A' && c <= 'Z') ||
+			(c >= 'a' && c <= 'z') ||
+			(c == '_')) 
+		{
+			length++;
+			continue;
+		}
+		return 0;
+	}
+	return length;
 }

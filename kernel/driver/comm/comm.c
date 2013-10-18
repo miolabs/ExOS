@@ -100,6 +100,14 @@ static int _write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length)
 	return done;
 }
 
+void exos_tree_add_device(EXOS_TREE_DEVICE *device, const char *parent_path)
+{
+	device->Type = EXOS_TREE_NODE_DEVICE;
+	exos_tree_add_child_path((EXOS_TREE_NODE *)device, parent_path);
+}
+
+
+
 // defined in board_support
 __weak EXOS_TREE_DEVICE *comm_board_get_device(int index)
 {

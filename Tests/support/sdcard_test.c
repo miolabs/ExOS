@@ -1,6 +1,7 @@
 #include <support/misc/sdcard/sdcard.h>
 #include <kernel/machine/hal.h>
-#include <fs/filestream.h>
+#include <fs/file.h>
+#include <fs/rawfs.h>
 
 #define BUFFER_BLOCKS 24
 
@@ -16,11 +17,46 @@ static void _init_block(BLOCK *buf, unsigned long index)
 	ptr[0] = 0xFF5555AA;
 }
 
-FS_VOLUME _vol;
+int _get_media_info(RAWFS_MEDIA_INFO *info)
+{
+	info->BlockSize = 512;
+	return 1;
+}
+
+void * _alloc_buffer()
+{
+	return NULL;
+}
+
+void _free_buffer(void *buffer)
+{
+}
+
+int _read(void *buffer, unsigned long block, unsigned long count)
+{
+}
+
+int _write(void *buffer, unsigned long block, unsigned long count)
+{
+}
+
+EXOS_TREE_VOLUME _tree_vol;
+static FS_VOLUME _vol;
+static RAWFS_CONTEXT _context;
+static const RAWFS_DRIVER _sd_driver = {
+	.GetMediaInfo = _get_media_info,
+	.AllocBuffer = _alloc_buffer,
+	.FreeBuffer = _free_buffer,
+	.Read = _read,
+	.Write = _write };
 
 void main()
 {
 	int done = sd_initialize();
+	if (done)
+		done = rawfs_create(&_vol, &_context, &_sd_driver);
+	if (done)
+		done = fs_mount_volume(&_vol, &_tree_vol, "/dev/sdcard0");
 
 	FILE_IO_ENTRY file;
 	done = file_open(&file, "/dev/sdcard0", FS_LOCKF_WRITE);

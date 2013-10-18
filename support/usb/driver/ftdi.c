@@ -169,7 +169,6 @@ static void _start(USB_HOST_FUNCTION *usb_func)
 	{
 		ftdi->KernelDevice = (EXOS_TREE_DEVICE) {
 			.Name = ftdi->DeviceName,
-			.DeviceType = EXOS_TREE_DEVICE_COMM,
 			.Device = &_comm_device,
 			.Unit = func->DeviceUnit };
 	

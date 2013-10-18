@@ -96,7 +96,12 @@ int sd_initialize()
 			SD_CARD_DISCONNECT;
 	}
 
-	return _state == SD_CARD_TRANSFER;
+	if (_state == SD_CARD_TRANSFER)
+	{
+		// TODO: add device
+		return 1;
+	}
+	return 0;
 }
 
 // copies an array of bytes backwards to allow processing of Big Endian Bit Fields (OMG)

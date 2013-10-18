@@ -63,6 +63,7 @@ static void _stop(HID_FUNCTION *func)
 	{
 		iap_core_stop();
 		_inputs_count = 0;
+		_hid_func = NULL;
 	}
 }
 

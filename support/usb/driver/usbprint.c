@@ -102,7 +102,6 @@ static void _start(USB_HOST_FUNCTION *usb_func)
 	{
 		func->KernelDevice = (EXOS_TREE_DEVICE) {
 			.Name = "usbprint",	// FIXME: allow more instances
-			.DeviceType = EXOS_TREE_DEVICE_COMM,
 			.Device = &_comm_device,
 			.Unit = 0 };	// FIXME: allow more instances
 		

@@ -4,6 +4,7 @@
 #include <kernel/io.h>
 #include <kernel/mutex.h>
 #include <kernel/thread.h>
+#include <kernel/tree.h>
 
 #ifndef COMM_DEVICE_THREAD_STACK
 #define COMM_DEVICE_THREAD_STACK 512
@@ -64,5 +65,15 @@ int comm_io_open(COMM_IO_ENTRY *io);
 void comm_io_close(COMM_IO_ENTRY *io);
 int comm_io_get_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value);
 int comm_io_set_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value);
+
+
+typedef struct
+{
+	EXOS_TREE_NODE;
+	COMM_DEVICE *Device;
+	unsigned long Unit;
+} EXOS_TREE_DEVICE;
+
+void exos_tree_add_device(EXOS_TREE_DEVICE *device, const char *parent_path);
 
 #endif // COMM_COMM_H

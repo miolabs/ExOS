@@ -11,7 +11,7 @@ typedef struct
 	USB_HOST_FUNCTION;
 	USB_HOST_PIPE BulkInputPipe;
 	USB_HOST_PIPE BulkOutputPipe;
-	EXOS_TREE_DEVICE KernelDevice;
+//	EXOS_TREE_DEVICE KernelDevice;
 	unsigned long NumBlocks;
 	unsigned short BlockSize;
    	unsigned char Interface;

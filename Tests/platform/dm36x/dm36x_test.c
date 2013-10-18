@@ -8,15 +8,13 @@
 
 #include <stdio.h>
 
-static OSD_CONTROLLER *_osd = (OSD_CONTROLLER *)0x01C71C00;
-
 static unsigned short _bitmap[720*576] __attribute__((__aligned__(32)));
 
-#define RGB565(r,g,b) (((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3))
+#define RGB565(r,g,b) ((((r) >> 3) << 11) | (((g) >> 2) << 5) | ((b) >> 3))
 
 int main()
 {
-	VPBE_SIMPLE_SPEC test = (VPBE_SIMPLE_SPEC) { .Width = 720, .Height = 676, .Stride = 720 * 2, .Bitmap = _bitmap };
+	VPBE_SIMPLE_SPEC test = (VPBE_SIMPLE_SPEC) { .Width = 320, .Height = 256, .Stride = 320 * 2, .Bitmap = _bitmap };
 
 	//hal_board_init_pinmux(HAL_RESOURCE_TVOUT, 0);
 
@@ -25,19 +23,23 @@ int main()
 	int off = 0;
 	for(int r = 0; r < 16; r++)
 	{
-		for (int g = 0; g < 16; g++)
+		for (int rep = 0; rep < 16; rep++)
 		{
-			for (int b = 0; b < 16; b++)
+			for (int g = 0; g < 16; g++)
 			{
-				_bitmap[off++] = RGB565(r << 4, g << 4, b << 4);
+				for (int b = 0; b < 16; b++)
+				{
+					_bitmap[off++] = RGB565(r << 4, g << 4, b << 4);
+				}
 			}
+			off += (test.Stride >> 1) - 256;
 		}
-		off += (720 - 256);
 	}
 	
 	vpbe_initialize_simple(&test);
 	while (1)
 	{
+		
 	}
 }
 
@@ -195,7 +197,7 @@ static void vpbe_init( unsigned long colorbar_loopback_mode, unsigned long ntsc_
     VPSS_VPBE_CLK_CTRL  = 0x00000011;   // Select enc_clk*1, turn on VPBE clk
 
 
-    OSD_MODE       = 0x000000fc;   // Blackground color blue using clut in ROM0
+    OSD_MODE       = 0x000000fc;   // Background color blue using clut in ROM0
 
     OSD_OSDWIN0MD  = 0;            // Disable both osd windows and cursor window
     OSD_OSDWIN1MD  = 0;

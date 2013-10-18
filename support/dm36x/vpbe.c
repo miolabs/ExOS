@@ -52,13 +52,6 @@ static inline void _reg_mod(volatile unsigned long *reg, unsigned long val, unsi
 	*reg = (*reg & (~mask)) | (val & mask);
 }
 
-const int _basep_x = 132;
-const int _basep_y = 22;
-#define _width  (720)
-#define _height  (480)
-
-//static unsigned int videokk [_width * _height];
-
 static void _vpbe_config_osd()
 {
 	// Configure OSD
@@ -83,8 +76,8 @@ static void _vpbe_config_osd()
 //
 //    _osd->VIDWINADH  = 0x0000;
 //    _osd->OSDWIN0ADL = 0x0000; /* Lower 16 bits */
-//    _osd->BASEPX     = _basep_x;
-//    _osd->BASEPY     = _basep_y;
+	_osd->BASEPX     = 132;
+	_osd->BASEPY     = 22;
 //    _osd->VIDWIN0XP  = 0;
 //    _osd->VIDWIN0YP  = 0;
 //    _osd->VIDWIN0XL  = _width;
@@ -234,12 +227,12 @@ static void _vpbe_config_venc ()
 //	_venc->DRGBX4 = 1774; // YCbCr->RGB matrix coefficient BU for analog RGB output. Default is 1774 (0x2CB)
 }
 
-void _vbe_setup_osdwin(int index, VPBE_SIMPLE_SPEC *spec)
+void vpbe_setup_osdwin(int win, VPBE_SIMPLE_SPEC *spec)
 {
 	unsigned long addr = (unsigned long)spec->Bitmap >> 5;
 	_osd->OSDWIN0ADL = addr & 0xFFFF;
 	_osd->OSDWINADHbits.O0AH = (addr >> 16) & 0x7F;
-	_osd->OSDWIN0OFST = ((spec->Stride >> 5) & 0x1FF) | ((addr >> 19) << 9);
+	_osd->OSDWIN0OFST = ((spec->Stride >> 5) & 0x1FF) | ((addr >> 23) << 9);
 
 	_osd->OSDWIN0XP = 0;
 	_osd->OSDWIN0YP = 0;
@@ -248,6 +241,7 @@ void _vbe_setup_osdwin(int index, VPBE_SIMPLE_SPEC *spec)
 
 	_osd->OSDWIN0MD = OSDWIN0MD_OACT0 |
 		OSDWIN0MD_OFF0 | // frame-mode
+		7 << OSDWIN0MD_BLND0_BIT |
 		OSDWIN_ZOOM_X1 << OSDWIN0MD_OVZ0_BIT |
 		OSDWIN_ZOOM_X1 << OSDWIN0MD_OHZ0_BIT |
         OSDWIN_MD_RGB565 << OSDWIN0MD_BMP0MD_BIT;

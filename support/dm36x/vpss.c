@@ -24,7 +24,7 @@ void vpss_init(int hard)
 		state = psc_get_module_state(PSC_MODULE_VDAC_CLK);
 #endif
 		psc_set_module_state(PSC_MODULE_VPSS_MASTER, PSC_MODULE_ENABLE);
-//		psc_set_module_state(PSC_MODULE_VDAC_CLKREC, PSC_MODULE_ENABLE);
+		psc_set_module_state(PSC_MODULE_VDAC_CLKREC, PSC_MODULE_ENABLE);
 		psc_set_module_state(PSC_MODULE_VDAC_CLK, PSC_MODULE_ENABLE);
 
 		_init = 1;
