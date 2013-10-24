@@ -1,7 +1,7 @@
 #ifndef APPLE_IAP_COMM_H
 #define APPLE_IAP_COMM_H
 
-#include <kernel/tree.h>
+#include <comm/comm.h>
 #include <kernel/io.h>
 
 #ifndef APPLE_IAP_IO_BUFFER

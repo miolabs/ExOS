@@ -42,7 +42,7 @@ void iap_comm_add_protocol(APPLE_IAP_PROTOCOL_MANAGER *iap)
 	exos_mutex_lock(&_managers_lock);
 	iap->ProtocolIndex = ++_protocol_count;
 	iap->KernelDevice = (EXOS_TREE_DEVICE) { .Name = iap->Name, 
-		.DeviceType = EXOS_TREE_DEVICE_COMM, .Device = &_comm_device, 
+		.Device = &_comm_device, 
 		.Unit = iap->ProtocolIndex - 1 };
 	iap->Entry = NULL;
 	iap->IOState = APPLE_IAP_IO_UNAVAILABLE;
