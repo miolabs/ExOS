@@ -278,6 +278,7 @@ void main()
 					_state = (_storage.ConfigBits & XCPU_CONFIGF_MILES) ? XCPU_STATE_ON | XCPU_STATE_MILES : XCPU_STATE_ON;
 					_state |= XCPU_STATE_NEUTRAL;
 					_drive_mode = _storage.DriveMode;
+                    _default_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
 					_run_diag();
 				}
 				break;
@@ -290,8 +291,10 @@ void main()
 						throttle--;
 					}
 
-					if (input_throttle > (throttle + 20) ||
-						(_output_state & OUTPUT_BRAKEL))
+					if (input_throttle > (throttle + 20))
+						throttle = input_throttle;
+
+					if (_output_state & OUTPUT_BRAKEL)
 					{
 						_control_state = CONTROL_ON;
 						_state &= ~XCPU_STATE_CRUISE_ON;
@@ -356,13 +359,14 @@ void main()
 
 				if (_push_delay(_lcd.buttons & XCPU_BUTTON_CRUISE, &push.cruise, 5))
 				{
-					if (sp.speed < 0.01f)	// 0.0f value is forced
-					{
-						_state ^= XCPU_STATE_NEUTRAL;
+					// Enable/disable NEUTRAL
+					if (_state & XCPU_STATE_NEUTRAL)
+					{	
+						_state ^= XCPU_STATE_NEUTRAL;	// Exit from neutral
 					}
 					else
 					{
-						if (sp.speed > 10.0f)
+						if (sp.speed > 10.0f)	// Enable neutral (if speed > 10 km/h)
 						{
 							_pid.SetPoint = sp.speed;
 							_pid.Integral = throttle / _pid_k.I;
@@ -404,8 +408,9 @@ void main()
 				// update throttle out
 				if (_control_state != CONTROL_OFF)
 				{
-					unsigned char th_lim = (_state & XCPU_STATE_NEUTRAL) ? 0 
-							: MOTOR_OFFSET + ((throttle * MOTOR_RANGE) >> 8);
+					unsigned char th_lim = MOTOR_OFFSET + ((throttle * MOTOR_RANGE) >> 8);
+                    if (_state & XCPU_STATE_NEUTRAL)
+						th_lim = 0;
 					int pwm_val = PWM_RANGE - ((th_lim * PWM_RANGE) >> 8);
 					hal_pwm_set_output(PWM_TIMER_MODULE, 0, pwm_val);
 
