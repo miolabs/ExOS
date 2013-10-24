@@ -21,6 +21,8 @@
 #define WHEEL_RATIO_MPH (WHEEL_RATIO_KMH / 1.60934)
 #define BATT_VOLTAGE_RATIO  16.9f
 
+#define MAIN_LOOP_TIME  50		// Ms
+
 static const CAN_EP _eps[] = { {0x200, 0}, {0x201, 0} };
 static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
 static EXOS_PORT _can_rx_port;
@@ -39,7 +41,7 @@ static PID_STATE _pid;
 
 static EXOS_TIMER _timer;
 static void _run_diag();
-static int _push_delay(int push, unsigned char *state, int limit);
+static int _push_delay(int push, unsigned short *state, int limit);
 
 static XCPU_PERSIST_DATA _storage;
 
@@ -181,18 +183,18 @@ static void _speed_calculation(SPEED_DATA *sp, int mag_miles, float wheel_ratio_
 
 typedef struct 
 {
-	unsigned char start;
-	unsigned char cruise;
-	unsigned char off;
-	unsigned char up,down;
-	unsigned char swtch;
-	unsigned char mode;
-	unsigned char adj;
-	unsigned char lights;
-    unsigned char auto_shutdow;
-	unsigned char auto_lights_off;
-//	unsigned char ios_power_on, ios_power_off;
-//	unsigned char ios_mode;
+	unsigned short start;
+	unsigned short cruise;
+	unsigned short off;
+	unsigned short up,down;
+	unsigned short swtch;
+	unsigned short mode;
+	unsigned short adj;
+	unsigned short lights;
+    unsigned short auto_shutdow;
+	unsigned short auto_lights_off;
+//	unsigned short ios_power_on, ios_power_off;
+//	unsigned short ios_mode;
 } PUSH_CNT;
 
 
@@ -209,7 +211,8 @@ void main()
 	speed_initialize();
 	_pid_k = (PID_K) { .P = 5, .I = 5, .CMin = 0, .CMax = 255 };
 
-	exos_timer_create(&_timer, 50, 50, exos_signal_alloc());
+	// TODO: CHECK THESE PARAMS
+	exos_timer_create(&_timer, MAIN_LOOP_TIME, MAIN_LOOP_TIME, exos_signal_alloc());
 
 	exos_port_create(&_can_rx_port, NULL);
 	exos_fifo_create(&_can_free_msgs, NULL);
@@ -291,7 +294,7 @@ void main()
 						throttle--;
 					}
 
-					if (input_throttle > (throttle + 20))
+					if (input_throttle > (throttle + 10))
 						throttle = input_throttle;
 
 					if (_output_state & OUTPUT_BRAKEL)
@@ -305,13 +308,20 @@ void main()
 				_output_state = _default_output_state;
 
 				// Shut down when activity ceases for 60 seconds 
+                const int loop_iters = 1000 / MAIN_LOOP_TIME;
 				int no_activity = (_lcd.buttons == 0) && (events == 0) && (sp.speed == 0);
-				if(_push_delay(no_activity, &push.auto_shutdow, 50 * 60))
+				if(_push_delay(no_activity, &push.auto_shutdow, loop_iters * 60))
+				{
+					push.auto_shutdow = 0;
 					events |= XCPU_EVENT_TURN_OFF;
+				}
 				// Lights of when activity ceases for 30 seconds
 				if((_default_output_state & (OUTPUT_HEADL | OUTPUT_TAILL)) &&
-					_push_delay(no_activity, &push.auto_lights_off, 50 * 30))
+					_push_delay(no_activity, &push.auto_lights_off, loop_iters * 30))
+				{
+                    push.auto_lights_off = 0;
 					_default_output_state = OUTPUT_NONE;
+				}
 
 				if (_lcd.brake_rear > BRAKE_THRESHOLD || _lcd.brake_front > BRAKE_THRESHOLD)
 				{
@@ -374,6 +384,8 @@ void main()
 							_state ^= XCPU_STATE_CRUISE_ON;
 							_control_state = _state & XCPU_STATE_CRUISE_ON ? CONTROL_CRUISE : CONTROL_ON;
 						}
+						if (sp.speed < 0.1f)
+							_state ^= XCPU_STATE_NEUTRAL;	// Enable neutral
 					}
 				}
 
@@ -467,7 +479,7 @@ static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state)
 	return 0;
 }
 
-static int _push_delay(int push, unsigned char *state, int limit)
+static int _push_delay(int push, unsigned short *state, int limit)
 {
 	int count = *state;
 	count = push ? count + 1 : 0;
