@@ -197,6 +197,7 @@ typedef struct
 //	unsigned short ios_mode;
 } PUSH_CNT;
 
+static char _pre_sleep = 0;	// Switch to disable light, previous to going OFF
 
 void main()
 {
@@ -282,6 +283,7 @@ void main()
 					_state |= XCPU_STATE_NEUTRAL;
 					_drive_mode = _storage.DriveMode;
                     _default_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
+                    _pre_sleep = 0;
 					_run_diag();
 				}
 				break;
@@ -309,7 +311,7 @@ void main()
 
 				// Shut down when activity ceases for 60 seconds 
                 const int loop_iters = 1000 / MAIN_LOOP_TIME;
-				int no_activity = (_lcd.buttons == 0) && (events == 0) && (sp.speed == 0);
+				int no_activity = (_lcd.buttons == 0) && (events == 0) && (sp.speed < 0.1f);
 				if(_push_delay(no_activity, &push.auto_shutdow, loop_iters * 60))
 				{
 					push.auto_shutdow = 0;
@@ -319,8 +321,15 @@ void main()
 				if((_default_output_state & (OUTPUT_HEADL | OUTPUT_TAILL)) &&
 					_push_delay(no_activity, &push.auto_lights_off, loop_iters * 30))
 				{
+					_pre_sleep = 1;
                     push.auto_lights_off = 0;
 					_default_output_state = OUTPUT_NONE;
+				}
+
+				if (_pre_sleep && !no_activity)	// Disable pre-sleep, lights on
+				{
+					_pre_sleep = 0;
+					_default_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
 				}
 
 				if (_lcd.brake_rear > BRAKE_THRESHOLD || _lcd.brake_front > BRAKE_THRESHOLD)
