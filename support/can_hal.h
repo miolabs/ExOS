@@ -15,8 +15,6 @@ typedef struct
 	unsigned Bus : 2;
 } CAN_EP;
 
-#define CAN_EP_FROM_ID(bus, id) (((bus) << 29) | ((id) & 0x3FFFFFFF) | ()
-
 typedef enum
 {
 	CANF_NONE = 0,

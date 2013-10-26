@@ -39,7 +39,7 @@ extern const IAP __iap;
 // prototypes
 void iap_get_flash_info(FLASH_INFO *fi);
 int iap_write_block(FLASH_INFO *info, void *addr, const void *data);
-
+void iap_reinvoke_isp();
 
 #endif // IAP_H
 

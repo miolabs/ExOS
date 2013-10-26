@@ -24,7 +24,7 @@ typedef enum
 // prototypes
 int persist_load(XCPU_PERSIST_DATA *data);
 int persist_save(const XCPU_PERSIST_DATA *data);
-
+void persist_enter_bootloader();
 
 
 #endif // XCPU_PERSIST_H

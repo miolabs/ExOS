@@ -12,6 +12,13 @@ static void *_base = (void *)&__FLASH_segment_start__;
 static const FLASH_REGION _sectors[] = {{8, 0x1000}, {0, 0}};	// NOTE: for 32KB flash parts (lpc11x4)
 static int _current_sector = -1;
 
+void iap_reinvoke_isp()
+{
+	unsigned int cmd1[] = {IAP_REINVOKE_ISP, 0, 0};
+    unsigned int result[2];
+	__iap(cmd1, result);
+}
+
 void iap_get_flash_info(FLASH_INFO *fi)
 {
 	flash_fill_info(_base, (FLASH_REGION *)_sectors, fi);

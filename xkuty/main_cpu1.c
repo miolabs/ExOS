@@ -79,6 +79,8 @@ static XCPU_EVENTS _do_lcd_command(XCPU_MASTER_INPUT2 *input)
 			for(i = 0; i < 7; i++)
 				_storage.CustomCurve[i] = input->Data[i];
 			break;
+		case XCPU_CMD_INVOKE_BOOTLOADER: 
+			return XCPU_EVENT_TURN_OFF | XCPU_EVENT_ENTER_BOOTLOADER;
 	}
 	return 0;
 }
@@ -197,6 +199,7 @@ typedef struct
 //	unsigned short ios_mode;
 } PUSH_CNT;
 
+// FIXME: this should not be static and be included in state bitfield as LIGHT_OFF_STAND_BY or whatever
 static char _pre_sleep = 0;	// Switch to disable light, previous to going OFF
 
 void main()
@@ -222,8 +225,10 @@ void main()
 	hal_can_initialize(0, 250000);
 	hal_fullcan_setup(_can_setup, NULL);
 
-#if 0 //def DEBUG Disabled by Emilio's request! 
 	xcpu_board_output(_output_state);
+
+// FIXME: re-enable debug behavior when releases are in RELEASE configuration 
+#if 0 //def DEBUG Disabled by Emilio's request! 
 	exos_thread_sleep(500);
 	xcpu_board_output(_output_state | OUTPUT_HORN);
 	exos_thread_sleep(100);
@@ -245,7 +250,7 @@ void main()
 				.WheelRatioAdj = 0,
 				.ThrottleAdjMin = 66, 
 				.ThrottleAdjMax = 166,
-				.CustomCurve = {255,255,255,255,255,255,255} };
+				.CustomCurve = {255, 255, 255, 255, 255, 255, 255} };
 	}
 
 	set_custom_curve_ptr(_storage.CustomCurve);
@@ -317,7 +322,7 @@ void main()
 					push.auto_shutdow = 0;
 					events |= XCPU_EVENT_TURN_OFF;
 				}
-				// Lights of when activity ceases for 30 seconds
+				// Lights off when activity ceases for 30 seconds
 				if((_default_output_state & (OUTPUT_HEADL | OUTPUT_TAILL)) &&
 					_push_delay(no_activity, &push.auto_lights_off, loop_iters * 30))
 				{
@@ -422,6 +427,12 @@ void main()
 					}
 					else 
 						_state |= XCPU_STATE_WARNING;
+				}
+
+				if ((events & XCPU_EVENT_ENTER_BOOTLOADER) &&
+					_state == XCPU_STATE_OFF)
+				{
+					persist_enter_bootloader();
 				}
 
 				// TODO: check bms and engine controller
