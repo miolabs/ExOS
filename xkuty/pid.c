@@ -15,8 +15,14 @@ float pid(PID_STATE *pid, float pv, const PID_K *k, float dt)
 			float control_i = pid->Integral * k->I;
 			
 			// integral limit
-			if (control_i > k->CMax) pid->Integral = k->CMax / k->I;
-			else if (control_i < k->CMin) pid->Integral = k->CMin / k->I;
+			if (control_i > k->CMax) 
+				pid->Integral = k->CMax / k->I;
+			else 
+				if (control_i < k->CMin) 
+					pid->Integral = k->CMin / k->I;
+
+			if (pid->Integral < 0.0f)
+				pid->Integral = 0.0f;
 
 			control += control_i;
 		}
