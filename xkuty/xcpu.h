@@ -27,7 +27,7 @@ typedef struct
 	unsigned char  throttle_adj_min;	// fx8
 	unsigned char  throttle_adj_max;	// fx8
 	unsigned short drive_mode;			// XCPU_DRIVE_MODE
-	unsigned long  reserved2;	
+	unsigned long  reserved2;
 } XCPU_MASTER_OUT2;
 
 typedef struct __attribute__((__packed__))
@@ -35,7 +35,7 @@ typedef struct __attribute__((__packed__))
 	unsigned char Cmd;	// XCPU_COMMANDS
 	union __attribute__((__packed__))
 	{
-		unsigned char Data[7]; 
+		unsigned char Data[7];
 	};
 } XCPU_MASTER_INPUT2;
 
@@ -54,7 +54,7 @@ typedef enum
 	XCPU_STATE_WARNING = (1<<3),
 	XCPU_STATE_ERROR = (1<<4),
 	XCPU_STATE_MILES = (1<<5),	// Bit 0=KM, 1=MILES
-	XCPU_STATE_LIGHT_OFF =(1<<6),
+	XCPU_STATE_LIGHT_OFF = (1<<6),	// FIXME: revise usage of this
 } XCPU_STATE;
 
 
@@ -76,6 +76,7 @@ typedef enum
 	XCPU_EVENT_TURN_OFF = (1<<5),
 	XCPU_EVENT_SWITCH_LIGHTS = (1<<6),
 	XCPU_EVENT_CONFIGURING = (1<<7),
+	XCPU_EVENT_ENTER_BOOTLOADER = (1<<8),
 } XCPU_EVENTS;
 
 typedef enum
@@ -85,6 +86,7 @@ typedef enum
 	XCPU_CMD_POWER_OFF,
 	XCPU_CMD_SET_DRIVE_MODE,
 	XCPU_CMD_SET_CURVE,
+	XCPU_CMD_INVOKE_BOOTLOADER,
 } XCPU_COMMANDS;
 
 

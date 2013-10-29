@@ -31,6 +31,10 @@ int persist_save(const XCPU_PERSIST_DATA *data)
 	return 0;
 }
 
+void persist_enter_bootloader()
+{
+	iap_reinvoke_isp();
+}
 
 
 
