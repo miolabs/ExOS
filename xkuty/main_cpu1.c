@@ -213,7 +213,7 @@ void main()
 	PUSH_CNT push = { };
 	SPEED_DATA sp = { .speed = 0 };
 	speed_initialize();
-	_pid_k = (PID_K) { .P = 10, .I = 15, .CMin = 0, .CMax = 255 };
+	_pid_k = (PID_K) { .P = 25, .I = 15, .CMin = 0, .CMax = 255 };
 
 	// TODO: CHECK THESE PARAMS
 	exos_timer_create(&_timer, MAIN_LOOP_TIME, MAIN_LOOP_TIME, exos_signal_alloc());
