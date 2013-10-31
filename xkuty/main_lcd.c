@@ -16,7 +16,7 @@
 #include <assert.h>
 
 #define MAIN_LOOP_TIME 20
-#define RESEND_COUNTER 15
+#define RESEND_COUNTER 25
 
 static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
 
