@@ -1,7 +1,7 @@
 #ifndef XCPU_PERSIST_H
 #define XCPU_PERSIST_H
 
-#define XCPU_PERSIST_MAGIC (('X') | ('C' << 8) | ('P' << 16) | (2 << 24))
+#define XCPU_PERSIST_MAGIC (('X') | ('C' << 8) | ('P' << 16) | (3 << 24))
 
 typedef struct
 {
@@ -10,8 +10,9 @@ typedef struct
 	unsigned char ConfigBits;
 	unsigned char DriveMode;
 	unsigned char Reserved;
-	signed char WheelRatioAdj;
+	signed char   WheelRatioAdj;
 	unsigned char ThrottleAdjMin, ThrottleAdjMax;
+	unsigned char MaxSpeed;
 	unsigned char CustomCurve[7];
 } XCPU_PERSIST_DATA;
 

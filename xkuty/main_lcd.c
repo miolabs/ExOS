@@ -16,7 +16,7 @@
 #include <assert.h>
 
 #define MAIN_LOOP_TIME 20
-#define RESEND_COUNTER 25
+#define RESEND_COUNTER 15
 
 static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
 
@@ -52,21 +52,36 @@ static char _config_resend = 0;
 
 static char _switch_lights_cnt = 0;
 static char _switch_units_cnt = 0;
-//char _adj_drive_mode = 0;
-//static char _adj_drive_mode_cnt = 0;
-static char _adj_throttle_cnt = 0;
-static char _adj_up = 0, _adj_down = 0;
+static char _adj_up_cnt = 0, _adj_down_cnt = 0;
+static char _adj_max_speed_down_cnt = 0, _adj_max_speed_up_cnt = 0;
 
-static int _send_config_changes()
+unsigned char _cmd_resend_cnt = 0;
+XCPU_MASTER_INPUT2 _cmd_out = { .Cmd = 0 };
+
+static void _set_command_to_xcpu(XCPU_COMMANDS command, unsigned char* data, int args)
 {
-	int resend = 0;
+	int i;
+	_cmd_out.Cmd = command;
+	for(i = 0; i < args; i++)
+		_cmd_out.Data[i] = data[i];
+	_cmd_resend_cnt = RESEND_COUNTER;
+}
+
+static void _send_config_changes()
+{
 	if (_dash.CurrentConfig.DriveMode != _dash.ActiveConfig.DriveMode)
 	{
-		XCPU_MASTER_INPUT2 cmd_out = (XCPU_MASTER_INPUT2) { .Cmd = XCPU_CMD_SET_DRIVE_MODE, .Data[0] = _dash.CurrentConfig.DriveMode };
-		hal_can_send((CAN_EP) { .Id = 0x201, .Bus = LCD_CAN_BUS }, (CAN_BUFFER *)&cmd_out, 8, CANF_PRI_ANY);
-		resend = 1;
+		unsigned char arg = _dash.CurrentConfig.DriveMode;
+		_set_command_to_xcpu(XCPU_CMD_SET_DRIVE_MODE, &arg, 1);
 	}
-	return resend;
+}
+
+static inline int _trigger_event(unsigned char* counter, int flag)
+{
+	if(*counter == 0)
+		return 0;
+	*counter = *counter - 1;
+	return flag;
 }
 
 static XCPU_BUTTONS _read_send_inputs(int state)
@@ -78,17 +93,12 @@ static XCPU_BUTTONS _read_send_inputs(int state)
 	if (_configuring)
 		events |= XCPU_EVENT_CONFIGURING;
 
-	if (_adj_up)
-		events |= XCPU_EVENT_ADJUST_UP;
-	if (_adj_down)
-		events |= XCPU_EVENT_ADJUST_DOWN;
-
-	if ( _switch_lights_cnt > 0)
-		events |= XCPU_EVENT_SWITCH_LIGHTS, _switch_lights_cnt--;
-	if ( _switch_units_cnt > 0)
-		events |= XCPU_EVENT_SWITCH_UNITS, _switch_units_cnt--;
-	if ( _adj_throttle_cnt > 0)
-        events |= XCPU_EVENT_ADJUST_THROTTLE, _adj_throttle_cnt--;
+	events |= _trigger_event(&_adj_up_cnt, XCPU_EVENT_ADJUST_UP);
+	events |= _trigger_event(&_adj_down_cnt, XCPU_EVENT_ADJUST_DOWN);
+	events |= _trigger_event(&_adj_max_speed_up_cnt, XCPU_EVENT_ADJUST_MAX_SPEED_UP);
+	events |= _trigger_event(&_adj_max_speed_down_cnt, XCPU_EVENT_ADJUST_MAX_SPEED_DOWN);
+	events |= _trigger_event(&_switch_lights_cnt, XCPU_EVENT_SWITCH_LIGHTS);
+	events |= _trigger_event(&_switch_units_cnt, XCPU_EVENT_SWITCH_UNITS);
 
 	// Record inputs for sequence triggering (to start debug services)
 	 int input_status = (( buttons & XCPU_BUTTON_BRAKE_REAR) ? BRAKE_REAR_MASK : 0) |
@@ -116,12 +126,12 @@ static XCPU_BUTTONS _read_send_inputs(int state)
 									throttle >> 8,	// Throttle high
 									ain_brake_rear->Scaled >> 4,
 									ain_brake_front->Scaled >> 4, 
-									_adj_throttle_min >> 4, 
-									_adj_throttle_max >> 4,
-									events & 0xff };
+									events & 0xff,
+									(events >> 8) & 0xff,
+									0};
 	hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
-	if (_configuring && _config_resend != 0)
-		_config_resend = _send_config_changes();
+	if (_configuring)
+		_send_config_changes();
 
 	return buttons;
 }
@@ -158,6 +168,8 @@ static void _get_can_messages()
 				ain_throttle->Min = tmsg->throttle_adj_min << 4;
 				ain_throttle->Max = tmsg->throttle_adj_max << 4;
 				_dash.ActiveConfig.DriveMode = tmsg->drive_mode;
+                _dash.AppliedThrottle = tmsg->applied_throttle;
+				_dash.MaxSpeed = tmsg->max_speed;
 			}
 			break;
 	
@@ -177,33 +189,25 @@ static void _get_can_messages()
 
 static void	_get_iphone_messages()
 {
-	static unsigned char cmd_resend_cnt = 0;
-	static XCPU_MASTER_INPUT2 cmd_out = { .Cmd = 0 };
 	XIAP_FRAME_FROM_IOS frame;
 	int done = xiap_get_frame(&frame);
 	if (done) switch(frame.Command)
 	{
 		case IOS_COMMAND_POWER_ON:
-			cmd_out.Cmd = XCPU_CMD_POWER_ON;
-			cmd_resend_cnt = RESEND_COUNTER;
+			_set_command_to_xcpu(XCPU_CMD_POWER_ON, 0, 0);
 			break;
 		case IOS_COMMAND_POWER_OFF:
-			cmd_out.Cmd = XCPU_CMD_POWER_OFF;
-			cmd_resend_cnt = RESEND_COUNTER;
+			_set_command_to_xcpu(XCPU_CMD_POWER_OFF, 0, 0);
 			break;
 		case IOS_COMMAND_ADJUST_DRIVE_MODE:
-			cmd_out.Cmd = XCPU_CMD_SET_DRIVE_MODE;
-			cmd_out.Data[0] = frame.Data[0];
-            cmd_resend_cnt = RESEND_COUNTER;
+			_set_command_to_xcpu(XCPU_CMD_SET_DRIVE_MODE, _cmd_out.Data, 2);
+			break;
+		case IOS_COMMAND_SET_CUSTOM_CURVE:
+			_set_command_to_xcpu(XCPU_CMD_SET_CURVE, _cmd_out.Data, 7);
 			break;
 	}
-
-	if (cmd_resend_cnt > 0)
-	{
-		hal_can_send((CAN_EP) { .Id = 0x201, .Bus = LCD_CAN_BUS }, (CAN_BUFFER *)&cmd_out, 8, CANF_PRI_ANY);
-		cmd_resend_cnt--;
-	}
 }
+
 
 static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 {
@@ -236,8 +240,10 @@ static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 			break;
 
 		case ST_ADJUST_WHEEL_DIA:
-			_adj_up = (buttons & XCPU_BUTTON_BRAKE_REAR) ? 1 : 0;
-			_adj_down = (buttons & XCPU_BUTTON_BRAKE_FRONT) ? 1 : 0;
+			if (buttons & XCPU_BUTTON_BRAKE_REAR)
+				_adj_up_cnt = RESEND_COUNTER;
+			if (buttons & XCPU_BUTTON_BRAKE_FRONT)
+				_adj_down_cnt = RESEND_COUNTER;
 			if ( event_happening(_menu_exit, 1) ||  event_happening(_menu_press, 1))
 				*state = ST_DASH;
 			break;
@@ -253,14 +259,15 @@ static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 			_adj_throttle_min = ain_throttle->Current;
 			if (event_happening(_menu_press, 1))
 			{
-				_adj_throttle_cnt = RESEND_COUNTER;
+				unsigned char args[2] = {_adj_throttle_min >> 4, _adj_throttle_max >> 4};
+				_set_command_to_xcpu(XCPU_CMD_ADJUST_THROTTLE, args, 2);
 				*state = ST_DASH;
 			}
 			break;
 
 		case ST_FACTORY_MENU:
 			if (event_happening(_menu_move, 1))
-				_dash.CurrentMenuOption = ++_dash.CurrentMenuOption % 5;
+				_dash.CurrentMenuOption = ++_dash.CurrentMenuOption % 6;
 			if (event_happening(_menu_press, 1))
 			{
 				switch(_dash.CurrentMenuOption)
@@ -270,6 +277,7 @@ static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 					case 2: *state = ST_ADJUST_THROTTLE_MAX; break;
 					case 3: _switch_lights_cnt = RESEND_COUNTER; break;
 					case 4: *state = ST_DEBUG_INPUT; break;
+					case 5: *state = ST_ADJUST_MAX_SPEED; break;
 					default: assert(0);
 				}
 			}
@@ -285,6 +293,15 @@ static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 			}
 
 			if (event_happening(_menu_press, 8) || event_happening(_menu_exit, 8))
+				*state = ST_DASH;
+			break;
+
+		case ST_ADJUST_MAX_SPEED:
+			if(buttons & XCPU_BUTTON_BRAKE_REAR)
+				_adj_max_speed_up_cnt = RESEND_COUNTER;
+			if(buttons & XCPU_BUTTON_BRAKE_FRONT)
+				_adj_max_speed_down_cnt = RESEND_COUNTER;
+			if (event_happening(_menu_press, 1) || event_happening(_menu_exit, 1))
 				*state = ST_DASH;
 			break;
 	}
@@ -326,6 +343,13 @@ void main()
 
 		// get iPhone messages
 		_get_iphone_messages();
+
+		// send pending commands
+		if (_cmd_resend_cnt > 0)
+		{
+			hal_can_send((CAN_EP) { .Id = 0x201, .Bus = LCD_CAN_BUS }, (CAN_BUFFER *)&_cmd_out, 8, CANF_PRI_ANY);
+			_cmd_resend_cnt--;
+		}
 
 		if (_dash.CpuStatus & XCPU_STATE_ON)
 		{

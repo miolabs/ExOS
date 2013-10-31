@@ -21,6 +21,7 @@ typedef enum
 	ST_ADJUST_THROTTLE_MAX,
 	ST_ADJUST_THROTTLE_MIN,
 	ST_ADJUST_DRIVE_MODE,
+	ST_ADJUST_MAX_SPEED
 } DISPLAY_STATE;
 
 typedef struct {
@@ -39,6 +40,8 @@ typedef struct {
 	DASH_CONFIG ActiveConfig;
 	DASH_CONFIG CurrentConfig;
 	int CurrentMenuOption;
+	int AppliedThrottle;
+	int MaxSpeed;
 } DASH_DATA;
 
 void xdisplay_initialize();

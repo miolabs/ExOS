@@ -315,12 +315,12 @@ void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 
 		case ST_FACTORY_MENU:
 			{
-				const char _hei [] = { 22, 31, 40, 49, 58 };
+				const char _hei [] = {20, 28, 36, 44, 52, 60};
 				const EVREC_CHECK fact_menu_exit[] = {{HORN_MASK, CHECK_RELEASE}, {0x00000000, CHECK_END}};
 				const EVREC_CHECK menu_move[] = {{BRAKE_FRONT_MASK, CHECK_RELEASE}, {0x00000000, CHECK_END}};
 				const EVREC_CHECK menu_press[] = {{CRUISE_MASK, CHECK_RELEASE}, {0x00000000, CHECK_END}};
 				int anm = (_frame_dumps & 0x7) >> 2;
-				_print_small("OEM SETTINGS", -1,  10);
+				_print_small("OEM SETTINGS", -1,  8);
 				if (dash->CpuStatus & XCPU_STATE_MILES)
 					_print_small("Km/Mi: Miles", -1, _hei[0]);
 				else
@@ -330,8 +330,17 @@ void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 				_print_small("Throttle adjust", -1, _hei[2]);
 				_print_small("Switch lights", -1, _hei[3]);
 				_print_small("Sensor monitor", -1, _hei[4]);
+				_print_small("Max speed adjust", -1, _hei[5]);
 				if (_frame_dumps & 0x8)
-					_print_small(">>", 20, _hei[dash->CurrentMenuOption] - 1);
+					_print_small(">>", 18, _hei[dash->CurrentMenuOption] - 1);
+			}
+			break;
+
+		case ST_ADJUST_MAX_SPEED:
+			{
+				_print_small("Max speed adjust", -1, 14);
+				sprintf(tmp, "%d", dash->MaxSpeed);
+				_draw_text(tmp, &_font_spr_big, POS_ADJUST_SPEED);
 			}
 			break;
 
