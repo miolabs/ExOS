@@ -4,7 +4,12 @@
 
 void __machine_init()
 {
-	LPC_SC->PCLKSEL = 1;
+	LPC_SC->PCLKSEL = LPC_SC->CCLKSEL & 0x1F;	// PCLK = CCLK
+
+//#ifdef CLOCKOUT_DEBUG
+//	LPC_IOCON->P1_25 = 5;
+//	LPC_SC->CLKOUTCFG = 0x1F3;
+//#endif
 
 	hal_board_initialize();
 

@@ -21,6 +21,8 @@ void hal_board_initialize()
 #define LED1_PORT LPC_GPIO3
 #define LED1_MASK (1<<23)
 	LED1_PORT->CLR = LED1_MASK;
+#elif defined BOARD_UMFI
+	// NO USER LEDS
 #else
 #error Unsupported Board
 #endif
@@ -49,6 +51,10 @@ static int _setup_i2c(int unit)
 	switch(unit)
 	{
 		case 0:
+			LPC_GPIO0->DIR |= (1<<27);
+			LPC_GPIO0->SET = (1<<27);
+			LPC_GPIO0->CLR = (1<<27);
+			
 			pincon_setfunc(0, 27, 1);	// SDA0
 			pincon_setfunc(0, 28, 1);	// SCL0
 			return 1;
@@ -88,7 +94,7 @@ static int _setup_usbhost(int unit)
 	// usb1
 	pincon_setfunc(0, 29, 1);	// D+
 	pincon_setfunc(0, 30, 1);	// D-
-	pincon_setfunc(1, 18, 1);	// USB_UP_LED
+	pincon_setfunc(1, 18, 1);	// USB_UP_LED1
 	pincon_setfunc(1, 19, 2);	// _USB_PPWR1
 	pincon_setfunc(1, 22, 2);	// USB_PWRD1
 	pincon_setfunc(1, 27, 2);	// _USB_OVRCR1
@@ -96,6 +102,22 @@ static int _setup_usbhost(int unit)
 	// usb2
 	pincon_setfunc(0, 31, 1);	// D+ 
 	pincon_setfunc(0, 12, 1);	// _USB_PPWR2
+	return (1<<0) | (1<<1);
+#elif defined BOARD_UMFI
+	// usb1
+	pincon_setfunc(0, 29, 1);	// D+
+	pincon_setfunc(0, 30, 1);	// D-
+	pincon_setfunc(1, 18, 1);	// USB_UP_LED1
+	pincon_setfunc(1, 19, 2);	// _USB_PPWR1
+	pincon_setfunc(1, 22, 2);	// USB_PWRD1
+	pincon_setfunc(1, 27, 2);	// _USB_OVRCR1
+	
+	// usb2
+	pincon_setfunc(0, 31, 1);	// D+
+	pincon_setfunc(0, 13, 1);	// USB_UP_LED2
+	pincon_setfunc(0, 12, 1);	// _USB_PPWR2
+	pincon_setfunc(1, 30, 1);	// USB_PWRD2
+	pincon_setfunc(1, 31, 1);	// _USB_OVRCR2
 	return (1<<0) | (1<<1);
 #else
 	return 0;
@@ -108,12 +130,12 @@ static int _setup_usbdev(int unit)
 //	PINSEL1bits.P0_29 = 1;		// D+
 //	PINSEL1bits.P0_30 = 1;		// D-
 //	PINSEL4bits.P2_9 = 1;		// USB_CONNECT
-	return 1;
+	return 0;
 }
 
 static int _setup_pwm(int unit)
 {
-#if defined BOARD_MIOBOARD 
+#if defined BOARD_MIOBOARD || defined BOARD_UMFI 
 //	PINSEL4bits.P2_0 = 1; // PWM1.1
 //	PINSEL4bits.P2_1 = 1; // PWM1.2
 //	PINSEL4bits.P2_2 = 1; // PWM1.3
@@ -150,6 +172,8 @@ static int _setup_can(int unit)
 			pincon_setfunc(2, 8, 1);	// CAN_TD2 
 			return 1;
 	}
+#elif defined BOARD_UMFI
+	return 0;
 #else
 #error "Unsupported board"
 #endif
@@ -158,7 +182,7 @@ static int _setup_can(int unit)
 
 static int _setup_uart(int unit)
 {
-#if defined BOARD_MIOBOARD
+#if defined BOARD_MIOBOARD || defined BOARD_UMFI
 	return 0;
 #else
 #error "Unsupported board"
@@ -169,7 +193,7 @@ static int _setup_uart(int unit)
 static int _setup_adc(int unit)
 {
 	unsigned char ch_mask = 0;
-#if defined BOARD_MIOBOARD
+#if defined BOARD_MIOBOARD || defined BOARD_UMFI
 #else
 #error "Unsupported board"
 #endif
@@ -177,72 +201,22 @@ static int _setup_adc(int unit)
 }
 
 
-#if defined(BOARD_MIOBOARD)
-
 void hal_led_set(HAL_LED led, int state)
 {
 	switch(led)
 	{
 		case LED_STATUS:
 		case 0:
+#if defined LED1_PORT
 			if (state)
 				LED1_PORT->DIR |= LED1_MASK;
 			else
 				LED1_PORT->DIR &= ~LED1_MASK;
+#endif
 			break;
 	}
 }
 
-#include <support/lcd/lcd.h>
-#define LCD_CS_PORT LPC_GPIO0	// LCD_CS = P0.16
-#define LCD_CS_MASK (1<<16)
-#define LCD_A0_PORT LPC_GPIO2	// LCD_A0 = P2.9
-#define LCD_A0_MASK (1<<9)
-#define LCD_RESET_PORT LPC_GPIO0	// LCD_RST = P0.22
-#define LCD_RESET_MASK (1<<22)
-#define LCD_BL_PORT LPC_GPIO2	// LCD_BL = P2.0
-#define LCD_BL_MASK (1<<0)
-
-void lcdcon_gpo_initialize()
-{
-//	PINSEL1bits.P0_16 = 0;
-//	PINSEL4bits.P2_9 = 0;
-//	PINSEL1bits.P0_22 = 0;
-//	PINSEL4bits.P2_0 = 0;
-
-//	LCD_CS_PORT->FIOSET = LCD_CS_MASK;
-//	LCD_CS_PORT->FIODIR |= LCD_CS_MASK;
-//	LCD_A0_PORT->FIOSET = LCD_A0_MASK;
-//	LCD_A0_PORT->FIODIR |= LCD_A0_MASK;
-//	LCD_RESET_PORT->FIOSET = LCD_RESET_MASK;
-//	LCD_RESET_PORT->FIODIR |= LCD_RESET_MASK;
-//	LCD_BL_PORT->FIOCLR = LCD_BL_MASK;
-//	LCD_BL_PORT->FIODIR |= LCD_BL_MASK;
-}
-
-void lcdcon_gpo(LCDCON_GPO gpo)
-{
-//	if (gpo & LCDCON_GPO_CS) LCD_CS_PORT->FIOCLR = LCD_CS_MASK;
-//	else LCD_CS_PORT->FIOSET = LCD_CS_MASK;
-//	if (gpo & LCDCON_GPO_A0) LCD_A0_PORT->FIOCLR = LCD_A0_MASK;
-//	else LCD_A0_PORT->FIOSET = LCD_A0_MASK;
-//	if (gpo & LCDCON_GPO_RESET) LCD_RESET_PORT->FIOCLR = LCD_RESET_MASK;
-//	else LCD_RESET_PORT->FIOSET = LCD_RESET_MASK;
-}
-
-void lcdcon_gpo_backlight(int enable)
-{
-	if (enable)
-	{
-//		LCD_BL_PORT->FIOSET = LCD_BL_MASK;
-	}
-	else
-	{
-//		LCD_BL_PORT->FIOCLR = LCD_BL_MASK;
-	}
-}
-
-#endif
 
 
 

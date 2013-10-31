@@ -12,7 +12,7 @@ int apple_cp20_initialize()
 {
 	unsigned long auth_id;
 	int done;
-	hal_i2c_initialize(APPLE_CP20_I2C_MODULE, 400000);
+	hal_i2c_initialize(APPLE_CP20_I2C_MODULE, 100000);
 	
 	_addr = 0x10;
 	done = apple_cp2_read_device_id(&auth_id);

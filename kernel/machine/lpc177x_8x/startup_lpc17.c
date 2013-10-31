@@ -1,4 +1,5 @@
 #include <CMSIS/system_LPC177x_8x.h>
+#include <CMSIS/LPC177x_8x.h>
 #include <kernel/startup.h>
 #include <kernel/machine/hal.h>
 
@@ -41,6 +42,9 @@ __init __naked void Reset_Handler()
 	__mem_set(&__bss_start__, &__bss_end__, 0);
 	__mem_set(&__bss2_start__, &__bss2_end__, 0);
 
+//	LPC_SC->PBOOST = 0;
+//	LPC_SC->PBOOST |= 0x03;
+	LPC_SC->FLASHCFG  = 0x503A;	// safe flash timing
 	SystemInit();
 
 	__kernel_start();

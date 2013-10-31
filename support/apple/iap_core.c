@@ -554,6 +554,7 @@ static void *_service(void *arg)
 {
 	exos_thread_sleep(1000);
 
+
 	if (_identify())
 	{
 		_slave_io();
