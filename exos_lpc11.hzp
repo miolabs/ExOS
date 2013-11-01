@@ -42,6 +42,7 @@
         <folder Name="lpc11" file_name="">
           <file file_name="support/lpc11/c_can.c"/>
           <file file_name="support/lpc11/ssp.c"/>
+          <file file_name="support/lpc11/uart.c"/>
         </folder>
       </folder>
       <folder Name="tests">
