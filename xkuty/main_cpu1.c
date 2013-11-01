@@ -50,6 +50,7 @@ static enum
         CONTROL_OFF = 0,
         CONTROL_ON,
         CONTROL_CRUISE,
+        CONTROL_LIGHTS_OFF_STAND_BY
 } _control_state;
 static XCPU_STATE _state; // comm state to share (with lcd)
 static XCPU_DRIVE_MODE _drive_mode = XCPU_DRIVE_MODE_SOFT;
@@ -57,13 +58,13 @@ static XCPU_DRIVE_MODE _drive_mode = XCPU_DRIVE_MODE_SOFT;
 typedef struct 
 {
 	unsigned char  buttons;
-	unsigned char  events;
-	unsigned short  throttle_raw;
 	unsigned char  brake_rear, brake_front;
-	unsigned char  throttle_adj_min, throttle_adj_max;
+	unsigned short  events;
+	unsigned short  throttle_raw;
+
 } XLCD_INPUT;
 
-static XLCD_INPUT _lcd = {0,0,0,0,0,0,0};
+static XLCD_INPUT _lcd = { };
 
 static XCPU_EVENTS _do_lcd_command(XCPU_MASTER_INPUT2 *input)
 {
@@ -78,6 +79,10 @@ static XCPU_EVENTS _do_lcd_command(XCPU_MASTER_INPUT2 *input)
 		case XCPU_CMD_SET_CURVE:
 			for(i = 0; i < 7; i++)
 				_storage.CustomCurve[i] = input->Data[i];
+			break;
+		case XCPU_CMD_ADJUST_THROTTLE:
+        	_storage.ThrottleAdjMin = input->Data[0];
+			_storage.ThrottleAdjMax = input->Data[1];
 			break;
 		case XCPU_CMD_INVOKE_BOOTLOADER: 
 			return XCPU_EVENT_TURN_OFF | XCPU_EVENT_ENTER_BOOTLOADER;
@@ -99,9 +104,7 @@ static XCPU_EVENTS _read_can_messages()
 				_lcd.throttle_raw = data->u8[1] | ( data->u8[2] << 8);
 				_lcd.brake_rear = data->u8[3];
 				_lcd.brake_front = data->u8[4];
-				_lcd.throttle_adj_min = data->u8[5];
-				_lcd.throttle_adj_max = data->u8[6];
-				_lcd.events = data->u8[7];
+				_lcd.events = data->u8[5] | (data->u8[6] << 8);
 				break;
 
 			case 0x201:
@@ -124,7 +127,8 @@ static int _batt_level ()
 	return batt;
 }
 
-static void _send_can_messages(unsigned int speed, unsigned int distance)
+static void _send_can_messages(unsigned int speed, unsigned int distance, 
+								unsigned int throttle)
 {
 	int i;
 	CAN_BUFFER buf;
@@ -137,9 +141,11 @@ static void _send_can_messages(unsigned int speed, unsigned int distance)
 	exos_thread_sleep (4);  // Temporary fix; packets get overwritten
 
 	buf.u32[0] = buf.u32[1] = 0;
-	buf.u8[0]  = _storage.ThrottleAdjMin;
-	buf.u8[1]  = _storage.ThrottleAdjMax;
-	buf.u16[1] = _drive_mode;
+	buf.u8[0] = _storage.ThrottleAdjMin;
+	buf.u8[1] = _storage.ThrottleAdjMax;
+	buf.u8[2] = _drive_mode;
+	buf.u8[3] = throttle;
+	buf.u8[4] = _storage.MaxSpeed;
 	hal_can_send((CAN_EP) { .Id = 0x301 }, &buf, 8, CANF_NONE);
 
 	exos_thread_sleep (4);  // IDEM
@@ -183,15 +189,35 @@ static void _speed_calculation(SPEED_DATA *sp, int mag_miles, float wheel_ratio_
 	}
 }
 
+static void _shutdown (SPEED_DATA *sp)
+{
+	// disable pwm
+	hal_pwm_set_output(PWM_TIMER_MODULE, 0, PWM_RANGE + 1); 
+
+	_storage.TotalSteps += sp->s_partial;
+	sp->s_partial = 0;
+	_storage.ConfigBits = XCPU_CONFIGF_NONE;
+	if (_state & XCPU_STATE_MILES) 
+		_storage.ConfigBits |= XCPU_CONFIGF_MILES;
+
+	_storage.DriveMode = _drive_mode;
+
+	persist_save(&_storage);
+
+	_output_state = OUTPUT_NONE;
+	_control_state = CONTROL_OFF;
+	_state = XCPU_STATE_OFF;
+}
+
 typedef struct 
 {
 	unsigned short start;
 	unsigned short cruise;
 	unsigned short off;
 	unsigned short up,down;
+	unsigned short max_speed_up, max_speed_down;
 	unsigned short swtch;
 	unsigned short mode;
-	unsigned short adj;
 	unsigned short lights;
     unsigned short auto_shutdow;
 	unsigned short auto_lights_off;
@@ -199,8 +225,6 @@ typedef struct
 //	unsigned short ios_mode;
 } PUSH_CNT;
 
-// FIXME: this should not be static and be included in state bitfield as LIGHT_OFF_STAND_BY or whatever
-static char _pre_sleep = 0;	// Switch to disable light, previous to going OFF
 
 void main()
 {
@@ -250,6 +274,7 @@ void main()
 				.WheelRatioAdj = 0,
 				.ThrottleAdjMin = 66, 
 				.ThrottleAdjMax = 166,
+				.MaxSpeed = 40,
 				.CustomCurve = {255, 255, 255, 255, 255, 255, 255} };
 	}
 
@@ -288,8 +313,26 @@ void main()
 					_state |= XCPU_STATE_NEUTRAL;
 					_drive_mode = _storage.DriveMode;
                     _default_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
-                    _pre_sleep = 0;
 					_run_diag();
+				}
+				break;
+			case CONTROL_LIGHTS_OFF_STAND_BY:
+				{
+					_output_state = OUTPUT_NONE;
+					_state |= XCPU_STATE_NEUTRAL;
+					// Shut down when activity ceases for 60 seconds 
+					const int loop_iters = 1000 / MAIN_LOOP_TIME;
+					int no_activity = (_lcd.buttons == 0) && (events == 0) && (sp.speed < 0.1f);
+					if(_push_delay(no_activity, &push.auto_shutdow, loop_iters * 30))
+					{
+						push.auto_shutdow = 0;
+						_shutdown(&sp);
+					}
+					else if (!no_activity)	// Disable pre-sleep, lights on
+					{
+						_control_state = CONTROL_ON;
+                        _default_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
+					}
 				}
 				break;
 			case CONTROL_CRUISE:
@@ -314,27 +357,13 @@ void main()
 			case CONTROL_ON:
 				_output_state = _default_output_state;
 
-				// Shut down when activity ceases for 60 seconds 
-                const int loop_iters = 1000 / MAIN_LOOP_TIME;
-				int no_activity = (_lcd.buttons == 0) && (events == 0) && (sp.speed < 0.1f);
-				if(_push_delay(no_activity, &push.auto_shutdow, loop_iters * 60))
-				{
-					push.auto_shutdow = 0;
-					events |= XCPU_EVENT_TURN_OFF;
-				}
 				// Lights off when activity ceases for 30 seconds
-				if((_default_output_state & (OUTPUT_HEADL | OUTPUT_TAILL)) &&
-					_push_delay(no_activity, &push.auto_lights_off, loop_iters * 30))
+				const int loop_iters = 1000 / MAIN_LOOP_TIME;
+				int no_activity = (_lcd.buttons == 0) && (events == 0) && (sp.speed < 0.1f);
+				if(_push_delay(no_activity, &push.auto_lights_off, loop_iters * 30))
 				{
-					_pre_sleep = 1;
                     push.auto_lights_off = 0;
-					_default_output_state = OUTPUT_NONE;
-				}
-
-				if (_pre_sleep && !no_activity)	// Disable pre-sleep, lights on
-				{
-					_pre_sleep = 0;
-					_default_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
+					_control_state = CONTROL_LIGHTS_OFF_STAND_BY;
 				}
 
 				if (_lcd.brake_rear > BRAKE_THRESHOLD || _lcd.brake_front > BRAKE_THRESHOLD)
@@ -370,15 +399,19 @@ void main()
 				{
 					_storage.WheelRatioAdj--;
 				}
+				if (_push_delay(_lcd.events & XCPU_EVENT_ADJUST_MAX_SPEED_UP, &push.max_speed_up, 5) &&
+					_storage.MaxSpeed < MAX_SPEED)
+				{
+					_storage.MaxSpeed++;
+				}
+				if (_push_delay(_lcd.events & XCPU_EVENT_ADJUST_MAX_SPEED_DOWN, &push.max_speed_down, 5) &&
+					_storage.MaxSpeed > 0)
+				{
+					_storage.MaxSpeed--;
+				}
 				if (_push_delay(_lcd.events & XCPU_EVENT_SWITCH_UNITS, &push.swtch, 5))
 				{
 					_state ^= XCPU_STATE_MILES;
-				}
-
-				if (_push_delay(_lcd.events & XCPU_EVENT_ADJUST_THROTTLE, &push.adj, 5))
-				{
-					_storage.ThrottleAdjMin = _lcd.throttle_adj_min;
-					_storage.ThrottleAdjMax = _lcd.throttle_adj_max;
 				}
 
 				if (_push_delay(_lcd.buttons & XCPU_BUTTON_CRUISE, &push.cruise, 5))
@@ -409,21 +442,7 @@ void main()
 				{
 					if (sp.speed == 0.0f)  // 0.0f value is forced
 					{
-						hal_pwm_set_output(PWM_TIMER_MODULE, 0, PWM_RANGE + 1); //      disable pwm
-
-						_storage.TotalSteps += sp.s_partial;
-						sp.s_partial = 0;
-						_storage.ConfigBits = XCPU_CONFIGF_NONE;
-						if (_state & XCPU_STATE_MILES) 
-							_storage.ConfigBits |= XCPU_CONFIGF_MILES;
-
-						_storage.DriveMode = _drive_mode;
-
-						persist_save(&_storage);
-
-						_output_state = OUTPUT_NONE;
-						_control_state = CONTROL_OFF;
-						_state = XCPU_STATE_OFF;
+						_shutdown(&sp);
 					}
 					else 
 						_state |= XCPU_STATE_WARNING;
@@ -461,7 +480,7 @@ void main()
 
 			xcpu_board_led(led = !led);     // toggle led
 			float dist = (((_storage.TotalSteps + sp.s_partial) * (sp.ratio / 3.6f)) / 100);
-			_send_can_messages((unsigned int)sp.speed, (unsigned long)dist);
+			_send_can_messages((unsigned int)sp.speed, (unsigned long)dist, throttle);
 
 			xcpu_board_output(_output_state);
         }

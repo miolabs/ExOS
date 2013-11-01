@@ -26,8 +26,10 @@ typedef struct
 {
 	unsigned char  throttle_adj_min;	// fx8
 	unsigned char  throttle_adj_max;	// fx8
-	unsigned short drive_mode;			// XCPU_DRIVE_MODE
-	unsigned long  reserved2;
+	unsigned char  drive_mode;			// XCPU_DRIVE_MODE
+	unsigned char  applied_throttle;	//fx8
+	unsigned char  max_speed;
+	unsigned char  reserved1,reserved2,reserved3;
 } XCPU_MASTER_OUT2;
 
 typedef struct __attribute__((__packed__))
@@ -71,12 +73,13 @@ typedef enum
 	XCPU_EVENT_ADJUST_UP = (1<<0),
 	XCPU_EVENT_ADJUST_DOWN = (1<<1),
 	XCPU_EVENT_SWITCH_UNITS = (1<<2),
-	XCPU_EVENT_ADJUST_THROTTLE = (1<<3),
-	XCPU_EVENT_TURN_ON = (1<<4),
-	XCPU_EVENT_TURN_OFF = (1<<5),
-	XCPU_EVENT_SWITCH_LIGHTS = (1<<6),
-	XCPU_EVENT_CONFIGURING = (1<<7),
-	XCPU_EVENT_ENTER_BOOTLOADER = (1<<8),
+	XCPU_EVENT_TURN_ON = (1<<3),
+	XCPU_EVENT_TURN_OFF = (1<<4),
+	XCPU_EVENT_SWITCH_LIGHTS = (1<<5),
+	XCPU_EVENT_CONFIGURING = (1<<6),
+	XCPU_EVENT_ENTER_BOOTLOADER = (1<<7),
+    XCPU_EVENT_ADJUST_MAX_SPEED_DOWN = (1<<8), 
+    XCPU_EVENT_ADJUST_MAX_SPEED_UP = (1<<9)
 } XCPU_EVENTS;
 
 typedef enum
@@ -87,6 +90,7 @@ typedef enum
 	XCPU_CMD_SET_DRIVE_MODE,
 	XCPU_CMD_SET_CURVE,
 	XCPU_CMD_INVOKE_BOOTLOADER,
+	XCPU_CMD_ADJUST_THROTTLE
 } XCPU_COMMANDS;
 
 
