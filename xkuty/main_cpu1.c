@@ -38,6 +38,8 @@ static XCPU_OUTPUT_MASK _default_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
 
 static PID_K _pid_k; 
 static PID_STATE _pid;
+static PID_K _speed_limit_pid_k;
+static PID_STATE _speed_limit_pid;
 
 static EXOS_TIMER _timer;
 static void _run_diag();
@@ -238,6 +240,7 @@ void main()
 	SPEED_DATA sp = { .speed = 0 };
 	speed_initialize();
 	_pid_k = (PID_K) { .P = 25, .I = 15, .CMin = 0, .CMax = 255 };
+	_speed_limit_pid_k = (PID_K) { .P = 25, .I = 15, .CMin = -255, .CMax = 0 };
 
 	// TODO: CHECK THESE PARAMS
 	exos_timer_create(&_timer, MAIN_LOOP_TIME, MAIN_LOOP_TIME, exos_signal_alloc());
@@ -279,6 +282,9 @@ void main()
 	}
 
 	set_custom_curve_ptr(_storage.CustomCurve);
+
+	_speed_limit_pid.SetPoint = 0.0f;
+	_speed_limit_pid.Integral = 0.0f; //throttle / _pid_k.I;
 
 	_control_state = CONTROL_OFF;
 	_output_state = OUTPUT_NONE;
@@ -338,7 +344,7 @@ void main()
 			case CONTROL_CRUISE:
 				{
 					int input_throttle = throttle;
-					throttle = pid(&_pid, sp.speed, &_pid_k, 0.05F);
+					throttle = pid(&_pid, sp.speed, &_pid_k, MAIN_LOOP_TIME / 1000.0f);
 					if (throttle > 250)
 					{
 						throttle--;
@@ -356,6 +362,14 @@ void main()
 				// NOTE: case fall down
 			case CONTROL_ON:
 				_output_state = _default_output_state;
+				// Speed limit brake
+				float speed_excess = sp.speed - _storage.MaxSpeed;
+				if (speed_excess > 0.0f)
+				{
+					float speed_limiter = pid(&_speed_limit_pid, speed_excess, &_speed_limit_pid_k, MAIN_LOOP_TIME / 1000.0f);
+					speed_limiter = __LIMIT(speed_limiter, -255.0f, 0.0f);
+					throttle = __LIMIT(((int)throttle + (int)speed_limiter), 0, 255);
+				}
 
 				// Lights off when activity ceases for 30 seconds
 				const int loop_iters = 1000 / MAIN_LOOP_TIME;
