@@ -384,6 +384,11 @@ static int _identify()
 			(status == IAP_ERROR_BAD_PARAMETER ? IAP_MAX_PACKET_BUFFER : 0);
 		if (max_payload != 0)
 		{
+			unsigned char lingo = 0;
+			resp = (IAP_CMD) { .Length = sizeof(buffer) };
+			status = iap_do_req3(IAP_CMD_GET_IPOD_OPTIONS_FOR_LINGO, &lingo, 1, &resp, buffer);
+			// TODO: use received info when other lingos are supported
+
 			int fid_data = iap_fid_fill(buffer, sizeof(buffer));
 			resp = (IAP_CMD) { .Length = sizeof(buffer) - fid_data };
 			status = iap_do_req3(IAP_CMD_SET_FID_TOKEN_VALUES, buffer, fid_data, &resp, buffer + fid_data);

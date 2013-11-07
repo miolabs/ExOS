@@ -20,7 +20,7 @@
 #define IAP_ACCESORY_SERIAL "00000"
 #define IAP_ACCESORY_RF_CERTIFICATION 0
 #ifndef IAP_ACCESORY_BUNDLE_SEED
-#define IAP_ACCESORY_BUNDLE_SEED "exos_mfi_bundle"
+#define IAP_ACCESORY_BUNDLE_SEED "___exos___"
 #endif
 
 #ifndef IAP_ACCESORY_CAPS
