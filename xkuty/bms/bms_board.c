@@ -1,4 +1,5 @@
 #include <support/board_hal.h>
+#include <support/i2c_hal.h>
 #include <CMSIS/LPC11xx.h>
 
 static int _setup_i2c(int unit);
@@ -10,7 +11,7 @@ static int _setup_adc(int unit);
 
 void hal_board_initialize()
 {
-
+	hal_i2c_initialize(0, 400000);
 }
 
 int hal_board_init_pinmux(HAL_RESOURCE res, int unit)

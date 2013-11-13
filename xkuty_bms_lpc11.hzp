@@ -47,13 +47,15 @@
         </folder>
         <folder Name="misc">
           <file file_name="support/misc/pca9635.c"/>
+          <file file_name="support/misc/stc3105.c"/>
         </folder>
       </folder>
       <folder Name="xkuty">
         <folder Name="bms">
-          <file file_name="xkuty/bms/bms_main.c"/>
           <file file_name="xkuty/bms/bms_board.c"/>
+          <file file_name="xkuty/bms/measure.c"/>
         </folder>
+        <file file_name="xkuty/main_bms.c"/>
       </folder>
     </folder>
     <folder Name="System Files">

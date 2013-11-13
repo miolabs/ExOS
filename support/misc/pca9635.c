@@ -11,8 +11,6 @@
 
 int pca9635_initialize(PCA9635_MODE mode)
 {
-	hal_i2c_initialize(PCA9635_I2C_PORT, 400000);
-
 	unsigned char temp[6];
 	
 	temp[0] = 0x85;	 // software reset
