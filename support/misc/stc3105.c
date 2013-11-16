@@ -30,14 +30,22 @@ int stc3105_initialize(int module, int i2c_addr, STC3105_FLAGS config)
 			| STC3105_CTRL_ALM_SOC | STC3105_CTRL_ALM_VOLT);
 		ctrl |= STC3105_CTRL_IO0DATA;
 
-		buffer[1] = mode;
-		buffer[2] = ctrl;
-		err = hal_i2c_master_frame(_module, _address, buffer, 3, 0);
+		buffer[0] = STC3105_REG_CTRL;
+		buffer[1] = ctrl;
+		err = hal_i2c_master_frame(_module, _address, buffer, 2, 0);
+		if (err != 0) return 0;
 
-#ifdef DEBUG	
+		buffer[0] = STC3105_REG_MODE;
+		buffer[1] = mode;
+		err = hal_i2c_master_frame(_module, _address, buffer, 2, 0);
+		if (err != 0) return 0;
+
 		err = hal_i2c_master_frame(_module, _address, buffer, 1, 2);
-#endif
-		return 1;
+		if (err == 0)
+		{
+			mode = buffer[1];
+			return (mode & STC3105_MODE_GG_RUN) ? 1 : 0;
+		}
 	}
 	return 0;
 }

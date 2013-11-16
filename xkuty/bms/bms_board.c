@@ -74,7 +74,9 @@ static int _setup_adc(int unit)
 	unsigned char ch_mask = 0;
 	LPC_IOCON->R_PIO0_11 = 2; // AD0
 	LPC_IOCON->R_PIO1_0 = 2; // AD1
-	ch_mask |= 0x3;
+	LPC_IOCON->R_PIO1_1 = 2; // AD2
+	LPC_IOCON->R_PIO1_2 = 2; // AD3
+	ch_mask |= 0xf;
 	return ch_mask;
 }
 

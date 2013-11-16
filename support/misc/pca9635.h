@@ -44,10 +44,18 @@ typedef enum
 	PCA9635_MODE_OUTNE_2 = (2<<0),
 } PCA9635_MODE;
 
+typedef enum
+{
+	PCA9635_LED_OFF = 0,
+	PCA9635_LED_ON,
+	PCA9635_LED_PWM,
+	PCA9635_LED_PWM_AND_BLINK,
+} PC9635_OUTPUT_STATE;
+
 // prototypes
 int pca9635_initialize(PCA9635_MODE mode);
-//int pca9635_write(int port, unsigned char value);
-//int pca9635_read(int port, unsigned char *pvalue);
+int pca9635_set_output(int index, PC9635_OUTPUT_STATE state);
+int pca9635_sel_output_pwm(int index, unsigned char duty);
 
 #endif // PCA9635_H
 
