@@ -249,7 +249,7 @@ void main()
 	exos_fifo_create(&_can_free_msgs, NULL);
 	for(int i = 0; i < CAN_MSG_QUEUE; i++) exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)&_can_msg[i]);
 
-	hal_can_initialize(0, 250000, 0); //CAN_INITF_DISABLE_RETRANSMISSION);
+	hal_can_initialize(0, 250000, CAN_INITF_DISABLE_RETRANSMISSION);
 	hal_fullcan_setup(_can_setup, NULL);
 
 	xcpu_board_output(_output_state);
