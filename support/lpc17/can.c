@@ -51,7 +51,7 @@ void CAN_IRQHandler(void)
 	}
 }
 
-int hal_can_initialize(int module, int bitrate)
+int hal_can_initialize(int module, int bitrate, CAN_INIT_FLAGS initf)
 {
 	if (!hal_board_init_pinmux(HAL_RESOURCE_CAN, module))
 		return 0;
