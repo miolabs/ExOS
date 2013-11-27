@@ -327,11 +327,8 @@ void main()
 	unsigned int prev_time = 0;
 
 	int screen_count = 0;
-#ifdef DEBUG
-	DISPLAY_STATE init_state = ST_EXOS_IN;
-#else
+
 	DISPLAY_STATE init_state = ST_LOGO_IN;
-#endif
 	DISPLAY_STATE state = init_state;
 
 	int prev_cpu_state = 0;	// Default state is OFF, wait for master to start
