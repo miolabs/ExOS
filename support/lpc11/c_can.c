@@ -4,6 +4,7 @@
 #include <kernel/mutex.h>
 
 static C_CAN_MODULE *const _can = (C_CAN_MODULE*)LPC_CAN;
+static unsigned int _fullrx_mask = 0;
 static unsigned int _usage_mask = 0;
 static EXOS_MUTEX _lock;
 
@@ -49,7 +50,7 @@ int hal_can_initialize(int module, int bitrate, CAN_INIT_FLAGS initf)
 		fn->CMDREQ = i + 1;
 	}
 
-	_can->CNTL = C_CAN_CNTL_IE | C_CAN_CNTL_EIE //| C_CAN_CNTL_SIE
+	_can->CNTL = C_CAN_CNTL_IE | C_CAN_CNTL_EIE | C_CAN_CNTL_SIE
 		| (initf & CAN_INITF_DISABLE_RETRANSMISSION ? C_CAN_CNTL_DAR : 0)	// disable automatic retransmission
 		;
 
@@ -88,7 +89,11 @@ void CAN_IRQHandler()
 		if (ir & 0x8000)
 		{
 			unsigned char stat = _can->STAT;
-			// TODO
+			if (( stat & 0x7) == C_CAN_ERROR_ACK)
+                        {
+                          // FIXME: patch when the receiver is not working
+                          _usage_mask = _fullrx_mask;
+                        }
 		}
 		else
 		{
@@ -126,6 +131,9 @@ void CAN_IRQHandler()
 				// message successfully transmitted
 				_usage_mask &= ~(1 << (intid - 1));
 			}
+                      #ifdef DEBUG
+                      else __BKPT(0);
+                      #endif
 		}
 	}
 	NVIC_ClearPendingIRQ(CAN_IRQn);
@@ -169,6 +177,9 @@ int hal_can_send(CAN_EP ep, CAN_BUFFER *data, unsigned char length, CAN_MSG_FLAG
 		fn->CMDREQ = index + 1;
 		done = 1;
 	}
+#ifdef DEBUG
+        else __BKPT(0);
+#endif
 	return done;
 }
 
@@ -209,7 +220,8 @@ int hal_fullcan_setup(HAL_FULLCAN_SETUP_CALLBACK callback, void *state)
 		fn->CMDREQ = ++count; // make transfer
 
 	}
-	
+	_fullrx_mask = _usage_mask;
+
 	exos_mutex_unlock(&_lock);
 	return count;
 }
