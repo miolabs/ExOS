@@ -4,6 +4,7 @@
 #include <support/can_hal.h>
 #include <support/pwm_hal.h>
 #include <support/adc_hal.h>
+#include <support/lpc11/uart.h>
 #include "xcpu.h"
 #include "xcpu/board.h"
 #include "xcpu/speed.h"
@@ -138,9 +139,8 @@ static void _send_can_messages(unsigned int speed, unsigned int distance,
 	for(i = 0; i< 7; i++)
 		buf.u8[i] = _storage.CustomCurve[i];
 
-	hal_can_send((CAN_EP) { .Id = 0x302 }, &buf, 8, CANF_NONE);
-
-	exos_thread_sleep (4);  // Temporary fix; packets get overwritten
+	int done = hal_can_send((CAN_EP) { .Id = 0x302 }, &buf, 8, CANF_NONE);
+	if (!done) hal_can_cancel_tx();
 
 	buf.u32[0] = buf.u32[1] = 0;
 	buf.u8[0] = _storage.ThrottleAdjMin;
@@ -148,18 +148,16 @@ static void _send_can_messages(unsigned int speed, unsigned int distance,
 	buf.u8[2] = _drive_mode;
 	buf.u8[3] = throttle;
 	buf.u8[4] = _storage.MaxSpeed;
-	hal_can_send((CAN_EP) { .Id = 0x301 }, &buf, 8, CANF_NONE);
-
-	exos_thread_sleep (4);  // IDEM
+	done = hal_can_send((CAN_EP) { .Id = 0x301 }, &buf, 8, CANF_NONE);
+	if (!done) hal_can_cancel_tx();
 
 	buf.u8[0] = speed;
 	buf.u8[1] = _batt_level();
 	buf.u8[2] = _state;
 	buf.u8[3] = _storage.WheelRatioAdj;
 	buf.u32[1] = distance;
-	hal_can_send((CAN_EP) { .Id = 0x300 }, &buf, 8, CANF_NONE);
-
-	exos_thread_sleep (4);  // IDEM
+	done = hal_can_send((CAN_EP) { .Id = 0x300 }, &buf, 8, CANF_NONE);
+	if (!done) hal_can_cancel_tx();
 }
 
 
@@ -227,6 +225,9 @@ typedef struct
 //	unsigned short ios_mode;
 } PUSH_CNT;
 
+#define UART_BUFFER_SIZE 4
+static char _input_buffer[UART_BUFFER_SIZE];
+static char _output_buffer[UART_BUFFER_SIZE];
 
 void main()
 {
@@ -235,6 +236,10 @@ void main()
 	hal_pwm_set_output(PWM_TIMER_MODULE, 0, 1025);
 
 	hal_adc_initialize(1000, 16);
+	UART_CONTROL_BLOCK cb = (UART_CONTROL_BLOCK) { .Baudrate = 9600,
+		.InputBuffer = (UART_BUFFER) { .Size = UART_BUFFER_SIZE, .Buffer = _input_buffer },
+		.OutputBuffer = (UART_BUFFER) { .Size = UART_BUFFER_SIZE, .Buffer = _output_buffer }};
+	uart_initialize(0, &cb);
 
 	PUSH_CNT push = { };
 	SPEED_DATA sp = { .speed = 0 };
@@ -297,6 +302,19 @@ void main()
 
 		XCPU_EVENTS events = _read_can_messages();
 		events |= _lcd.events;
+
+#ifndef NO_BLUETOOTH
+		unsigned char bt_value;
+		int done = uart_read(0, &bt_value, 1);
+		if (done)
+		{
+			switch(bt_value)
+			{
+				case 'E': events |= XCPU_EVENT_TURN_ON;	break;
+				case 'D': events |= XCPU_EVENT_TURN_OFF;	break;
+			}
+		}
+#endif
 
 		int curve_in = (int)(4096.f * (sp.speed / (float) MAX_SPEED));
 		int throttle_factor = get_curve_value(curve_in, _drive_mode) >> 4;

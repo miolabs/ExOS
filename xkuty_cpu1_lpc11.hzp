@@ -46,6 +46,7 @@
           <file file_name="support/lpc11/iap.c"/>
           <file file_name="support/lpc11/adc.c"/>
           <file file_name="support/lpc11/cpu.c"/>
+          <file file_name="support/lpc11/uart.c"/>
         </folder>
         <folder Name="misc">
           <file file_name="support/misc/flash.c"/>

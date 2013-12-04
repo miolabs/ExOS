@@ -7,6 +7,11 @@ static C_CAN_MODULE *const _can = (C_CAN_MODULE*)LPC_CAN;
 static unsigned int _fullrx_mask = 0;
 static unsigned int _usage_mask = 0;
 static EXOS_MUTEX _lock;
+#ifdef DEBUG
+static unsigned long _errors_ack = 0;
+static unsigned long _resets_tx = 0;
+static unsigned long _unhandled_irq= 0;
+#endif
 
 int hal_can_initialize(int module, int bitrate, CAN_INIT_FLAGS initf)
 {
@@ -80,6 +85,15 @@ static int _get_free_index(int *pindex)
 	return done;
 }
 
+void hal_can_cancel_tx()
+{
+#ifdef DEBUG
+	_resets_tx++;
+#endif
+	// FIXME: actually review pending tx in msg ram
+	_usage_mask = _fullrx_mask;
+}
+
 void CAN_IRQHandler()
 {
 	while(1)
@@ -90,10 +104,13 @@ void CAN_IRQHandler()
 		{
 			unsigned char stat = _can->STAT;
 			if (( stat & 0x7) == C_CAN_ERROR_ACK)
-                        {
-                          // FIXME: patch when the receiver is not working
-                          _usage_mask = _fullrx_mask;
-                        }
+			{
+#ifdef DEBUG
+				_errors_ack++;
+#endif
+				// FIXME: patch when the receiver is not working
+				_usage_mask = _fullrx_mask;
+			}
 		}
 		else
 		{
@@ -131,9 +148,9 @@ void CAN_IRQHandler()
 				// message successfully transmitted
 				_usage_mask &= ~(1 << (intid - 1));
 			}
-                      #ifdef DEBUG
-                      else __BKPT(0);
-                      #endif
+#ifdef DEBUG
+			else _unhandled_irq++;
+#endif
 		}
 	}
 	NVIC_ClearPendingIRQ(CAN_IRQn);
@@ -177,9 +194,6 @@ int hal_can_send(CAN_EP ep, CAN_BUFFER *data, unsigned char length, CAN_MSG_FLAG
 		fn->CMDREQ = index + 1;
 		done = 1;
 	}
-#ifdef DEBUG
-        else __BKPT(0);
-#endif
 	return done;
 }
 
