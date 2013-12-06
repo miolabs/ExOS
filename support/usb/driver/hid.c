@@ -1,8 +1,13 @@
 #include "hid.h"
 #include <usb/enumerate.h>
 #include <kernel/fifo.h>
+#include <kernel/dispatch.h>
 #include <kernel/panic.h>
 #include <kernel/machine/hal.h>
+
+#ifndef HID_MAX_INSTANCES
+#define HID_MAX_INSTANCES 1
+#endif
 
 static USB_HOST_FUNCTION *_check_interface(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTOR *conf_desc, USB_DESCRIPTOR_HEADER *fn_desc);
 static void _start(USB_HOST_FUNCTION *func);
@@ -10,13 +15,15 @@ static void _stop(USB_HOST_FUNCTION *func);
 
 static const USB_HOST_FUNCTION_DRIVER _driver = { _check_interface, _start, _stop };
 static USB_HOST_FUNCTION_DRIVER_NODE _driver_node;
-static HID_FUNCTION _function __usb;	// currently, a single instance is supported
-static int _function_busy = 0;
+static HID_FUNCTION _function[HID_MAX_INSTANCES] __usb;
+static unsigned char _function_busy[HID_MAX_INSTANCES];
 
 #define THREAD_STACK 1024
 static EXOS_THREAD _thread;
 static unsigned char _stack[THREAD_STACK] __attribute__((aligned(16)));
 static void *_service(void *arg);
+static EXOS_DISPATCHER_CONTEXT _service_context;
+static void _dispatch(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher);
 
 #ifndef HID_MAX_REPORT_DESCRIPTOR_SIZE
 #define HID_MAX_REPORT_DESCRIPTOR_SIZE 128
@@ -37,11 +44,14 @@ void usbd_hid_initialize()
 	for(int i = 0; i < HID_MAX_REPORT_INPUT_COUNT; i++)
 		exos_fifo_queue(&_free_report_inputs, (EXOS_NODE *)&_report_array[i]);
 
+	exos_dispatcher_context_create(&_service_context);
+	exos_thread_create(&_thread, 0, _stack, THREAD_STACK, NULL, _service, &_service_context);
+
 	exos_mutex_create(&_manager_lock);
 	list_initialize(&_manager_list);
-
 	_driver_node = (USB_HOST_FUNCTION_DRIVER_NODE) { .Driver = &_driver };
 	usb_host_driver_register(&_driver_node);
+
 }
 
 static USB_HOST_FUNCTION *_check_interface(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTOR *conf_desc, USB_DESCRIPTOR_HEADER *fn_desc)
@@ -52,13 +62,23 @@ static USB_HOST_FUNCTION *_check_interface(USB_HOST_DEVICE *device, USB_CONFIGUR
 
 		if (if_desc->InterfaceClass == USB_CLASS_HID)
 		{
-			HID_FUNCTION *func = _function_busy ? NULL : &_function;
+			HID_FUNCTION *func = NULL;
+			for(int i = 0; i < HID_MAX_INSTANCES; i++)
+			{
+				if (_function_busy[i] == 0)
+				{
+					func = &_function[i];
+					func->InstanceIndex = i;
+				}
+			}
 
 			if (func != NULL)
 			{
 				usb_host_create_function((USB_HOST_FUNCTION *)func, device, &_driver);
 				func->Interface = if_desc->InterfaceNumber;
-	
+				func->InterfaceSubClass = if_desc->InterfaceSubClass;
+				func->Protocol = if_desc->Protocol;
+
 				USB_ENDPOINT_DESCRIPTOR *ep_desc;			
 				ep_desc = usb_enumerate_find_endpoint_descriptor(conf_desc, if_desc, USB_TT_INTERRUPT, USB_DEVICE_TO_HOST, 0);
 				if (!ep_desc) return NULL;
@@ -97,27 +117,17 @@ typedef struct
 	unsigned long Max;
 } USB_HID_ITEM_PARSE_STATE;
 
-static HID_REPORT_MANAGER *_match_handler(HID_FUNCTION *func, HID_REPORT_INPUT *input)
+static int _match_handler(HID_FUNCTION_HANDLER *handler, HID_REPORT_INPUT *input)
 {
-	HID_REPORT_MANAGER *matching = NULL;
-	exos_mutex_lock(&_manager_lock);
-	FOREACH(node, &_manager_list)
-	{
-		HID_REPORT_MANAGER *manager = (HID_REPORT_MANAGER *)node;
-		const HID_REPORT_DRIVER *driver = manager->Driver;
 #ifdef DEBUG
-		if (driver == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
+	if (handler->DriverNode == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
 #endif
-		if (driver->MatchDevice != NULL && !driver->MatchDevice(func->Device)) continue;
-		if (driver->MatchInputHandler != NULL &&
-			driver->MatchInputHandler(func, input))
-		{
-			matching = manager;
-			break;
-		}
-	}
-	exos_mutex_unlock(&_manager_lock);
-	return matching;
+	const HID_DRIVER *driver = handler->DriverNode->Driver;
+#ifdef DEBUG
+	if (driver == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
+	if (driver->MatchInputHandler == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+	return driver->MatchInputHandler(handler, input);
 }
 
 static void _parse_item_global(USB_HID_ITEM_PARSE_STATE *state, unsigned char tag, unsigned long value)
@@ -141,8 +151,12 @@ static void _parse_item_local(USB_HID_ITEM_PARSE_STATE *state, unsigned char tag
 	}
 }
 
-static void _parse_items(HID_FUNCTION *func, unsigned char *ptr, int length)
+static void _parse_items(HID_FUNCTION_HANDLER *handler, unsigned char *ptr, int length)
 {
+	HID_FUNCTION *func = handler->Function;
+#ifdef DEBUG
+	if (func == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
 	unsigned long offset = 0;
 	unsigned long value;
 	unsigned char *data;
@@ -206,10 +220,9 @@ static void _parse_items(HID_FUNCTION *func, unsigned char *ptr, int length)
 								input->Max = state.Max;
 								input->InputFlags = value;
 
-								HID_REPORT_MANAGER *manager = _match_handler(func, input);
-								if (manager != NULL)
+								if (_match_handler(handler, input))
 								{
-									input->Manager = manager;
+									//input->Handler = handler;
 									list_add_tail(&func->Inputs, (EXOS_NODE *)input);
 								}
 								else
@@ -217,6 +230,12 @@ static void _parse_items(HID_FUNCTION *func, unsigned char *ptr, int length)
 									exos_fifo_queue(&_free_report_inputs, (EXOS_NODE *)input);
 								}
 							}
+#ifdef DEBUG
+							else
+							{
+								// TODO: issue runtime warning for allocation failure
+							}
+#endif
 						}
 						state.Offset += state.ReportSize * count;
 
@@ -230,32 +249,67 @@ static void _parse_items(HID_FUNCTION *func, unsigned char *ptr, int length)
 
 static void _start(USB_HOST_FUNCTION *usb_func)
 {
+	HID_FUNCTION *func = (HID_FUNCTION *)usb_func;
 #ifdef DEBUG
-	if (_function_busy)
+	if (_function_busy[func->InstanceIndex] != 0)
 		kernel_panic(KERNEL_ERROR_ALREADY_IN_USE);
 #endif
-	HID_FUNCTION *func = (HID_FUNCTION *)usb_func;
-	_function_busy = 1;
-
-	int done = usb_host_read_if_descriptor(func->Device, func->Interface, 
-		USB_HID_DESCRIPTOR_HID, 0, func->InputBuffer, 64);
-	USB_HID_DESCRIPTOR *hid_desc = (USB_HID_DESCRIPTOR *)func->InputBuffer;
-
-	if (done && hid_desc->NumDescriptors >= 1 &&
-		hid_desc->ClassDescriptors[0].DescriptorType == USB_HID_DESCRIPTOR_REPORT)
+	HID_FUNCTION_HANDLER *handler = NULL;
+	const HID_DRIVER *driver;
+	exos_mutex_lock(&_manager_lock);
+	
+	FOREACH(node, &_manager_list)
 	{
-		unsigned short length = USB16TOH(hid_desc->ClassDescriptors[0].DescriptorLength);
-		if (length <= HID_MAX_REPORT_DESCRIPTOR_SIZE &&
-			usb_host_read_if_descriptor(func->Device, func->Interface, 
-				USB_HID_DESCRIPTOR_REPORT, 0, _report_buffer, length))
+		HID_DRIVER_NODE *driver_node = (HID_DRIVER_NODE *)node;
+		driver = driver_node->Driver;
+#ifdef DEBUG
+		if (driver == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+		if (driver->MatchDevice != NULL)
 		{
-			_parse_items(func, _report_buffer, length);
+			handler = driver->MatchDevice(func);
+			if (handler != NULL)
+			{
+				handler->DriverNode = driver_node;
+				handler->Function = func;
+				func->Handler = handler;
+				break;
+			}
 		}
 	}
 
+	if (handler != NULL)
+	{
+		_function_busy[func->InstanceIndex] = 1;
+
+		int done = usb_host_read_if_descriptor(func->Device, func->Interface, 
+			USB_HID_DESCRIPTOR_HID, 0, func->InputBuffer, 64);
+		USB_HID_DESCRIPTOR *hid_desc = (USB_HID_DESCRIPTOR *)func->InputBuffer;
+	
+		if (done && hid_desc->NumDescriptors >= 1 &&
+			hid_desc->ClassDescriptors[0].DescriptorType == USB_HID_DESCRIPTOR_REPORT)
+		{
+			unsigned short length = USB16TOH(hid_desc->ClassDescriptors[0].DescriptorLength);
+			if (length <= HID_MAX_REPORT_DESCRIPTOR_SIZE &&
+				usb_host_read_if_descriptor(func->Device, func->Interface, 
+					USB_HID_DESCRIPTOR_REPORT, 0, _report_buffer, length))
+			{
+				_parse_items(handler, _report_buffer, length);
+			}
+		}
+	}
+
+	exos_mutex_unlock(&_manager_lock);
+
 	usb_host_start_pipe(&func->InputPipe);
 
-	exos_thread_create(&_thread, 0, _stack, THREAD_STACK, NULL, _service, func);	// FIXME: use a dispatcher!
+	if (handler != NULL)
+	{
+   		driver->Start(handler);
+		func->StartedFlag = func->ExitFlag = 0;
+		func->Dispatcher = (EXOS_DISPATCHER) { .Callback = _dispatch, .CallbackState = func };
+		exos_dispatcher_add(&_service_context, &func->Dispatcher, 0);
+	}
 }
 
 static void _stop(USB_HOST_FUNCTION *usb_func)
@@ -264,8 +318,8 @@ static void _stop(USB_HOST_FUNCTION *usb_func)
 
 	func->ExitFlag = 1;
 	usb_host_stop_pipe(&func->InputPipe);
-	exos_thread_join(&_thread);
-	_function_busy = 0;
+	//exos_thread_join(&_thread);
+	//_function_busy[func->Index] = 0;
 }
 
 static int _read_field(HID_REPORT_INPUT *input, unsigned char *report, unsigned char *data)
@@ -292,32 +346,26 @@ static int _read_field(HID_REPORT_INPUT *input, unsigned char *report, unsigned 
 
 static void *_service(void *arg)
 {
-	HID_FUNCTION *func = (HID_FUNCTION *)arg;
-
-	exos_mutex_lock(&_manager_lock);
-	FOREACH(node, &_manager_list)
+	EXOS_DISPATCHER_CONTEXT *context = (EXOS_DISPATCHER_CONTEXT *)arg;
+	while(1)
 	{
-		HID_REPORT_MANAGER *manager = (HID_REPORT_MANAGER *)node;
-		const HID_REPORT_DRIVER *driver = manager->Driver;
-#ifdef DEBUG
-		if (driver == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
-		if (driver->Start != NULL)
-			driver->Start(func);
+		exos_dispatch(&_service_context, EXOS_TIMEOUT_NEVER);
 	}
-	exos_mutex_unlock(&_manager_lock);
+}
 
+static void _dispatch(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher)
+{
+	HID_FUNCTION *func = (HID_FUNCTION *)dispatcher->CallbackState;
+	HID_FUNCTION_HANDLER *handler = func->Handler;
+	const HID_DRIVER *driver = handler->DriverNode->Driver;
+#ifdef DEBUG
+	if (func == NULL || handler == NULL || handler->DriverNode == NULL || driver == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
 	int report_bytes = func->InputPipe.MaxPacketSize;
-	USB_REQUEST_BUFFER urb;
-	while(!func->ExitFlag)
-	{
-		usb_host_urb_create(&urb, &func->InputPipe);
-		// NOTE: it's not a bulk transfer, but processing is compatible using an int pipe
-		int done;
-		if (usb_host_begin_bulk_transfer(&urb, func->InputBuffer, report_bytes))
-			done = usb_host_end_bulk_transfer(&urb, EXOS_TIMEOUT_NEVER);
-		else break;
 
+	if (func->StartedFlag)
+	{
+		int done = usb_host_end_bulk_transfer(&func->Urb, EXOS_TIMEOUT_NEVER);
 		if (done >= 0)
 		{
 			unsigned char buffer[64];
@@ -338,52 +386,55 @@ static void *_service(void *arg)
 			FOREACH(node, &func->Inputs)
 			{
 				HID_REPORT_INPUT *input = (HID_REPORT_INPUT *)node;
-				HID_REPORT_MANAGER *manager = input->Manager;
-				if (manager != NULL)
-				{
-					if (input->ReportId != report_id)
-						continue;
+				if (input->ReportId != report_id)
+					continue;
 	
-					_read_field(input, data, buffer);
-					const HID_REPORT_DRIVER *driver = manager->Driver;
-					driver->Notify(func, input, buffer);
-				}
+				_read_field(input, data, buffer);
+				driver->Notify(handler, input, buffer);
 			}
 			exos_mutex_unlock(&func->InputLock);
 		}
-		else break;
+		else 
+		{
+			// TODO: recover from failure state
+			func->ExitFlag = 2;
+		}
 	}
 
-	exos_mutex_lock(&_manager_lock);
-	FOREACH(node, &_manager_list)
+	if (!func->ExitFlag)
 	{
-		HID_REPORT_MANAGER *manager = (HID_REPORT_MANAGER *)node;
-		const HID_REPORT_DRIVER *driver = manager->Driver;
-#ifdef DEBUG
-		if (driver == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
-		if (driver->Stop != NULL)
-			driver->Stop(func);
+		usb_host_urb_create(&func->Urb, &func->InputPipe);
+		if (usb_host_begin_bulk_transfer(&func->Urb, func->InputBuffer, report_bytes))
+		{
+			func->StartedFlag = 1;
+			dispatcher->Event = &func->Urb.Event;
+            exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);
+		}
+        else func->ExitFlag = 3;
 	}
-	exos_mutex_unlock(&_manager_lock);
 
-	exos_mutex_lock(&func->InputLock);
-	HID_REPORT_INPUT *iinput = (HID_REPORT_INPUT *)func->Inputs.Head;
-	while(iinput != (HID_REPORT_INPUT *)&func->Inputs.Tail)
+	if (func->ExitFlag)
 	{
-		HID_REPORT_INPUT *input = iinput;
-		iinput = (HID_REPORT_INPUT *)iinput->Node.Succ;
+		driver->Stop(handler);
 
-		list_remove((EXOS_NODE *)input);
-		exos_fifo_queue(&_free_report_inputs, (EXOS_NODE *)input);
+		exos_mutex_lock(&func->InputLock);
+		HID_REPORT_INPUT *iinput = (HID_REPORT_INPUT *)func->Inputs.Head;
+		while(iinput != (HID_REPORT_INPUT *)&func->Inputs.Tail)
+		{
+			HID_REPORT_INPUT *input = iinput;
+			iinput = (HID_REPORT_INPUT *)iinput->Node.Succ;
+	
+			list_remove((EXOS_NODE *)input);
+			exos_fifo_queue(&_free_report_inputs, (EXOS_NODE *)input);
+		}
+		exos_mutex_unlock(&func->InputLock);
 	}
-	exos_mutex_unlock(&func->InputLock);
 }
 
-int usbd_hid_add_manager(HID_REPORT_MANAGER *manager)
+int usbd_hid_add_driver(HID_DRIVER_NODE *node)
 {
 	exos_mutex_lock(&_manager_lock);
-	list_add_tail(&_manager_list, (EXOS_NODE *)manager);
+	list_add_tail(&_manager_list, (EXOS_NODE *)node);
 	exos_mutex_unlock(&_manager_lock);
 	return 1;
 }
