@@ -5,16 +5,17 @@ struct _SSP_CR0
 {
 	unsigned DSS:4;
 	unsigned FRF:2;
-	unsigned CPOL:1;
-	unsigned CPHA:1;
+	unsigned CLK_MODE:2;
 	unsigned SCR:8;
 };
 
-typedef enum
+typedef enum 
 {
-	SSP_CR0_CPOL = (1<<6),
-	SSP_CR0_CPHA = (1<<7),
-} SSP_CR0;
+	SSP_CLK_POL0_PHA0 = 0,
+	SSP_CLK_POL1_PHA0 =	1,
+	SSP_CLK_POL0_PHA1 = 2,
+	SSP_CLK_POL1_PHA1 = 3
+} SSP_CLK_MODE;
 
 struct _SSP_CR1
 {
@@ -61,46 +62,41 @@ typedef struct _SSP
 {
 	union
 	{
-		struct _SSP_CR0 Bits;
-		unsigned long Value;
-	} CR0;
+		struct _SSP_CR0 CR0bits;
+		unsigned long CR0;
+	};
 	union
 	{
-		struct _SSP_CR1 Bits;
-		unsigned long Value;
-	} CR1;
-	unsigned long DATA;
+		struct _SSP_CR1 CR1bits;
+		unsigned long CR1;
+	};
+	unsigned long DR;
 	union
 	{
-		struct _SSP_SR Bits;
-		unsigned long Value;
-	} SR;
+		struct _SSP_SR SRbits;
+		unsigned long SR;
+	};
 	unsigned long CPSR;
 	union
 	{
-		struct _SSP_IM Bits;
-		unsigned long Value;
-	} IMSC;
+		struct _SSP_IM IMSCbits;
+		unsigned long IMSC;
+	};
 	union
 	{
-		struct _SSP_IM Bits;
-		unsigned long Value;
-	} RIS;
+		struct _SSP_IM RISbits;
+		unsigned long RIS;
+	};
 	union
 	{
-		struct _SSP_IM Bits;
-		unsigned long Value;
-	} MIS;
+		struct _SSP_IM MISbits;
+		unsigned long MIS;
+	};
 	union
 	{
-		struct _SSP_IM Bits;
-		unsigned long Value;
-	} ICR;
+		struct _SSP_IM ICRbits;
+		unsigned long ICR;
+	};
 } SSP_MODULE;
-
-
-// prototypes
-SSP_MODULE *ssp_initialize(int module, int freq, int bit_width);
-
 
 #endif // LPC11_SSP_H

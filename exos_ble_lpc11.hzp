@@ -43,6 +43,7 @@
           <file file_name="support/lpc11/c_can.c"/>
           <file file_name="support/lpc11/ssp.c"/>
           <file file_name="support/lpc11/uart.c"/>
+          <file file_name="support/lpc11/gpio.c"/>
         </folder>
         <folder Name="bluetooth">
           <folder Name="nordic">
@@ -51,10 +52,8 @@
         </folder>
       </folder>
       <folder Name="tests">
-        <folder Name="platform">
-          <folder Name="lpc11">
-            <file file_name="tests/platform/lpc11/lpc11_test.c"/>
-          </folder>
+        <folder Name="support">
+          <file file_name="tests/support/ble_test.c"/>
         </folder>
       </folder>
     </folder>
