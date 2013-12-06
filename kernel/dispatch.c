@@ -22,7 +22,8 @@ void exos_dispatcher_add(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *disp
 	if (list_find_node(&context->Dispatchers, (EXOS_NODE *)dispatcher))
 		kernel_panic(KERNEL_ERROR_LIST_ALREADY_CONTAINS_NODE);
 #endif
-	dispatcher->Alarm = exos_timer_time() + timeout;	// NOTE: TIMEOUT_NEVER (=0) means immediate dispatch
+	dispatcher->Issued = exos_timer_time();
+	dispatcher->Timeout = timeout;
 	list_add_tail(&context->Dispatchers, (EXOS_NODE *)dispatcher);
 	context->Count++;
 	exos_mutex_unlock(&context->Lock);
@@ -74,8 +75,18 @@ void exos_dispatch(EXOS_DISPATCHER_CONTEXT *context, unsigned long timeout)
 		if (event != NULL)
 			array[count++] = event;
 
-		int rem_time = dispatcher->Alarm - time;
-		if (rem_time < wait) 
+		int rem_time;
+		if (dispatcher->Timeout != EXOS_TIMEOUT_NEVER)
+		{
+			rem_time = dispatcher->Timeout + dispatcher->Timeout - time;
+		}
+		else if (event == NULL)
+		{
+			rem_time = 0;
+		}
+		else continue;
+
+		if (rem_time < wait)
 		{
 			wait = rem_time;
 			coming = dispatcher;

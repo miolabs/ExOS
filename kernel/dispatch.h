@@ -11,7 +11,8 @@ typedef void (*EXOS_DISPATCHER_CALLBACK)(EXOS_DISPATCHER_CONTEXT *context, EXOS_
 struct __EXOS_DISPATCHER
 {
 	EXOS_NODE Node;
-	unsigned long Alarm;
+	unsigned long Issued;
+	unsigned long Timeout;
 	EXOS_EVENT *Event;
 	EXOS_DISPATCHER_CALLBACK Callback;
 	void *CallbackState;

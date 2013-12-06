@@ -35,7 +35,7 @@ void main()
 	exos_fifo_create(&_free_msgs, NULL);
 	for(int i = 0; i < MSG_QUEUE; i++) exos_fifo_queue(&_free_msgs, (EXOS_NODE *)&_msg[i]);
 
-	hal_can_initialize(0, 250000);
+	hal_can_initialize(0, 250000, CAN_INITF_DISABLE_RETRANSMISSION);
 	hal_fullcan_setup(_can_setup, NULL);
 
 	EXOS_DISPATCHER_CONTEXT context;
