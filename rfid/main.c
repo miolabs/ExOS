@@ -1,8 +1,19 @@
 #include <usb/host.h>
 #include <net/adapter.h>
 #include <support/usb/driver/hid.h>
+#include <support/usb/driver/usbkb.h>
 #include "pseudokb.h"
 #include <comm/comm.h>
+#include <kernel/dispatch.h>
+#include <kernel/thread.h>
+
+#define THREAD_STACK 1024
+static unsigned char _thread1_stack[THREAD_STACK] __attribute__((__aligned__(16)));
+static unsigned char _thread2_stack[THREAD_STACK] __attribute__((__aligned__(16)));
+static EXOS_THREAD _thread1;
+static EXOS_THREAD _thread2;
+
+static EXOS_DISPATCHER_CONTEXT _context;
 
 #ifdef BOARD_E2468
 // NOTE: hook called by net stack
@@ -17,12 +28,18 @@ void net_board_set_mac_address(NET_ADAPTER *adapter, int index)
 }
 #endif
 
-unsigned char _buffer[128];
+void *_service_thread(void *arg);
+
+struct rfid_msg
+{
+	char *Data;
+	int Length;
+	EXOS_EVENT *Done;
+};
 
 void main()
 {
 	usb_host_initialize();
-	int err = 0;
 
 #ifdef BOARD_E2468
 	NET_ADAPTER *adapter = NULL;
@@ -32,48 +49,38 @@ void main()
 	}
 #endif
 
-	while(1)
-	{
-		int offset = 0;
-		
-		EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_path(NULL, "dev/usbkb0");
-		if (dev_node != NULL)
-		{
-			COMM_IO_ENTRY comm;
-			comm_io_create(&comm, dev_node->Device, dev_node->Unit, EXOS_IOF_WAIT); 
-			int	err = comm_io_open(&comm);
-			if (err == 0)
-			{
-				while(1)
-				{
-					if (offset >= sizeof(_buffer))
-						break;
+	exos_dispatcher_context_create(&_context);
 
-					int done = exos_io_read((EXOS_IO_ENTRY *)&comm, _buffer + offset, sizeof(_buffer) - offset);
-					if (done < 0) break;
+	exos_thread_create(&_thread1, 1, _thread1_stack, sizeof(_thread1_stack), NULL, _service_thread, "dev/usbkb0");
+	exos_thread_create(&_thread2, 1, _thread2_stack, sizeof(_thread2_stack), NULL, _service_thread, "dev/usbkb1");
+}
 
-					offset += done;
-				}
+void *_service_thread(void *arg)
+{
+	pseudokb_service((const char *)arg);
+}
 
-				comm_io_close(&comm);
-			}
-			else exos_thread_sleep(500);
-		}
-		else exos_thread_sleep(500);
-	}
+void _send_rfid(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher)
+{
+}
+
+void pseudokb_handler(char *text, int length)
+{
+	EXOS_EVENT done;
+	struct rfid_msg msg = (struct rfid_msg) { .Data = text, .Length = length, .Done = &done };
+	exos_event_create(&done);
+	
+	EXOS_DISPATCHER dispatcher = (EXOS_DISPATCHER) { .Callback = _send_rfid, .CallbackState = &msg };
+	exos_dispatcher_add(&_context, &dispatcher, 0);
+
+	exos_event_wait(&done, EXOS_TIMEOUT_NEVER);
 }
 
 void usb_host_add_drivers()
 {
 	usbd_hid_initialize();
-	keyboard_initialize();
+	usbkb_initialize();
 }
 
-void keyboard_translate(HID_KEYBOARD_HANDLER *kb, unsigned char key)
-{
-	// NOTE: dirty hack to map usb keys to ascii chars
-	static const char keytable[] = "\0\0\0\0abcdefghijklmnopqrstuvwxyz1234567890\r\0\0\t -=[]\\\0;,',./\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
-	if (key < sizeof(keytable))
-	keyboard_push_text(kb, (char *)&keytable[key], 1);
-}
+
 

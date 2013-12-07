@@ -69,6 +69,19 @@
         <file file_name="kernel/port.c"/>
         <folder Name="posix">
           <file file_name="kernel/posix/printf.c"/>
+          <file file_name="kernel/posix/arpa_inet.c"/>
+          <file file_name="kernel/posix/fcntl.c"/>
+          <file file_name="kernel/posix/ioctl.c"/>
+          <file file_name="kernel/posix/posix.c"/>
+          <file file_name="kernel/posix/pthread.c"/>
+          <file file_name="kernel/posix/pthread_cond.c"/>
+          <file file_name="kernel/posix/pthread_time.c"/>
+          <file file_name="kernel/posix/select.c"/>
+          <file file_name="kernel/posix/socket.c"/>
+          <file file_name="kernel/posix/stdlib.c"/>
+          <file file_name="kernel/posix/string.c"/>
+          <file file_name="kernel/posix/termios.c"/>
+          <file file_name="kernel/posix/unistd.c"/>
         </folder>
         <file file_name="kernel/dispatch.c"/>
       </folder>
@@ -103,6 +116,7 @@
             <file file_name="support/usb/driver/ftdi.c"/>
             <file file_name="support/usb/driver/msc.c"/>
             <file file_name="support/usb/driver/hid.c"/>
+            <file file_name="support/usb/driver/usbkb.c"/>
           </folder>
         </folder>
         <folder Name="misc">

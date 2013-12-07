@@ -1,69 +1,8 @@
-#ifndef HID_KEYBOARD_H
-#define HID_KEYBOARD_H
+#ifndef RFID_PSEUDOKB_H
+#define RFID_PSEUDOKB_H
 
-#include <support/usb/driver/hid.h>
-#include <kernel/tree.h>
-#include <comm/comm.h>
+void pseudokb_service(const char *device);
+void pseudokb_handler(char *text, int length);
 
-#ifndef HID_KEYBOARD_MAX_INSTANCES
-#define HID_KEYBOARD_MAX_INSTANCES 1
-#endif
-
-#define HID_KEYBOARD_IO_BUFFER 16
-
-typedef enum
-{
-	HID_KB_HANDLE_NOT_MOUNTED = 0,
-	HID_KB_HANDLE_CLOSED,
-	HID_KB_HANDLE_OPENING,
-	HID_KB_HANDLE_READY,
-	HID_KB_HANDLE_ERROR,
-} HID_KB_HANDLE_STATE;
-
-typedef struct
-{
-	EXOS_TREE_DEVICE KernelDevice;
-	const char *DeviceName;
-	COMM_IO_ENTRY *Entry;
-    HID_KB_HANDLE_STATE State;
-	EXOS_IO_BUFFER IOBuffer;
-   	unsigned char Buffer[HID_KEYBOARD_IO_BUFFER];	
-} HID_KEYBOARD_HANDLE;
-
-typedef enum
-{
-	HID_KEYBOARD_NOT_PRESENT = 0,
-	HID_KEYBOARD_STARTING,
-	HID_KEYBOARD_PRESENT,
-	HID_KEYBOARD_REMOVED,
-} HID_KEYBOARD_STATE;
-
-typedef enum
-{
-	HID_KB_MODIFIER_LEFT_CTRL = (1<<0),
-	HID_KB_MODIFIER_LEFT_SHIFT = (1<<1),
-	HID_KB_MODIFIER_LEFT_ALT = (1<<2),
-	HID_KB_MODIFIER_LEFT_GUI = (1<<3),
-	HID_KB_MODIFIER_RIGHT_CTRL = (1<<4),
-	HID_KB_MODIFIER_RIGHT_SHIFT = (1<<5),
-	HID_KB_MODIFIER_RIGHT_ALT = (1<<6),
-	HID_KB_MODIFIER_RIGHT_GUI = (1<<7),
-} HID_KEYBOARD_MODIFIERS;
-
-typedef struct
-{
-	HID_FUNCTION_HANDLER;
-	HID_REPORT_INPUT *Report0;
-	HID_REPORT_INPUT *Report1;
-	HID_KEYBOARD_STATE State;
-	HID_KEYBOARD_HANDLE *IOHandle;
-    HID_KEYBOARD_MODIFIERS Modifiers;
-} HID_KEYBOARD_HANDLER;
-
-
-void keyboard_initialize();
-void keyboard_push_text(HID_KEYBOARD_HANDLER *kb, char *text, int length);
-void keyboard_translate(HID_KEYBOARD_HANDLER *kb, unsigned char key);
-
-#endif // HID_KEYBOARD_H
+#endif // RFID_PSEUDOKB_H
 
