@@ -55,6 +55,7 @@ static void _call(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher)
 	if (_remove(context, dispatcher) &&
 		dispatcher->Callback != NULL)
 		dispatcher->Callback(context, dispatcher);
+	// NOTE: It is safe to reuse dispatcher struct or re-queue in the callback function
 }
 
 void exos_dispatch(EXOS_DISPATCHER_CONTEXT *context, unsigned long timeout)

@@ -2,10 +2,11 @@
 #include <net/adapter.h>
 #include <support/usb/driver/hid.h>
 #include <support/usb/driver/usbkb.h>
-#include "pseudokb.h"
 #include <comm/comm.h>
 #include <kernel/dispatch.h>
 #include <kernel/thread.h>
+#include "pseudokb.h"
+#include "temperature.h"
 
 #define THREAD_STACK 1024
 static unsigned char _thread1_stack[THREAD_STACK] __attribute__((__aligned__(16)));
@@ -34,12 +35,15 @@ struct rfid_msg
 {
 	char *Data;
 	int Length;
+	int Receiver;
 	EXOS_EVENT *Done;
 };
+static float _temp;
 
 void main()
 {
 	usb_host_initialize();
+	temp_initialize();
 
 #ifdef BOARD_E2468
 	NET_ADAPTER *adapter = NULL;
@@ -53,6 +57,14 @@ void main()
 
 	exos_thread_create(&_thread1, 1, _thread1_stack, sizeof(_thread1_stack), NULL, _service_thread, "dev/usbkb0");
 	exos_thread_create(&_thread2, 1, _thread2_stack, sizeof(_thread2_stack), NULL, _service_thread, "dev/usbkb1");
+
+
+	while(1)
+	{
+		_temp = temp_read();
+
+		exos_dispatch(&_context, 1000);
+	}
 }
 
 void *_service_thread(void *arg)
@@ -60,20 +72,25 @@ void *_service_thread(void *arg)
 	pseudokb_service((const char *)arg);
 }
 
-void _send_rfid(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher)
+void _dispatch_rfid(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher)
 {
+	struct rfid_msg *msg = (struct rfid_msg *)dispatcher->CallbackState;	// get arguments from dispatcher
+	
+	// TODO: send rfid string using post or whatever
+
+	if (msg->Done != NULL) exos_event_set(msg->Done);	// signal calling thread to continue
 }
 
-void pseudokb_handler(char *text, int length)
+void pseudokb_handler(int unit, char *text, int length)
 {
 	EXOS_EVENT done;
-	struct rfid_msg msg = (struct rfid_msg) { .Data = text, .Length = length, .Done = &done };
+	struct rfid_msg msg = (struct rfid_msg) { .Receiver = unit, .Data = text, .Length = length, .Done = &done };
 	exos_event_create(&done);
 	
-	EXOS_DISPATCHER dispatcher = (EXOS_DISPATCHER) { .Callback = _send_rfid, .CallbackState = &msg };
-	exos_dispatcher_add(&_context, &dispatcher, 0);
+	EXOS_DISPATCHER dispatcher = (EXOS_DISPATCHER) { .Callback = _dispatch_rfid, .CallbackState = &msg };
+	exos_dispatcher_add(&_context, &dispatcher, 0);	// post our function and arguments
 
-	exos_event_wait(&done, EXOS_TIMEOUT_NEVER);
+	exos_event_wait(&done, EXOS_TIMEOUT_NEVER);	// this will wait until main thread processes our post
 }
 
 void usb_host_add_drivers()

@@ -2,7 +2,7 @@
 #define RFID_PSEUDOKB_H
 
 void pseudokb_service(const char *device);
-void pseudokb_handler(char *text, int length);
+void pseudokb_handler(int unit, char *text, int length);
 
 #endif // RFID_PSEUDOKB_H
 

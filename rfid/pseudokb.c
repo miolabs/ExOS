@@ -3,12 +3,9 @@
 
 void pseudokb_service(const char *device)
 {
-	char buffer[16];
-	
+	char buffer_in[16];
+	char buffer_out[16];
 	int err = 0;
-
-
-
 	while(1)
 	{
 		int offset = 0;
@@ -23,13 +20,29 @@ void pseudokb_service(const char *device)
 			{
 				while(1)
 				{
-					if (offset >= sizeof(buffer))
-						break;
-
-					int done = exos_io_read((EXOS_IO_ENTRY *)&comm, buffer + offset, sizeof(buffer) - offset);
+					int done = exos_io_read((EXOS_IO_ENTRY *)&comm, buffer_in, sizeof(buffer_in));
 					if (done < 0) break;
 
-					offset += done;
+					int i = 0;
+					while(i < done &&
+						offset < sizeof(buffer_out))
+					{
+						char a = buffer_in[i++];
+						if (a == 13 || a == 10)
+						{
+							if (offset != 0)
+							{
+								buffer_out[offset] = '\0';
+                                pseudokb_handler(comm.Port, buffer_out, offset);
+
+								offset = 0;
+							}
+						}
+						else if (a != '\0')
+						{
+							buffer_out[offset++] = a;
+						}
+					}
 				}
 
 				comm_io_close(&comm);
