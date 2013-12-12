@@ -60,7 +60,7 @@ __weak int __str_comp(const char *str1, const char *str2)
 static inline void _reverse_str(char* str, int len)
 {
 	int p = 0;
-	int q = len-1;
+	int q = len - 1;
     while(p < q)
 	{
         char c = str[p];
@@ -70,21 +70,21 @@ static inline void _reverse_str(char* str, int len)
 	}
 }
 
-unsigned int __uint32_hexl(char *dst, unsigned long v)
+unsigned int __uint32_hexl(char *dst, unsigned int value)
 {
 	unsigned int length = 0;
 	do
 	{
-		int digit = v & 0xF;
-		v >>= 4;
+		int digit = value & 0xF;
+		value >>= 4;
 		dst[length++] = (digit >= 10) ? digit + 'a' - 10 : digit + '0';
-	} while(v != 0);
+	} while(value != 0);
 
-	_reverse_str ( dst, length);
+	_reverse_str(dst, length);
 	return length;
 }
 
-unsigned int __int32_decl ( char* str, int value) 
+unsigned int __int32_decl(char *str, int value) 
 {
     const static char dig[] = "0123456789abcdefghijklmnopqrstuvwxyz";	// Support radix > 10
 	int radix = 10;
@@ -99,14 +99,33 @@ unsigned int __int32_decl ( char* str, int value)
     v = value;
     do 
 	{
-		str[n++] = dig[v%radix];
+		str[n++] = dig[v % radix];
 		v /= radix;
     } while (v);
     if (neg)
         str[n++] = '-';
     //str[n] = '\0';
 
-	_reverse_str ( str, n);
+	_reverse_str(str, n);
     return n;
 }
+
+unsigned int __decl_uint32(char *src, unsigned int *pvalue)
+{
+	unsigned int done = 0;
+	unsigned int value = 0;
+	while(1)
+	{
+		char c = src[done];
+		if (c >= '0' && c <= '9')
+		{
+			value = (value * 10) + (c - '0');
+			done++;
+		}
+		else break;
+	}
+	*pvalue = value;
+	return done;
+}
+
 

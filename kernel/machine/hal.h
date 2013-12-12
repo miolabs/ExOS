@@ -22,7 +22,8 @@ void __mem_set(void *start, void *stop, unsigned char stuff_byte);
 
 unsigned int __str_copy(char *dst, const char *src, unsigned int max_length);
 int __str_comp(const char *str1, const char *str2);
-unsigned int __uint32_hexl(char *dst, unsigned long v);
-unsigned int __int32_decl ( char* str, int value);
+unsigned int __uint32_hexl(char *dst, unsigned int value);
+unsigned int __int32_decl(char *dst, int value);
+unsigned int __decl_uint32(char *src, unsigned int *pvalue);
 
 #endif // EXOS_MACHINE_HAL_H
