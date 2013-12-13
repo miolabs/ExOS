@@ -1,10 +1,17 @@
 #include "tcp_service.h"
 #include "tcp_io.h"
+#include "ip.h"
 #include <kernel/timer.h>
 #include <kernel/panic.h>
 
 static EXOS_LIST _entries;	// bound io entries
 static EXOS_MUTEX _entries_mutex;
+
+#ifndef TCP_MAX_PENDING_CONNECTIONS
+#define TCP_MAX_PENDING_CONNECTIONS 4
+#endif
+
+#define TCP_SERVICE_THREAD_STACK 512
 static EXOS_THREAD _thread;
 static unsigned char _thread_stack[TCP_SERVICE_THREAD_STACK];
 static int _wakeup_signal;
@@ -123,6 +130,47 @@ int net_tcp_accept(TCP_IO_ENTRY *io, const EXOS_IO_STREAM_BUFFERS *buffers, TCP_
 	
 	exos_mutex_unlock(&io->Mutex);
 
+	if (done) 
+	{
+		net_tcp_service(io, 0);
+		exos_event_wait(&io->OutputEvent, EXOS_TIMEOUT_NEVER);	// FIXME: allow timeout
+	}
+	return done;
+}
+
+int net_tcp_connect(TCP_IO_ENTRY *io, const EXOS_IO_STREAM_BUFFERS *buffers, IP_PORT_ADDR *remote)
+{
+	if (buffers == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+
+	exos_mutex_lock(&io->Mutex);
+
+	int done = 0;
+	if (io->State == TCP_STATE_CLOSED)
+	{
+		exos_io_buffer_create(&io->RcvBuffer, buffers->RcvBuffer, buffers->RcvBufferSize);
+		io->RcvBuffer.NotEmptyEvent = &io->InputEvent;
+	
+		exos_io_buffer_create(&io->SndBuffer, buffers->SndBuffer, buffers->SndBufferSize);
+		io->SndBuffer.NotFullEvent = &io->OutputEvent;
+	
+		io->Adapter = NULL;
+		io->LocalPort = 10000; // TODO: allocate high port number
+		io->RemotePort = remote->Port;
+		io->RemoteEP = (IP_ENDPOINT) { .IP = remote->Address };
+		if (net_ip_get_adapter_and_resolve(&io->Adapter, &io->RemoteEP))
+		{
+	
+			io->RcvNext = 0; // FIXME: use random for security
+			io->SndSeq = 0; // FIXME: use random for security
+	
+			io->SndFlags = (TCP_FLAGS) { .SYN = 1 };
+			done = _bind(io, TCP_STATE_SYN_SENT);
+		}
+	}
+
+	exos_mutex_unlock(&io->Mutex);
+	
 	if (done) 
 	{
 		net_tcp_service(io, 0);
@@ -268,6 +316,10 @@ static void _handle(TCP_IO_ENTRY *io)
 
 	switch(io->State)
 	{
+		case TCP_STATE_SYN_SENT:
+			// TODO: limit retries
+			io->ServiceWait = 1000;
+			break;
 		case TCP_STATE_ESTABLISHED:
 			if (io->SndFlags.PSH)
 			{

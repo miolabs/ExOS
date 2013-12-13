@@ -33,6 +33,18 @@ int net_tcp_input(NET_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip)
 
 			switch(io->State)
 			{
+				case TCP_STATE_SYN_SENT:
+					if (tcp->Flags.SYN && tcp->Flags.ACK && NTOH32(tcp->Ack) == io->SndSeq + 1)
+					{
+						io->RcvNext = NTOH32(tcp->Sequence) + 1;
+						io->SndSeq++;
+						io->SndFlags = (TCP_FLAGS) { .ACK = 1 };
+						io->State = TCP_STATE_ESTABLISHED;
+						net_tcp_service(io, 0);
+
+                        exos_event_set(&io->OutputEvent);
+					}
+					break;
 				case TCP_STATE_LISTEN:
 					if (tcp->Flags.SYN && !tcp->Flags.ACK)
 					{
@@ -63,6 +75,7 @@ int net_tcp_input(NET_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip)
 						io->SndSeq = NTOH32(tcp->Ack);
 						io->SndFlags = (TCP_FLAGS) { };
 						io->State = TCP_STATE_ESTABLISHED;
+						
 						exos_event_set(&io->OutputEvent);
 					}
 					break;

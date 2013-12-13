@@ -1,7 +1,9 @@
 #include "tcp_io.h"
 #include "tcp_service.h"
+#include <net/arp.h>
 #include <kernel/panic.h>
 
+static int _connect(NET_IO_ENTRY *socket, void *addr, const EXOS_IO_STREAM_BUFFERS *buffers);
 static int _bind(NET_IO_ENTRY *socket, void *addr);
 static int _listen(NET_IO_ENTRY *socket);
 static int _accept(NET_IO_ENTRY *socket, NET_IO_ENTRY *conn_socket, const EXOS_IO_STREAM_BUFFERS *buffers);
@@ -11,6 +13,7 @@ static int _write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length);
 
 static const NET_PROTOCOL_DRIVER _tcp_driver = {
 	.IO = { .Read = _read, .Write = _write }, 
+	.Connect = _connect, 
 	.Bind = _bind, .Listen = _listen, .Accept = _accept,
 	.Close = _close };
 
@@ -32,6 +35,19 @@ void net_tcp_io_create(TCP_IO_ENTRY *io, EXOS_IO_FLAGS flags)
 
 	exos_mutex_create(&io->Mutex);
 	exos_event_create(&io->CloseEvent);
+}
+
+static int _connect(NET_IO_ENTRY *socket, void *addr, const EXOS_IO_STREAM_BUFFERS *buffers)
+{
+	TCP_IO_ENTRY *io = (TCP_IO_ENTRY *)socket;
+	IP_PORT_ADDR *remote = (IP_PORT_ADDR *)addr;
+
+	int done = 0;
+	if (io->State == TCP_STATE_CLOSED)
+	{
+		done = net_tcp_connect(io, buffers, remote);
+	}
+	return done ? 0 : -1;
 }
 
 static int _bind(NET_IO_ENTRY *socket, void *addr)
@@ -77,14 +93,6 @@ static int _accept(NET_IO_ENTRY *socket, NET_IO_ENTRY *conn_socket, const EXOS_I
 			return done ? 0 : -1;
 		}
 	}
-	return -1;
-}
-
-static int _connect(NET_IO_ENTRY *socket, EXOS_IO_STREAM_BUFFERS *buffers, IP_PORT_ADDR *addr)
-{
-	TCP_IO_ENTRY *io = (TCP_IO_ENTRY *)socket;
-
-	// TODO
 	return -1;
 }
 

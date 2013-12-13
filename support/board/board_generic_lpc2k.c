@@ -258,6 +258,16 @@ static int _setup_mci(int unit)
 	PINSEL2bits.P1_12 = 2; // MCIDAT3
 	LPC_SC->SCS &= ~SCS_MCIPWR; // MCIPWR Active Low
 	return 1;
+#elif defined BOARD_E2468
+	PINSEL2bits.P1_2 = 2; // MCICLK
+	PINSEL2bits.P1_3 = 2; // MCICMD
+	PINSEL2bits.P1_5 = 2; // MCIPWR
+	PINSEL2bits.P1_6 = 2; // MCIDAT0
+	PINSEL2bits.P1_7 = 2; // MCIDAT1
+	PINSEL2bits.P1_11 = 2; // MCIDAT2
+	PINSEL2bits.P1_12 = 2; // MCIDAT3
+	LPC_SC->SCS |= SCS_MCIPWR; // MCIPWR Active High
+	return 1;
 #endif
 	return 0;
 }

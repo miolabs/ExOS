@@ -85,6 +85,8 @@ int net_adapter_enum(NET_ADAPTER **padapter)
 
 NET_ADAPTER *net_adapter_find(IP_ADDR addr)
 {
+	NET_ADAPTER *found = NULL;
+	net_adapter_list_lock();
 	FOREACH(node, &_adapters)
 	{
 		NET_ADAPTER *adapter = (NET_ADAPTER *)node;
@@ -94,9 +96,34 @@ NET_ADAPTER *net_adapter_find(IP_ADDR addr)
 #endif
 		IP_ADDR network = (IP_ADDR) { .Value = (adapter->IP.Value & adapter->NetMask.Value) };
 		if (network.Value == (addr.Value & adapter->NetMask.Value))
-			return adapter;
+		{
+			found = adapter;
+			break;
+		}
 	}
-	return NULL;
+    net_adapter_list_unlock();
+	return found;
+}
+
+NET_ADAPTER *net_adapter_find_gateway(IP_ADDR addr)
+{
+	NET_ADAPTER *found = NULL;
+	net_adapter_list_lock();
+	FOREACH(node, &_adapters)
+	{
+		NET_ADAPTER *adapter = (NET_ADAPTER *)node;
+#ifdef DEBUG
+		if (adapter->Node.Type != EXOS_NODE_IO_DEVICE)
+			kernel_panic(KERNEL_ERROR_WRONG_NODE);
+#endif
+		if (adapter->Gateway.Value != 0)
+		{
+			found = adapter;
+			break;
+		}
+	}
+    net_adapter_list_unlock();
+	return found;
 }
 
 void net_adapter_input(NET_ADAPTER *adapter)

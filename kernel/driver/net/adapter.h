@@ -81,6 +81,7 @@ void net_adapter_list_lock();
 void net_adapter_list_unlock();
 int net_adapter_enum(NET_ADAPTER **padapter);
 NET_ADAPTER *net_adapter_find(IP_ADDR addr);
+NET_ADAPTER *net_adapter_find_gateway(IP_ADDR addr);
 
 void net_adapter_input(NET_ADAPTER *adapter);
 

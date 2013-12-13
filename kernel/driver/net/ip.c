@@ -5,7 +5,7 @@
 #include "icmp.h"
 #include "udp_io.h"
 #include "tcp_io.h"
-#include "arp_tables.h"
+#include "arp.h"
 #include <kernel/panic.h>
 
 const IP_ENDPOINT __ep_broadcast = {
@@ -41,14 +41,14 @@ int net_ip_input(NET_ADAPTER *adapter, ETH_HEADER *eth, IP_HEADER *ip)
 			switch(protocol)
 			{
 				case IP_PROTOCOL_ICMP:
-					net_arp_set_entry(&eth->Sender, &ip->SourceIP);
+					net_arp_set_hw_addr(&ip->SourceIP, &eth->Sender);
 					net_icmp_input(adapter, eth, ip);
 					break;
 				case IP_PROTOCOL_TCP:
-					net_arp_set_entry(&eth->Sender, &ip->SourceIP);
+					net_arp_set_hw_addr(&ip->SourceIP, &eth->Sender);
 					return net_tcp_input(adapter, eth, ip);
 				case IP_PROTOCOL_UDP:
-					net_arp_set_entry(&eth->Sender, &ip->SourceIP);
+					net_arp_set_hw_addr(&ip->SourceIP, &eth->Sender);
 					return net_udp_input(adapter, eth, ip);
 			}
 		}
@@ -110,14 +110,45 @@ unsigned short net_ip_checksum(NET16_T *data, unsigned byte_count)
 	return (unsigned short)~sum;
 }
 
+int net_ip_get_adapter_and_resolve(NET_ADAPTER **padapter, IP_ENDPOINT *ep)
+{
+	IP_ADDR addr = ep->IP;
+	NET_ADAPTER *adapter = net_adapter_find(addr);
+	if (adapter == NULL)
+	{
+		adapter = net_adapter_find_gateway(addr);
+		if (adapter != NULL) addr = adapter->Gateway;
+	}
+	if (adapter != NULL)
+	{
+		for(int i = 0; i < 5; i++)
+		{
+			if (adapter->Speed == 0)	 // link is down
+			{
+				exos_thread_sleep(1000);
+				continue;	// down
+			}
+			
+			if (net_ip_resolve(adapter, ep))
+			{
+				*padapter = adapter;
+				return 1;
+			}
+		}
+	}
+	return 0;
+}
+
 int net_ip_resolve(NET_ADAPTER *adapter, IP_ENDPOINT *ep)
 {
 	if (adapter == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
 
-	int found = net_arp_get_hw_addr(&ep->MAC, &ep->IP);
+	// FIXME: we should try to match broadcast ip first!
+
+	int found = net_arp_obtain_hw_addr(adapter, &ep->IP, &ep->MAC);
 	if (!found &&
-		0 == ~(ep->IP.Value | adapter->NetMask.Value))
+		0 == ~(ep->IP.Value | adapter->NetMask.Value))	// broadcast ip
 	{
 		ep->MAC = IP_ENDPOINT_BROADCAST->MAC;
 		found = 1;
@@ -130,7 +161,7 @@ int net_ip_set_addr(NET_ADAPTER *driver, IP_ADDR ip, IP_ADDR mask, IP_ADDR gatew
 	driver->IP = ip;
 	driver->NetMask = mask;
 	driver->Gateway = gateway;
-	net_arp_tables_initialize();
+	net_arp_initialize();
 }
 
 

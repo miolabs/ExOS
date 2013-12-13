@@ -4,7 +4,13 @@
 #include "arp.h"
 #include "arp_tables.h"
 
-static HW_ADDR _arp_none = { 0, 0, 0, 0, 0, 0 };
+static const HW_ADDR _arp_none = { 0, 0, 0, 0, 0, 0 };
+static const HW_ADDR _arp_broadcast = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+
+void net_arp_initialize()
+{
+	net_arp_tables_initialize();
+}
 
 void net_arp_input(NET_ADAPTER *adapter, ARP_HEADER *arp)
 {
@@ -15,7 +21,7 @@ void net_arp_input(NET_ADAPTER *adapter, ARP_HEADER *arp)
 		switch(oper)
 		{
 			case ARP_OPER_REQUEST:
-				if ((net_equal_hw_addr(&arp->tha, &_arp_none) 
+				if ((net_equal_hw_addr(&arp->tha, (HW_ADDR *)&_arp_none) 
 					|| net_equal_hw_addr(&arp->tha, &adapter->MAC))
 					&& arp->tpa.Value == adapter->IP.Value)
 				{
@@ -36,7 +42,7 @@ void net_arp_input(NET_ADAPTER *adapter, ARP_HEADER *arp)
 				if (net_equal_hw_addr(&arp->tha, &adapter->MAC))
 				{
 					// save mac/ip in table
-					net_arp_set_entry(&arp->sha, &arp->spa);
+                    net_arp_set_hw_addr(&arp->spa, &arp->sha);
 				}
 				break;
 		}
@@ -64,4 +70,43 @@ int net_arp_send_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *output)
 	return net_adapter_send_output(adapter, output);
 }
 
+int net_arp_obtain_hw_addr(NET_ADAPTER *adapter, IP_ADDR *ip, HW_ADDR *mac)
+{
+	EXOS_EVENT reply_event;
+	exos_event_create(&reply_event);
+
+	int done = net_arp_tables_get_hw_addr(ip, mac);
+	if (!done)
+	{
+		ARP_ENTRY *entry = net_arp_tables_set_entry(ip, mac, ARP_ENTRY_PENDING, &reply_event);
+		if (entry != NULL)
+		{
+			NET_OUTPUT_BUFFER resp = (NET_OUTPUT_BUFFER) { .CompletedEvent = NULL };
+			ARP_HEADER *arp = net_arp_output(adapter, &resp, (HW_ADDR *)&_arp_broadcast);
+			if (arp != NULL)
+			{
+				arp->oper = HTON16(ARP_OPER_REQUEST);
+				arp->sha = adapter->MAC;
+				arp->spa.Value = adapter->IP.Value;
+				arp->tha = _arp_none;
+				arp->tpa.Value = ip->Value;
+				net_arp_send_output(adapter, &resp);
+			}
+
+			if (-1 == exos_event_wait(&reply_event, 500))	// FIXME: allow time setup
+			{
+				// NOTE: timeout
+				entry->Event = NULL;
+			}
+
+			done = net_arp_tables_get_hw_addr(ip, mac);
+		}
+	}
+	return done;
+}
+
+int net_arp_set_hw_addr(IP_ADDR *ip, HW_ADDR *mac)
+{
+	return NULL != net_arp_tables_set_entry(ip, mac, ARP_ENTRY_VALID, NULL);
+}
 

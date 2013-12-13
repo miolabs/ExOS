@@ -8,6 +8,17 @@ void net_io_create(NET_IO_ENTRY *socket, const NET_PROTOCOL_DRIVER *driver, NET_
 	socket->ProtocolType = protocol;
 }
 
+int net_io_connect(NET_IO_ENTRY *socket, void *remote, const EXOS_IO_STREAM_BUFFERS *buffers)
+{
+	if (socket->Type != EXOS_IO_SOCKET) return -1;
+#ifdef DEBUG
+	if (socket->Driver == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+
+	const NET_PROTOCOL_DRIVER *protocol = (const NET_PROTOCOL_DRIVER *)socket->Driver;
+	return protocol->Connect(socket, remote, buffers);	
+}
+
 int net_io_bind(NET_IO_ENTRY *socket, void *local)
 {
 	if (socket->Type != EXOS_IO_SOCKET) return -1;

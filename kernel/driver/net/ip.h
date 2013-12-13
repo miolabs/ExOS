@@ -96,6 +96,7 @@ void *net_ip_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *output, unsigned hd
 int net_ip_send_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *output, unsigned payload);
 void *net_ip_get_payload(IP_HEADER *ip, unsigned short *plength);
 
+int net_ip_get_adapter_and_resolve(NET_ADAPTER **padapter, IP_ENDPOINT *ep);
 int net_ip_resolve(NET_ADAPTER *adapter, IP_ENDPOINT *ep);
 int net_ip_set_addr(NET_ADAPTER *driver, IP_ADDR ip, IP_ADDR mask, IP_ADDR gateway);
 

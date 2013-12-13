@@ -2,6 +2,7 @@
 #define NET_ARP_TABLES_H
 
 #include "arp.h"
+#include <kernel/event.h>
 
 typedef enum
 {
@@ -16,11 +17,12 @@ typedef struct
 	short State;
 	unsigned long Time;
 	IP_ADDR	IP;
+	EXOS_EVENT *Event;
 } ARP_ENTRY;
 
 // prototypes
 int net_arp_tables_initialize();
-int net_arp_set_entry(HW_ADDR *mac, IP_ADDR *ip);
-int net_arp_get_hw_addr(HW_ADDR *mac, IP_ADDR *ip);
+ARP_ENTRY *net_arp_tables_set_entry(IP_ADDR *ip, HW_ADDR *mac, ARP_ENTRY_STATE state, EXOS_EVENT *event);
+int net_arp_tables_get_hw_addr(IP_ADDR *ip, HW_ADDR *mac);
 
 #endif // NET_ARP_TABLES_H

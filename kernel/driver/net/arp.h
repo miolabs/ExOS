@@ -32,8 +32,12 @@ typedef enum
 } ARP_OPER;
 
 // prototypes
+void net_arp_initialize();
 void net_arp_input(NET_ADAPTER *adapter, ARP_HEADER *arp);
 ARP_HEADER *net_arp_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *output, HW_ADDR *destination);
 int net_arp_send_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *output);
+
+int net_arp_obtain_hw_addr(NET_ADAPTER *adapter, IP_ADDR *ip, HW_ADDR *mac);
+int net_arp_set_hw_addr(IP_ADDR *ip, HW_ADDR *mac);
 
 #endif // NET_ARP_H

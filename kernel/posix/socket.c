@@ -41,6 +41,50 @@ int socket(int domain, int type, int protocol)
 	return fd;
 }
 
+int connect(int socket, const struct sockaddr *address, socklen_t address_len)
+{
+	EXOS_IO_ENTRY *io = posix_get_file_descriptor(socket);
+	if (io == NULL) return posix_set_error(EBADF);
+	if (io->Type != EXOS_IO_SOCKET) return posix_set_error(ENOTSOCK);
+
+	if (address->sa_family != AF_INET ||
+		address_len != sizeof(struct sockaddr_in))
+		return posix_set_error(EAFNOSUPPORT);
+
+	NET_IO_ENTRY *socket_io = (NET_IO_ENTRY *)io;
+	if (socket_io->ProtocolType == NET_IO_STREAM)
+	{
+		unsigned buffer_size = socket_io->BufferSize != 0 ? 
+			socket_io->BufferSize : EXOS_POSIX_DEFAULT_SOCKET_STREAM_SIZE;
+	
+		void *buffer = exos_mem_alloc(buffer_size * 2, EXOS_MEMF_CLEAR);
+		if (buffer != NULL)
+		{
+			EXOS_IO_STREAM_BUFFERS desc = (EXOS_IO_STREAM_BUFFERS) {
+				.RcvBuffer = buffer, .RcvBufferSize = buffer_size,
+				.SndBuffer = buffer + buffer_size, .SndBufferSize = buffer_size };
+	
+			struct sockaddr_in *ip_addr = (struct sockaddr_in *)address;
+			IP_PORT_ADDR ipp = (IP_PORT_ADDR) { 
+				.Address = (IP_ADDR)ip_addr->sin_addr.s_addr,
+				.Port = ntohs(ip_addr->sin_port) };
+			int error = net_io_connect(socket_io, &ipp, &desc);
+			if (error == 0)
+			{
+				// TODO: translate error codes
+				return 0;
+			}
+	
+			exos_mem_free(buffer);
+			posix_set_error(EAGAIN);
+		}
+		else posix_set_error(ENOMEM);	// could not allocate buffer for new socket
+		
+		return -1;
+	}
+	return posix_set_error(EOPNOTSUPP);	// only supported for tcp sockets
+}
+
 int bind(int socket, const struct sockaddr *address, socklen_t address_len)
 {
 	EXOS_IO_ENTRY *io = posix_get_file_descriptor(socket);
