@@ -8,6 +8,8 @@
 #include "pseudokb.h"
 #include "temperature.h"
 
+#include "main_posix.h"
+
 #define THREAD_STACK 1024
 static unsigned char _thread1_stack[THREAD_STACK] __attribute__((__aligned__(16)));
 static unsigned char _thread2_stack[THREAD_STACK] __attribute__((__aligned__(16)));
@@ -53,11 +55,13 @@ void main()
 	}
 #endif
 
+        posix_main();
+      
+#if 0
 	exos_dispatcher_context_create(&_context);
 
 	exos_thread_create(&_thread1, 1, _thread1_stack, sizeof(_thread1_stack), NULL, _service_thread, "dev/usbkb0");
 	exos_thread_create(&_thread2, 1, _thread2_stack, sizeof(_thread2_stack), NULL, _service_thread, "dev/usbkb1");
-
 
 	while(1)
 	{
@@ -65,6 +69,8 @@ void main()
 
 		exos_dispatch(&_context, 1000);
 	}
+
+#endif
 }
 
 void *_service_thread(void *arg)
