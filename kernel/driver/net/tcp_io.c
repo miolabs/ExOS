@@ -99,18 +99,14 @@ static int _accept(NET_IO_ENTRY *socket, NET_IO_ENTRY *conn_socket, const EXOS_I
 static int _close(NET_IO_ENTRY *socket, EXOS_IO_STREAM_BUFFERS *buffers)
 {
 	TCP_IO_ENTRY *io = (TCP_IO_ENTRY *)socket;
-	int done = net_tcp_close(io);
-	if (done)
+	if (buffers != NULL)
 	{
-		if (buffers != NULL)
-		{
-			*buffers = (EXOS_IO_STREAM_BUFFERS) {
-				.RcvBuffer = io->RcvBuffer.Buffer, .RcvBufferSize = io->RcvBuffer.Size,
-				.SndBuffer = io->SndBuffer.Buffer, .SndBufferSize = io->SndBuffer.Size };
-		}
-		return 0;
+		*buffers = (EXOS_IO_STREAM_BUFFERS) {
+			.RcvBuffer = io->RcvBuffer.Buffer, .RcvBufferSize = io->RcvBuffer.Size,
+			.SndBuffer = io->SndBuffer.Buffer, .SndBufferSize = io->SndBuffer.Size };
 	}
-	return -1;
+	int done = net_tcp_close(io);
+	return done ? 0 : -1;
 }
 
 static int _read(EXOS_IO_ENTRY *io, void *buffer, unsigned long length)

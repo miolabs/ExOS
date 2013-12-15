@@ -19,7 +19,9 @@ static void _init_block(BLOCK *buf, unsigned long index)
 
 int _get_media_info(RAWFS_MEDIA_INFO *info)
 {
-	info->BlockSize = 512;
+	SD_INFO sd_info;
+	sd_get_info(&sd_info);
+	*info = (RAWFS_MEDIA_INFO) { .Blocks = sd_info.Blocks, .BlockSize = sd_info.BlockSize };
 	return 1;
 }
 
@@ -59,7 +61,7 @@ void main()
 		done = fs_mount_volume(&_vol, &_tree_vol, "/dev/sdcard0");
 
 	FILE_IO_ENTRY file;
-	done = file_open(&file, "/dev/sdcard0", FS_LOCKF_WRITE);
+	done = file_open(&file, "/dev/sdcard0", FS_LOCKF_WRITE);	// fails due to lack of kernel memory (is heap added?)
 
 	SD_INFO info;
 	sd_get_info(&info);

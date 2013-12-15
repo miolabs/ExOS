@@ -124,7 +124,13 @@
           <file file_name="tests/support/sdcard_test.c"/>
         </folder>
       </folder>
-      <file file_name="kernel/datetime.h"/>
+      <folder Name="modules">
+        <folder Name="services">
+          <folder Name="cli">
+            <file file_name="modules/services/cli/cli.c"/>
+          </folder>
+        </folder>
+      </folder>
     </folder>
     <folder Name="System Files">
       <file file_name="$(TargetsDir)/Philips_LPC210X/Philips_LPC210X_Target.js">

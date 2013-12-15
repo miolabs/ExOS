@@ -148,19 +148,18 @@ int net_tcp_connect(TCP_IO_ENTRY *io, const EXOS_IO_STREAM_BUFFERS *buffers, IP_
 	int done = 0;
 	if (io->State == TCP_STATE_CLOSED)
 	{
-		exos_io_buffer_create(&io->RcvBuffer, buffers->RcvBuffer, buffers->RcvBufferSize);
-		io->RcvBuffer.NotEmptyEvent = &io->InputEvent;
-	
-		exos_io_buffer_create(&io->SndBuffer, buffers->SndBuffer, buffers->SndBufferSize);
-		io->SndBuffer.NotFullEvent = &io->OutputEvent;
-	
 		io->Adapter = NULL;
 		io->LocalPort = 10000; // TODO: allocate high port number
 		io->RemotePort = remote->Port;
 		io->RemoteEP = (IP_ENDPOINT) { .IP = remote->Address };
 		if (net_ip_get_adapter_and_resolve(&io->Adapter, &io->RemoteEP))
 		{
-	
+			exos_io_buffer_create(&io->RcvBuffer, buffers->RcvBuffer, buffers->RcvBufferSize);
+			io->RcvBuffer.NotEmptyEvent = &io->InputEvent;
+		
+			exos_io_buffer_create(&io->SndBuffer, buffers->SndBuffer, buffers->SndBufferSize);
+			io->SndBuffer.NotFullEvent = &io->OutputEvent;
+			
 			io->RcvNext = 0; // FIXME: use random for security
 			io->SndSeq = 0; // FIXME: use random for security
 	
@@ -174,7 +173,16 @@ int net_tcp_connect(TCP_IO_ENTRY *io, const EXOS_IO_STREAM_BUFFERS *buffers, IP_
 	if (done) 
 	{
 		net_tcp_service(io, 0);
-		exos_event_wait(&io->OutputEvent, EXOS_TIMEOUT_NEVER);	// FIXME: allow timeout
+		exos_event_wait(&io->OutputEvent, EXOS_TIMEOUT_NEVER);
+
+		done = (io->State == TCP_STATE_ESTABLISHED);
+	}
+
+	if (!done)
+	{
+		// destroy buffers
+		io->RcvBuffer = (EXOS_IO_BUFFER) { .Buffer = NULL };
+		io->SndBuffer = (EXOS_IO_BUFFER) { .Buffer = NULL };	
 	}
 	return done;
 }
@@ -317,8 +325,9 @@ static void _handle(TCP_IO_ENTRY *io)
 	switch(io->State)
 	{
 		case TCP_STATE_SYN_SENT:
-			// TODO: limit retries
-			io->ServiceWait = 1000;
+			if (io->ServiceRetry < 3)
+				io->ServiceWait = 1000;
+			else io->State = TCP_STATE_CLOSED;
 			break;
 		case TCP_STATE_ESTABLISHED:
 			if (io->SndFlags.PSH)
@@ -404,6 +413,7 @@ static void *_service(void *arg)
 				node = node->Pred;
 				list_remove(node->Succ);
 
+				exos_event_set(&io->OutputEvent);
 				exos_event_set(&io->CloseEvent);
 			}
 		}

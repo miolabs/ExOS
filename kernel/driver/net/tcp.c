@@ -42,7 +42,7 @@ int net_tcp_input(NET_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip)
 						io->State = TCP_STATE_ESTABLISHED;
 						net_tcp_service(io, 0);
 
-                        exos_event_set(&io->OutputEvent);
+						exos_event_set(&io->OutputEvent);
 					}
 					break;
 				case TCP_STATE_LISTEN:

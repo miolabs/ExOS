@@ -152,7 +152,7 @@ void exos_mem_free(void *addr)
 		kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
 
 	EXOS_NODE *pred_node = NULL;
-	// FIXME: check is coalescence causes a race condition
+	// FIXME: check if coalescence causes a race condition
 
 	// coalescence to linear successor
 	EXOS_MEM_HEADER *next_header = (EXOS_MEM_HEADER *)((void *)footer + sizeof(EXOS_MEM_FOOTER));
