@@ -112,12 +112,12 @@ unsigned short net_ip_checksum(NET16_T *data, unsigned byte_count)
 
 int net_ip_get_adapter_and_resolve(NET_ADAPTER **padapter, IP_ENDPOINT *ep)
 {
-	IP_ADDR addr = ep->IP;
-	NET_ADAPTER *adapter = net_adapter_find(addr);
+	IP_ENDPOINT gw_ep = (IP_ENDPOINT) { .IP = ep->IP };
+	NET_ADAPTER *adapter = net_adapter_find(gw_ep.IP);
 	if (adapter == NULL)
 	{
-		adapter = net_adapter_find_gateway(addr);
-		if (adapter != NULL) addr = adapter->Gateway;
+		adapter = net_adapter_find_gateway(gw_ep.IP);
+		if (adapter != NULL) gw_ep.IP = adapter->Gateway;
 	}
 	if (adapter != NULL)
 	{
@@ -129,9 +129,10 @@ int net_ip_get_adapter_and_resolve(NET_ADAPTER **padapter, IP_ENDPOINT *ep)
 				continue;	// down
 			}
 			
-			if (net_ip_resolve(adapter, ep))
+			if (net_ip_resolve(adapter, &gw_ep))
 			{
 				*padapter = adapter;
+				ep->MAC = gw_ep.MAC;
 				return 1;
 			}
 		}

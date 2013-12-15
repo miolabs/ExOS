@@ -51,7 +51,8 @@ void main()
 	NET_ADAPTER *adapter = NULL;
 	if (net_adapter_enum(&adapter))
 	{
-		adapter->IP = (IP_ADDR) { 10, 0, 1, 10 };
+		adapter->Gateway = (IP_ADDR) { 192, 168, 0, 1 };
+		adapter->IP = (IP_ADDR) { 192, 168, 0, 198 };
 	}
 #endif
 

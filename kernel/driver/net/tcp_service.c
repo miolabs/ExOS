@@ -138,6 +138,8 @@ int net_tcp_accept(TCP_IO_ENTRY *io, const EXOS_IO_STREAM_BUFFERS *buffers, TCP_
 	return done;
 }
 
+static unsigned short _port_hack = 0;
+
 int net_tcp_connect(TCP_IO_ENTRY *io, const EXOS_IO_STREAM_BUFFERS *buffers, IP_PORT_ADDR *remote)
 {
 	if (buffers == NULL)
@@ -148,8 +150,12 @@ int net_tcp_connect(TCP_IO_ENTRY *io, const EXOS_IO_STREAM_BUFFERS *buffers, IP_
 	int done = 0;
 	if (io->State == TCP_STATE_CLOSED)
 	{
+		exos_event_reset(&io->CloseEvent);
+
+		_port_hack = (_port_hack + 1) % 1000;
+
 		io->Adapter = NULL;
-		io->LocalPort = 10000; // TODO: allocate high port number
+		io->LocalPort = 10000 + _port_hack; // TODO: allocate high port number
 		io->RemotePort = remote->Port;
 		io->RemoteEP = (IP_ENDPOINT) { .IP = remote->Address };
 		if (net_ip_get_adapter_and_resolve(&io->Adapter, &io->RemoteEP))
@@ -183,6 +189,8 @@ int net_tcp_connect(TCP_IO_ENTRY *io, const EXOS_IO_STREAM_BUFFERS *buffers, IP_
 		// destroy buffers
 		io->RcvBuffer = (EXOS_IO_BUFFER) { .Buffer = NULL };
 		io->SndBuffer = (EXOS_IO_BUFFER) { .Buffer = NULL };	
+
+		exos_event_set(&io->CloseEvent);
 	}
 	return done;
 }

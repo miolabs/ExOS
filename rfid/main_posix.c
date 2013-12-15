@@ -32,21 +32,27 @@ void SendValue(int value, int type)
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = inet_addr("87.98.231.17");
     server.sin_port = htons(80);
-    
+   
+    char message[200];
+	char *ws = type == 0 ? kSendRFIDValueWS : kSendTempValueWS;
+    sprintf(message, "GET %s%d HTTP/1.1\nHost: adingo.es\n\n", ws, value);
+
     int ret = connect(sd, (const struct sockaddr *)&server, sizeof(server));
     if (ret == -1)
     {
         close(sd);
         return;
     }
-    
-    char message[200];
-    char *ws = type == 0 ? kSendRFIDValueWS : kSendTempValueWS;
-    sprintf(message, "GET %s%i HTTP/1.1\nHost: adingo.es\n\n", ws, value);
+   
+//    char message[200];
+//    char *ws = type == 0 ? kSendRFIDValueWS : kSendTempValueWS;
+//    sprintf(message, "GET %s%i HTTP/1.1\nHost: adingo.es\n\n", ws, value);
     size_t len = strlen(message);
-    send(sd, message, len, 0);
-    char msg[1000];
-    recv(sd, msg, 1000, 0);
+	write(sd, message, len);
+    //send(sd, message, len, 0);
+
+	read(sd, message, sizeof(message));
+    //recv(sd, message, sizeof(message), 0);
     close(sd);
 }
 
@@ -64,36 +70,57 @@ void cleanString(char cardID[], char buffer[], int l)
     cardID[pos] = '\0';
 }
 
+static int parse_rfid(char *buffer, int length, int *poffset, char *rfid)
+{
+	int done = 0;
+	int offset = *poffset;
+	for (int i = 0; i < length; i++)
+	{
+		char c = buffer[i];
+		if (c == '\n' || c == '\r' || c == '\0')
+		{
+			rfid[offset++] = '\0';
+			done = 1;
+			offset = 0;
+			break;
+		}
+		rfid[offset++] = c;
+	}
+	*poffset = offset;
+	return done;
+}
+
 void *read_rfid(void *x_void_ptr)
 {
     int *x_ptr = (int *)x_void_ptr;
+	int offset = 0;
     char nombre[] = kRfidDevice;
     char baseurl[] = kSendRFIDValueWebService;
-    char buffer[512];
-    char cardID[512];
-    char url[1024];
+    char buffer[32];
+	char cardID[32];
+//    char url[1024];
     int l;
   
-    int fd = open(nombre, O_RDWR);
-    
-    if (fd < 0)
-    {
-        //fprintf(stderr, "Can't open input file !!\n");
-        close(fd);
-        return NULL;
-    }
-    
-    while(1)
-    {
-        l = (int)read(  fd,  buffer,  512);
-        //printf("%s",buffer);
-        *x_ptr = *x_ptr + 1;
-        
-        cleanString(cardID, buffer, l);
-        
-        SendValue(10, 0);
-    }
-    
+	while(1)
+	{
+		int fd = open(nombre, O_RDWR);
+		
+		if (fd < 0)
+		{
+			//fprintf(stderr, "Can't open input file !!\n");
+			close(fd);
+			sleep(1);
+			continue;
+		}
+		
+		while(1)
+		{
+			l = (int)read(  fd,  buffer,  sizeof(buffer));
+
+			if (parse_rfid(buffer, l, &offset, cardID))
+				SendValue(10, 0);
+		}
+	}
     /* the function must return something - NULL will do */
     return NULL;
 }
