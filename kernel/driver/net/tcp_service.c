@@ -138,7 +138,7 @@ int net_tcp_accept(TCP_IO_ENTRY *io, const EXOS_IO_STREAM_BUFFERS *buffers, TCP_
 	return done;
 }
 
-static unsigned short _port_hack = 0;
+static unsigned short _port_hack = 0;	// FIXME: this counter cycles port numbers
 
 int net_tcp_connect(TCP_IO_ENTRY *io, const EXOS_IO_STREAM_BUFFERS *buffers, IP_PORT_ADDR *remote)
 {
@@ -152,7 +152,7 @@ int net_tcp_connect(TCP_IO_ENTRY *io, const EXOS_IO_STREAM_BUFFERS *buffers, IP_
 	{
 		exos_event_reset(&io->CloseEvent);
 
-		_port_hack = (_port_hack + 1) % 1000;
+		_port_hack = (_port_hack + 1) % 1000;	// FIXME: implement a port allocation scheme
 
 		io->Adapter = NULL;
 		io->LocalPort = 10000 + _port_hack; // TODO: allocate high port number

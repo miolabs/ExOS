@@ -10,11 +10,14 @@ static int _accept(NET_IO_ENTRY *socket, NET_IO_ENTRY *conn_socket, const EXOS_I
 static int _close(NET_IO_ENTRY *socket, EXOS_IO_STREAM_BUFFERS *buffers);
 static int _read(EXOS_IO_ENTRY *io, void *buffer, unsigned long length);
 static int _write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length);
+static int _receive(NET_IO_ENTRY *socket, void *buffer, unsigned long length, void *remote);
+static int _send(NET_IO_ENTRY *socket, void *buffer, unsigned long length, void *remote);
 
 static const NET_PROTOCOL_DRIVER _tcp_driver = {
 	.IO = { .Read = _read, .Write = _write }, 
 	.Connect = _connect, 
 	.Bind = _bind, .Listen = _listen, .Accept = _accept,
+	.Receive = _receive, .Send = _send,
 	.Close = _close };
 
 void __tcp_io_initialize()
@@ -142,6 +145,28 @@ static int _write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length)
 	net_tcp_service(tcp_io, 0);
 
 	return done;
+}
+
+static int _receive(NET_IO_ENTRY *socket, void *buffer, unsigned long length, void *remote)
+{
+	TCP_IO_ENTRY *io = (TCP_IO_ENTRY *)socket;
+#ifdef DEBUG
+	if (io->Type != EXOS_IO_SOCKET)
+		kernel_panic(KERNEL_ERROR_IO_TYPE_MISMATCH);
+#endif
+	
+	IP_PORT_ADDR *pipp = (IP_PORT_ADDR *)remote;
+	if (pipp != NULL)
+	{
+		*pipp = (IP_PORT_ADDR) { .Address = io->RemoteEP.IP, .Port = io->RemotePort };
+	}
+	return _read((EXOS_IO_ENTRY *)socket, buffer, length); 
+}
+
+static int _send(NET_IO_ENTRY *socket, void *buffer, unsigned long length, void *remote)
+{
+	// NOTE: remote EP is ignored
+	return _write((EXOS_IO_ENTRY *)socket, buffer, length); 
 }
 
 
