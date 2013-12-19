@@ -472,7 +472,7 @@ void main()
 					_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push.start, 10) ||
 					_push_delay(_lcd.buttons & XCPU_BUTTON_CRUISE, &push.off, 50))
 				{
-					if (sp.speed == 0.0f)  // 0.0f value is forced
+					if (sp.speed <= 0.1f)  // 0.0f value is forced
 					{
 						_shutdown(&sp);
 					}
