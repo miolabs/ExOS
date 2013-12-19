@@ -319,7 +319,7 @@ static void _stop(USB_HOST_FUNCTION *usb_func)
 	func->ExitFlag = 1;
 	usb_host_stop_pipe(&func->InputPipe);
 	//exos_thread_join(&_thread);
-	//_function_busy[func->Index] = 0;
+	_function_busy[func->InstanceIndex] = 0;
 }
 
 static int _read_field(HID_REPORT_INPUT *input, unsigned char *report, unsigned char *data)

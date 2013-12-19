@@ -61,6 +61,7 @@ static void _stop(HID_FUNCTION_HANDLER *handler)
 	IAP_HID_HANDLER *iap = (IAP_HID_HANDLER *)handler;
 	iap_core_stop();
 	iap->InputsCount = 0;
+	iap->Function = NULL;
 }
 
 static void _notify(HID_FUNCTION_HANDLER *handler, HID_REPORT_INPUT *input, unsigned char *data)
