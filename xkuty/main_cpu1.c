@@ -13,7 +13,7 @@
 #include "pid.h"
 
 #define MAX_SPEED (40)
-#define BRAKE_THRESHOLD 30
+#define BRAKE_THRESHOLD 50
 #define PWM_RANGE 100
 #define MOTOR_OFFSET 50
 #define MOTOR_RANGE (170 - MOTOR_OFFSET)
