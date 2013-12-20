@@ -491,7 +491,7 @@ void main()
 				// update throttle out
 				if (_control_state != CONTROL_OFF)
 				{
-					unsigned char th_lim = MOTOR_OFFSET + ((throttle * MOTOR_RANGE) >> 8);
+					unsigned char th_lim = MOTOR_OFFSET + ((/*throttle*/ 0 * MOTOR_RANGE) >> 8);
                     if (_state & XCPU_STATE_NEUTRAL)
 						th_lim = 0;
 					int pwm_val = PWM_RANGE - ((th_lim * PWM_RANGE) >> 8);
@@ -505,6 +505,7 @@ void main()
 					if (_output_state & OUTPUT_BRAKEL) drag_ratio = 1 - ((1 - drag_ratio) * 0.1f); 
 					float acc = MAX_ACC * (th_ratio - (drag_ratio * drag_ratio * drag_ratio));
 					sp.speed += acc * 0.050f;	// dt
+					if (sp.speed < 0) sp.speed = 0;
 #endif
 				}
 				break;                          
