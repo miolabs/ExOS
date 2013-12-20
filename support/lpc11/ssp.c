@@ -1,6 +1,7 @@
 #include "cpu.h"
 #include "ssp.h"
 #include <support/ssp_hal.h>
+#include <support/board_hal.h>
 
 static SSP_MODULE *_modules[] = { (SSP_MODULE *)LPC_SSP0_BASE, (SSP_MODULE *)LPC_SSP1_BASE };
 

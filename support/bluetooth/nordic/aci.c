@@ -11,7 +11,6 @@ static void *_service(void *arg);
 
 static EXOS_EVENT _cmd_event;
 static EXOS_FIFO _cmd_fifo;
-static void _rdy_handler(int pin);
 static EXOS_EVENT _rdy_event;
 
 #define ACI_GPIO_RDY_PORT 1
@@ -19,6 +18,9 @@ static EXOS_EVENT _rdy_event;
 #define ACI_GPIO_RDY_MASK (1<<ACI_GPIO_RDY_PIN)
 #define ACI_GPIO_REQ_PORT 1
 #define ACI_GPIO_REQ_MASK (1<<1)
+#define ACI_GPIO_RESET_PORT 2
+#define ACI_GPIO_RESET_PIN 9
+#define ACI_GPIO_RESET_MASK (1<<ACI_GPIO_RESET_PIN)
 #define ACI_SSP_MODULE 1
 
 void aci_initialize()
@@ -33,16 +35,32 @@ void aci_initialize()
 	exos_event_create(&_rdy_event);
 	exos_thread_create(&_thread, 1, _stack, THREAD_STACK, NULL, _service, NULL);
 
+	// reset NRF800x
+    hal_gpio_write(ACI_GPIO_RESET_PORT, ACI_GPIO_RESET_MASK, ACI_GPIO_RESET_MASK);
+	hal_gpio_config(ACI_GPIO_RESET_PORT, ACI_GPIO_RESET_MASK, ACI_GPIO_RESET_MASK);
+    hal_gpio_write(ACI_GPIO_RESET_PORT, ACI_GPIO_RESET_MASK, 0);
+	exos_thread_sleep(1);
+    hal_gpio_write(ACI_GPIO_RESET_PORT, ACI_GPIO_RESET_MASK, ACI_GPIO_RESET_MASK);
+
 	// TODO: wait for setup event / send configuration
 }
 
-static void _rdy_handler(int pin)
+static void _rdy_handler(int port, int pin)
 {
 	exos_event_set(&_rdy_event);
 }
 
 static void _received(unsigned char *buffer, int length)
 {
+	int offset = 0;
+    ACI_EVENT ev = (ACI_EVENT)buffer[offset++];
+	switch(ev)
+	{
+		 case ACI_EVENT_DEVICE_STARTED:
+			// TODO
+			break;
+	}
+
 }
 
 static void *_service(void *arg)
@@ -51,25 +69,26 @@ static void *_service(void *arg)
 	unsigned char buffer[32];
 	int payload, cmd_len;
 
-	hal_gpio_set_handler(ACI_GPIO_RDY_PORT, ACI_GPIO_RDY_PIN, HAL_INT_FALLING_EDGE, &_rdy_handler);
+	hal_gpio_set_handler(ACI_GPIO_RDY_PORT, ACI_GPIO_RDY_PIN, HAL_GPIO_INT_FALLING_EDGE, &_rdy_handler);
 	hal_ssp_initialize(ACI_SSP_MODULE, 100000, HAL_SSP_MODE_SPI, 0);
 
 	while(1)
 	{
-		if (!exos_event_wait_multiple(events, 2, 1000))
+		if (-1 == exos_event_wait_multiple(events, 2, 1000))
 		{
 			continue;
 		}
 
-		ACI_COMMAND *cmd = (ACI_COMMAND *)exos_fifo_dequeue(&_cmd_fifo);
-		if (cmd != NULL)
+		ACI_REQUEST *req = (ACI_REQUEST *)exos_fifo_dequeue(&_cmd_fifo);
+		if (req != NULL)
 		{
-			buffer[0] = cmd_len = cmd->Length;
-			buffer[1] = cmd->Command;
+			buffer[0] = cmd_len = req->Length;
+			buffer[1] = req->Command;
 		}
 		else
 		{
 			buffer[0] = buffer[1] = cmd_len = 0;
+            hal_gpio_write(ACI_GPIO_REQ_PORT, ACI_GPIO_REQ_MASK, 0);	// assert REQN
 		}
 		hal_ssp_transmit(ACI_SSP_MODULE, buffer, buffer, 2);
 
@@ -77,8 +96,8 @@ static void *_service(void *arg)
 		payload = (resp_len > cmd_len) ? resp_len : cmd_len;
 		if (payload > 32) payload = 32;
 		
-		if (cmd != NULL)
-			hal_ssp_transmit(ACI_SSP_MODULE, cmd->Data, buffer, payload);
+		if (req != NULL)
+			hal_ssp_transmit(ACI_SSP_MODULE, req->Data, buffer, payload);
 		else
 		{
 			for(int i = 0; i < payload; i++) buffer[i] = 0; 
