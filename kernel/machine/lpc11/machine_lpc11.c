@@ -13,11 +13,10 @@ void __machine_init()
 	{
 		// set lowest priority for IRQ
 		NVIC_SetPriority((IRQn_Type)i, 0xFF);
-		NVIC_DisableIRQ((IRQn_Type)i);
 	}
 	// disable system tick until timer initializes
 	SysTick->CTRL = 0;
-	SCB->ICSR = SCB_ICSR_PENDSTCLR_Msk; // Clear pending PendSV
+	SCB->ICSR = SCB_ICSR_PENDSTCLR_Msk; // Clear pending SysTick
 	__enable_irq();
 }
 
