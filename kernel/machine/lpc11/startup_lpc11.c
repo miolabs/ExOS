@@ -16,6 +16,7 @@ const void *__machine_process_start = &__stack_process_start__;
 
 __init __naked void Reset_Handler() 
 {
+	__disable_irq();
 	LPC_SYSCON->SYSMEMREMAP = 2;	// User Flash Mode
 #ifdef DEBUG
 	// initialize process stack

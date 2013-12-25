@@ -13,11 +13,16 @@ void __machine_init()
 	{
 		// set lowest priority for IRQ
 		NVIC_SetPriority((IRQn_Type)i, 0xFF);
+		NVIC_DisableIRQ((IRQn_Type)i);
 	}
+	// disable system tick until timer initializes
+	SysTick->CTRL = 0;
+	SCB->ICSR = SCB_ICSR_PENDSTCLR_Msk; // Clear pending PendSV
+	__enable_irq();
 }
 
 void __machine_req_switch()
 {
-	SCB->ICSR = (1 << 28);	// Set pending PendSV service (switch)
+	SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;	// Set pending PendSV service (switch)
 }
 

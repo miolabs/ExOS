@@ -56,7 +56,7 @@ int uart_initialize(unsigned module, UART_CONTROL_BLOCK *cb)
 	switch(module)
 	{
 		case 0:
-			LPC_IOCON->PIO1_6 = 1;	// RXD
+			LPC_IOCON->PIO1_6 = 1 | (2<<3) | (1<<5);	// RXD
 			LPC_IOCON->PIO1_7 = 1;	// TXD
 
 			LPC_SYSCON->UARTCLKDIV = 1;
@@ -138,7 +138,7 @@ static void _serve_uart(int module)
 	int count;
 
 	unsigned char iir;
-	while (0 == ((iir = uart->IIR) & UART_IIR_IntStatus))
+	while (iir = uart->IIR, !(iir & UART_IIR_IntStatus))
 	{
 		switch(iir & UART_IIR_IntId_MASK)
 		{
