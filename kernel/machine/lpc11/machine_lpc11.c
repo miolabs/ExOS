@@ -9,7 +9,7 @@ void __machine_init()
 	// set lowest priority for PendSV
 	NVIC_SetPriority(PendSV_IRQn, 0xFF);	
 
-	for (int i = 0; i <= 34; i++)
+	for (int i = 0; i <= 31; i++)
 	{
 		// set lowest priority for IRQ
 		NVIC_SetPriority((IRQn_Type)i, 0xFF);
