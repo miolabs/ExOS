@@ -1,15 +1,40 @@
 #ifndef NORDIC_ACI_H
 #define NORDIC_ACI_H
 
+#include <kernel/port.h>
 #include <kernel/event.h>
+
+typedef enum
+{
+	ACI_REQUEST_QUEUED = 0,
+	ACI_REQUEST_PENDING,
+	ACI_REQUEST_DONE,
+	ACI_REQUEST_CANCELLED,
+} ACI_REQUEST_STATE;
 
 typedef struct
 {
-	EXOS_NODE Node;
-	unsigned char Command;
+	EXOS_MESSAGE;
+	ACI_REQUEST_STATE State;
+	EXOS_EVENT Done;
+	union
+	{
+		unsigned char Command;
+		unsigned char Status;
+	};
 	unsigned char Length;
 	unsigned char Data[32];
 } ACI_REQUEST;
+
+typedef enum
+{
+	ACI_STATE_RESET = 0,
+	ACI_STATE_SETUP,
+	ACI_STATE_STANDBY,
+	ACI_STATE_ACTIVE,
+	ACI_STATE_SLEEP,
+	ACI_STATE_TEST,
+} ACI_DEVICE_STATE;
 
 typedef enum
 {
@@ -81,7 +106,61 @@ typedef enum
 	ACI_STATUS_ERROR_INVALID_KEY_DATA = 0x98,
 } ACI_STATUS_CODE;
 
+typedef enum
+{
+	ACI_COMMAND_TEST = 0x01,
+	ACI_COMMAND_ECHO = 0x02,
+	ACI_COMMAND_DTM_COMMAND = 0x03,
+	ACI_COMMAND_SLEEP = 0x04,
+	ACI_COMMAND_WAKEUP = 0x05,
+	ACI_COMMAND_SETUP = 0x06,
+	ACI_COMMAND_READ_DYNAMIC_DATA = 0x07,
+	ACI_COMMAND_WRITE_DYNAMIC_DATA = 0x08,
+	ACI_COMMAND_GET_DEVICE_VERSION = 0x09,
+	ACI_COMMAND_GET_DEVICE_ADDRESS = 0x0A,
+	ACI_COMMAND_GET_BATTERY_LEVEL = 0x0B,
+	ACI_COMMAND_GET_TEMPERATURE = 0x0C,
+	
+	ACI_COMMAND_SET_LOCAL_DATA = 0x0D,
+
+	ACI_COMMAND_RADIO_RESET = 0x0E,
+	ACI_COMMAND_CONNECT = 0x0F,
+	ACI_COMMAND_BOND = 0x10,
+	ACI_COMMAND_DISCONNECT = 0x11,
+	ACI_COMMAND_SET_TX_POWER = 0x12,
+	ACI_COMMAND_CHANGE_TIMING_REQ = 0x13,
+	ACI_COMMAND_OPEN_REMOTE_PIPE = 0x14,
+
+	ACI_COMMAND_SEND_DATA = 0x15,
+	ACI_COMMAND_SEND_DATA_ACK = 0x16,
+	ACI_COMMAND_REQUEST_DATA = 0x17,
+	ACI_COMMAND_SEND_DATA_NACK = 0x18,
+
+	ACI_COMMAND_SET_APPL_LATENCY = 0x19,
+	ACI_COMMAND_SET_KEY = 0x1A,
+	ACI_COMMAND_OPEN_ADV_PIPE = 0x1B,
+	ACI_COMMAND_BROADCAST = 0x1C,
+	ACI_COMMAND_BOND_SECURITY_REQ = 0x1D,
+	ACI_COMMAND_DIRECTED_CONNECT = 0x1E,
+	ACI_COMMAND_CLOSE_REMOTE_PIPE = 0x1F,
+} ACI_COMMAND;
+
+typedef struct
+{
+	unsigned char CommandOpCode;
+	unsigned char Status;
+	unsigned char ResponseData[];
+} ACI_COMMAND_RESPONSE_EVENT_DATA;
+
+typedef struct
+{
+	unsigned short Timeout;
+	unsigned short AdvInterval;
+} ACI_CONNECT_COMMAND_DATA;
+
 void aci_initialize();
+int aci_send_setup(ACI_REQUEST *req, int *pcomplete);
+int aci_connect(unsigned short timeout, unsigned short adv_interval);
 
 #endif // NORDIC_ACI_H
 
