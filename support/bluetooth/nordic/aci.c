@@ -98,6 +98,11 @@ static void _received(unsigned char *buffer, int length)
 			exos_event_set(&_connected_event);
 			break;
 		case ACI_EVENT_DISCONNECTED:
+			// TODO:check contents
+			_state = ACI_STATE_STANDBY;
+			exos_event_reset(&_connected_event);
+			break;
+		case ACI_EVENT_PIPE_STATUS:
 			// TODO
 			break;
 		default:
@@ -224,8 +229,9 @@ int aci_connect(unsigned short timeout, unsigned short adv_interval)
 	adv_interval += ((adv_interval * 6) / 10);	// ms -> 0.625 ms
 	if (adv_interval < 32) adv_interval = 32;
 
-	ACI_REQUEST req = (ACI_REQUEST) { .Command = ACI_COMMAND_CONNECT, 
-		.Length = sizeof(ACI_CONNECT_COMMAND_DATA) };
+	ACI_REQUEST req;
+	req.Command = ACI_COMMAND_CONNECT; 
+	req.Length = sizeof(ACI_CONNECT_COMMAND_DATA);
 	*((ACI_CONNECT_COMMAND_DATA *)&req.Data) = (ACI_CONNECT_COMMAND_DATA) { 
 		.Timeout = timeout, .AdvInterval = adv_interval };
 
