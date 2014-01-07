@@ -5,7 +5,6 @@
 #include "cpu.h"
 #include <support/cap_hal.h>
 #include <support/board_hal.h>
-#include <CMSIS/LPC17xx.h>
 
 static HAL_CAP_HANDLER _capture_handlers[4];
 static TIMER_MAT_HANDLER _match_handlers[4];
@@ -18,25 +17,41 @@ static LPC_TIM_TypeDef *_initialize(int module, unsigned long freq, TIMER_MAT_HA
 	switch(module)
 	{
 	case 0:
+#if (__TARGET_PROCESSOR == LPC1778 || __TARGET_PROCESSOR == LPC1788)
+		pclk_div = 1;
+#else
 		pclk_div = PCLKSEL0bits.PCLK_TIMER0;
+#endif
 		LPC_SC->PCONP |= PCONP_PCTIM0;
 		timer = LPC_TIM0;
 		irq = TIMER0_IRQn;
 		break;
 	case 1:
+#if (__TARGET_PROCESSOR == LPC1778 || __TARGET_PROCESSOR == LPC1788)
+		pclk_div = 1;
+#else	
 		pclk_div = PCLKSEL0bits.PCLK_TIMER1;
+#endif
 		LPC_SC->PCONP |= PCONP_PCTIM1;
 		timer = LPC_TIM1;
 		irq = TIMER1_IRQn;
 		break;
 	case 2:
+#if (__TARGET_PROCESSOR == LPC1778 || __TARGET_PROCESSOR == LPC1788)
+		pclk_div = 1;
+#else	
 		pclk_div = PCLKSEL1bits.PCLK_TIMER2;
+#endif
 		LPC_SC->PCONP |= PCONP_PCTIM2;
 		timer = LPC_TIM2;
 		irq = TIMER2_IRQn;
 		break;
 	case 3:
+#if (__TARGET_PROCESSOR == LPC1778 || __TARGET_PROCESSOR == LPC1788)
+		pclk_div = 1;
+#else	
 		pclk_div = PCLKSEL1bits.PCLK_TIMER3;
+#endif
 		LPC_SC->PCONP |= PCONP_PCTIM3;
 		timer = LPC_TIM3;
 		irq = TIMER3_IRQn;

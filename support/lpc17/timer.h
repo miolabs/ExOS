@@ -1,7 +1,7 @@
 #ifndef LPC_TIMER_H
 #define LPC_TIMER_H
 
-#include <CMSIS/LPC17xx.h>
+#include "cpu.h"
 
 typedef enum
 {

@@ -5,7 +5,6 @@
 #include "cpu.h"
 #include <support/pwm_hal.h>
 #include <support/board_hal.h>
-#include <CMSIS/LPC17xx.h>
 
 #define PWM_MODULE_COUNT 1
 static LPC_PWM_TypeDef *_modules[PWM_MODULE_COUNT] = { (LPC_PWM_TypeDef *)LPC_PWM1 };
@@ -21,7 +20,11 @@ int hal_pwm_initialize(int module, int range, int rate)
 	switch(module)
 	{
 		case 0:
+#if (__TARGET_PROCESSOR == LPC1778 || __TARGET_PROCESSOR == LPC1788)
+			pclk_div = 1;
+#else
 			pclk_div = PCLKSEL0bits.PCLK_PWM1;
+#endif
 			LPC_SC->PCONP |= PCONP_PCPWM1;
 			pwm = LPC_PWM1;
 			break;

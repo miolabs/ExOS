@@ -6,7 +6,6 @@
 #include "dma.h"
 #include <support/ssp_hal.h>
 #include <support/board_hal.h>
-#include <CMSIS/LPC17xx.h>
 
 static unsigned char _idle_data[SSP_MODULE_COUNT] __dma;
 static unsigned char _dma_busy[SSP_MODULE_COUNT];
@@ -27,6 +26,9 @@ void hal_ssp_initialize(int module, int bitrate, HAL_SSP_MODE mode, HAL_SSP_FLAG
 	if (ssp && hal_board_init_pinmux(HAL_RESOURCE_SSP, module))
 	{
 		int pclk_div;
+#if (__TARGET_PROCESSOR == LPC1778 || __TARGET_PROCESSOR == LPC1788)
+			pclk_div = 1;
+#else
 		switch(module)
 		{
 			case 0:
@@ -36,6 +38,7 @@ void hal_ssp_initialize(int module, int bitrate, HAL_SSP_MODE mode, HAL_SSP_FLAG
 				pclk_div = PCLKSEL0bits.PCLK_SSP1;
 				break;
 		}
+#endif
 		SSP_CLK_MODE mode = flags & HAL_SSP_CLK_IDLE_HIGH ? 
 			(flags & HAL_SSP_CLK_PHASE_NEG ? SSP_CLK_POL1_PHA0 : SSP_CLK_POL1_PHA1) : // clk negative
 			(flags & HAL_SSP_CLK_PHASE_NEG ? SSP_CLK_POL0_PHA1 : SSP_CLK_POL0_PHA0); // clk positive
