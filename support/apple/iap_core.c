@@ -540,7 +540,7 @@ static int _slave_io()
 						iap_close_session((cmd_buffer[0] << 8) | cmd_buffer[1]);
 						resp_buffer[offset++] = IAP_OK;
 						resp_buffer[offset++] = cmd.CommandID;
-						resp = (IAP_CMD) { .CommandID = IAP_CMD_ACCESORY_ACK, .Length = offset, .Transaction = _transaction++ };
+						resp = (IAP_CMD) { .CommandID = IAP_CMD_ACCESORY_ACK, .Length = offset, .Transaction = cmd.Transaction };
                         iap_send_cmd(&resp, resp_buffer);
 						break;
 #ifdef DEBUG
