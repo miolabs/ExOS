@@ -27,7 +27,7 @@ unsigned long hal_adc_initialize(int rate, int bits)
 	int clks = rate * ch_count * 65; 
 
     LPC_SC->PCONP |= PCONP_PCADC;
-	int pclk = cpu_pclk(SystemCoreClock, 1);
+	int pclk = cpu_pclk(SystemCoreClock, 0);
 
 	_adc->CR = 0;	//reset module
 	_adc->CR = (((pclk / clks) - 1) << ADCR_CLKDIV_BIT) 

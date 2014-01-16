@@ -390,13 +390,13 @@ void main()
 				}
 
 				// Lights off when activity ceases for 30 seconds
-				const int loop_iters = 1000 / MAIN_LOOP_TIME;
-				int no_activity = (_lcd.buttons == 0) && (events == 0) && (sp.speed < 0.1f);
-				if(_push_delay(no_activity, &push.auto_lights_off, loop_iters * 30))
-				{
-                    push.auto_lights_off = 0;
-					_control_state = CONTROL_LIGHTS_OFF_STAND_BY;
-				}
+//				const int loop_iters = 1000 / MAIN_LOOP_TIME;
+//				int no_activity = (_lcd.buttons == 0) && (events == 0) && (sp.speed < 0.1f);
+//				if(_push_delay(no_activity, &push.auto_lights_off, loop_iters * 30))
+//				{
+//                    push.auto_lights_off = 0;
+//					_control_state = CONTROL_LIGHTS_OFF_STAND_BY;
+//				}
 
 				if (_lcd.brake_rear > BRAKE_THRESHOLD || _lcd.brake_front > BRAKE_THRESHOLD)
 				{
@@ -491,7 +491,7 @@ void main()
 				// update throttle out
 				if (_control_state != CONTROL_OFF)
 				{
-					unsigned char th_lim = MOTOR_OFFSET + ((/*throttle*/ 0 * MOTOR_RANGE) >> 8);
+					unsigned char th_lim = MOTOR_OFFSET + ((throttle * MOTOR_RANGE) >> 8);
                     if (_state & XCPU_STATE_NEUTRAL)
 						th_lim = 0;
 					int pwm_val = PWM_RANGE - ((th_lim * PWM_RANGE) >> 8);
