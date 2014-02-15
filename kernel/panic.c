@@ -2,6 +2,12 @@
 
 static KERNEL_ERROR __kernel_last_error;
 
+void abort(void)
+{
+	kernel_panic( KERNEL_ERROR_UNKNOWN);
+}
+
+
 void kernel_panic(KERNEL_ERROR error)
 {
 	__kernel_last_error = error;
