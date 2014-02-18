@@ -1,91 +1,91 @@
 #ifndef DM36X_VPFE_H
 #define DM36X_VPFE_H
 
-// ISIF registers
+// Image sensor interface ISIF registers
 typedef volatile struct
 {
-	unsigned long SYNCEN;	// 0h
-	unsigned long MODESET;	// 4h
-	unsigned long HDW;		// 8h
-	unsigned long VDW;		// Ch
-	unsigned long PPLN;		// 10h
-	unsigned long LPFR;		// 14h
-	unsigned long SPH;		// 18h
-	unsigned long LNH;		// 1Ch
-	unsigned long SLV0;		// 20h
-	unsigned long SLV1;		// 24h
-	unsigned long LNV;		// 28h
-	unsigned long CULH;		// 2Ch
-	unsigned long CULV;		// 30h
-	unsigned long HSIZE;	// 34h
-	unsigned long SDOFST;	// 38h
-	unsigned long CADU;		// 3Ch
-	unsigned long CADL;		// 40h
-	unsigned long reserved1;		// 44h
-	unsigned long reserved2;		// 48h
-	unsigned long CCOLP;		// 4Ch
-	unsigned long CRGAIN;		// 50h
-	unsigned long CGRGAIN;		// 54h
-	unsigned long CGBGAIN;		// 58h
-	unsigned long CBGAIN;		// 5Ch
-	unsigned long COFSTA;		// 60h
-	unsigned long FLSHCFG0;		// 64h
-	unsigned long FLSHCFG1;		// 68h
-	unsigned long FLSHCFG2;		// 6Ch
-	unsigned long VDINT0;		// 70h
-	unsigned long VDINT1;		// 74h
-	unsigned long VDINT2;		// 78h
-	unsigned long reserved3;		// 7Ch
-	unsigned long CGAMMAWD;		// 80h
-	unsigned long REC656IF;	// 84h
-	unsigned long CCDCFG;	// 88h
-	unsigned long DFCCTL;		// 8Ch
-	unsigned long VDFSATLV;		// 90h
-	unsigned long DFCMEMCTL;	// 94h
-	unsigned long DFCMEM0;		// 98h
-	unsigned long DFCMEM1;		// 9Ch
-	unsigned long DFCMEM2;		// A0h
-	unsigned long DFCMEM3;		// A4h
-	unsigned long DFCMEM4;		// A8h
-	unsigned long CLAMPCFG;		// ACh
-	unsigned long CLDCOFST;		// B0h
-	unsigned long CLSV;		// B4h
-	unsigned long CLHWIN0;		// B8h
-	unsigned long CLHWIN1;		// BCh
-	unsigned long CLHWIN2;		// C0h
-	unsigned long CLVRV;		// C4h
-	unsigned long CLVWIN0;		// C8h
-	unsigned long CLVWIN1;		// CCh
-	unsigned long CLVWIN2;		// D0h
-	unsigned long CLVWIN3;		// D4h
+	unsigned long SYNCEN;	// 0h Synchronization Enable
+	unsigned long MODESET;	// 4h Mode Setup
+	unsigned long HDW;		// 8h HD pulse width
+	unsigned long VDW;		// Ch VD pulse width
+	unsigned long PPLN;		// 10h Pixels per line
+	unsigned long LPFR;		// 14h Lines per frame
+	unsigned long SPH;		// 18h Start pixel horizontal
+	unsigned long LNH;		// 1Ch Number of pixels in line
+	unsigned long SLV0;		// 20h Start line vertical - field 0
+	unsigned long SLV1;		// 24h Start line vertical - field 1
+	unsigned long LNV;		// 28h Number of lines vertical
+	unsigned long CULH;		// 2Ch Culling - horizontal
+	unsigned long CULV;		// 30h Culling - vertical
+	unsigned long HSIZE;	// 34h Horizontal size
+	unsigned long SDOFST;	// 38h SDRAM Line Offset
+	unsigned long CADU;		// 3Ch SDRAM Address - high
+	unsigned long CADL;		// 40h SDRAM Address - low
+	unsigned long reserved1;	// 44h 
+	unsigned long reserved2;	// 48h 
+	unsigned long CCOLP;		// 4Ch CCD Color Pattern
+	unsigned long CRGAIN;		// 50h CCD Gain Adjustment - R/Ye
+	unsigned long CGRGAIN;		// 54h CCD Gain Adjustment - Gr/Cy
+	unsigned long CGBGAIN;		// 58h CCD Gain Adjustment - Gb/G
+	unsigned long CBGAIN;		// 5Ch CCD Gain Adjustment - B/Mg
+	unsigned long COFSTA;		// 60h CCD Offset Adjustment
+	unsigned long FLSHCFG0;		// 64h FLSHCFG0
+	unsigned long FLSHCFG1;		// 68h FLSHCFG1
+	unsigned long FLSHCFG2;		// 6Ch FLSHCFG2
+	unsigned long VDINT0;		// 70h VD Interrupt #0
+	unsigned long VDINT1;		// 74h VD Interrupt #1
+	unsigned long VDINT2;		// 78h VD Interrupt #2
+	unsigned long reserved3;	// 7Ch
+	unsigned long CGAMMAWD;		// 80h Gamma Correction settings
+	unsigned long REC656IF;	// 84h CCIR 656 Control
+	unsigned long CCDCFG;	// 88h CCD Configuration
+	unsigned long DFCCTL;		// 8Ch Defect Correction - Control
+	unsigned long VDFSATLV;		// 90h Defect Correction - Vertical Saturation Level
+	unsigned long DFCMEMCTL;	// 94h Defect Correction - Memory Control
+	unsigned long DFCMEM0;		// 98h Defect Correction - Set V Position 
+	unsigned long DFCMEM1;		// 9Ch Defect Correction - Set H Position
+	unsigned long DFCMEM2;		// A0h Defect Correction - Set SUB1
+	unsigned long DFCMEM3;		// A4h Defect Correction - Set SUB2
+	unsigned long DFCMEM4;		// A8h Defect Correction - Set SUB3
+	unsigned long CLAMPCFG;		// ACh Black Clamp configuration
+	unsigned long CLDCOFST;		// B0h DC offset for Black Clamp
+	unsigned long CLSV;		// B4h Black Clamp Start position
+	unsigned long CLHWIN0;		// B8h Horizontal Black Clamp configuration
+	unsigned long CLHWIN1;		// BCh Horizontal Black Clamp configuration
+	unsigned long CLHWIN2;		// C0h Horizontal Black Clamp configuration
+	unsigned long CLVRV;		// C4h Vertical Black Clamp configuration
+	unsigned long CLVWIN0;		// C8h Vertical Black Clamp configuration
+	unsigned long CLVWIN1;		// CCh Vertical Black Clamp configuration
+	unsigned long CLVWIN2;		// D0h Vertical Black Clamp configuration
+	unsigned long CLVWIN3;		// D4h Vertical Black Clamp configuration
 	unsigned long reserved4;		// D8h
 	unsigned long reserved5;		// DCh
 	unsigned long reserved6[3*4];	// E0h-10Ch
 	unsigned long reserved7;		// 110h
 	unsigned long FMTCFG;   //114h Not in manual??
 	unsigned long reserved8;		// 118h
-	unsigned long FMTSPH;	// 11Ch
-	unsigned long FMTLNH;	// 120h
-	unsigned long FMTSLV;	// 124h
-	unsigned long FMTLNV;	// 128h
-	unsigned long FMTRLEN;	// 12Ch
-	unsigned long FMTHCNT;	// 130h
+	unsigned long FMTSPH;	// 11Ch CCD Formatter - Start pixel horizontal
+	unsigned long FMTLNH;	// 120h CCD Formatter - number of pixels
+	unsigned long FMTSLV;	// 124h CCD Formatter - start line vertical
+	unsigned long FMTLNV;	// 128h CCD Formatter - number of lines
+	unsigned long FMTRLEN;	// 12Ch CCD Formatter - Read out line length
+	unsigned long FMTHCNT;	// 130h CCD Formatter - HD cycles
 	unsigned long reserved9;	// 134h
 	unsigned long reservedA;	// 138h
 	unsigned long reservedB;	// 13Ch
 	unsigned long reservedC[6*4];	// 140h-19C
 	unsigned long reservedD;	// 1A0h
-	unsigned long CSCCTL;	// 1A4h
-	unsigned long CSCM0;	// 1A8h
-	unsigned long CSCM1;	// 1ACh
-	unsigned long CSCM2;	// 1B0h
-	unsigned long CSCM3;	// 1B4h
-	unsigned long CSCM4;	// 1B8h
-	unsigned long CSCM5;	// 1BCh
-	unsigned long CSCM6;	// 1C0h
-	unsigned long CSCM7;	// 1C4h
+	unsigned long CSCCTL;	// 1A4h Color Space Converter Enable
+	unsigned long CSCM0;	// 1A8h Color Space Converter - Coefficients #0
+	unsigned long CSCM1;	// 1ACh Color Space Converter - Coefficients #1
+	unsigned long CSCM2;	// 1B0h Color Space Converter - Coefficients #2
+	unsigned long CSCM3;	// 1B4h Color Space Converter - Coefficients #3
+	unsigned long CSCM4;	// 1B8h Color Space Converter - Coefficients #4
+	unsigned long CSCM5;	// 1BCh Color Space Converter - Coefficients #5
+	unsigned long CSCM6;	// 1C0h Color Space Converter - Coefficients #6
+	unsigned long CSCM7;	// 1C4h Color Space Converter - Coefficients #7
 
-}     unsigned long ISIF_CONTROLLER;
+} ISIF_CONTROLLER;
 
 
 // RESIZER registers
@@ -185,10 +185,10 @@ typedef volatile struct
     unsigned long RZB_SDR_C_OFT; //16Ch RZB: SDRAM Line Offset (for 420 Chroma)
     unsigned long RZB_SDR_C_PTR_S; //170h RZB: Start Line of SDRAM Pointer (for 420 Chroma)
     unsigned long RZB_SDR_C_PTR_E; //174h RZB: End line of SDRAM Pointer (for 420 Chroma)
-} RESIZER;
+} RESIZER_CONTROLLER;
 
 
-
+// Image pipe interface IPIPEIF
 typedef struct
 {
     unsigned long ENABLE; // 0h IPIPE I/F Enable
@@ -214,9 +214,10 @@ typedef struct
     unsigned long reserved2; // 50h
     unsigned long RSZ3A; // 54h IPIPE I/F Horizontal resizing parameter for H3A
     unsigned long INIRSZ3A; // 58h IPIPE I/F Initial position of resize for H3A
-} IPIPEIF; 
+} IPIPEIF_CONTROLLER; 
 
 
+// Hardware Image Signal Processor IPIPE registers
 typedef struct
 {
     unsigned long SRC_EN; // 0h IPIPE Enable
@@ -336,9 +337,11 @@ typedef struct
     unsigned long HST_MUL_GB; // 3F8h HST: Matrix Coefficient
     unsigned long HST_MUL_B; //3FCh HST: Matrix Coefficient
 	
-} IPIPE;
+} IPIPE_CONTROLLER;
 
 
+// 3A Statistics Generation registers
+// Support control loops for auto focus, auto white balance, and auto exposure by collecting metrics about the imaging/video data
 typedef struct
 {
     unsigned long PID; // 0h Peripheral Revision and Class Information
@@ -349,10 +352,10 @@ typedef struct
     unsigned long reserved1; // 14h
     unsigned long AFBUFST; // 18h SDRAM/DDRAM Start address for AF Engine
     unsigned long reserved2; // 1ch
-    unsigned long reserved3[8]; // 20h - 3Ch
+    unsigned long reserved3[2*4]; // 20h - 3Ch
     unsigned long reserved4; // 40h
-    unsigned long reserved4; // 44h
-    unsigned long reserved4; // 48h
+    unsigned long reserved5; // 44h
+    unsigned long reserved6; // 48h
     unsigned long AEWWIN1; // 4Ch Configuration for AE/AWB Windows
     unsigned long AEWINSTART; // 50h Start position for AE/AWB Windows
     unsigned long AEWINBLK; // 54h Start position and height for black line of AE/AWB Windows
@@ -365,7 +368,7 @@ typedef struct
     unsigned long VFV_CFG3; // 70h AF Vertical Focus Configuration 3 Register
     unsigned long VFV_CFG4; // 74h AF Vertical Focus Configuration 4 Register
     unsigned long HFV_THR; // 78h Configures the Horizontal Thresholds for the AF IIR filters
-} H3A;
+} H3A_CONTROLLER;
 
 
 // Simple single screen configuration
@@ -374,7 +377,7 @@ typedef struct
 /*	unsigned short Width;
 	unsigned short Height;
 	unsigned short Stride;
-	void *Bitmap;*/
+	void *Bitmap; */
 } VPFE_SIMPLE_SPEC;
 
 void vpfe_initialize_simple(VPFE_SIMPLE_SPEC *spec);

@@ -1,56 +1,20 @@
-// Video Processing Back End (VPBE) for TMS320DM36x
-// by anonymous
+// Video Processing Front End (VPFE) for TMS320DM36x
 
 #include <assert.h>
 #include <kernel/thread.h>
 
-#include "vpbe.h"
+#include "vpfe.h"
 #include "vpss.h"
 #include "system.h"
 
-static OSD_CONTROLLER *_osd = (OSD_CONTROLLER *)0x01C71C00;
-static VENC_CONTROLLER *_venc = (VENC_CONTROLLER *)0x01C71E00;
+static ISIF_CONTROLLER *_isif = (ISIF_CONTROLLER *)0x0;
+static IPIPE_CONTROLLER *_ipie = (IPIPE_CONTROLLER *)0x0;
+static IPIPEIF_CONTROLLER *_ipieif = (IPIPEIF_CONTROLLER *)0x0;
+static RESIZER_CONTROLLER *_resizer = (RESIZER_CONTROLLER *)0x0;
+static H3A_CONTROLLER *_h3a = (H3A_CONTROLLER *)0x0;
 
-#define SDTV_NTSC  0
-#define SDTV_PAL   1
 
-#define HDTV_525P  0
-#define HDTV_625P  1
-#define HDTV_1080I 2
-#define HDTV_720P  3
-
-#define DIGITAL_OUT_YCC16   0
-#define DIGITAL_OUT_YCC8    1
-#define DIGITAL_OUT_PAR_RGB 2
-#define DIGITAL_OUT_SER_RGB 3
-
-#define CHROMA_OUT_ORDER_16_BR    0  // CbCr
-#define CHROMA_OUT_ORDER_16_RB    1  // CrCb
-#define CHROMA_OUT_ORDER_8_BYRY   0  // Cb-Y-Cr-Y
-#define CHROMA_OUT_ORDER_8_YRYB   1  // Y-Cr-Y-Cb 
-#define CHROMA_OUT_ORDER_8_RYBY   2  // Cr-Y-Cb-Y 
-#define CHROMA_OUT_ORDER_8_YBYR   3  // Y-Cb-Y-Cr
-
-#define RGB_OUT_ORDER_RGB    0
-#define RGB_OUT_ORDER_RBG    1
-#define RGB_OUT_ORDER_GRB    2
-#define RGB_OUT_ORDER_GBR    3
-#define RGB_OUT_ORDER_BRG    4
-#define RGB_OUT_ORDER_BGR    5
-
-#define DAC_SELECT_CVBS    0
-#define DAC_SELECT_SVID_Y  1
-#define DAC_SELECT_SVID_C  2
-#define DAC_SELECT_YG      3
-#define DAC_SELECT_PbB     4
-#define DAC_SELECT_PrR     5
-
-typedef unsigned short OSD_PIXEL;
-
-static inline void _reg_mod(volatile unsigned long *reg, unsigned long val, unsigned long mask)
-{
-	*reg = (*reg & (~mask)) | (val & mask);
-}
+#if 0
 
 static void _vpbe_config_osd()
 {
@@ -67,6 +31,15 @@ static void _vpbe_config_osd()
 
 	_osd->VIDWINMD = 0;
 
+//    _osd->VIDWIN0OFST = ((_width * sizeof(OSD_PIXEL)) >> 5) |	// No. of 32 byte burst spans
+//						((brg.ptrbits >> 28) << 9); // Addr. 4 msb
+//    // High address is non-zero 
+//    _osd->VIDWINADH = (video_buffer >> 16) & (0x7F); // 0x0000
+//    // Added 16 bit address
+//    _osd->VIDWIN0ADL = video_buffer & 0xFFFF; // Lower 16 bits
+//
+//    _osd->VIDWINADH  = 0x0000;
+//    _osd->OSDWIN0ADL = 0x0000; /* Lower 16 bits */
 	_osd->BASEPX     = 132;
 	_osd->BASEPY     = 22;
 //    _osd->VIDWIN0XP  = 0;
@@ -259,10 +232,12 @@ void vpbe_initialize_simple(VPBE_SIMPLE_SPEC *spec)
 	// VENC (video encoder digital->video signal)
     _vpbe_config_venc();
 
-	vpbe_setup_osdwin(0, spec);
+	_vbe_setup_osdwin(0, spec);
 }
 
 
 
 
 
+
+#endif
