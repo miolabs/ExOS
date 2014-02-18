@@ -83,7 +83,7 @@
   <configuration Name="Xkuty-cpu1" c_preprocessor_definitions="BOARD_XKUTYCPU1;PWM_TIMER_MODULE=1;CAP_TIMER_MODULE=0" hidden="Yes"/>
   <configuration Name="Xkuty-cpu1 Debug" inherited_configurations="Debug;Flash;THUMB;Xkuty-cpu1"/>
   <configuration Name="Xkuty-cpu1 Release" inherited_configurations="Flash;Release;THUMB;Xkuty-cpu1"/>
-  <configuration Name="Apple-Virtual" c_preprocessor_definitions="__XCPU_VIRTUAL__" hidden="Yes"/>
+  <configuration Name="Apple-Virtual" c_preprocessor_definitions="__XCPU_VIRTUAL__;DISABLE_STAND_BY" hidden="Yes"/>
   <configuration Name="Xkuty-cpu1 AV Debug" inherited_configurations="Apple-Virtual;Debug;Flash;THUMB;Xkuty-cpu1"/>
   <configuration Name="XKuty-cpu1 AV Release" inherited_configurations="Apple-Virtual;Flash;Release;THUMB;Xkuty-cpu1"/>
 </solution>

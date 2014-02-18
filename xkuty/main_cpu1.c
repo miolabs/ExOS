@@ -389,14 +389,16 @@ void main()
 					throttle = __LIMIT(((int)throttle + (int)speed_limiter), 0, 255);
 				}
 
+#ifndef DISABLE_STAND_BY
 				// Lights off when activity ceases for 30 seconds
-//				const int loop_iters = 1000 / MAIN_LOOP_TIME;
-//				int no_activity = (_lcd.buttons == 0) && (events == 0) && (sp.speed < 0.1f);
-//				if(_push_delay(no_activity, &push.auto_lights_off, loop_iters * 30))
-//				{
-//                    push.auto_lights_off = 0;
-//					_control_state = CONTROL_LIGHTS_OFF_STAND_BY;
-//				}
+				const int loop_iters = 1000 / MAIN_LOOP_TIME;
+				int no_activity = (_lcd.buttons == 0) && (events == 0) && (sp.speed < 0.1f);
+				if(_push_delay(no_activity, &push.auto_lights_off, loop_iters * 30))
+				{
+                    push.auto_lights_off = 0;
+					_control_state = CONTROL_LIGHTS_OFF_STAND_BY;
+				}
+#endif
 
 				if (_lcd.brake_rear > BRAKE_THRESHOLD || _lcd.brake_front > BRAKE_THRESHOLD)
 				{
