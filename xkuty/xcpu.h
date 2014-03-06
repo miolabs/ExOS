@@ -32,6 +32,13 @@ typedef struct
 	unsigned char  reserved1,reserved2,reserved3;
 } XCPU_MASTER_OUT2;
 
+// Generic sequential data transfer system (for large messages)
+typedef struct
+{
+	unsigned char idx;
+	unsigned char data[7];
+} XCPU_MASTER_OUT3;
+
 typedef struct __attribute__((__packed__))
 {
 	unsigned char Cmd;	// XCPU_COMMANDS
@@ -79,7 +86,9 @@ typedef enum
 	XCPU_EVENT_CONFIGURING = (1<<6),
 	XCPU_EVENT_ENTER_BOOTLOADER = (1<<7),
     XCPU_EVENT_ADJUST_MAX_SPEED_DOWN = (1<<8), 
-    XCPU_EVENT_ADJUST_MAX_SPEED_UP = (1<<9)
+    XCPU_EVENT_ADJUST_MAX_SPEED_UP = (1<<9),
+    XCPU_EVENT_NEXT_PHONE = (1<<10),
+	XCPU_EVENT_CHOOSE_PHONE = (1<<11)
 } XCPU_EVENTS;
 
 typedef enum

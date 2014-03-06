@@ -130,17 +130,52 @@ static int _batt_level ()
 	return batt;
 }
 
+static unsigned char _large_message_buffer[128];
+static short _large_message_len = 0;
+static short _large_message_cnt = 0;
+
 static void _send_can_messages(unsigned int speed, unsigned int distance, 
 								unsigned int throttle)
 {
 	int i;
 	CAN_BUFFER buf;
 
+/*static int kk = 0;
+if (kk == 0)
+{
+for(int i=0; i<100; i++)
+	_large_message_buffer[i] = 'a' + (i & 0x1f);
+kk = 1;
+_large_message_len = 100;
+}*/
+
+	// Large message system
+	if (_large_message_len > 0)
+	{
+		int seg = _large_message_cnt >> 2;	// Repeat each part 4 times
+		int seg0 = seg * 2;
+		int seg1 = seg * 2 + 1;
+		buf.u8[0] = seg0 | ((_large_message_len <= 7) ? 0x80 : 0); // Mark end of message
+		for(int i=0; i<7; i++) buf.u8[1+i] = _large_message_buffer[seg0 * 7 + i];
+		int done = hal_can_send((CAN_EP) { .Id = 0x304 }, &buf, 8, CANF_NONE);
+		if (!done) 
+			hal_can_cancel_tx();
+		buf.u8[0] = seg1 | ((_large_message_len <= 14) ? 0x80 : 0); // Mark end of message
+		for(int i=0; i<7; i++) buf.u8[1+i] = _large_message_buffer[seg1 * 7 + 7 + i];
+		done = hal_can_send((CAN_EP) { .Id = 0x303 }, &buf, 8, CANF_NONE);
+		if (!done) 
+			hal_can_cancel_tx();
+
+		if((_large_message_cnt & 0x3) == 3)	// Discount on each 4th repeated sending
+			_large_message_len -= 14;
+		_large_message_cnt++;
+     }
+
 	for(i = 0; i< 7; i++)
 		buf.u8[i] = _storage.CustomCurve[i];
-
 	int done = hal_can_send((CAN_EP) { .Id = 0x302 }, &buf, 8, CANF_NONE);
-	if (!done) hal_can_cancel_tx();
+	if (!done) 
+		hal_can_cancel_tx();
 
 	buf.u32[0] = buf.u32[1] = 0;
 	buf.u8[0] = _storage.ThrottleAdjMin;
@@ -149,7 +184,8 @@ static void _send_can_messages(unsigned int speed, unsigned int distance,
 	buf.u8[3] = throttle;
 	buf.u8[4] = _storage.MaxSpeed;
 	done = hal_can_send((CAN_EP) { .Id = 0x301 }, &buf, 8, CANF_NONE);
-	if (!done) hal_can_cancel_tx();
+	if (!done) 
+		hal_can_cancel_tx();
 
 	buf.u8[0] = speed;
 	buf.u8[1] = _batt_level();
@@ -157,7 +193,8 @@ static void _send_can_messages(unsigned int speed, unsigned int distance,
 	buf.u8[3] = _storage.WheelRatioAdj;
 	buf.u32[1] = distance;
 	done = hal_can_send((CAN_EP) { .Id = 0x300 }, &buf, 8, CANF_NONE);
-	if (!done) hal_can_cancel_tx();
+	if (!done) 
+		hal_can_cancel_tx();
 }
 
 
@@ -311,11 +348,11 @@ void main()
 		events |= _lcd.events;
 
 		// CAN communication breakdown, safe measures (throttle to 0)
-		throttle_timeout--;
+		/*throttle_timeout--;
 		if (got_lcd_input)
 			throttle_timeout = LCD_INPUT_TIMEOUT / MAIN_LOOP_TIME;
 		if (throttle_timeout <= 0)
-			_lcd.throttle_raw = 0, throttle_timeout = 0;
+			_lcd.throttle_raw = 0, throttle_timeout = 0;*/
 
 #ifndef NO_BLUETOOTH
 		unsigned char bt_value;

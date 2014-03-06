@@ -16,13 +16,21 @@ typedef enum
 	//
     ST_DASH,
 	ST_DEBUG_INPUT,
-	ST_FACTORY_MENU,
+	ST_FACTORY_MENU,	// Disabled
     ST_ADJUST_WHEEL_DIA,
 	ST_ADJUST_THROTTLE_MAX,
 	ST_ADJUST_THROTTLE_MIN,
 	ST_ADJUST_DRIVE_MODE,
-	ST_ADJUST_MAX_SPEED
+	ST_ADJUST_MAX_SPEED,
+	ST_SHOW_PHONES,
+	ST_ADD_PHONE,
 } DISPLAY_STATE;
+
+typedef struct
+{
+	char active;
+	char name[17];
+} PHONE_REG;
 
 typedef struct {
 	int SpeedAdjust;
@@ -30,6 +38,7 @@ typedef struct {
 	unsigned char ThrottleMin;
 	unsigned char ThrottleMax;
 	unsigned char CustomCurve[7];
+	PHONE_REG PhoneList[6]; // Max 5 phones. The 6 th one is the new candidate
 } DASH_CONFIG;
 
 typedef struct {

@@ -232,6 +232,7 @@ static void _adjust_screen(DISPLAY_STATE state, char *str, unsigned char actual)
 
 extern char _adj_drive_mode;
 extern unsigned short _adj_throttle_min, _adj_throttle_max;
+extern char _phone_add_or_del, _phone_line;
 
 void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 {
@@ -360,8 +361,33 @@ void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 					_print_small(">>", 24, _hei[dash->CurrentConfig.DriveMode]);
 			}
 			break;
+		case ST_SHOW_PHONES:
+			{
+				_print_small("KNOWN PHONES",-1,8);
+				for(int i=0; i<5; i++)
+				{
+					if (dash->ActiveConfig.PhoneList[i].active)
+						_print_small(dash->ActiveConfig.PhoneList[i].name, -1, 17 + 9 * i);
+				}
+				if (_phone_add_or_del)
+					_print_small("Add new phone", -1, 63);
+				else
+					_print_small("Delete phone?", -1, 63);
+				_print_small(">>", -1, 17 + 9 * _phone_line);
+			}
+			break;
+
+		case ST_ADD_PHONE:
+			_print_small("CONFIRM THIS PHONE", -1, 12);
+
+			if (dash->ActiveConfig.PhoneList[5].active)
+				_print_small(dash->ActiveConfig.PhoneList[5].name,-1,32);
+			else
+				_print_small("..waiting for a phone",-1,32);
+			break;
 	}
 }
+
 
 
 
