@@ -93,10 +93,11 @@ static XCPU_EVENTS _do_lcd_command(XCPU_MASTER_INPUT2 *input)
 	return 0;
 }
 
-static XCPU_EVENTS _read_can_messages()
+static XCPU_EVENTS _read_can_messages( char* got_lcd_input)
 {
 	XCPU_EVENTS cmd_events = 0;
 	XCPU_MSG *xmsg;
+    *got_lcd_input = 0;
 	while(xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0), xmsg != NULL)
 	{
 		CAN_BUFFER *data = &xmsg->CanMsg.Data;
@@ -108,6 +109,7 @@ static XCPU_EVENTS _read_can_messages()
 				_lcd.brake_rear = data->u8[3];
 				_lcd.brake_front = data->u8[4];
 				_lcd.events = data->u8[5] | (data->u8[6] << 8);
+                *got_lcd_input = 1;
 				break;
 
 			case 0x201:
@@ -229,6 +231,9 @@ typedef struct
 static char _input_buffer[UART_BUFFER_SIZE];
 static char _output_buffer[UART_BUFFER_SIZE];
 
+#define LCD_INPUT_TIMEOUT  (200)
+static char throttle_timeout = LCD_INPUT_TIMEOUT / MAIN_LOOP_TIME;
+
 void main()
 {
 	int result;
@@ -300,8 +305,16 @@ void main()
 	{
 		exos_timer_wait(&_timer);
 
-		XCPU_EVENTS events = _read_can_messages();
+		char got_lcd_input;
+		XCPU_EVENTS events = _read_can_messages(&got_lcd_input);
 		events |= _lcd.events;
+
+		// CAN communication breakdown, safe measures (throttle to 0)
+		throttle_timeout--;
+		if (got_lcd_input)
+			throttle_timeout = LCD_INPUT_TIMEOUT / MAIN_LOOP_TIME;
+		if (throttle_timeout <= 0)
+			_lcd.throttle_raw = 0, throttle_timeout = 0;
 
 #ifndef NO_BLUETOOTH
 		unsigned char bt_value;
