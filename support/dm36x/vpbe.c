@@ -67,15 +67,6 @@ static void _vpbe_config_osd()
 
 	_osd->VIDWINMD = 0;
 
-//    _osd->VIDWIN0OFST = ((_width * sizeof(OSD_PIXEL)) >> 5) |	// No. of 32 byte burst spans
-//						((brg.ptrbits >> 28) << 9); // Addr. 4 msb
-//    // High address is non-zero 
-//    _osd->VIDWINADH = (video_buffer >> 16) & (0x7F); // 0x0000
-//    // Added 16 bit address
-//    _osd->VIDWIN0ADL = video_buffer & 0xFFFF; // Lower 16 bits
-//
-//    _osd->VIDWINADH  = 0x0000;
-//    _osd->OSDWIN0ADL = 0x0000; /* Lower 16 bits */
 	_osd->BASEPX     = 132;
 	_osd->BASEPY     = 22;
 //    _osd->VIDWIN0XP  = 0;
@@ -268,106 +259,10 @@ void vpbe_initialize_simple(VPBE_SIMPLE_SPEC *spec)
 	// VENC (video encoder digital->video signal)
     _vpbe_config_venc();
 
-	_vbe_setup_osdwin(0, spec);
+	vpbe_setup_osdwin(0, spec);
 }
 
 
-/*
-void vpbe_initialize_simple  (VPBE_SIMPLE_SPEC *spec)
-{
-#define VENC_VMOD_VENC				(1 << 0)
 
-#define VENC_VMOD_VMD_SHIFT			4
-#define VENC_VMOD_VMD				(1 << 4)
-
-#define VENC_VMOD_TVTYP_SHIFT			6
-#define VENC_VMOD_TVTYP				(3 << 6)
-
-#define VENC_VMOD_VIE				(1 << 1)
-#define VENC_VMOD_VIE_SHIFT			1
-
-#define VENC_SYNCCTL_OVD_SHIFT			14
-#define VENC_SYNCCTL_OVD			(1 << 14)
-
-	// Linux venc setup
-
-	// Reset video encoder module 
-	_venc->VMOD = 0;
-	// Enable Composite output and start video encoder 
-	_venc->VMOD = (1 << 0) |  // VENC enable
-	              (1 << 1);   // Composite enable;
-	// Set REC656 Mode 
-	_venc->YCCCTL = 0x1;
-	// Enable output mode and PAL 
-	_venc->VMOD = 0x1043;
-
-	// Setup clock at VPSS & VENC for SD 
-	vpss_enable_clock(4);
-
-	vpss_enable_clock ( VPSS_VENCCLKEN_ENABLE);
-	vpss_enable_clock ( VPSS_DACCLKEN_ENABLE);
-
-	// if (venc_type == VPBE_VERSION_2 && (type == VPBE_ENC_STD || (type == VPBE_ENC_DV_TIMINGS && pclock <= 27000000)))
-	vpss_enable_clock(4);
-	vpss_enable_clock(1);
-
-	_venc->VMOD = 0;
-	// disable VCLK output pin enable 
-	_venc->VIOCTL = 0x141; // 0x2000 ??
-//                  0001 0100 0001
-//	_venc->VIOCTL = (1<<0) |  // YOUT/COUT I/O; output or input
-//					(0<<2) |  // YOUT/COUT pin DC output mode; normal or DC level
-//					(0<<3) |  // Swaps YOUT/COUT; normal or interchaqnge
-//					(0<<4) |  // Digital data output mode: normal, inverse, L or H
-//					(1<<8) |  // HSYNC/VSYNC pin I/O control: output or input
-//					(0<<12) | // VCLK pin output enable: output or high impedance
-//					(0<<13) | // VCLK output enable: ? or DCLK
-//					(0<<14);	 // VCLK output polarity: normal or inverse
-
-	// Disable output sync pins 
-	_venc->SYNCCTL = 0;
-
-	// Disable DCLOCK 
-	_venc->DCLKCTL = 0;
-	_venc->DRGBX1 = 0x0000057C;
-
-	// Disable LCD output control (accepting default polarity) 
-	_venc->LCDOUT = 0;
-	// _venc->CMPNT = 0x100; // VPBE_VERSION_3
-	_venc->HSPLS = 0;
-	_venc->HINTVL = 0;
-	_venc->HSTART = 0;
-	_venc->HVALID = 0;
-
-	_venc->VSPLS = 0;
-	_venc->VINTVL = 0;
-	_venc->VSTART = 0;
-	_venc->VVALID = 0;
-
-	_venc->HSDLY = 0;
-	_venc->VSDLY = 0;
-
-	_venc->YCCCTL = 0;
-	_venc->VSTARTA = 0;
-
-	// Set OSD clock and OSD Sync Adavance registers 
-	_venc->OSDCLK0 = 1;
-	_venc->OSDCLK1 = 2;
-
-	// VPBE_VERSION_2
-	_venc->CLKCTL = 0x1;
-	_venc->VIOCTL = 0;
-
-	_reg_mod(&_venc->SYNCCTL, 1 << VENC_SYNCCTL_OVD_SHIFT,VENC_SYNCCTL_OVD);
-	_venc->VMOD = 0;
-	_reg_mod(&_venc->VMOD,(1 << VENC_VMOD_VIE_SHIFT),VENC_VMOD_VIE);
-	_reg_mod(&_venc->VMOD,(0 << VENC_VMOD_VMD_SHIFT), VENC_VMOD_VMD);
-	_reg_mod(&_venc->VMOD,(1 << VENC_VMOD_TVTYP_SHIFT),VENC_VMOD_TVTYP);
-	_venc->DACTST = 0x0;
-	_reg_mod(&_venc->VMOD, VENC_VMOD_VENC, VENC_VMOD_VENC);
-
-}
-
-*/
 
 
