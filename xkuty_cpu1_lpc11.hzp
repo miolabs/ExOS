@@ -80,10 +80,13 @@
   <configuration Name="Debug" build_debug_information="Yes" c_preprocessor_definitions="DEBUG" gcc_optimization_level="None" hidden="Yes" link_include_startup_code="No"/>
   <configuration Name="Release" build_debug_information="No" c_additional_options="-g1" c_preprocessor_definitions="NDEBUG" gcc_optimization_level="Level 1" hidden="Yes" link_include_startup_code="No"/>
   <configuration Name="Common" c_preprocessor_definitions="__EXOS__;EXOS_NO_NET;MAIN_THREAD_STACK=512;MAIN_THREAD_PRI=0;ADC_BURST_MODE"/>
-  <configuration Name="Xkuty-cpu1" c_preprocessor_definitions="BOARD_XKUTYCPU1;PWM_TIMER_MODULE=1;CAP_TIMER_MODULE=0" hidden="Yes"/>
-  <configuration Name="Xkuty-cpu1 Debug" inherited_configurations="Debug;Flash;THUMB;Xkuty-cpu1"/>
-  <configuration Name="Xkuty-cpu1 Release" inherited_configurations="Flash;Release;THUMB;Xkuty-cpu1"/>
   <configuration Name="Apple-Virtual" c_preprocessor_definitions="__XCPU_VIRTUAL__;DISABLE_STAND_BY" hidden="Yes"/>
-  <configuration Name="Xkuty-cpu1 AV Debug" inherited_configurations="Apple-Virtual;Debug;Flash;THUMB;Xkuty-cpu1"/>
-  <configuration Name="XKuty-cpu1 AV Release" inherited_configurations="Apple-Virtual;Flash;Release;THUMB;Xkuty-cpu1"/>
+  <configuration Name="Proto" c_preprocessor_definitions="BOARD_XKUTYCPU1_PROTO;PWM_TIMER_MODULE=1;CAP_TIMER_MODULE=0" hidden="Yes"/>
+  <configuration Name="Extended" c_preprocessor_definitions="BOARD_XKUTYCPU1_EXTENDED;PWM_TIMER_MODULE=1;CAP_TIMER_MODULE=0" hidden="Yes"/>
+  <configuration Name="CPU1 Proto AV Debug" inherited_configurations="Apple-Virtual;Debug;Flash;Proto;THUMB"/>
+  <configuration Name="CPU1 Proto AV Release" inherited_configurations="Apple-Virtual;Flash;Proto;Release;THUMB"/>
+  <configuration Name="CPU1 Proto Debug" inherited_configurations="Debug;Flash;Proto;THUMB"/>
+  <configuration Name="CPU1 Proto Release" inherited_configurations="Flash;Proto;Release;THUMB"/>
+  <configuration Name="CPU1 Extended Debug" inherited_configurations="Debug;Extended;Flash;THUMB"/>
+  <configuration Name="CPU1 Extended Release" inherited_configurations="Extended;Flash;Release;THUMB"/>
 </solution>

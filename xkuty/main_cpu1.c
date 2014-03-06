@@ -17,12 +17,12 @@
 #define PWM_RANGE 100
 #define MOTOR_OFFSET 50
 #define MOTOR_RANGE (170 - MOTOR_OFFSET)
-//#define MOTOR_RANGE (160 - MOTOR_OFFSET)
 #define WHEEL_RATIO_KMH (12.9 / 47)
 #define WHEEL_RATIO_MPH (WHEEL_RATIO_KMH / 1.60934)
 #define BATT_VOLTAGE_RATIO  16.9f
 
-#define MAIN_LOOP_TIME  50		// Ms
+#define MAIN_LOOP_TIME 50		// Ms
+#define MAIN_LOOP_FREQ (1000 / MAIN_LOOP_TIME)
 
 static const CAN_EP _eps[] = { {0x200, 0}, {0x201, 0} };
 static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
@@ -34,8 +34,7 @@ static XCPU_MSG _can_msg[CAN_MSG_QUEUE];
 static int _lost_msgs = 0;
 #endif
 
-static XCPU_OUTPUT_MASK _output_state = OUTPUT_NONE;
-static XCPU_OUTPUT_MASK _default_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
+static const XCPU_OUTPUT_MASK _default_output_state = OUTPUT_HEADL | OUTPUT_TAILL | OUTPUT_MOTOREN | OUTPUT_POWEREN;
 
 static PID_K _pid_k; 
 static PID_STATE _pid;
@@ -64,7 +63,6 @@ typedef struct
 	unsigned char  brake_rear, brake_front;
 	unsigned short  events;
 	unsigned short  throttle_raw;
-
 } XLCD_INPUT;
 
 static XLCD_INPUT _lcd = { };
@@ -206,7 +204,7 @@ static void _shutdown (SPEED_DATA *sp)
 
 	persist_save(&_storage);
 
-	_output_state = OUTPUT_NONE;
+//	_output_state = OUTPUT_NONE;
 	_control_state = CONTROL_OFF;
 	_state = XCPU_STATE_OFF;
 }
@@ -262,7 +260,7 @@ void main()
 	hal_can_initialize(0, 250000, CAN_INITF_DISABLE_RETRANSMISSION);
 	hal_fullcan_setup(_can_setup, NULL);
 
-	xcpu_board_output(_output_state);
+	xcpu_board_output(OUTPUT_NONE);
 
 // FIXME: re-enable debug behavior when releases are in RELEASE configuration 
 #if 0 //def DEBUG Disabled by Emilio's request! 
@@ -276,8 +274,6 @@ void main()
 	xcpu_board_output(_output_state);
 #endif
 
-	unsigned char led = 0;
-        
 	if (!persist_load(&_storage))
 	{
 		_storage = (XCPU_PERSIST_DATA) { .Magic = XCPU_PERSIST_MAGIC,
@@ -297,13 +293,18 @@ void main()
 	_speed_limit_pid.Integral = 0.0f; //throttle / _pid_k.I;
 
 	_control_state = CONTROL_OFF;
-	_output_state = OUTPUT_NONE;
+	XCPU_OUTPUT_MASK output_state = OUTPUT_NONE;
+	XCPU_OUTPUT_MASK output_state_on = _default_output_state;
+
 	_state = XCPU_STATE_OFF;
+	unsigned char led = 0, led_duty;
 
 	int throttle_target = 0;
 	while(1)
 	{
 		exos_timer_wait(&_timer);
+		led_duty = 1;
+		int no_activity;
 
 		char got_lcd_input;
 		XCPU_EVENTS events = _read_can_messages(&got_lcd_input);
@@ -341,35 +342,34 @@ void main()
 		switch(_control_state)
 		{
 			case CONTROL_OFF:
-				_output_state = OUTPUT_NONE;
+				output_state = OUTPUT_NONE;
 				if ((events & XCPU_EVENT_TURN_ON) ||
-					_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push.start, 10))
+					_push_delay(xcpu_board_input(INPUT_STOP_BUT), &push.start, 10))
 				{
 					_control_state = CONTROL_ON;
 					_state = (_storage.ConfigBits & XCPU_CONFIGF_MILES) ? XCPU_STATE_ON | XCPU_STATE_MILES : XCPU_STATE_ON;
 					_state |= XCPU_STATE_NEUTRAL;
 					_drive_mode = _storage.DriveMode;
-                    _default_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
+                    output_state = output_state_on;
 					_run_diag();
 				}
 				break;
 			case CONTROL_LIGHTS_OFF_STAND_BY:
+				output_state = OUTPUT_NONE;
+				led_duty = 3;
+				_state |= XCPU_STATE_NEUTRAL;
+
+				// Shut down when activity ceases for 60 seconds 
+				no_activity = (_lcd.buttons == 0) && (events == 0) && (sp.speed < 0.1f);
+				if(_push_delay(no_activity, &push.auto_shutdow, MAIN_LOOP_FREQ * 30))
 				{
-					_output_state = OUTPUT_NONE;
-					_state |= XCPU_STATE_NEUTRAL;
-					// Shut down when activity ceases for 60 seconds 
-					const int loop_iters = 1000 / MAIN_LOOP_TIME;
-					int no_activity = (_lcd.buttons == 0) && (events == 0) && (sp.speed < 0.1f);
-					if(_push_delay(no_activity, &push.auto_shutdow, loop_iters * 30))
-					{
-						push.auto_shutdow = 0;
-						_shutdown(&sp);
-					}
-					else if (!no_activity)	// Disable pre-sleep, lights on
-					{
-						_control_state = CONTROL_ON;
-                        _default_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
-					}
+					push.auto_shutdow = 0;
+					_shutdown(&sp);
+				}
+				else if (!no_activity)	// Disable pre-sleep, lights on
+				{
+					_control_state = CONTROL_ON;
+					output_state = output_state_on;
 				}
 				break;
 			case CONTROL_CRUISE:
@@ -384,7 +384,7 @@ void main()
 					if (input_throttle > (throttle + 10))
 						throttle = input_throttle;
 
-					if (_output_state & OUTPUT_BRAKEL)
+					if (output_state & OUTPUT_BRAKEL)
 					{
 						_control_state = CONTROL_ON;
 						_state &= ~XCPU_STATE_CRUISE_ON;
@@ -392,7 +392,9 @@ void main()
 				}
 				// NOTE: case fall down
 			case CONTROL_ON:
-				_output_state = _default_output_state;
+				output_state = output_state_on;
+                led_duty = 6;
+
 				// Speed limit brake
 				float speed_excess = sp.speed - _storage.MaxSpeed;
 				if (speed_excess > 0.0f)
@@ -404,9 +406,8 @@ void main()
 
 #ifndef DISABLE_STAND_BY
 				// Lights off when activity ceases for 30 seconds
-				const int loop_iters = 1000 / MAIN_LOOP_TIME;
-				int no_activity = (_lcd.buttons == 0) && (events == 0) && (sp.speed < 0.1f);
-				if(_push_delay(no_activity, &push.auto_lights_off, loop_iters * 30))
+				no_activity = (_lcd.buttons == 0) && (events == 0) && (sp.speed < 0.1f);
+				if(_push_delay(no_activity, &push.auto_lights_off, MAIN_LOOP_FREQ * 300))
 				{
                     push.auto_lights_off = 0;
 					_control_state = CONTROL_LIGHTS_OFF_STAND_BY;
@@ -415,7 +416,7 @@ void main()
 
 				if (_lcd.brake_rear > BRAKE_THRESHOLD || _lcd.brake_front > BRAKE_THRESHOLD)
 				{
-					_output_state |= OUTPUT_BRAKEL;
+					output_state |= OUTPUT_BRAKEL;
                     //  Rear brake disables throttling
 					int dis_throttle = _lcd.brake_front > BRAKE_THRESHOLD;
 					if (_drive_mode != XCPU_DRIVE_MODE_RACING)
@@ -423,18 +424,18 @@ void main()
 					if (dis_throttle)
 					{
 						throttle = 0;
-						_output_state |= OUTPUT_EBRAKE;
+						output_state |= OUTPUT_EBRAKE;
 					}
 				}
 
 				if (_push_delay(_lcd.events & XCPU_EVENT_SWITCH_LIGHTS, &push.lights, 5))
 					if ( _default_output_state == OUTPUT_NONE)
-						_default_output_state = OUTPUT_HEADL | OUTPUT_TAILL;
+						output_state_on = _default_output_state;
 					else
-						_default_output_state = OUTPUT_NONE;
+						output_state_on = _default_output_state & ~(OUTPUT_HEADL | OUTPUT_HIGHBL | OUTPUT_TAILL);
 		
 				if ((_lcd.buttons & XCPU_BUTTON_HORN) && !(_lcd.events & XCPU_EVENT_CONFIGURING))
-					_output_state |= OUTPUT_HORN;
+					output_state |= OUTPUT_HORN;
 
 				if (_push_delay(_lcd.events & XCPU_EVENT_ADJUST_UP, &push.up, 5) &&
 					_storage.WheelRatioAdj < 10)
@@ -484,7 +485,7 @@ void main()
 				}
 
 				if ((events & XCPU_EVENT_TURN_OFF) ||
-					_push_delay(xcpu_board_input(INPUT_BUTTON_START), &push.start, 10) ||
+					_push_delay(xcpu_board_input(INPUT_STOP_BUT), &push.start, MAIN_LOOP_FREQ) ||
 					_push_delay(_lcd.buttons & XCPU_BUTTON_CRUISE, &push.off, 50))
 				{
 					if (sp.speed <= 0.1f)  // 0.0f value is forced
@@ -526,11 +527,13 @@ void main()
 				break;                          
 			}
 
-			xcpu_board_led(led = !led);     // toggle led
+			xcpu_board_led(led < led_duty);
+			led++; if (led >= MAIN_LOOP_FREQ) led = 0;
+
 			float dist = (((_storage.TotalSteps + sp.s_partial) * (sp.ratio / 3.6f)) / 100);
 			_send_can_messages((unsigned int)sp.speed, (unsigned long)dist, throttle);
 
-			xcpu_board_output(_output_state);
+			xcpu_board_output(output_state);
         }
 }
 
