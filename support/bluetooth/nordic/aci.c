@@ -10,21 +10,40 @@ static EXOS_THREAD _thread;
 static unsigned char _stack[THREAD_STACK] __attribute__((aligned(16)));
 static void *_service(void *arg);
 
+#define ACI_CMD_RESPONSE_TIMEOUT 500
+
 static EXOS_PORT _service_port;
 static ACI_REQUEST *_pending_request;
 static EXOS_EVENT _rdy_event;
 static EXOS_EVENT _connected_event;
+static EXOS_EVENT _advertising_event;
 static ACI_DEVICE_STATE _state;
+
+#if defined BOARD_OLIMEX_P1XXX
 
 #define ACI_GPIO_RDY_PORT 1
 #define ACI_GPIO_RDY_PIN 0
-#define ACI_GPIO_RDY_MASK (1<<ACI_GPIO_RDY_PIN)
 #define ACI_GPIO_REQ_PORT 1
-#define ACI_GPIO_REQ_MASK (1<<1)
+#define ACI_GPIO_REQ_PIN 1
 #define ACI_GPIO_RESET_PORT 2
 #define ACI_GPIO_RESET_PIN 9
-#define ACI_GPIO_RESET_MASK (1<<ACI_GPIO_RESET_PIN)
 #define ACI_SSP_MODULE 1
+
+#elif defined BOARD_XKUTY_CPU1
+
+#define ACI_GPIO_RDY_PORT 1
+#define ACI_GPIO_RDY_PIN 4
+#define ACI_GPIO_REQ_PORT 1
+#define ACI_GPIO_REQ_PIN 10
+#define ACI_GPIO_RESET_PORT 0
+#define ACI_GPIO_RESET_PIN 2
+#define ACI_SSP_MODULE 0
+
+#endif
+
+#define ACI_GPIO_RDY_MASK (1<<ACI_GPIO_RDY_PIN)
+#define ACI_GPIO_REQ_MASK (1<<ACI_GPIO_REQ_PIN)
+#define ACI_GPIO_RESET_MASK (1<<ACI_GPIO_RESET_PIN)
 
 void aci_initialize()
 {
@@ -45,9 +64,11 @@ void aci_initialize()
 
 	exos_event_create(&_rdy_event);
 	exos_event_create(&_connected_event);
+	exos_event_create(&_advertising_event);
 	exos_thread_create(&_thread, 1, _stack, THREAD_STACK, NULL, _service, NULL);
 
 	// wait for setup event / send configuration
+	exos_event_wait(&_rdy_event, 1000);
 	if (aci_support_setup())
 	{
 		_state = ACI_STATE_STANDBY;
@@ -78,6 +99,7 @@ static void _received(unsigned char *buffer, int length)
 {
 	int offset = 0;
     ACI_EVENT ev = (ACI_EVENT)buffer[offset++];
+
 	switch(ev)
 	{
 		case 0:
@@ -93,17 +115,15 @@ static void _received(unsigned char *buffer, int length)
 					(ACI_COMMAND_RESPONSE_EVENT_DATA *)&buffer[offset]);
 			break;
 		case ACI_EVENT_CONNECTED:
-			// TODO:check contents
-			_state = ACI_STATE_ACTIVE;
+			// TODO: check contents
 			exos_event_set(&_connected_event);
 			break;
 		case ACI_EVENT_DISCONNECTED:
-			// TODO:check contents
-			_state = ACI_STATE_STANDBY;
+			// TODO: check contents
 			exos_event_reset(&_connected_event);
 			break;
 		case ACI_EVENT_PIPE_STATUS:
-			// TODO
+			// TODO: find existing service/char in hal ---------------------------------
 			break;
 		default:
 			// TODO
@@ -186,16 +206,6 @@ static void *_service(void *arg)
 	}
 }
 
-static int _wait_state(ACI_DEVICE_STATE state, int timeout)
-{
-	if (_state != state)	// FIXME: retry?
-	{
-		if (-1 == exos_event_wait(&_rdy_event, timeout))
-			return 0;
-	}
-	return _state == state;
-}
-
 static int _do_request(ACI_REQUEST *req)
 {
 	req->State = ACI_REQUEST_QUEUED;
@@ -207,7 +217,7 @@ static int _do_request(ACI_REQUEST *req)
 
 int aci_send_setup(ACI_REQUEST *req, int *pcomplete)
 {
-	if (_wait_state(ACI_STATE_SETUP, 1000))
+	if (_state == ACI_STATE_SETUP)
 	{
 		if (_do_request(req))
 		{
@@ -224,29 +234,44 @@ int aci_send_setup(ACI_REQUEST *req, int *pcomplete)
 	return 0;
 }
 
-int aci_connect(unsigned short timeout, unsigned short adv_interval)
+static int _start_advertising(ACI_COMMAND cmd, unsigned short adv_interval)
 {
 	adv_interval += ((adv_interval * 6) / 10);	// ms -> 0.625 ms
 	if (adv_interval < 32) adv_interval = 32;
 
 	ACI_REQUEST req;
-	req.Command = ACI_COMMAND_CONNECT; 
+	req.Command = cmd; 
 	req.Length = sizeof(ACI_CONNECT_COMMAND_DATA);
 	*((ACI_CONNECT_COMMAND_DATA *)&req.Data) = (ACI_CONNECT_COMMAND_DATA) { 
-		.Timeout = timeout, .AdvInterval = adv_interval };
+		.Timeout = 0, .AdvInterval = adv_interval };
 
-	if (_wait_state(ACI_STATE_STANDBY, 1000))
+	if (_state == ACI_STATE_STANDBY)
 	{
 		if (_do_request(&req))
 		{
 			ACI_STATUS_CODE status = req.Status;
-			if (status == ACI_STATUS_SUCCESS)
-			{
-				unsigned long time = (timeout != 0) ? timeout * 1000 : EXOS_TIMEOUT_NEVER;
-				exos_event_wait(&_connected_event, time);
-				return _connected_event.State;
-			}
+			return (status == ACI_STATUS_SUCCESS);
 		}
+	}
+	return 0;
+}
+
+int aci_broadcast(unsigned short adv_interval)
+{
+	return _start_advertising(ACI_COMMAND_BROADCAST, adv_interval);
+}
+
+int aci_connect(unsigned short adv_interval)
+{
+	return _start_advertising(ACI_COMMAND_CONNECT, adv_interval);
+}
+
+int aci_connect_wait(unsigned short adv_interval, unsigned int timeout)
+{
+	if (aci_connect(adv_interval))
+	{
+		exos_event_wait(&_connected_event, timeout);
+		return _connected_event.State;
 	}
 	return 0;
 }

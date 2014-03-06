@@ -160,7 +160,9 @@ typedef struct
 
 void aci_initialize();
 int aci_send_setup(ACI_REQUEST *req, int *pcomplete);
-int aci_connect(unsigned short timeout, unsigned short adv_interval);
+int aci_broadcast(unsigned short adv_interval);
+int aci_connect(unsigned short adv_interval);
+int aci_connect_wait(unsigned short adv_interval, unsigned int timeout);
 
 #endif // NORDIC_ACI_H
 

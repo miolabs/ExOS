@@ -50,6 +50,10 @@
             <file file_name="support/bluetooth/nordic/aci.c"/>
             <file file_name="support/bluetooth/nordic/boards_lpc11.c"/>
             <file file_name="support/bluetooth/nordic/aci_support.c"/>
+            <file file_name="support/bluetooth/nordic/ble_hal.c"/>
+          </folder>
+          <folder Name="ble">
+            <file file_name="support/bluetooth/ble/server.c"/>
           </folder>
         </folder>
       </folder>
@@ -78,4 +82,7 @@
   <configuration Name="Olimex LPC-P1xxx" c_preprocessor_definitions="BOARD_OLIMEX_P1XXX" hidden="Yes"/>
   <configuration Name="Olimex LPC-P1xxx Debug" inherited_configurations="Debug;Flash;Olimex LPC-P1xxx;THUMB"/>
   <configuration Name="Olimex LPC-P1xxx Release" inherited_configurations="Flash;Olimex LPC-P1xxx;Release;THUMB"/>
+  <configuration Name="Xkuty-CPU1" c_preprocessor_definitions="BOARD_XKUTY_CPU1" hidden="Yes"/>
+  <configuration Name="Xkuty-CPU1 Release" inherited_configurations="Flash;Release;THUMB;Xkuty-CPU1"/>
+  <configuration Name="Xkuty-CPU1 Debug" inherited_configurations="Debug;Flash;THUMB;Xkuty-CPU1"/>
 </solution>
