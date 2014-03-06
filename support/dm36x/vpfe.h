@@ -137,50 +137,50 @@ typedef volatile struct
     unsigned long RZA_RGB_BLD; //0ACh RZA: YC422 to YC444 conversion method
     unsigned long RZA_SDR_Y_BAD_H; //0B0h RZA: SDRAM Base Address MSB
     unsigned long RZA_SDR_Y_BAD_L; // 0B4h RZA: SDRAM Base Address LSB
-    unsigned long RZA_SDR_Y_SAD_H; //￼0B8h RZA: SDRAM Start Address MSB
-    unsigned long RZA_SDR_Y_SAD_L; // 0BCh￼RZA: SDRAM Start Address LSB
-    unsigned long RZA_SDR_Y_OFT; //￼0C0h RZA: SDRAM Line Offset
-    unsigned long RZA_SDR_Y_PTR_S; //￼0C4h RZA: Start Line of SDRAM Pointer
-    unsigned long RZA_SDR_Y_PTR_E; //￼0C8h RZA: End line of SDRAM Pointer
-    unsigned long RZA_SDR_C_BAD_H; //￼0CCh RZA: SDRAM Base Address MSB (for 420 Chroma)
+    unsigned long RZA_SDR_Y_SAD_H; //0B8h RZA: SDRAM Start Address MSB
+    unsigned long RZA_SDR_Y_SAD_L; // 0BCh RZA: SDRAM Start Address LSB
+    unsigned long RZA_SDR_Y_OFT; //0C0h RZA: SDRAM Line Offset
+    unsigned long RZA_SDR_Y_PTR_S; //0C4h RZA: Start Line of SDRAM Pointer
+    unsigned long RZA_SDR_Y_PTR_E; //0C8h RZA: End line of SDRAM Pointer
+    unsigned long RZA_SDR_C_BAD_H; //0CCh RZA: SDRAM Base Address MSB (for 420 Chroma)
     unsigned long RZA_SDR_C_BAD_L; // 0D0h RZA: SDRAM Base Address LSB (for 420 Chroma)
-    unsigned long RZA_SDR_C_SAD_H; //￼0D4h RZA: SDRAM Start Address MSB (for 420 Chroma)
-    unsigned long RZA_SDR_C_SAD_L; //￼0D8h RZA: SDRAM Start Address LSB (for 420 Chroma)
+    unsigned long RZA_SDR_C_SAD_H; //0D4h RZA: SDRAM Start Address MSB (for 420 Chroma)
+    unsigned long RZA_SDR_C_SAD_L; //0D8h RZA: SDRAM Start Address LSB (for 420 Chroma)
     unsigned long RZA_SDR_C_OFT; // 0DCh RZA: SDRAM Line Offset (for 420 Chroma)
     unsigned long RZA_SDR_C_PTR_S; // 0E0h RZA: Start Line of SDRAM Pointer (for 420 Chroma)
-    unsigned long RZA_SDR_C_PTR_E; //￼0E4h RZA: End line of SDRAM Pointer (for 420 Chroma)
+    unsigned long RZA_SDR_C_PTR_E; //0E4h RZA: End line of SDRAM Pointer (for 420 Chroma)
     unsigned long RZB_EN; // 0E8h RZB (Resizer Channel B): Enable
-    unsigned long RZB_MODE; //0ECh￼RZB: One Shot Mode
-    unsigned long RZB_420; //￼0F0h RZB: Output Format
+    unsigned long RZB_MODE; //0ECh RZB: One Shot Mode
+    unsigned long RZB_420; //0F0h RZB: Output Format
     unsigned long RZB_I_VPS; // 0F4h RZB: Vertical Start Position of the Input
-    unsigned long RZB_I_HPS; //￼0F8h RZB: Horizontal Start Position of the Input
+    unsigned long RZB_I_HPS; //0F8h RZB: Horizontal Start Position of the Input
     unsigned long RZB_O_VSZ; // 0FCh RZB: Vertical Size of the Output
-    unsigned long RZB_O_HSZ; //￼100h RZB: Horizontal Size of the Output
-    unsigned long RZB_V_PHS_Y; //￼104h RZB: Initial Phase of Vertical Resizing Process for Luminance
-    unsigned long RZB_V_PHS_C; //￼108h RZB: Initial Phase of Vertical Resizing Process for Chrominance
-    unsigned long RZB_V_DIF; //￼10Ch RZB: Vertical Resize Parameter
+    unsigned long RZB_O_HSZ; //100h RZB: Horizontal Size of the Output
+    unsigned long RZB_V_PHS_Y; //104h RZB: Initial Phase of Vertical Resizing Process for Luminance
+    unsigned long RZB_V_PHS_C; //108h RZB: Initial Phase of Vertical Resizing Process for Chrominance
+    unsigned long RZB_V_DIF; //10Ch RZB: Vertical Resize Parameter
     unsigned long RZB_V_TYP; // 110h RZB: Interpolation method for Vertical Rescaling
-    unsigned long RZB_V_LPF; //￼114h￼RZB: Vertical LPF Intensity
-    unsigned long RZB_H_PHS; //￼118h RZB: Initial Phase of Horizontal Resizing Process
-    unsigned long RZB_H_PHS_ADJ; //￼11Ch RZB: Additional Initial Phase of Horizontal Resizing Process for Luminance
-    unsigned long RZB_H_DIF; //￼120h RZB: Horizontal Resize Parameter
-    unsigned long RZB_H_TYP; //￼124h RZB: Interpolation method for Horizontal Rescaling
-    unsigned long RZB_H_LPF; //￼128h￼RZB: Horizontal LPF Intensity
-    unsigned long RZB_DWN_EN; //￼12Ch RZB: Down Scale Mode Enable
-    unsigned long RZB_DWN_AV; //￼130h￼RZB: Down Scale Mode Averaging Size
-    unsigned long RZB_RGB_EN; //￼134h￼RZB: RGB Output Enable
-    unsigned long RZB_RGB_TYP; //￼138h RZB: RGB Output Bit Mode
+    unsigned long RZB_V_LPF; //114hRZB: Vertical LPF Intensity
+    unsigned long RZB_H_PHS; //118h RZB: Initial Phase of Horizontal Resizing Process
+    unsigned long RZB_H_PHS_ADJ; //11Ch RZB: Additional Initial Phase of Horizontal Resizing Process for Luminance
+    unsigned long RZB_H_DIF; //120h RZB: Horizontal Resize Parameter
+    unsigned long RZB_H_TYP; //124h RZB: Interpolation method for Horizontal Rescaling
+    unsigned long RZB_H_LPF; //128hRZB: Horizontal LPF Intensity
+    unsigned long RZB_DWN_EN; //12Ch RZB: Down Scale Mode Enable
+    unsigned long RZB_DWN_AV; //130hRZB: Down Scale Mode Averaging Size
+    unsigned long RZB_RGB_EN; //134hRZB: RGB Output Enable
+    unsigned long RZB_RGB_TYP; //138h RZB: RGB Output Bit Mode
     unsigned long RZB_RGB_BLD; // 13Ch RZB: YC422 to YC444 conversion method
-    unsigned long RZB_SDR_Y_BAD_H; //￼140h￼RZB: SDRAM Base Address MSB
-    unsigned long RZB_SDR_Y_BAD_L; //￼144h￼RZB: SDRAM Base Address LSB
-    unsigned long RZB_SDR_Y_SAD_H; //￼148h RZB: SDRAM Start Address MSB
-    unsigned long RZB_SDR_Y_SAD_L; //￼14Ch￼RZB: SDRAM Start Address LSB
-    unsigned long RZB_SDR_Y_OFT; //￼150h RZB: SDRAM Line Offset
-    unsigned long RZB_SDR_Y_PTR_S; //￼154h RZB: Start Line of SDRAM Pointer
-    unsigned long RZB_SDR_Y_PTR_E; //￼158h RZB: End line of SDRAM Pointer
-    unsigned long RZB_SDR_C_BAD_H; //￼15Ch RZB: SDRAM Base Address MSB (for 420 Chroma)
-    unsigned long RZB_SDR_C_BAD_L; //￼160h RZB: SDRAM Base Address LSB (for 420 Chroma)
-    unsigned long RZB_SDR_C_SAD_H; //￼164h RZB: SDRAM Start Address MSB (for 420 Chroma)
+    unsigned long RZB_SDR_Y_BAD_H; //140hRZB: SDRAM Base Address MSB
+    unsigned long RZB_SDR_Y_BAD_L; //144hRZB: SDRAM Base Address LSB
+    unsigned long RZB_SDR_Y_SAD_H; //148h RZB: SDRAM Start Address MSB
+    unsigned long RZB_SDR_Y_SAD_L; //14ChRZB: SDRAM Start Address LSB
+    unsigned long RZB_SDR_Y_OFT; //150h RZB: SDRAM Line Offset
+    unsigned long RZB_SDR_Y_PTR_S; //154h RZB: Start Line of SDRAM Pointer
+    unsigned long RZB_SDR_Y_PTR_E; //158h RZB: End line of SDRAM Pointer
+    unsigned long RZB_SDR_C_BAD_H; //15Ch RZB: SDRAM Base Address MSB (for 420 Chroma)
+    unsigned long RZB_SDR_C_BAD_L; //160h RZB: SDRAM Base Address LSB (for 420 Chroma)
+    unsigned long RZB_SDR_C_SAD_H; //164h RZB: SDRAM Start Address MSB (for 420 Chroma)
     unsigned long RZB_SDR_C_SAD_L; // 168h RZB: SDRAM Start Address LSB (for 420 Chroma)
     unsigned long RZB_SDR_C_OFT; //16Ch RZB: SDRAM Line Offset (for 420 Chroma)
     unsigned long RZB_SDR_C_PTR_S; //170h RZB: Start Line of SDRAM Pointer (for 420 Chroma)
