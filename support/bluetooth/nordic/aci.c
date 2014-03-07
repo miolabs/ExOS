@@ -39,6 +39,16 @@ static ACI_DEVICE_STATE _state;
 #define ACI_GPIO_RESET_PIN 2
 #define ACI_SSP_MODULE 0
 
+#elif defined BOARD_BTSMART
+
+#define ACI_GPIO_RDY_PORT 1
+#define ACI_GPIO_RDY_PIN 0
+#define ACI_GPIO_REQ_PORT 1
+#define ACI_GPIO_REQ_PIN 1
+#define ACI_GPIO_RESET_PORT 1
+#define ACI_GPIO_RESET_PIN 10
+#define ACI_SSP_MODULE 1
+
 #endif
 
 #define ACI_GPIO_RDY_MASK (1<<ACI_GPIO_RDY_PIN)

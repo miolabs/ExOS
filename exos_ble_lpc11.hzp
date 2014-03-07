@@ -1,7 +1,7 @@
 <!DOCTYPE CrossStudio_Project_File>
 <solution Name="exos_lpc11" target="8" version="2">
   <project Name="exos_ble_lpc11">
-    <configuration Name="Common" Target="LPC1114/302" arm_architecture="v6M" arm_core_type="Cortex-M0" arm_gcc_target="arm-unknown-eabi" arm_interwork="No" arm_linker_heap_size="128" arm_linker_process_stack_size="512" arm_linker_stack_size="512" arm_simulator_memory_simulation_filename="$(TargetsDir)/LPC1000/LPC1000SimulatorMemory.dll" arm_simulator_memory_simulation_parameter="LPC11;0x8000;0x2000;0x0" arm_target_debug_interface_type="ADIv5" arm_target_interface_type="SWD" arm_target_loader_parameter="12000000" build_intermediate_directory=".output/$(Configuration)" build_output_directory=".output/$(Configuration)" c_only_additional_options="-fms-extensions" c_system_include_directories="$(TargetsDir)/CMSIS_3/CMSIS/Include;$(TargetsDir)/LPC1000/include" c_user_include_directories="$(ProjectDir);$(ProjectDir)/include;$(ProjectDir)/kernel/driver" gcc_entry_point="Reset_Handler" link_include_startup_code="No" linker_additional_files="$(TargetsDir)/LPC1000/lib/liblpc1000$(LibExt)$(LIB)" linker_memory_map_file="$(TargetsDir)/LPC1000/LPC1114_302_MemoryMap.xml" oscillator_frequency="12MHz" project_directory="" project_type="Executable" property_groups_file_path="$(TargetsDir)/LPC1000/propertyGroups11xx.xml"/>
+    <configuration Name="Common" Target="LPC1114/302" arm_architecture="v6M" arm_core_type="Cortex-M0" arm_gcc_target="arm-unknown-eabi" arm_interwork="No" arm_linker_heap_size="128" arm_linker_process_stack_size="512" arm_linker_stack_size="512" arm_simulator_memory_simulation_filename="$(TargetsDir)/LPC1000/LPC1000SimulatorMemory.dll" arm_simulator_memory_simulation_parameter="LPC11;0x8000;0x2000;0x0" arm_target_debug_interface_type="ADIv5" arm_target_interface_type="SWD" arm_target_loader_parameter="12000000" build_intermediate_directory=".output/$(Configuration)" build_output_directory=".output/$(Configuration)" c_only_additional_options="-fms-extensions" c_system_include_directories="$(TargetsDir)/CMSIS_3/CMSIS/Include;$(TargetsDir)/LPC1000/include" c_user_include_directories="$(ProjectDir);$(ProjectDir)/include;$(ProjectDir)/kernel/driver" gcc_entry_point="Reset_Handler" link_include_startup_code="No" linker_additional_files="$(TargetsDir)/LPC1000/lib/liblpc1000$(LibExt)$(LIB)" linker_memory_map_file="$(TargetsDir)/LPC1000/LPC1114_302_MemoryMap.xml" linker_printf_enabled="No" oscillator_frequency="12MHz" project_directory="" project_type="Executable" property_groups_file_path="$(TargetsDir)/LPC1000/propertyGroups11xx.xml"/>
     <configuration Name="Flash" Placement="Flash" arm_target_flash_loader_file_path="$(TargetsDir)/LPC1000/Release/Loader_lpc1100.elf" arm_target_flash_loader_type="LIBMEM RPC Loader" linker_patch_build_command="&quot;$(StudioDir)/bin/crossscript&quot; &quot;load(\&quot;$(TargetsDir)/LPC1000/LPC1000_LinkPatch.js\&quot;);patch(\&quot;$(TargetPath)\&quot;);&quot;" linker_section_placement_file="$(StudioDir)/targets/Cortex_M/flash_placement.xml" target_reset_script="FLASHReset()"/>
     <folder Name="Source Files">
       <configuration Name="Common" filter="c;cpp;cxx;cc;h;s;asm;inc"/>
@@ -73,6 +73,7 @@
       <file file_name="$(TargetsDir)/LPC1000/include/CMSIS/system_LPC11xx.h"/>
       <file file_name="$(TargetsDir)/LPC1000/include/CMSIS/system_LPC11xx.c"/>
     </folder>
+    <configuration Name="MIO-BTSmart" Target="LPC11C22/301" arm_simulator_memory_simulation_parameter="LPC11;0x4000;0x2000;0x0" linker_memory_map_file="$(TargetsDir)/LPC1000/LPC11C22_MemoryMap.xml"/>
   </project>
   <configuration Name="THUMB" Platform="ARM" arm_instruction_set="THUMB" arm_library_instruction_set="THUMB" c_preprocessor_definitions="__THUMB" hidden="Yes"/>
   <configuration Name="Flash" hidden="Yes"/>
@@ -85,4 +86,7 @@
   <configuration Name="Xkuty-CPU1" c_preprocessor_definitions="BOARD_XKUTY_CPU1" hidden="Yes"/>
   <configuration Name="Xkuty-CPU1 Release" inherited_configurations="Flash;Release;THUMB;Xkuty-CPU1"/>
   <configuration Name="Xkuty-CPU1 Debug" inherited_configurations="Debug;Flash;THUMB;Xkuty-CPU1"/>
+  <configuration Name="MIO-BTSmart" c_preprocessor_definitions="BOARD_BTSMART" hidden="Yes"/>
+  <configuration Name="MIO-BTSmart Debug" inherited_configurations="Debug;Flash;MIO-BTSmart;THUMB"/>
+  <configuration Name="MIO-BTSmart Release" inherited_configurations="Flash;MIO-BTSmart;Release;THUMB"/>
 </solution>

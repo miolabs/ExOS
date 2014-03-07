@@ -4,7 +4,7 @@
 
 void hal_board_initialize()
 {
-#if defined BOARD_OLIMEX_P1XXX
+#if defined BOARD_OLIMEX_P1XXX || defined BOARD_BTSMART
 	LPC_IOCON->PIO2_1 = 2 | (0<<3);	// SCK1
 	LPC_IOCON->PIO2_2 = 2 | (2<<3);	// MISO1
 	LPC_IOCON->PIO2_3 = 2 | (0<<3);	// MOSI1
