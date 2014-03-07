@@ -39,6 +39,15 @@ typedef struct
 	unsigned char data[7];
 } XCPU_MASTER_OUT3;
 
+typedef struct
+{
+	unsigned short ThrottleRaw;
+	unsigned char BrakeRear;
+	unsigned char BrakeFront;
+	unsigned short Events;
+	unsigned short Buttons;
+} XCPU_MASTER_INPUT;
+
 typedef struct __attribute__((__packed__))
 {
 	unsigned char Cmd;	// XCPU_COMMANDS

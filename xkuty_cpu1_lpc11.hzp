@@ -47,9 +47,20 @@
           <file file_name="support/lpc11/adc.c"/>
           <file file_name="support/lpc11/cpu.c"/>
           <file file_name="support/lpc11/uart.c"/>
+          <file file_name="support/lpc11/gpio.c"/>
         </folder>
         <folder Name="misc">
           <file file_name="support/misc/flash.c"/>
+        </folder>
+        <folder Name="bluetooth">
+          <folder Name="ble">
+            <file file_name="support/bluetooth/ble/server.c"/>
+          </folder>
+          <folder Name="nordic">
+            <file file_name="support/bluetooth/nordic/aci.c"/>
+            <file file_name="support/bluetooth/nordic/aci_support.c"/>
+            <file file_name="support/bluetooth/nordic/ble_hal.c"/>
+          </folder>
         </folder>
       </folder>
       <folder Name="xkuty">
@@ -60,6 +71,8 @@
           <file file_name="xkuty/xcpu/speed.c"/>
           <file file_name="xkuty/xcpu/persist.c"/>
           <file file_name="xkuty/xcpu/throttle_curves.c"/>
+          <file file_name="xkuty/xcpu/bt.c"/>
+          <file file_name="xkuty/xcpu/can_comms.c"/>
         </folder>
         <file file_name="xkuty/pid.c"/>
       </folder>
@@ -81,8 +94,8 @@
   <configuration Name="Release" build_debug_information="No" c_additional_options="-g1" c_preprocessor_definitions="NDEBUG" gcc_optimization_level="Level 1" hidden="Yes" link_include_startup_code="No"/>
   <configuration Name="Common" c_preprocessor_definitions="__EXOS__;EXOS_NO_NET;MAIN_THREAD_STACK=512;MAIN_THREAD_PRI=0;ADC_BURST_MODE"/>
   <configuration Name="Apple-Virtual" c_preprocessor_definitions="__XCPU_VIRTUAL__;DISABLE_STAND_BY" hidden="Yes"/>
-  <configuration Name="Proto" c_preprocessor_definitions="BOARD_XKUTYCPU1_PROTO;PWM_TIMER_MODULE=1;CAP_TIMER_MODULE=0" hidden="Yes"/>
-  <configuration Name="Extended" c_preprocessor_definitions="BOARD_XKUTYCPU1_EXTENDED;PWM_TIMER_MODULE=1;CAP_TIMER_MODULE=0" hidden="Yes"/>
+  <configuration Name="Proto" c_preprocessor_definitions="BOARD_XKUTY_CPU1_PROTO;BOARD_XKUTY_CPU1;PWM_TIMER_MODULE=1;CAP_TIMER_MODULE=0" hidden="Yes"/>
+  <configuration Name="Extended" c_preprocessor_definitions="BOARD_XKUTY_CPU1_EXTENDED;BOARD_XKUTY_CPU1;PWM_TIMER_MODULE=1;CAP_TIMER_MODULE=0" hidden="Yes"/>
   <configuration Name="CPU1 Proto AV Debug" inherited_configurations="Apple-Virtual;Debug;Flash;Proto;THUMB"/>
   <configuration Name="CPU1 Proto AV Release" inherited_configurations="Apple-Virtual;Flash;Proto;Release;THUMB"/>
   <configuration Name="CPU1 Proto Debug" inherited_configurations="Debug;Flash;Proto;THUMB"/>
