@@ -137,11 +137,11 @@ void main()
 		events |= _lcd.Events;
 
 		// CAN communication breakdown, safe measures (throttle to 0)
-		/*throttle_timeout--;
+		throttle_timeout--;
 		if (got_lcd_input)
 			throttle_timeout = LCD_INPUT_TIMEOUT / MAIN_LOOP_TIME;
 		if (throttle_timeout <= 0)
-			_lcd.throttle_raw = 0, throttle_timeout = 0;*/
+			_lcd.ThrottleRaw = 0, throttle_timeout = 0;
 
 #ifdef __XCPU_BLUETOOTH_VIA_UART__
 		unsigned char bt_value;
@@ -210,7 +210,8 @@ void main()
 					if (input_throttle > (throttle + 10))
 						throttle = input_throttle;
 
-					if (output_state & OUTPUT_BRAKEL)
+					// Exit if brake pressed, or CAN comm. interrupted
+					if ((output_state & OUTPUT_BRAKEL) || (throttle_timeout == 0))
 					{
 						_control_state = CONTROL_ON;
 						_state &= ~XCPU_STATE_CRUISE_ON;

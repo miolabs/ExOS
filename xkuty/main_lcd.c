@@ -144,15 +144,16 @@ static XCPU_BUTTONS _read_send_inputs(int state)
 		buttons &= ~XCPU_BUTTON_CRUISE;
 	}
 
-	CAN_BUFFER buf = (CAN_BUFFER) { buttons & 0xff, 
-									throttle & 0xff, // Throttle low
-									throttle >> 8,	// Throttle high
-									ain_brake_rear->Scaled >> 4,
-									ain_brake_front->Scaled >> 4, 
-									events & 0xff,
-									(events >> 8) & 0xff,
-									0};
-	hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, &buf, 8, CANF_PRI_ANY);
+
+	XCPU_MASTER_INPUT buf = (XCPU_MASTER_INPUT) 
+	{
+		.ThrottleRaw = throttle,
+		.BrakeRear = ain_brake_rear->Scaled >> 4, 
+		.BrakeFront = ain_brake_front->Scaled>> 4,
+		.Events =  events,
+		.Buttons = buttons & 0xff
+	};
+	hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, (CAN_BUFFER*)&buf, 8, CANF_PRI_ANY);
 	if (_configuring)
 		_send_config_changes();
 
