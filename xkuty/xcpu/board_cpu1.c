@@ -78,6 +78,15 @@ void hal_board_initialize()
 	LPC_IOCON->R_PIO1_1 = 3 | (1<<7);	// T32B1.MAT0
 	LPC_IOCON->R_PIO1_2 = 1 | (1<<3);	// PIO1_2 
 #endif
+
+#if defined BOARD_XKUTY_CPU1_EXTENDED
+	LPC_IOCON->SCK_LOC = 2;	// SCK0 @ PIO0_6
+	LPC_IOCON->PIO0_6 = 2 | (0<<3);	// SCK0
+	LPC_IOCON->PIO0_8 = 1 | (2<<3);	// MISO0
+	LPC_IOCON->PIO0_9 = 1 | (0<<3);	// MOSI0
+	LPC_IOCON->PIO1_4 = 0 | (2<<3) | (1<<7);	// RDYN
+	LPC_IOCON->PIO1_10 = 0 | (2<<3) | (1<<7);	// REQN
+#endif
 }
 
 void xcpu_board_output(XCPU_OUTPUT_MASK mask)

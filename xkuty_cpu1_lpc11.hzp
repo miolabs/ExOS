@@ -92,7 +92,7 @@
   <configuration Name="Flash" hidden="Yes"/>
   <configuration Name="Debug" build_debug_information="Yes" c_preprocessor_definitions="DEBUG" gcc_optimization_level="None" hidden="Yes" link_include_startup_code="No"/>
   <configuration Name="Release" build_debug_information="No" c_additional_options="-g1" c_preprocessor_definitions="NDEBUG" gcc_optimization_level="Level 1" hidden="Yes" link_include_startup_code="No"/>
-  <configuration Name="Common" c_preprocessor_definitions="__EXOS__;EXOS_NO_NET;MAIN_THREAD_STACK=512;MAIN_THREAD_PRI=0;ADC_BURST_MODE"/>
+  <configuration Name="Common" c_preprocessor_definitions="__EXOS__;EXOS_NO_NET;MAIN_THREAD_STACK=1024;MAIN_THREAD_PRI=0;ADC_BURST_MODE"/>
   <configuration Name="Apple-Virtual" c_preprocessor_definitions="__XCPU_VIRTUAL__;DISABLE_STAND_BY" hidden="Yes"/>
   <configuration Name="Proto" c_preprocessor_definitions="BOARD_XKUTY_CPU1_PROTO;BOARD_XKUTY_CPU1;PWM_TIMER_MODULE=1;CAP_TIMER_MODULE=0" hidden="Yes"/>
   <configuration Name="Extended" c_preprocessor_definitions="BOARD_XKUTY_CPU1_EXTENDED;BOARD_XKUTY_CPU1;PWM_TIMER_MODULE=1;CAP_TIMER_MODULE=0" hidden="Yes"/>

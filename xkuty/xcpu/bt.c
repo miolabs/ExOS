@@ -11,6 +11,7 @@ static EXOS_BLE_ATT_ERROR _handler(EXOS_BLE_SERVICE *service, EXOS_BLE_REQUEST *
 
 int xcpu_bt_initialize()
 {
+#if defined BOARD_XKUTY_CPU1_EXTENDED
 	exos_ble_server_initialize();
 
 	exos_ble_service_create(&_service, &_service_uuid, _handler, EXOS_BLE_SERVICE_PRIMARY);
@@ -21,6 +22,7 @@ int xcpu_bt_initialize()
 
 	EXOS_BLE_SERVICE *services[] = { &_service };
 	int done = exos_ble_server_start_advertising(services, 1, 20);
+#endif
 
 	return 1;
 }
