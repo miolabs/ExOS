@@ -23,13 +23,14 @@ static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state)
 
 static const CAN_EP _eps[] = {{0x300, LCD_CAN_BUS}, {0x301, LCD_CAN_BUS}, {0x302, LCD_CAN_BUS}, {0x303, LCD_CAN_BUS}, {0x304, LCD_CAN_BUS}};
 
-static DASH_DATA _dash = { .ActiveConfig = { .DriveMode = XCPU_DRIVE_MODE_SOFT, 
-											.ThrottleMin = 0, 
-											.ThrottleMax = 0, 
-											.CustomCurve = {0,0,0,0,0,0,0},
-											{{0,""},{0,""},{0,""},{0,""},{0,""},{0,""}}
-											}
-						 };
+static DASH_DATA _dash = 
+{ 
+	.DriveMode = XCPU_DRIVE_MODE_SOFT, 
+	.ThrottleMin = 0, 
+	.ThrottleMax = 0, 
+	.CustomCurve = {0,0,0,0,0,0,0},
+	{{0,""},{0,""},{0,""},{0,""},{0,""},{0,""}}
+ };
 
 
 static unsigned long _large_message_marks = 0;
@@ -48,6 +49,14 @@ static const EVREC_CHECK _maintenance_screen_access[] =
 	{0x00000000, CHECK_END},
 };
 
+static const EVREC_CHECK _user_screen_access[] =
+{
+	{BRAKE_FRONT_MASK | CRUISE_MASK, CHECK_PRESSED},
+	{BRAKE_FRONT_MASK | CRUISE_MASK, CHECK_RELEASED},
+	{0x00000000, CHECK_END}
+};
+
+/* Old combo
 static const EVREC_CHECK _mode_screen_access[] =
 {
 	{BRAKE_REAR_MASK | BRAKE_FRONT_MASK, CHECK_RELEASED},
@@ -56,12 +65,11 @@ static const EVREC_CHECK _mode_screen_access[] =
 	{BRAKE_REAR_MASK | BRAKE_FRONT_MASK, CHECK_PRESSED},
 	{BRAKE_REAR_MASK | BRAKE_FRONT_MASK, CHECK_RELEASED},
 	{0x00000000, CHECK_END},
-};
+};*/
 
 unsigned short _adj_throttle_max=0, _adj_throttle_min=0;
 
 static char _configuring = 0;
-static char _config_resend = 0;
 
 typedef struct
 {
@@ -69,10 +77,11 @@ typedef struct
 	char switch_units;
 	char adj_up, adj_down;
 	char adj_max_speed_down, adj_max_speed_up;
-	char confirm_new_phone, next_phone, choose_phone;
+	char next_drive_mode;
+	//char confirm_new_phone, next_phone, choose_phone;
 } EVENT_TRIGGERS;
 
-static EVENT_TRIGGERS _trigs = {0,0,0,0,0,0,0};
+static EVENT_TRIGGERS _trigs = {};
 
 unsigned char _cmd_resend_cnt = 0;
 XCPU_MASTER_INPUT2 _cmd_out = { .Cmd = 0 };
@@ -84,15 +93,6 @@ static void _set_command_to_xcpu(XCPU_COMMANDS command, unsigned char* data, int
 	for(i = 0; i < args; i++)
 		_cmd_out.Data[i] = data[i];
 	_cmd_resend_cnt = RESEND_COUNTER;
-}
-
-static void _send_config_changes()
-{
-	if (_dash.CurrentConfig.DriveMode != _dash.ActiveConfig.DriveMode)
-	{
-		unsigned char arg = _dash.CurrentConfig.DriveMode;
-		_set_command_to_xcpu(XCPU_CMD_SET_DRIVE_MODE, &arg, 1);
-	}
 }
 
 static inline int _trigger_event(unsigned char* counter, int flag)
@@ -118,10 +118,10 @@ static XCPU_BUTTONS _read_send_inputs(int state)
 	events |= _trigger_event(&_trigs.adj_max_speed_down, XCPU_EVENT_ADJUST_MAX_SPEED_DOWN);
 	events |= _trigger_event(&_trigs.switch_lights, XCPU_EVENT_SWITCH_LIGHTS);
 	events |= _trigger_event(&_trigs.switch_units, XCPU_EVENT_SWITCH_UNITS);
-
-	events |= _trigger_event(&_trigs.next_phone, XCPU_EVENT_ADJUST_DOWN);
+	events |= _trigger_event(&_trigs.next_drive_mode, XCPU_EVENT_NEXT_DRIVE_MODE);
+	/*events |= _trigger_event(&_trigs.next_phone, XCPU_EVENT_ADJUST_DOWN);
 	events |= _trigger_event(&_trigs.confirm_new_phone, XCPU_EVENT_NEXT_PHONE);
-	events |= _trigger_event(&_trigs.choose_phone, XCPU_EVENT_CHOOSE_PHONE);
+	events |= _trigger_event(&_trigs.choose_phone, XCPU_EVENT_CHOOSE_PHONE);*/
 
 	// Record inputs for sequence triggering (to start debug services)
 	 int input_status = (( buttons & XCPU_BUTTON_BRAKE_REAR) ? BRAKE_REAR_MASK : 0) |
@@ -154,8 +154,6 @@ static XCPU_BUTTONS _read_send_inputs(int state)
 		.Buttons = buttons & 0xff
 	};
 	hal_can_send((CAN_EP) { .Id = 0x200, .Bus = LCD_CAN_BUS }, (CAN_BUFFER*)&buf, 8, CANF_PRI_ANY);
-	if (_configuring)
-		_send_config_changes();
 
 	return buttons;
 }
@@ -188,11 +186,11 @@ static void _get_can_messages()
 			case 0x300:
 			{
 				XCPU_MASTER_OUT1* tmsg = (XCPU_MASTER_OUT1*)&xmsg->CanMsg.Data.u8[0];
-				_dash.Speed = tmsg->speed;
-				_dash.battery_level_fx8 = tmsg->battery_level_fx8;
-				_dash.CpuStatus	= tmsg->status;
-                _dash.ActiveConfig.SpeedAdjust = tmsg->speed_adjust;
-				_dash.Distance = tmsg->distance;
+				_dash.Speed = tmsg->Speed;
+				_dash.battery_level_fx8 = tmsg->BattLevel;
+				_dash.CpuStatus	= tmsg->State;
+				_dash.Distance = tmsg->Distance;
+   				_dash.DriveMode = tmsg->DriveMode;
 			}
 			break;
 
@@ -200,18 +198,18 @@ static void _get_can_messages()
 			{
 				XCPU_MASTER_OUT2* tmsg = (XCPU_MASTER_OUT2*)&xmsg->CanMsg.Data.u8[0];
 				ANALOG_INPUT *ain_throttle = xanalog_input(THROTTLE_IDX);
-				ain_throttle->Min = tmsg->throttle_adj_min << 4;
-				ain_throttle->Max = tmsg->throttle_adj_max << 4;
-				_dash.ActiveConfig.DriveMode = tmsg->drive_mode;
-                _dash.AppliedThrottle = tmsg->applied_throttle;
-				_dash.MaxSpeed = tmsg->max_speed;
+                _dash.SpeedAdjust = tmsg->WheelRatio;
+				ain_throttle->Min = tmsg->ThrottleMin << 4;
+				ain_throttle->Max = tmsg->ThrottleMax << 4;
+				_dash.MaxSpeed = tmsg->MaxSpeed;
+                //_dash.AppliedThrottle = tmsg->applied_throttle;
 			}
 			break;
 	
 			case 0x302:
 			{
 				for(int i=0; i<7; i++)
-					_dash.ActiveConfig.CustomCurve[i] = xmsg->CanMsg.Data.u8[i];
+					_dash.CustomCurve[i] = xmsg->CanMsg.Data.u8[i];
 			}
 			break;
 
@@ -229,8 +227,8 @@ static void _get_can_messages()
 					_large_message_marks |= 1 << (tmsg->idx & 0x7f);
 				if (tmsg->idx & 0x80)	// End of large message mark
 				{
-					int msg_len = sizeof(_dash.ActiveConfig.PhoneList);
-					unsigned char* dst = (unsigned char*)&_dash.ActiveConfig.PhoneList[0]; 
+					int msg_len = sizeof(_dash.PhoneList);
+					unsigned char* dst = (unsigned char*)&_dash.PhoneList[0]; 
 					int marks_needed = _next_power_of_2(msg_len) - 1;
 					if ((marks_needed & _large_message_marks) == marks_needed)
 						__mem_copy(dst, dst + msg_len, _large_message_buffer);
@@ -281,15 +279,11 @@ static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 			_configuring = 0;
 			if ((_dash.Speed == 0) && (_dash.CpuStatus & XCPU_STATE_NEUTRAL))
 			{
-				if (event_happening(_maintenance_screen_access, 100)) // 2 second
-				{
+				/*if (event_happening(_maintenance_screen_access, 100)) // 2 second
 					*state = ST_FACTORY_MENU;
-				}
 				else if (event_happening(_mode_screen_access, 100)) // 2 second
-				{
-					_dash.CurrentConfig = _dash.ActiveConfig;
-					*state = ST_ADJUST_DRIVE_MODE;
-				}
+					*state = ST_USER_MENU; 
+				*/
 			}
 			break;
 		case ST_DEBUG_INPUT:
@@ -322,7 +316,7 @@ static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 				*state = ST_DASH;
 			}
 			break;
-
+		// Disabled menu
 		case ST_FACTORY_MENU:
 			if (event_happening(_menu_move, 1))
 				_dash.CurrentMenuOption = ++_dash.CurrentMenuOption % 6;
@@ -343,14 +337,21 @@ static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 				*state = ST_DASH;
 			break;
 
-		case ST_ADJUST_DRIVE_MODE:
-			if (event_happening(_menu_move, 1))
+		case ST_USER_MENU:
+        	if (event_happening(_menu_move, 1))
+				_dash.CurrentMenuOption = ++_dash.CurrentMenuOption % 3;
+			if (event_happening(_menu_press, 1))
 			{
-				_dash.CurrentConfig.DriveMode = (_dash.ActiveConfig.DriveMode + 1) % XCPU_DRIVE_MODE_COUNT;
-				_config_resend = 1;
+				switch(_dash.CurrentMenuOption)
+				{
+					case 0: _trigs.next_drive_mode = RESEND_COUNTER; break;
+					case 1: _trigs.switch_units = RESEND_COUNTER; break;
+					case 2: _trigs.switch_lights = RESEND_COUNTER; break;
+					//case 3: break; // Move to new phone menu
+					default: break;
+				}
 			}
-
-			if (event_happening(_menu_press, 8) || event_happening(_menu_exit, 8))
+			if (event_happening(_menu_exit, 8)) // || event_happening(_menu_press, 8) 
 				*state = ST_DASH;
 			break;
 
@@ -364,18 +365,18 @@ static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 			break;
 
 		case ST_ADD_PHONE:
-			if (event_happening(_menu_press, 1) && _dash.ActiveConfig.PhoneList[5].active)
+			/*if (event_happening(_menu_press, 1) && _dash.PhoneList[5].active)
 				_trigs.confirm_new_phone = RESEND_COUNTER,
 				*state = ST_DASH;
 			if (event_happening(_menu_exit, 1))
-				*state = ST_DASH;			
+				*state = ST_DASH;*/		
 			break;
 
 		case ST_SHOW_PHONES:
-			if (event_happening(_menu_move, 1))
+			/*if (event_happening(_menu_move, 1))
 				_trigs.next_phone = RESEND_COUNTER;
 			if (event_happening(_menu_press, 1))
-				_trigs.choose_phone = RESEND_COUNTER;
+				_trigs.choose_phone = RESEND_COUNTER;*/
 			break;
 	}
 }
@@ -398,6 +399,7 @@ void main()
 	unsigned int st_time_base = 0;
     unsigned int time_base = exos_timer_time();
 	unsigned int prev_time = 0;
+    unsigned int intro_next_state = ST_DASH;
 
 	int screen_count = 0;
 
@@ -448,10 +450,13 @@ void main()
 			if ((state > ST_INTRO_SECTION) && (state < ST_INTRO_SECTION_END))
 			{
 				frame_skips = 0;
-				xdisplay_intro(&state, &st_time_base, time);
+				if (event_happening(_user_screen_access, 50))
+					intro_next_state = ST_USER_MENU;
+				xdisplay_intro(&state, &st_time_base, time, intro_next_state);
 			}
 			else
 			{
+                intro_next_state = ST_DASH;
 				frame_skips = 4;
 				_state_machine(buttons, &state);
 				xdisplay_runtime_screens(state, &_dash);

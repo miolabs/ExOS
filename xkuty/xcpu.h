@@ -15,21 +15,20 @@ typedef enum
 
 typedef struct 
 {
-	unsigned char speed;			// kmh (or mph)
-	unsigned char battery_level_fx8; 
-	unsigned char status;			// XCPU_STATE;
-	signed char	  speed_adjust;		// -10 to +10
-	unsigned long distance;			// distance km (or miles) / 10
+	unsigned char Speed;		// kmh (or mph)
+	unsigned char BattLevel;	// fx8
+	unsigned char State;		// XCPU_STATE;
+	unsigned char DriveMode;
+	unsigned long Distance;		// distance km (or miles) / 10		
 } XCPU_MASTER_OUT1;
 
 typedef struct 
 {
-	unsigned char  throttle_adj_min;	// fx8
-	unsigned char  throttle_adj_max;	// fx8
-	unsigned char  drive_mode;			// XCPU_DRIVE_MODE
-	unsigned char  applied_throttle;	//fx8
-	unsigned char  max_speed;
-	unsigned char  reserved1,reserved2,reserved3;
+	unsigned char  ThrottleMax;	// fx8
+	unsigned char  ThrottleMin;	// fx8
+	unsigned char  WheelRatio;	// -10 to +10
+	unsigned char  MaxSpeed;
+	unsigned long  Reserved;
 } XCPU_MASTER_OUT2;
 
 // Generic sequential data transfer system (for large messages)

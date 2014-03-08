@@ -160,7 +160,7 @@ void xdisplay_dump()
 	_frame_dumps++;
 }
 
-void xdisplay_intro(DISPLAY_STATE *status, int *st_time_base, int time)
+void xdisplay_intro(DISPLAY_STATE *status, int *st_time_base, int time, int intro_next_state)
 {
 	int factor;
 	const int cx = _screen.Width >> 1, cy = _screen.Height >> 1;
@@ -199,7 +199,7 @@ void xdisplay_intro(DISPLAY_STATE *status, int *st_time_base, int time)
 			factor = 140-((time - *st_time_base)/3);
 			_xkuty_effect(_exos_bw, factor * factor, _screen.Width, _screen.Height);
 			if (factor <= 0) 
-				*status = ST_DASH;
+				*status = intro_next_state;
 			break;
 	}
 }
@@ -297,10 +297,10 @@ void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 			break;
 		case ST_ADJUST_WHEEL_DIA:
 			{
-				dash->ActiveConfig.SpeedAdjust = __LIMIT(dash->ActiveConfig.SpeedAdjust, -10, 10);
-				int bar = 0x80 + (dash->ActiveConfig.SpeedAdjust * (0x80 / 10));
+				dash->SpeedAdjust = __LIMIT(dash->SpeedAdjust, -10, 10);
+				int bar = 0x80 + (dash->SpeedAdjust * (0x80 / 10));
 				mono_draw_sprite ( &_screen, &_speed_adjust_spr, POS_ADJUST_MSG);
-				sprintf(tmp, "%d", dash->ActiveConfig.SpeedAdjust);
+				sprintf(tmp, "%d", dash->SpeedAdjust);
 				_draw_text(tmp, &_font_spr_big, POS_ADJUST_SPEED);
 									
 				_horizontal_sprite_comb ( &_adjust_full_spr, &_adjust_empty_spr, bar, POS_ADJUST_BAR); 
@@ -313,7 +313,7 @@ void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 		case ST_ADJUST_THROTTLE_MIN:
 			_adjust_screen(state, "Release throttle", _adj_throttle_min >> 4);
 			break;
-
+		// Disabled menu (for political reasons)
 		case ST_FACTORY_MENU:
 			{
 				const char _hei [] = {20, 28, 36, 44, 52, 60};
@@ -345,20 +345,28 @@ void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 			}
 			break;
 
-		case ST_ADJUST_DRIVE_MODE:
+		case ST_USER_MENU:
 			{
-				const char _hei[] = { 30, 40, 50, 60 };
+				const char _hei[] = { 14, 14*2, 14*3, 14*4 };
 				const EVREC_CHECK speed_adj_exit[]= { { CRUISE_MASK, CHECK_RELEASE }, { 0x00000000, CHECK_END } };
 				const EVREC_CHECK mode_adj[]= { { BRAKE_FRONT_MASK, CHECK_RELEASE }, { 0x00000000, CHECK_END } };
 				int anm = (_frame_dumps & 0x7) >> 2;
-				_print_small("DRIVE MODES", -1, 14);
-				_print_small("Soft", -1, _hei[0]);
-				_print_small("Eco", -1, _hei[1]);
-				_print_small("Racing", -1, _hei[2]);				
-				_print_small("Custom", -1, _hei[3]);
+				switch( dash->DriveMode)
+				{
+					case 0: _print_small("Drive mode: SOFT", -1, _hei[0]); break;
+					case 1: _print_small("Drive mode: ECO", -1,_hei[0]); break;
+					case 2: _print_small("Drive mode: RACING", -1, _hei[0]); break;
+					case 3: _print_small("Drive mode: CUSTOM", -1, _hei[0]); break;
+				}
+				if (dash->CpuStatus & XCPU_STATE_MILES)
+					_print_small("Km or Mi: Miles", -1, _hei[1]);
+				else
+					_print_small("Km or Mi: Km", -1, _hei[1]);
+				_print_small("Switch lights", -1, _hei[2]);				
+				//_print_small("Synch. phone", -1, _hei[3]);
 
-                if (_frame_dumps & 0x8)
-					_print_small(">>", 24, _hei[dash->CurrentConfig.DriveMode]);
+				if (_frame_dumps & 0x8)
+					_print_small(">>", 8, _hei[dash->CurrentMenuOption] - 1);
 			}
 			break;
 		case ST_SHOW_PHONES:
@@ -366,8 +374,8 @@ void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 				_print_small("KNOWN PHONES",-1,8);
 				for(int i=0; i<5; i++)
 				{
-					if (dash->ActiveConfig.PhoneList[i].active)
-						_print_small(dash->ActiveConfig.PhoneList[i].name, -1, 17 + 9 * i);
+					if (dash->PhoneList[i].active)
+						_print_small(dash->PhoneList[i].name, -1, 17 + 9 * i);
 				}
 				if (_phone_add_or_del)
 					_print_small("Add new phone", -1, 63);
@@ -380,8 +388,8 @@ void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 		case ST_ADD_PHONE:
 			_print_small("CONFIRM THIS PHONE", -1, 12);
 
-			if (dash->ActiveConfig.PhoneList[5].active)
-				_print_small(dash->ActiveConfig.PhoneList[5].name,-1,32);
+			if (dash->PhoneList[5].active)
+				_print_small(dash->PhoneList[5].name,-1,32);
 			else
 				_print_small("..waiting for a phone",-1,32);
 			break;
