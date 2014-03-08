@@ -63,6 +63,7 @@ typedef struct
 	unsigned short lights;
     unsigned short auto_shutdow;
 	unsigned short auto_lights_off;
+    unsigned short next_drive;
 //	unsigned short ios_power_on, ios_power_off;
 //	unsigned short ios_mode;
 } PUSH_CNT;
@@ -219,7 +220,9 @@ void main()
 				}
 				// NOTE: case fall down
 			case CONTROL_ON:
-				output_state = output_state_on;
+				output_state = (_state & XCPU_STATE_LIGHT_OFF) ? 
+					output_state & ~(OUTPUT_HEADL | OUTPUT_HIGHBL | OUTPUT_TAILL) :
+					output_state_on;
                 led_duty = 6;
 
 				// Speed limit brake
@@ -256,10 +259,7 @@ void main()
 				}
 
 				if (_push_delay(_lcd.Events & XCPU_EVENT_SWITCH_LIGHTS, &push.lights, 5))
-					if ( _default_output_state == OUTPUT_NONE)
-						output_state_on = _default_output_state;
-					else
-						output_state_on = _default_output_state & ~(OUTPUT_HEADL | OUTPUT_HIGHBL | OUTPUT_TAILL);
+					_state ^= XCPU_STATE_LIGHT_OFF;
 		
 				if ((_lcd.Buttons & XCPU_BUTTON_HORN) && !(_lcd.Events & XCPU_EVENT_CONFIGURING))
 					output_state |= OUTPUT_HORN;
@@ -288,7 +288,10 @@ void main()
 				{
 					_state ^= XCPU_STATE_MILES;
 				}
-
+				if (_push_delay(_lcd.Events & XCPU_EVENT_NEXT_DRIVE_MODE, &push.next_drive, 5))
+				{
+					_drive_mode = (_drive_mode + 1) % XCPU_DRIVE_MODE_COUNT;
+				}
 				if (_push_delay(_lcd.Buttons & XCPU_BUTTON_CRUISE, &push.cruise, 5))
 				{
 					// Enable/disable NEUTRAL
