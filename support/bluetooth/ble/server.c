@@ -59,11 +59,11 @@ void exos_ble_characteristic_create(EXOS_BLE_CHAR *characteristic, const EXOS_BL
 
 EXOS_BLE_ERROR exos_ble_update_characteristic(EXOS_BLE_CHAR *characteristic, void *data)
 {
-	
+	// TODO
 }
 
 
-static void _send_request_to_all_services(EXOS_BLE_EVENT event)
+void exos_ble_send_event_to_all_services(EXOS_BLE_EVENT event)
 {
 	EXOS_BLE_REQUEST req = (EXOS_BLE_REQUEST) { .Event = event };
 	exos_mutex_lock(&_services_lock);
@@ -73,8 +73,10 @@ static void _send_request_to_all_services(EXOS_BLE_EVENT event)
 		if (service->Handler != NULL)			
 			service->Handler(service, &req);
 	}
-	exos_mutex_unlock(&_services_lock);	
+	exos_mutex_unlock(&_services_lock);
 }
+
+
 
 
 

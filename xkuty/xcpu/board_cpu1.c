@@ -138,10 +138,10 @@ static int _setup_adc(int unit)
 	//LPC_IOCON->R_PIO1_2 = adc_conf;	// AD3
 	//LPC_IOCON->SWDIO_PIO1_3 = adc_conf;	// AD4
 	//LPC_IOCON->PIO1_4 = adc_conf;	// AD5
-	LPC_IOCON->PIO1_10 = adc_conf; // AD6
-	LPC_IOCON->PIO1_11 = adc_conf; // AD7
+//	LPC_IOCON->PIO1_10 = adc_conf; // AD6
+//	LPC_IOCON->PIO1_11 = adc_conf; // AD7
 
-	return 0xc3;	// 0,1,6,7
+	return 0x03;	// 0,1,6,7
 }
 
 

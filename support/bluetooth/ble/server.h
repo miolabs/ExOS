@@ -5,6 +5,7 @@
 
 typedef char EXOS_BLE_UUID[16];
 #define BLE_SERVICE_UUID(u16) { } // TODO
+#define BLE_CHAR_UUID(u16) { } // TODO
 
 typedef struct __EXOS_BLE_SERVICE EXOS_BLE_SERVICE;
 typedef struct __EXOS_BLE_CHAR EXOS_BLE_CHAR;
@@ -93,6 +94,8 @@ EXOS_BLE_ERROR exos_ble_update_characteristic(EXOS_BLE_CHAR *characteristic, voi
 void ble_hal_initialize();
 EXOS_BLE_ERROR ble_hal_start_advertising(EXOS_BLE_SERVICE *services[], unsigned int count, unsigned int adv_interval);
 
+// hal callbacks
+void exos_ble_send_event_to_all_services(EXOS_BLE_EVENT event);
 
 #endif // EXOS_BLE_SERVER_H
 

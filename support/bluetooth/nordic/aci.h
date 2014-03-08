@@ -158,6 +158,19 @@ typedef struct
 	unsigned short AdvInterval;
 } ACI_CONNECT_COMMAND_DATA;
 
+typedef struct
+{
+	unsigned char AddressType;
+	unsigned char Address[6];
+	// TODO
+} ACI_CONNECTED_EVENT_DATA;
+
+typedef struct
+{
+	unsigned char Reason;
+	// TODO
+} ACI_DISCONNECTED_EVENT_DATA;
+
 void aci_initialize();
 int aci_send_setup(ACI_REQUEST *req, int *pcomplete);
 int aci_broadcast(unsigned short adv_interval);

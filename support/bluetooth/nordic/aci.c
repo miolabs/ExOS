@@ -1,4 +1,5 @@
 #include "aci.h"
+#include <support/bluetooth/ble/server.h>
 #include <kernel/thread.h>
 #include <kernel/port.h>
 #include <support/gpio_hal.h>
@@ -58,8 +59,8 @@ static ACI_DEVICE_STATE _state;
 void aci_initialize()
 {
 	hal_gpio_config(ACI_GPIO_RDY_PORT, ACI_GPIO_RDY_MASK, 0);
-    hal_gpio_write(ACI_GPIO_REQ_PORT, ACI_GPIO_REQ_MASK, ACI_GPIO_REQ_MASK);	// release REQN
 	hal_gpio_config(ACI_GPIO_REQ_PORT, ACI_GPIO_REQ_MASK, ACI_GPIO_REQ_MASK);
+    hal_gpio_write(ACI_GPIO_REQ_PORT, ACI_GPIO_REQ_MASK, ACI_GPIO_REQ_MASK);	// release REQN
 
 	exos_port_create(&_service_port, NULL);
 	_state = ACI_STATE_RESET;
@@ -79,11 +80,16 @@ void aci_initialize()
 
 	// wait for setup event / send configuration
 	exos_event_wait(&_rdy_event, 1000);
+
 	if (aci_support_setup())
 	{
 		_state = ACI_STATE_STANDBY;
 		exos_event_reset(&_rdy_event);
 	}
+}
+
+static void _warning()
+{
 }
 
 static void _rdy_handler(int port, int pin)
@@ -103,6 +109,18 @@ static void _complete_request(ACI_REQUEST *req, int length, ACI_COMMAND_RESPONSE
 		exos_event_set(&req->Done);
 		req->State = ACI_REQUEST_DONE;
 	}
+}
+
+static void _connected(ACI_CONNECTED_EVENT_DATA *data)
+{
+	exos_event_set(&_connected_event);
+	exos_ble_send_event_to_all_services(EXOS_BLE_EVENT_CONNECT);
+}
+
+static void _disconnected(ACI_DISCONNECTED_EVENT_DATA *data)
+{
+	exos_event_reset(&_connected_event);
+	exos_ble_send_event_to_all_services(EXOS_BLE_EVENT_DISCONNECT);
 }
 
 static void _received(unsigned char *buffer, int length)
@@ -125,12 +143,10 @@ static void _received(unsigned char *buffer, int length)
 					(ACI_COMMAND_RESPONSE_EVENT_DATA *)&buffer[offset]);
 			break;
 		case ACI_EVENT_CONNECTED:
-			// TODO: check contents
-			exos_event_set(&_connected_event);
+			_connected((ACI_CONNECTED_EVENT_DATA *)&buffer[offset]);
 			break;
 		case ACI_EVENT_DISCONNECTED:
-			// TODO: check contents
-			exos_event_reset(&_connected_event);
+			_disconnected((ACI_DISCONNECTED_EVENT_DATA *)&buffer[offset]);
 			break;
 		case ACI_EVENT_PIPE_STATUS:
 			// TODO: find existing service/char in hal ---------------------------------
@@ -225,20 +241,37 @@ static int _do_request(ACI_REQUEST *req)
 	return (req->State == ACI_REQUEST_DONE);
 }
 
+static int _radio_reset()
+{
+	ACI_REQUEST req;
+	req.Command = ACI_COMMAND_RADIO_RESET; 
+	req.Length = 0;
+	if (_do_request(&req))
+	{
+		ACI_STATUS_CODE status = req.Status;
+		return (status == ACI_STATUS_SUCCESS);
+	}
+	return 0;
+}
+
 int aci_send_setup(ACI_REQUEST *req, int *pcomplete)
 {
-	if (_state == ACI_STATE_SETUP)
+	if (_do_request(req))
 	{
-		if (_do_request(req))
+		ACI_STATUS_CODE status = req->Status;
+		switch(status)
 		{
-			ACI_STATUS_CODE status = req->Status;
-			switch(status)
-			{
-				case ACI_STATUS_TRANSACTION_COMPLETE:
-					*pcomplete = 1;
-				case ACI_STATUS_TRANSACTION_CONTINUE:
-					return 1;
-			}
+			case ACI_STATUS_TRANSACTION_COMPLETE:
+				*pcomplete = 1;
+			case ACI_STATUS_TRANSACTION_CONTINUE:
+				return 1;
+			case ACI_STATUS_ERROR_DEVICE_STATE_INVALID:
+				if (_radio_reset())
+					_state = ACI_STATE_STANDBY;
+				break;
+			default:
+				_warning();
+				break;
 		}
 	}
 	return 0;
@@ -285,3 +318,4 @@ int aci_connect_wait(unsigned short adv_interval, unsigned int timeout)
 	}
 	return 0;
 }
+

@@ -360,7 +360,7 @@ void main()
 			float dist = (((_storage.TotalSteps + sp.s_partial) * (sp.ratio / 3.6f)) / 100);
 			
 			_can_send_messages((unsigned int)sp.speed, (unsigned long)dist, throttle);
-
+			xcpu_bt_update(NULL);
 			xcpu_board_output(output_state);
         }
 }
