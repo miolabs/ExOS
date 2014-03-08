@@ -16,7 +16,8 @@ typedef enum
 	EXOS_BLE_ERROR_REJECTED,
 	EXOS_BLE_ERROR_SERVICE_INVALID,
 	EXOS_BLE_ERROR_SERVICE_NOT_READY,
-	EXOS_BLE_ERROR_CHRACTERISTIC_ALREADY_ADDED,
+	EXOS_BLE_ERROR_CHARACTERISTIC_INVALID,
+	EXOS_BLE_ERROR_CHARACTERISTIC_ALREADY_ADDED,
 } EXOS_BLE_ERROR;
 
 typedef enum
@@ -68,6 +69,8 @@ struct __EXOS_BLE_CHAR
 	EXOS_BLE_SERVICE *Service; // NOTE: NULL when not added to any service
 	const EXOS_BLE_UUID *UUID;
 	unsigned short Size;
+	unsigned char Index;
+	unsigned char Reserved;
 };
 
 typedef struct
@@ -93,6 +96,7 @@ EXOS_BLE_ERROR exos_ble_update_characteristic(EXOS_BLE_CHAR *characteristic, voi
 // hal interface
 void ble_hal_initialize();
 EXOS_BLE_ERROR ble_hal_start_advertising(EXOS_BLE_SERVICE *services[], unsigned int count, unsigned int adv_interval);
+EXOS_BLE_ERROR ble_hal_set_local_data(EXOS_BLE_CHAR *characteristic, void *data);
 
 // hal callbacks
 void exos_ble_send_event_to_all_services(EXOS_BLE_EVENT event);

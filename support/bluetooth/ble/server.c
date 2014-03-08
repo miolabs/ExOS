@@ -37,15 +37,33 @@ EXOS_BLE_ERROR exos_ble_service_add_char(EXOS_BLE_SERVICE *service, EXOS_BLE_CHA
 {
 	if (characteristic == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
 	if (characteristic->Service != NULL)
-		return EXOS_BLE_ERROR_CHRACTERISTIC_ALREADY_ADDED;
+		return EXOS_BLE_ERROR_CHARACTERISTIC_ALREADY_ADDED;
 	
 	characteristic->Service = service;
 	list_add_tail(&service->Characteristics, (EXOS_NODE *)characteristic);
 	return EXOS_BLE_OK;
 }
 
+static void _renum_chars()
+{
+	int index = 0;
+	exos_mutex_lock(&_services_lock);
+	FOREACH(node, &_services)
+	{
+		EXOS_BLE_SERVICE *service = (EXOS_BLE_SERVICE *)node;
+		FOREACH(char_node, &service->Characteristics)
+		{
+			EXOS_BLE_CHAR *characteristic = (EXOS_BLE_CHAR *)char_node;
+			characteristic->Index = index++;
+		}
+	}
+	exos_mutex_unlock(&_services_lock);
+}
+
 EXOS_BLE_ERROR exos_ble_server_start_advertising(EXOS_BLE_SERVICE *services[], unsigned int count, unsigned int adv_interval)
 {
+	_renum_chars();
+
 	if (services == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
 	return ble_hal_start_advertising(services, count, adv_interval);
 }
@@ -59,7 +77,11 @@ void exos_ble_characteristic_create(EXOS_BLE_CHAR *characteristic, const EXOS_BL
 
 EXOS_BLE_ERROR exos_ble_update_characteristic(EXOS_BLE_CHAR *characteristic, void *data)
 {
-	// TODO
+	if (characteristic == NULL || data == NULL)
+		return EXOS_BLE_ERROR_CHARACTERISTIC_INVALID;
+	
+	// TODO: use appropriate call for char type
+	return ble_hal_set_local_data(characteristic, data);
 }
 
 

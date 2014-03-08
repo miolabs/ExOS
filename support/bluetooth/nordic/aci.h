@@ -176,6 +176,7 @@ int aci_send_setup(ACI_REQUEST *req, int *pcomplete);
 int aci_broadcast(unsigned short adv_interval);
 int aci_connect(unsigned short adv_interval);
 int aci_connect_wait(unsigned short adv_interval, unsigned int timeout);
+int aci_set_local_data(unsigned char pipe, unsigned char *data, int length);
 
 #endif // NORDIC_ACI_H
 

@@ -319,3 +319,20 @@ int aci_connect_wait(unsigned short adv_interval, unsigned int timeout)
 	return 0;
 }
 
+int aci_set_local_data(unsigned char pipe, unsigned char *data, int length)
+{
+	ACI_REQUEST req;
+	req.Command = ACI_COMMAND_SET_LOCAL_DATA; 
+	req.Length = length;
+	if (data != NULL)
+		for(int i = 0; i < length; i++) req.Data[i] = data[length];
+	else
+		for(int i = 0; i < length; i++) req.Data[i] = 0;
+	if (_do_request(&req))
+	{
+		ACI_STATUS_CODE status = req.Status;
+		return (status == ACI_STATUS_SUCCESS);	
+	}
+	return 0;
+}
+
