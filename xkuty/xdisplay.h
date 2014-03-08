@@ -20,7 +20,7 @@ typedef enum
     ST_ADJUST_WHEEL_DIA,
 	ST_ADJUST_THROTTLE_MAX,
 	ST_ADJUST_THROTTLE_MIN,
-	ST_ADJUST_DRIVE_MODE,
+	ST_USER_MENU,
 	ST_ADJUST_MAX_SPEED,
 	ST_SHOW_PHONES,
 	ST_ADD_PHONE,
@@ -32,31 +32,27 @@ typedef struct
 	char name[17];
 } PHONE_REG;
 
-typedef struct {
+typedef struct 
+{
+	int CpuStatus;
+	int Speed;
+	unsigned long Distance;
+	int battery_level_fx8;
 	int SpeedAdjust;
 	XCPU_DRIVE_MODE DriveMode;
 	unsigned char ThrottleMin;
 	unsigned char ThrottleMax;
 	unsigned char CustomCurve[7];
 	PHONE_REG PhoneList[6]; // Max 5 phones. The 6 th one is the new candidate
-} DASH_CONFIG;
-
-typedef struct {
-	int CpuStatus;
-	int Speed;
-	unsigned long Distance;
-	int battery_level_fx8;
-	DASH_CONFIG ActiveConfig;
-	DASH_CONFIG CurrentConfig;
 	int CurrentMenuOption;
-	int AppliedThrottle;
+	//int AppliedThrottle;
 	int MaxSpeed;
 } DASH_DATA;
 
 void xdisplay_initialize();
 void xdisplay_clean_screen();
 void xdisplay_dump();
-void xdisplay_intro(DISPLAY_STATE *state, int *st_time_base, int time);
+void xdisplay_intro(DISPLAY_STATE *state, int *st_time_base, int time, int intro_next_state);
 void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash);
 
 #endif // XDISPLAY_H

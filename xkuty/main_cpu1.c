@@ -418,13 +418,13 @@ static XCPU_EVENTS _can_read_messages(char *got_lcd_input)
 
 static void _can_send_messages(unsigned speed, unsigned long dist, unsigned throttle)
 {
-	XCPU_CAN_REPORT report = (XCPU_CAN_REPORT) {
+	XCPU_MASTER_OUT1 report = (XCPU_MASTER_OUT1) {
 		.Speed = speed, 
 		.BattLevel = xcpu_sensor_batt_level(),
 		.State = _state,
 		.DriveMode = _drive_mode,
 		.Distance = dist };
-	XCPU_CAN_REPORT_ADJUST adj = (XCPU_CAN_REPORT_ADJUST) {
+	XCPU_MASTER_OUT2 adj = (XCPU_MASTER_OUT2) {
 		.ThrottleMax = _storage.ThrottleAdjMax,
 		.ThrottleMin = _storage.ThrottleAdjMin,
 		.WheelRatio = _storage.WheelRatioAdj,

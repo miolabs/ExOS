@@ -50,7 +50,7 @@ void xiap_send_frame(DASH_DATA *dash)
 				.Speed = dash->Speed, .StatusFlags = dash->CpuStatus,
 				.Distance = dash->Distance,
 				.Battery = dash->battery_level_fx8, 
-				.DriveMode = dash->ActiveConfig.DriveMode };
+				.DriveMode = dash->DriveMode };
 	
 			err = exos_io_write((EXOS_IO_ENTRY *)&_comm, &buffer, sizeof(buffer));
 			if (err < 0)

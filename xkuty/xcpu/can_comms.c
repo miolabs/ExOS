@@ -38,20 +38,11 @@ void xcpu_can_release_message(XCPU_MSG *xmsg)
 		exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
 }
 
-void xcpu_can_send_messages(XCPU_CAN_REPORT *report, XCPU_CAN_REPORT_ADJUST *adj)
+void xcpu_can_send_messages(XCPU_MASTER_OUT1 *report, XCPU_MASTER_OUT2 *adj)
 {
 	int done;
 	int i;
 	CAN_BUFFER buf;
-
-/*static int kk = 0;
-if (kk == 0)
-{
-for(int i=0; i<100; i++)
-	_large_message_buffer[i] = 'a' + (i & 0x1f);
-kk = 1;
-_large_message_len = 100;
-}*/
 
 	// Large message system
 	if (_large_message_len > 0)
@@ -75,11 +66,24 @@ _large_message_len = 100;
 		_large_message_cnt++;
      }
 
+#if 0
+	static int test_large = 0;
+	if (test_large == 0)
+	{
+	for(int i=0; i<100; i++)
+		_large_message_buffer[i] = 'a' + (i & 0x1f);
+	test_large = 1;
+	_large_message_len = 100;
+	}
+	if(_large_message_len <= 0) _large_message_len = 100;
+#endif
+
 
 	if (adj != NULL)
 	{
 		done = hal_can_send((CAN_EP) { .Id = 0x301 }, (CAN_BUFFER *)adj, 8, CANF_NONE);
-		if (!done) hal_can_cancel_tx();
+		if (!done) 
+			hal_can_cancel_tx();
 
 //	for(i = 0; i< 7; i++)
 //		buf.u8[i] = _storage.CustomCurve[i];
@@ -91,7 +95,8 @@ _large_message_len = 100;
 	if (report != NULL)
 	{
 		done = hal_can_send((CAN_EP) { .Id = 0x300 }, (CAN_BUFFER *)report, 8, CANF_NONE);
-		if (!done) hal_can_cancel_tx();
+		if (!done) 
+			hal_can_cancel_tx();
 	}
 }
 
