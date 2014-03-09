@@ -19,6 +19,7 @@ static EXOS_EVENT _rdy_event;
 static EXOS_EVENT _connected_event;
 static EXOS_EVENT _advertising_event;
 static ACI_DEVICE_STATE _state;
+static unsigned int _data_credit; 
 
 #if defined BOARD_OLIMEX_P1XXX
 
@@ -65,6 +66,7 @@ void aci_initialize()
 	exos_port_create(&_service_port, NULL);
 	_state = ACI_STATE_RESET;
 	_pending_request = NULL;
+	_data_credit = 1; // FIXME: its bigger than 1!
 
 	// reset NRF800x
     hal_gpio_write(ACI_GPIO_RESET_PORT, ACI_GPIO_RESET_MASK, ACI_GPIO_RESET_MASK);
@@ -123,6 +125,26 @@ static void _disconnected(ACI_DISCONNECTED_EVENT_DATA *data)
 	exos_ble_send_event_to_all_services(EXOS_BLE_EVENT_DISCONNECT);
 }
 
+static unsigned long _pipes_open[2] = { 0, 0 };
+static unsigned long _pipes_closed[2] = { 0, 0 };
+
+static void _update_pipe_status(ACI_PIPE_STATUS_EVENT_DATA *data)
+{
+	if (data->PipesOpen[0] & 1)
+	{
+		_pipes_open[0] = data->PipesOpen[0] | (data->PipesOpen[1] << 8) | (data->PipesOpen[2] << 16) | (data->PipesOpen[3] << 24);
+		_pipes_open[1] = data->PipesOpen[4] | (data->PipesOpen[5] << 8) | (data->PipesOpen[6] << 16) | (data->PipesOpen[7] << 24);
+		_pipes_closed[0] =  data->PipesClosed[0] | (data->PipesClosed[1] << 8) | (data->PipesClosed[2] << 16) | (data->PipesClosed[3] << 24);
+		_pipes_closed[1] =  data->PipesClosed[4] | (data->PipesClosed[5] << 8) | (data->PipesClosed[6] << 16) | (data->PipesClosed[7] << 24);
+	}
+}
+
+static void _received_data(ACI_DATA_RECEIVED_EVENT_DATA *data, int length)
+{
+	int data_length = length - 1;
+	exos_ble_handle_received_data(data->Pipe, data->Data, data_length);
+}
+
 static void _received(unsigned char *buffer, int length)
 {
 	int offset = 0;
@@ -149,7 +171,32 @@ static void _received(unsigned char *buffer, int length)
 			_disconnected((ACI_DISCONNECTED_EVENT_DATA *)&buffer[offset]);
 			break;
 		case ACI_EVENT_PIPE_STATUS:
-			// TODO: find existing service/char in hal ---------------------------------
+			_update_pipe_status((ACI_PIPE_STATUS_EVENT_DATA *)&buffer[offset]);
+			break;
+		case ACI_EVENT_DATA_CREDIT:
+			if (_pending_request != NULL)
+			{
+				// TODO: check pipe number matches pipe in data request
+				// TODO: update data credit
+				_pending_request->Status = ACI_STATUS_SUCCESS;
+
+				exos_event_set(&_pending_request->Done);
+				_pending_request->State = ACI_REQUEST_DONE;
+			}
+			break;
+		case ACI_EVENT_PIPE_ERROR:
+			if (_pending_request != NULL)
+			{
+				// TODO : check pipe number matches pipe in data request
+				ACI_PIPE_ERROR_EVENT_DATA *data = (ACI_PIPE_ERROR_EVENT_DATA *)&buffer[offset];
+				_pending_request->Status = data->ErrorCode;
+
+				exos_event_set(&_pending_request->Done);
+				_pending_request->State = ACI_REQUEST_DONE;
+			}
+			break;
+		case ACI_EVENT_DATA_RECEIVED:
+			_received_data((ACI_DATA_RECEIVED_EVENT_DATA *)&buffer[offset], length - offset);
 			break;
 		default:
 			// TODO
@@ -215,6 +262,7 @@ static void *_service(void *arg)
 		{
 			for(int i = 0; i < payload; i++) buffer[i] = _rbit8(req->Data[i]); 
 			hal_ssp_transmit(ACI_SSP_MODULE, buffer, buffer, payload);
+
 			req->State = ACI_REQUEST_PENDING;
 			_pending_request = req;
 		}
@@ -224,8 +272,11 @@ static void *_service(void *arg)
 			hal_ssp_transmit(ACI_SSP_MODULE, buffer, buffer, payload);
 		}
 
-		for(int i = 0; i < resp_len; i++) buffer[i] = _rbit8(buffer[i]);
-		_received(buffer, resp_len);
+		if (resp_len > 0)
+		{
+			for(int i = 0; i < resp_len; i++) buffer[i] = _rbit8(buffer[i]);
+			_received(buffer, resp_len);
+		}
 
 		exos_event_reset(&_rdy_event);	// NOTE: this shall stay after _received() because it may change state
 		hal_gpio_write(ACI_GPIO_REQ_PORT, ACI_GPIO_REQ_MASK, ACI_GPIO_REQ_MASK);	// release REQN	
@@ -323,15 +374,38 @@ int aci_set_local_data(unsigned char pipe, unsigned char *data, int length)
 {
 	ACI_REQUEST req;
 	req.Command = ACI_COMMAND_SET_LOCAL_DATA; 
-	req.Length = length;
+	req.Length = length + 1;
+	req.Data[0] = pipe;
 	if (data != NULL)
-		for(int i = 0; i < length; i++) req.Data[i] = data[length];
+		for(int i = 0; i < length; i++) req.Data[i + 1] = data[i];
 	else
-		for(int i = 0; i < length; i++) req.Data[i] = 0;
+		for(int i = 0; i < length; i++) req.Data[i + 1] = 0;
 	if (_do_request(&req))
 	{
 		ACI_STATUS_CODE status = req.Status;
 		return (status == ACI_STATUS_SUCCESS);	
+	}
+	return 0;
+}
+
+int aci_send_data(unsigned char pipe, unsigned char *data, int length)
+{
+	unsigned long mask = _pipes_open[pipe >> 5] & (1 << (pipe & 0x1F));
+	if (mask != 0)
+	{
+		ACI_REQUEST req;
+		req.Command = ACI_COMMAND_SEND_DATA; 
+		req.Length = length + 1;
+		req.Data[0] = pipe;
+		if (data != NULL)
+			for(int i = 0; i < length; i++) req.Data[i + 1] = data[i];
+		else
+			for(int i = 0; i < length; i++) req.Data[i + 1] = 0;
+		if (_do_request(&req))
+		{
+			ACI_STATUS_CODE status = req.Status;
+			return (status == ACI_STATUS_SUCCESS);	
+		}
 	}
 	return 0;
 }

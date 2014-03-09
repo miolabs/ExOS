@@ -24,7 +24,7 @@ int persist_save(const XCPU_PERSIST_DATA *data)
 	if (flash_nor_find_last_large_sector_base(&fi, &base, sizeof(XCPU_PERSIST_DATA)))
 	{
 		__disable_irq();
-		int done = iap_write_block(&fi, base, data);
+		int done = 0; //iap_write_block(&fi, base, data);
 		__enable_irq();
 		return done;
 	}

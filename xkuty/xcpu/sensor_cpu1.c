@@ -1,7 +1,11 @@
 #include "sensor_cpu1.h"
 #include <support/adc_hal.h>
 
+#ifdef BOARD_XKUTY_CPU1_PROTO
 #define BATT_VOLTAGE_RATIO  16.9f
+#else
+#define BATT_VOLTAGE_RATIO  8.36f
+#endif
 
 void xcpu_sensor_initialize()
 {

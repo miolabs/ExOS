@@ -49,6 +49,8 @@ static XCPU_MASTER_INPUT _lcd;
 
 static XCPU_EVENTS _can_read_messages(char *got_lcd_input);
 static void _can_send_messages(unsigned speed, unsigned long dist, unsigned throttle);
+static XCPU_EVENTS _bt_read_events();
+static void _bt_send_messages(unsigned speed, unsigned long dist, unsigned throttle);
 static void _shutdown(XCPU_SPEED_DATA *sp);
 
 typedef struct 
@@ -134,7 +136,7 @@ void main()
 		int no_activity;
 
 		char got_lcd_input;
-		XCPU_EVENTS events = _can_read_messages(&got_lcd_input);
+		XCPU_EVENTS events = _can_read_messages(&got_lcd_input) | _bt_read_events();
 		events |= _lcd.Events;
 
 		// CAN communication breakdown, safe measures (throttle to 0)
@@ -363,7 +365,7 @@ void main()
 			float dist = (((_storage.TotalSteps + sp.s_partial) * (sp.ratio / 3.6f)) / 100);
 			
 			_can_send_messages((unsigned int)sp.speed, (unsigned long)dist, throttle);
-			xcpu_bt_update(NULL);
+			_bt_send_messages((unsigned int)sp.speed, (unsigned long)dist, throttle);
 			xcpu_board_output(output_state);
         }
 }
@@ -430,6 +432,34 @@ static void _can_send_messages(unsigned speed, unsigned long dist, unsigned thro
 		.WheelRatio = _storage.WheelRatioAdj,
 		.MaxSpeed = _storage.MaxSpeed };
 	xcpu_can_send_messages(&report, &adj);
+}
+
+static XCPU_EVENTS _bt_read_events()
+{
+	XCPU_BT_CMD_CHAR_DATA cmd;
+	if (xcpu_bt_get_cmd(&cmd))
+	{
+		switch(cmd.Command)
+		{
+			case XCPU_BT_CMD_POWER:
+				return cmd.Param ? XCPU_EVENT_TURN_ON : XCPU_EVENT_TURN_OFF;
+			case XCPU_BT_CMD_DRIVE_MODE:
+				_drive_mode = cmd.Param;
+				break;
+		}
+	}
+	return 0;
+}
+
+static void _bt_send_messages(unsigned speed, unsigned long dist, unsigned throttle)
+{
+	XCPU_BT_STATE_CHAR_DATA report = (XCPU_BT_STATE_CHAR_DATA) {
+		.Speed = speed, 
+		.BattLevel = xcpu_sensor_batt_level(),
+		.State = _state,
+		.DriveMode = _drive_mode,
+		.Distance = dist };
+	xcpu_bt_update(&report);
 }
 
 static int _push_delay(int push, unsigned short *state, int limit)

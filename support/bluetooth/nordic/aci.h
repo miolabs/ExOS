@@ -167,9 +167,27 @@ typedef struct
 
 typedef struct
 {
+	unsigned char PipesOpen[8];
+	unsigned char PipesClosed[8];
+} ACI_PIPE_STATUS_EVENT_DATA;
+
+typedef struct
+{
 	unsigned char Reason;
 	// TODO
 } ACI_DISCONNECTED_EVENT_DATA;
+
+typedef struct
+{
+	unsigned char Pipe;
+	unsigned char ErrorCode;
+} ACI_PIPE_ERROR_EVENT_DATA;
+
+typedef struct
+{
+	unsigned char Pipe;
+	unsigned char Data[];
+} ACI_DATA_RECEIVED_EVENT_DATA;
 
 void aci_initialize();
 int aci_send_setup(ACI_REQUEST *req, int *pcomplete);
@@ -177,6 +195,7 @@ int aci_broadcast(unsigned short adv_interval);
 int aci_connect(unsigned short adv_interval);
 int aci_connect_wait(unsigned short adv_interval, unsigned int timeout);
 int aci_set_local_data(unsigned char pipe, unsigned char *data, int length);
+int aci_send_data(unsigned char pipe, unsigned char *data, int length);
 
 #endif // NORDIC_ACI_H
 

@@ -100,6 +100,7 @@ EXOS_BLE_ERROR ble_hal_set_local_data(EXOS_BLE_CHAR *characteristic, void *data)
 
 // hal callbacks
 void exos_ble_send_event_to_all_services(EXOS_BLE_EVENT event);
+void exos_ble_handle_received_data(int pipe, unsigned char *data, int data_length);
 
 #endif // EXOS_BLE_SERVER_H
 

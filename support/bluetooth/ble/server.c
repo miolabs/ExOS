@@ -84,7 +84,6 @@ EXOS_BLE_ERROR exos_ble_update_characteristic(EXOS_BLE_CHAR *characteristic, voi
 	return ble_hal_set_local_data(characteristic, data);
 }
 
-
 void exos_ble_send_event_to_all_services(EXOS_BLE_EVENT event)
 {
 	EXOS_BLE_REQUEST req = (EXOS_BLE_REQUEST) { .Event = event };
@@ -98,7 +97,40 @@ void exos_ble_send_event_to_all_services(EXOS_BLE_EVENT event)
 	exos_mutex_unlock(&_services_lock);
 }
 
+static EXOS_BLE_CHAR *_find_char(int index)
+{
+	EXOS_BLE_CHAR *found = NULL;
+	exos_mutex_lock(&_services_lock);
+	FOREACH(node, &_services)
+	{
+		EXOS_BLE_SERVICE *service = (EXOS_BLE_SERVICE *)node;
+		FOREACH(char_node, &service->Characteristics)
+		{
+			EXOS_BLE_CHAR *characteristic = (EXOS_BLE_CHAR *)char_node;
+			if (characteristic->Index == index)
+			{
+				found = characteristic;
+				break;
+			}
+		}
+	}
+	exos_mutex_unlock(&_services_lock);
+	return found;
+}
 
+void exos_ble_handle_received_data(int pipe, unsigned char *data, int data_length)	// FIXME
+{
+	EXOS_BLE_CHAR *characteristic = _find_char(pipe - 1);	// FIXME
+	if (characteristic != NULL)
+	{
+		EXOS_BLE_REQUEST req = (EXOS_BLE_REQUEST) { .Event = EXOS_BLE_EVENT_WRITE_CHARACTERISTIC, 
+			.Characteristic = characteristic, 
+			.Data = data, .Length = data_length };
+		EXOS_BLE_SERVICE *service = characteristic->Service;
+		if (service->Handler != NULL)			
+			service->Handler(service, &req);
+	}
+}
 
 
 

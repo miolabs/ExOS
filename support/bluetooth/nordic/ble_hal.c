@@ -30,8 +30,8 @@ int exos_ble_server_wait_connexion(int timeout)
 
 EXOS_BLE_ERROR ble_hal_set_local_data(EXOS_BLE_CHAR *characteristic, void *data)
 {
-	// TODO: translate char->Index to pipe number?
-	int done = aci_set_local_data(characteristic->Index, data, characteristic->Size);
+	int done = aci_send_data(characteristic->Index + 1, // TODO: translate char->Index to pipe number
+		data, characteristic->Size);
 	return done ? EXOS_BLE_OK : EXOS_BLE_ERROR_REJECTED; // FIXME
 }
 
