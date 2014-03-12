@@ -436,6 +436,7 @@ static void _can_send_messages(unsigned speed, unsigned long dist, unsigned thro
 
 static XCPU_EVENTS _bt_read_events()
 {
+#ifdef BOARD_XKUTY_CPU1_EXTENDED
 	XCPU_BT_CMD_CHAR_DATA cmd;
 	if (xcpu_bt_get_cmd(&cmd))
 	{
@@ -448,11 +449,13 @@ static XCPU_EVENTS _bt_read_events()
 				break;
 		}
 	}
+#endif
 	return 0;
 }
 
 static void _bt_send_messages(unsigned speed, unsigned long dist, unsigned throttle)
 {
+#ifdef BOARD_XKUTY_CPU1_EXTENDED
 	XCPU_BT_STATE_CHAR_DATA report = (XCPU_BT_STATE_CHAR_DATA) {
 		.Speed = speed, 
 		.BattLevel = xcpu_sensor_batt_level(),
@@ -460,6 +463,7 @@ static void _bt_send_messages(unsigned speed, unsigned long dist, unsigned throt
 		.DriveMode = _drive_mode,
 		.Distance = dist };
 	xcpu_bt_update(&report);
+#endif
 }
 
 static int _push_delay(int push, unsigned short *state, int limit)
