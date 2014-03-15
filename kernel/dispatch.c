@@ -79,7 +79,7 @@ void exos_dispatch(EXOS_DISPATCHER_CONTEXT *context, unsigned long timeout)
 		int rem_time;
 		if (dispatcher->Timeout != EXOS_TIMEOUT_NEVER)
 		{
-			rem_time = dispatcher->Timeout + dispatcher->Timeout - time;
+			rem_time = dispatcher->Timeout + dispatcher->Issued - time;
 		}
 		else if (event == NULL)
 		{
