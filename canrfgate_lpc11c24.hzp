@@ -67,5 +67,5 @@
   <configuration Name="MioRelay1" c_preprocessor_definitions="BOARD_MIORELAY1" hidden="Yes"/>
   <configuration Name="MioRelay1 Release" inherited_configurations="Flash;MioRelay1;Release;THUMB"/>
   <configuration Name="MioRelay1 Debug" inherited_configurations="Debug;Flash;MioRelay1;THUMB"/>
-  <configuration Name="Common" c_preprocessor_definitions="__EXOS__;EXOS_NO_NET;MAIN_THREAD_STACK=512;MAIN_THREAD_PRI=0"/>
+  <configuration Name="Common" c_preprocessor_definitions="__EXOS__;EXOS_NO_NET;MAIN_THREAD_STACK=1024;MAIN_THREAD_PRI=0"/>
 </solution>
