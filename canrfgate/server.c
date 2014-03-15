@@ -40,7 +40,7 @@ void server_start()
 
 static COMM_IO_ENTRY *_open(COMM_IO_ENTRY *io, char *name)
 {
-	EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_node(NULL, name);
+	EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_path(NULL, name);
 	if (dev_node != NULL && 
 		dev_node->Type == EXOS_TREE_NODE_DEVICE)
 	{

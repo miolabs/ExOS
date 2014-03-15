@@ -24,13 +24,6 @@ static EXOS_DISPATCHER _relay_done;
 
 void main()
 {
-	// enable active CAN termination
-	LPC_GPIO2->DIR |= 1<<8;
-	LPC_GPIO2->MASKED_ACCESS[1<<8] = 1<<8;
-
-	LPC_GPIO2->DIR |= RELAY0 | RELAY1;
-	LPC_GPIO2->MASKED_ACCESS[RELAY0 | RELAY1] = 0;
-
 	exos_port_create(&_port, NULL);
 	exos_fifo_create(&_free_msgs, NULL);
 	for(int i = 0; i < MSG_QUEUE; i++) exos_fifo_queue(&_free_msgs, (EXOS_NODE *)&_msg[i]);
@@ -65,8 +58,12 @@ static void _msg_rcv(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatch
 		exos_fifo_queue(&_free_msgs, (EXOS_NODE *)msg);
 	}
 
-	CAN_BUFFER buf = (CAN_BUFFER) { 0, 1, 2, 3 };
-	hal_can_send((CAN_EP) { .Id = 0x300 }, &buf, 4, CANF_PRI_ANY); 
+#ifdef DEBUG
+	static unsigned char dummy = 0;
+	static unsigned long seq = 0;
+	CAN_BUFFER buf = (CAN_BUFFER) { .u32[0] = seq++ };
+	hal_can_send((CAN_EP) { .Id = 0x300 | dummy++ }, &buf, 4, CANF_PRI_ANY); 
+#endif
 
 	exos_dispatcher_add(context, dispatcher, 1000); // re-issue this dispatcher
 }
@@ -107,4 +104,14 @@ void hal_can_received_handler(int index, CAN_MSG *msg)
 			// TODO
 			break;
 	}
+}
+
+void hal_board_initialize()
+{
+	// enable active CAN termination
+	LPC_GPIO2->DIR |= 1<<8;
+	LPC_GPIO2->MASKED_ACCESS[1<<8] = 1<<8;
+
+	LPC_GPIO2->DIR |= RELAY0 | RELAY1;
+	LPC_GPIO2->MASKED_ACCESS[RELAY0 | RELAY1] = 0;
 }
