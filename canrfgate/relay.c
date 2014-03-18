@@ -3,8 +3,8 @@
 
 void relay_initialize()
 {
-	hal_can_initialize(0, 250000);
-	hal_can_initialize(1, 250000);
+	hal_can_initialize(0, 250000, CAN_INITF_DISABLE_RETRANSMISSION);
+	hal_can_initialize(1, 250000, CAN_INITF_DISABLE_RETRANSMISSION);
 }
 
 void relay_set(int unit, unsigned long mask, unsigned long time)

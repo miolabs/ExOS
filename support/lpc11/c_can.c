@@ -4,8 +4,8 @@
 #include <kernel/mutex.h>
 
 static C_CAN_MODULE *const _can = (C_CAN_MODULE*)LPC_CAN;
-static unsigned int _fullrx_mask = 0;
-static unsigned int _usage_mask = 0;
+static unsigned long _usage[32];
+static int _fullcan_reserved = 0;
 static EXOS_MUTEX _lock;
 #ifdef DEBUG
 static unsigned long _errors_ack = 0;
@@ -18,7 +18,8 @@ int hal_can_initialize(int module, int bitrate, CAN_INIT_FLAGS initf)
 	if (module != 0)
 		return 0;
 
-	_usage_mask = 0;
+	for(int i = 0; i < 32; i++) _usage[i] = 0;
+	_fullcan_reserved = 0;
 	exos_mutex_create(&_lock);
 
 	LPC_SYSCON->SYSAHBCLKCTRL |= SYSAHBCLKCTRL_CAN;
@@ -64,19 +65,18 @@ int hal_can_initialize(int module, int bitrate, CAN_INIT_FLAGS initf)
 	return 1;
 }
 
-static int _get_free_index(int *pindex)
+static int _get_free_index(int *pindex, unsigned long id)
 {
 	int done = 0;
 	exos_mutex_lock(&_lock);
 
-	unsigned int mask = _usage_mask;
-	for(int i = 0; i < 32; i++)
+	for(int i = _fullcan_reserved; i < 32; i++)
 	{
-		unsigned int mask = (1 << i);
-		if ((_usage_mask & mask) == 0)
+		if (_usage[i] == 0 ||
+			_usage[i] == id)
 		{
 			*pindex = i;
-			_usage_mask |= mask;
+			_usage[i] = id;
 			done = 1;
 			break;
 		}
@@ -90,8 +90,32 @@ void hal_can_cancel_tx()
 #ifdef DEBUG
 	_resets_tx++;
 #endif
-	// FIXME: actually review pending tx in msg ram
-	_usage_mask = _fullrx_mask;
+	C_CAN_FUNCTION *fn = &_can->Interface1;	// use function 1
+
+	exos_mutex_lock(&_lock);
+
+	unsigned long stall =  _can->ND1 | (_can->ND2 << 16);
+
+	for(int i = 32 - 1; i >= _fullcan_reserved; i--)
+	{
+		if ((stall & (1 << i)) && _usage[i] != 0)
+		{
+			fn->CMDMSK = C_CAN_CMDMSK_ARB
+				| C_CAN_CMDMSK_NEWDAT | C_CAN_CMDMSK_CLRINTPND
+				| C_CAN_CMDMSK_CTRL;
+			fn->CMDREQ = i + 1;
+
+			fn->CMDMSK = C_CAN_CMDMSK_ARB // transfer id, DIR, XTD, MSGVAL
+				| C_CAN_CMDMSK_CTRL | C_CAN_CMDMSK_WR;
+			fn->ARB1 = fn->ARB2 = 0; // clear id and MSGVAL
+			fn->MCTRL = 0; // clear DCL and request bits
+			fn->CMDREQ = i + 1; // make transfer
+
+			_usage[i] = 0;
+		}
+	}
+
+	exos_mutex_unlock(&_lock);
 }
 
 void CAN_IRQHandler()
@@ -103,13 +127,14 @@ void CAN_IRQHandler()
 		if (ir & 0x8000)
 		{
 			unsigned char stat = _can->STAT;
-			if (( stat & 0x7) == C_CAN_ERROR_ACK)
+			if ((stat & 0x7) == C_CAN_ERROR_ACK)
 			{
 #ifdef DEBUG
 				_errors_ack++;
 #endif
-				// FIXME: patch when the receiver is not working
-				_usage_mask = _fullrx_mask;
+				// FIXME: dirty hack for receiver not present / not working / not listening
+				for(int i = _fullcan_reserved; i < 32; i++)
+					_usage[i] = 0;
 			}
 		}
 		else
@@ -122,7 +147,7 @@ void CAN_IRQHandler()
 				| C_CAN_CMDMSK_NEWDAT | C_CAN_CMDMSK_CLRINTPND
 				| C_CAN_CMDMSK_CTRL;
 			fn->CMDREQ = intid;
-			
+
 			if (fn->MCTRL & C_CAN_MCTRL_NEWDAT)
 			{
 				CAN_MSG msg;
@@ -146,7 +171,8 @@ void CAN_IRQHandler()
 			else if (fn->MCTRL & C_CAN_MCTRL_INTPND)
 			{
 				// message successfully transmitted
-				_usage_mask &= ~(1 << (intid - 1));
+				if ((intid - 1) >= _fullcan_reserved)
+					_usage[intid - 1] = 0;
 			}
 #ifdef DEBUG
 			else _unhandled_irq++;
@@ -158,11 +184,17 @@ void CAN_IRQHandler()
 
 int hal_can_send(CAN_EP ep, CAN_BUFFER *data, unsigned char length, CAN_MSG_FLAGS flags)
 {
-	int done = 0;
 	int index;
-	if (_get_free_index(&index))
+	int done =_get_free_index(&index, ep.Id);
+	if (!done)
+	{
+		hal_can_cancel_tx();
+		done = _get_free_index(&index, ep.Id);
+	}
+	if (done)
 	{
 		C_CAN_FUNCTION *fn = &_can->Interface1;	// use function 1
+
 		fn->CMDMSK = C_CAN_CMDMSK_ARB // transfer id, DIR, XTD, MSGVAL
 			| C_CAN_CMDMSK_DATA_A | C_CAN_CMDMSK_DATA_B
 			| C_CAN_CMDMSK_CTRL | C_CAN_CMDMSK_TXRQST
@@ -192,7 +224,6 @@ int hal_can_send(CAN_EP ep, CAN_BUFFER *data, unsigned char length, CAN_MSG_FLAG
 		
 		// make transfer
 		fn->CMDREQ = index + 1;
-		done = 1;
 	}
 	return done;
 }
@@ -209,7 +240,7 @@ int hal_fullcan_setup(HAL_FULLCAN_SETUP_CALLBACK callback, void *state)
 		if (!callback(count, &ep, &flags, state))
 			break;
 		
-		_usage_mask |= (1 << count);
+		_usage[count] = 2;
 
 		C_CAN_FUNCTION *fn = &_can->Interface1;	// use function 1
 		fn->CMDMSK = C_CAN_CMDMSK_ARB // transfer id, DIR, XTD, MSGVAL
@@ -232,9 +263,8 @@ int hal_fullcan_setup(HAL_FULLCAN_SETUP_CALLBACK callback, void *state)
 			| ((flags & CANF_RXINT) ? C_CAN_MCTRL_RXIE : 0);
 	
 		fn->CMDREQ = ++count; // make transfer
-
 	}
-	_fullrx_mask = _usage_mask;
+	_fullcan_reserved = count;
 
 	exos_mutex_unlock(&_lock);
 	return count;
