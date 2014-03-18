@@ -34,9 +34,16 @@ typedef struct
 // Generic sequential data transfer system (for large messages)
 typedef struct
 {
-	unsigned char idx;
-	unsigned char data[7];
+	unsigned char Curve[7];
+	unsigned char Reserved;
 } XCPU_MASTER_OUT3;
+
+// Generic sequential data transfer system (for large messages)
+typedef struct
+{
+	unsigned char Idx;
+	unsigned char Data[7];
+} XCPU_MASTER_OUT4;
 
 typedef struct
 {

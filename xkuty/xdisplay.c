@@ -259,7 +259,7 @@ void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 				l = sprintf(tmp, "%d.%d", dash->Distance / 10, dash->Distance % 10);
 				_draw_text(tmp, &_font_spr_small, - (_font_spr_small.Width * l) + POS_DISTANCE_TEXT);
 
-                _vertical_sprite_comb(&_battery_full, &_battery_empty, 0x100 - dash->battery_level_fx8, POS_BATTERY_BAR);
+                _vertical_sprite_comb(&_battery_full, &_battery_empty, 0x100 - dash->BatteryLevel, POS_BATTERY_BAR);
 
 				if (dash->CpuStatus & XCPU_STATE_CRUISE_ON)
 					mono_draw_sprite(&_screen, &_cruisin_spr, POS_CRUISE);
@@ -390,8 +390,8 @@ void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 
 			if (dash->PhoneList[5].active)
 				_print_small(dash->PhoneList[5].name,-1,32);
-			else
-				_print_small("..waiting for a phone",-1,32);
+			else              
+				_print_small("waiting for a phone",-1,32);
 			break;
 	}
 }

@@ -6,7 +6,7 @@
 
 
 void xcpu_can_initialize();
-void xcpu_can_send_messages(XCPU_MASTER_OUT1 *report, XCPU_MASTER_OUT2 *adj);
+void xcpu_can_send_messages(XCPU_MASTER_OUT1 *report, XCPU_MASTER_OUT2 *adj,  XCPU_MASTER_OUT3 *cust);
 XCPU_MSG *xcpu_can_get_message();
 void xcpu_can_release_message(XCPU_MSG *xmsg);
 

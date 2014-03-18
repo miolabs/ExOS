@@ -37,7 +37,7 @@ typedef struct
 	int CpuStatus;
 	int Speed;
 	unsigned long Distance;
-	int battery_level_fx8;
+	int BatteryLevel;		// fx8;
 	int SpeedAdjust;
 	XCPU_DRIVE_MODE DriveMode;
 	unsigned char ThrottleMin;
