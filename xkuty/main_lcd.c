@@ -21,6 +21,7 @@
 
 static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
 
+// Check both "hal_can_received_handler" & "_get_can_messages" when changing this list
 static const CAN_EP _eps[] = {{0x300, LCD_CAN_BUS}, {0x301, LCD_CAN_BUS}, {0x302, LCD_CAN_BUS}, {0x303, LCD_CAN_BUS}, {0x304, LCD_CAN_BUS}};
 
 static DASH_DATA _dash = 
@@ -28,7 +29,7 @@ static DASH_DATA _dash =
 	.DriveMode = XCPU_DRIVE_MODE_SOFT, 
 	.ThrottleMin = 0, 
 	.ThrottleMax = 0, 
-	.CustomCurve = {0,0,0,0,0,0,0},
+	.CustomCurve = {0},
 	{{0,""},{0,""},{0,""},{0,""},{0,""},{0,""}}
  };
 
@@ -217,15 +218,15 @@ static void _get_can_messages()
 			case 0x304:
 			{
 				// Large message pass protocol
-				XCPU_MASTER_OUT3* tmsg = (XCPU_MASTER_OUT3*)&xmsg->CanMsg.Data.u8[0];
-				assert((tmsg->idx & 0x7f) <= 121);	// 128 bytes buffer
+				XCPU_MASTER_OUT4* tmsg = (XCPU_MASTER_OUT4*)&xmsg->CanMsg.Data.u8[0];
+				assert((tmsg->Idx & 0x7f) <= 121);	// 128 bytes buffer
 				for(int i=0; i<7; i++)
-					_large_message_buffer[(tmsg->idx & 0x7f) * 7] = tmsg->data[i];
-				if (tmsg->idx == 0)
+					_large_message_buffer[(tmsg->Idx & 0x7f) * 7] = tmsg->Data[i];
+				if (tmsg->Idx == 0)
 					_large_message_marks = 1;	// Init of message recording
 				else
-					_large_message_marks |= 1 << (tmsg->idx & 0x7f);
-				if (tmsg->idx & 0x80)	// End of large message mark
+					_large_message_marks |= 1 << (tmsg->Idx & 0x7f);
+				if (tmsg->Idx & 0x80)	// End of large message mark
 				{
 					int msg_len = sizeof(_dash.PhoneList);
 					unsigned char* dst = (unsigned char*)&_dash.PhoneList[0]; 
@@ -501,21 +502,18 @@ static int _lost_msgs = 0;
 void hal_can_received_handler(int index, CAN_MSG *msg)
 { 
 	XCPU_MSG *xmsg;
-	switch(msg->EP.Id)
+	if((msg->EP.Id >= 0x300) && (msg->EP.Id <= 0x304))
 	{
-		case 0x300:
-		case 0x301:
-			xmsg = (XCPU_MSG *)exos_fifo_dequeue(&_can_free_msgs);
-			if (xmsg != NULL)
-			{
-				xmsg->CanMsg = *msg;
-				exos_port_send_message(&_can_rx_port, (EXOS_MESSAGE *)xmsg);
-			}
-#ifdef DEBUG
-			else _lost_msgs++;
-#endif
-			break;
+		xmsg = (XCPU_MSG *)exos_fifo_dequeue(&_can_free_msgs);
+		if (xmsg != NULL)
+		{
+			xmsg->CanMsg = *msg;
+			exos_port_send_message(&_can_rx_port, (EXOS_MESSAGE *)xmsg);
+		}
 	}
+#ifdef DEBUG
+	else _lost_msgs++;
+#endif
 }
 
 static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state)

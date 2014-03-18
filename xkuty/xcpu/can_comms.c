@@ -18,7 +18,7 @@ void xcpu_can_initialize()
 	exos_fifo_create(&_can_free_msgs, NULL);
 	for(int i = 0; i < CAN_MSG_QUEUE; i++) exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)&_can_msg[i]);
 
-	hal_can_initialize(0, 250000, CAN_INITF_DISABLE_RETRANSMISSION);
+	hal_can_initialize(0, 250000, 0); //CAN_INITF_DISABLE_RETRANSMISSION);
 	hal_fullcan_setup(_can_setup, NULL);
 }
 
@@ -72,7 +72,8 @@ static void _load_large_msg ( int len)
 	_large_message_len = len;
 }
 
-void xcpu_can_send_messages(XCPU_MASTER_OUT1 *report, XCPU_MASTER_OUT2 *adj)
+void xcpu_can_send_messages(XCPU_MASTER_OUT1 *report, XCPU_MASTER_OUT2 *adj, 
+							XCPU_MASTER_OUT3 *cust)
 {
 	int done;
 	int i;
@@ -95,18 +96,20 @@ void xcpu_can_send_messages(XCPU_MASTER_OUT1 *report, XCPU_MASTER_OUT2 *adj)
 		_load_large_msg ( 100);
 #endif
 
+	if (cust)
+	{
+		for(i = 0; i< 7; i++)
+			buf.u8[i] = cust->Curve[i];
+		int done = hal_can_send((CAN_EP) { .Id = 0x302 }, &buf, 8, CANF_NONE);
+		if (!done) 
+			hal_can_cancel_tx();
+	}
 
 	if (adj != NULL)
 	{
 		done = hal_can_send((CAN_EP) { .Id = 0x301 }, (CAN_BUFFER *)adj, 8, CANF_NONE);
 		if (!done) 
 			hal_can_cancel_tx();
-
-//	for(i = 0; i< 7; i++)
-//		buf.u8[i] = _storage.CustomCurve[i];
-//	int done = hal_can_send((CAN_EP) { .Id = 0x302 }, &buf, 8, CANF_NONE);
-//	if (!done) 
-//		hal_can_cancel_tx();
 	}
 
 	if (report != NULL)
