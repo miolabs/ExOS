@@ -187,7 +187,7 @@ static void _get_can_messages()
 			{
 				XCPU_MASTER_OUT1* tmsg = (XCPU_MASTER_OUT1*)&xmsg->CanMsg.Data.u8[0];
 				_dash.Speed = tmsg->Speed;
-				_dash.battery_level_fx8 = tmsg->BattLevel;
+				_dash.BatteryLevel = tmsg->BattLevel;
 				_dash.CpuStatus	= tmsg->State;
 				_dash.Distance = tmsg->Distance;
    				_dash.DriveMode = tmsg->DriveMode;
@@ -405,6 +405,8 @@ void main()
 
 	DISPLAY_STATE init_state = ST_LOGO_IN;
 	DISPLAY_STATE state = init_state;
+
+//_dash.CpuStatus |= XCPU_STATE_ON;
 
 	int prev_cpu_state = 0;	// Default state is OFF, wait for master to start
 	while(1)
