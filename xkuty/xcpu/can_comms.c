@@ -82,14 +82,14 @@ void xcpu_can_send_messages(XCPU_MASTER_OUT1 *report, XCPU_MASTER_OUT2 *adj)
 	if (_large_message_len > 0)
 		_send_large_msg (0x303,0x304);
 
-#if 1
+#if 0	// Test
 	static int test_large = 0;
 	if (test_large == 0)
 	{
-	for(int i=0; i<100; i++)
-		_large_message_buffer[i] = 'a' + (i & 0x1f);
-	test_large = 1;
-	_large_message_len = 100;
+		for(int i=0; i<100; i++)
+			_large_message_buffer[i] = 'a' + (i & 0x1f);
+		test_large = 1;
+		_large_message_len = 100;
 	}
 	if(_large_message_len <= 0) 
 		_load_large_msg ( 100);
