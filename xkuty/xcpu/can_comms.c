@@ -1,4 +1,5 @@
 #include "can_comms.h"
+#include "../multipacket_msg.h"
 #include <support/can_hal.h>
 #include <kernel/types.h>
 
@@ -34,76 +35,35 @@ void xcpu_can_release_message(XCPU_MSG *xmsg)
 		exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
 }
 
-// Sends "large_message_buffer", 128 bytes lenght max.
-// Generic tool to send buffers to the lcd. Takes lots of time
-static unsigned char _large_message_buffer[128];
-static short _large_message_len = 0;
-static short _large_message_cnt = 0;
 
-static void _send_large_msg (int id1, int id2)
-{
-	CAN_BUFFER buf;
-	int seg = _large_message_cnt >> 1;	// Repeat each part 2 times
-	int seg0 = seg * 2;
-	int seg1 = seg * 2 + 1;
-	buf.u8[0] = seg0 | ((_large_message_len <= 7) ? 0x80 : 0); // Mark end of message
-	for(int i=0; i<7; i++) buf.u8[1+i] = _large_message_buffer[seg0 * 7 + i];
-	int done = hal_can_send((CAN_EP) { .Id =id1 }, &buf, 8, CANF_NONE);
-	if (!done) 
-		hal_can_cancel_tx();
-	buf.u8[0] = seg1 | ((_large_message_len <= 14) ? 0x80 : 0); // Mark end of message
-	for(int i=0; i<7; i++) buf.u8[1+i] = _large_message_buffer[seg1 * 7 + 7 + i];
-	done = hal_can_send((CAN_EP) { .Id = id2 }, &buf, 8, CANF_NONE);
-	if (!done) 
-		hal_can_cancel_tx();
-
-	if((_large_message_cnt & 0x3) == 3)	// Discount on each 4th repeated sending
-		_large_message_len -= 14;
-	_large_message_cnt++;
-}
-
-static void _load_large_msg ( int len)
-{
-	if(_large_message_len > 0)
-		return; // If previous msg not finished, fail
-	if (len > 128)
-		len = 128;
-	_large_message_cnt = 0;
-	_large_message_len = len;
-}
-
-void xcpu_can_send_messages(XCPU_MASTER_OUT1 *report, XCPU_MASTER_OUT2 *adj, 
-							XCPU_MASTER_OUT3 *cust)
+void xcpu_can_send_messages(XCPU_MASTER_OUT1 *report, XCPU_MASTER_OUT2 *adj)
 {
 	int done;
 	int i;
 	CAN_BUFFER buf;
 
-	// Large message system
-	if (_large_message_len > 0)
-		_send_large_msg (0x303,0x304);
-
 #if 0	// Test
-	static int test_large = 0;
-	if (test_large == 0)
+	// Large message system
+	int busy = multipacket_msg_send (0x302,0x303);
+	if (!busy)
 	{
-		for(int i=0; i<100; i++)
-			_large_message_buffer[i] = 'a' + (i & 0x1f);
-		test_large = 1;
-		_large_message_len = 100;
+		unsigned char* test_msg = multipacket_msg_reset ( 100);
+		if (test_msg)
+		{
+			static int test_large = 0;
+			if (test_large == 0)
+			{
+				test_msg[0] = XCPU_MULTI_PHONE_LOG;
+				for(int i=1; i<101; i++)
+					test_msg[i] = 'a' + (i & 0x1f);
+				test_large = 1;
+			}
+		}
 	}
-	if(_large_message_len <= 0) 
-		_load_large_msg ( 100);
-#endif
 
-	if (cust)
-	{
-		for(i = 0; i< 7; i++)
-			buf.u8[i] = cust->Curve[i];
-		int done = hal_can_send((CAN_EP) { .Id = 0x302 }, &buf, 8, CANF_NONE);
-		if (!done) 
-			hal_can_cancel_tx();
-	}
+	//if (cust)
+   	//	multipacket_msg_load ( 100, cust->Curve);
+#endif
 
 	if (adj != NULL)
 	{

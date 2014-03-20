@@ -31,20 +31,6 @@ typedef struct
 	unsigned long  Reserved;
 } XCPU_MASTER_OUT2;
 
-// Generic sequential data transfer system (for large messages)
-typedef struct
-{
-	unsigned char Curve[7];
-	unsigned char Reserved;
-} XCPU_MASTER_OUT3;
-
-// Generic sequential data transfer system (for large messages)
-typedef struct
-{
-	unsigned char Idx;
-	unsigned char Data[7];
-} XCPU_MASTER_OUT4;
-
 typedef struct
 {
 	unsigned short ThrottleRaw;
@@ -118,6 +104,12 @@ typedef enum
 	XCPU_CMD_ADJUST_THROTTLE
 } XCPU_COMMANDS;
 
+typedef enum 
+{
+	XCPU_MULTI_NOP = 0,
+	XCPU_MULTI_CUSTOM_CURVE,
+	XCPU_MULTI_PHONE_LOG
+} XCPU_MULTIPACKET_MSGS;
 
 #endif // XCPU_H
 

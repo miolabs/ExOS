@@ -431,7 +431,8 @@ static void _can_send_messages(unsigned speed, unsigned long dist, unsigned thro
 		.ThrottleMin = _storage.ThrottleAdjMin,
 		.WheelRatio = _storage.WheelRatioAdj,
 		.MaxSpeed = _storage.MaxSpeed };
-	xcpu_can_send_messages(&report, &adj, (XCPU_MASTER_OUT3*)&_storage.CustomCurve[0]);
+	xcpu_can_send_messages(&report, &adj);
+	//&_storage.CustomCurve[0]);
 }
 
 static XCPU_EVENTS _bt_read_events()

@@ -377,11 +377,11 @@ void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 					if (dash->PhoneList[i].active)
 						_print_small(dash->PhoneList[i].name, -1, 17 + 9 * i);
 				}
-				if (_phone_add_or_del)
+				/*if (_phone_add_or_del)
 					_print_small("Add new phone", -1, 63);
 				else
 					_print_small("Delete phone?", -1, 63);
-				_print_small(">>", -1, 17 + 9 * _phone_line);
+				_print_small(">>", -1, 17 + 9 * _phone_line);*/
 			}
 			break;
 

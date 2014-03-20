@@ -63,7 +63,7 @@
           </folder>
         </folder>
       </folder>
-      <folder Name="xkuty">
+      <folder Name="xkuty" file_name="">
         <file file_name="xkuty/main_cpu1.c"/>
         <folder Name="xcpu" file_name="">
           <file file_name="xkuty/xcpu/sensor_cpu1.c"/>
@@ -75,6 +75,7 @@
           <file file_name="xkuty/xcpu/can_comms.c"/>
         </folder>
         <file file_name="xkuty/pid.c"/>
+        <file file_name="xkuty/multipacket_msg.c"/>
       </folder>
     </folder>
     <folder Name="System Files" file_name="">

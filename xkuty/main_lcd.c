@@ -22,7 +22,7 @@
 static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
 
 // Check both "hal_can_received_handler" & "_get_can_messages" when changing this list
-static const CAN_EP _eps[] = {{0x300, LCD_CAN_BUS}, {0x301, LCD_CAN_BUS}, {0x302, LCD_CAN_BUS}, {0x303, LCD_CAN_BUS}, {0x304, LCD_CAN_BUS}};
+static const CAN_EP _eps[] = {{0x300, LCD_CAN_BUS}, {0x301, LCD_CAN_BUS}, {0x302, LCD_CAN_BUS}, {0x303, LCD_CAN_BUS}};
 
 static DASH_DATA _dash = 
 { 
@@ -32,12 +32,6 @@ static DASH_DATA _dash =
 	.CustomCurve = {0},
 	{{0,""},{0,""},{0,""},{0,""},{0,""},{0,""}}
  };
-
-
-static unsigned long _large_message_marks = 0;
-static unsigned char _large_message_buffer[128];
-
-char _phone_add_or_del = 0, _phone_line = 0;
 
 static const EVREC_CHECK _maintenance_screen_access[] =
 {
@@ -165,17 +159,6 @@ static EXOS_FIFO _can_free_msgs;
 #define CAN_MSG_QUEUE 10
 static XCPU_MSG _can_msg[CAN_MSG_QUEUE];
 
-static inline int _next_power_of_2(int n)
-{
-	n--;
-	n |= n >> 1; 
-	n |= n >> 2; 
-	n |= n >> 4;
-	n |= n >> 8;
-	n |= n >> 16;
-	return n+1;
-}
-
 static void _get_can_messages()
 {
 	XCPU_MSG *xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0);
@@ -206,34 +189,29 @@ static void _get_can_messages()
                 //_dash.AppliedThrottle = tmsg->applied_throttle;
 			}
 			break;
-	
-			case 0x302:
-			{
-				for(int i=0; i<7; i++)
-					_dash.CustomCurve[i] = xmsg->CanMsg.Data.u8[i];
-			}
-			break;
 
+			case 0x302:
 			case 0x303:
-			case 0x304:
 			{
-				// Large message pass protocol
-				XCPU_MASTER_OUT4* tmsg = (XCPU_MASTER_OUT4*)&xmsg->CanMsg.Data.u8[0];
-				assert((tmsg->Idx & 0x7f) <= 121);	// 128 bytes buffer
-				for(int i=0; i<7; i++)
-					_large_message_buffer[(tmsg->Idx & 0x7f) * 7] = tmsg->Data[i];
-				if (tmsg->Idx == 0)
-					_large_message_marks = 1;	// Init of message recording
-				else
-					_large_message_marks |= 1 << (tmsg->Idx & 0x7f);
-				if (tmsg->Idx & 0x80)	// End of large message mark
+				// Large message pass protocol, using 0x302 & 0x303
+				int msg_len = 0;
+				const unsigned char* multi_msg = multipacket_msg_receive (&msg_len, &xmsg->CanMsg);
+				if (multi_msg)
 				{
-					int msg_len = sizeof(_dash.PhoneList);
-					unsigned char* dst = (unsigned char*)&_dash.PhoneList[0]; 
-					int marks_needed = _next_power_of_2(msg_len) - 1;
-					if ((marks_needed & _large_message_marks) == marks_needed)
-						__mem_copy(dst, dst + msg_len, _large_message_buffer);
-                    _large_message_marks = 0;
+					switch(multi_msg[0])
+					{
+						case XCPU_MULTI_CUSTOM_CURVE:
+							for(int i=0; i<7; i++)
+								_dash.CustomCurve[i] = xmsg->CanMsg.Data.u8[i];
+							break;
+						case XCPU_MULTI_PHONE_LOG:
+						{
+							int msg_len = sizeof(_dash.PhoneList);
+							unsigned char* dst = (unsigned char*)&_dash.PhoneList[0]; 
+							__mem_copy(dst, dst + msg_len, &multi_msg[1]);
+						}
+						break;
+					}
 				}
 			}
 			break;
@@ -390,7 +368,8 @@ void main()
 	exos_port_create(&_can_rx_port, NULL);
 	exos_port_create(&_can_rx_port, NULL);
 	exos_fifo_create(&_can_free_msgs, NULL);
-	for(int i = 0; i < CAN_MSG_QUEUE; i++) exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)&_can_msg[i]);
+	for(int i = 0; i < CAN_MSG_QUEUE; i++) 
+		exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)&_can_msg[i]);
 
 	hal_can_initialize(LCD_CAN_BUS, 250000, 0); //CAN_INITF_DISABLE_RETRANSMISSION);
 	hal_fullcan_setup(_can_setup, NULL);
@@ -502,7 +481,7 @@ static int _lost_msgs = 0;
 void hal_can_received_handler(int index, CAN_MSG *msg)
 { 
 	XCPU_MSG *xmsg;
-	if((msg->EP.Id >= 0x300) && (msg->EP.Id <= 0x304))
+	if((msg->EP.Id >= 0x300) && (msg->EP.Id <= 0x303))
 	{
 		xmsg = (XCPU_MSG *)exos_fifo_dequeue(&_can_free_msgs);
 		if (xmsg != NULL)
