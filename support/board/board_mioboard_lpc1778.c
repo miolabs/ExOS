@@ -51,9 +51,9 @@ static int _setup_i2c(int unit)
 	switch(unit)
 	{
 		case 0:
-			LPC_GPIO0->DIR |= (1<<27);
-			LPC_GPIO0->SET = (1<<27);
-			LPC_GPIO0->CLR = (1<<27);
+//			LPC_GPIO0->DIR |= (1<<28);
+//			LPC_GPIO0->SET = (1<<28);
+//			LPC_GPIO0->CLR = (1<<28);
 			
 			pincon_setfunc(0, 27, 1);	// SDA0
 			pincon_setfunc(0, 28, 1);	// SCL0
