@@ -510,8 +510,8 @@ static int _slave_io()
 #ifdef DEBUG
 							auth_done++;
 #endif
-							resp_buffer[offset++] = 2000 >> 8;
-							resp_buffer[offset++] = 2000 & 0xFF;
+							resp_buffer[offset++] = 2100 >> 8;
+							resp_buffer[offset++] = 2100 & 0xFF;
 							resp = (IAP_CMD) { .CommandID = IAP_CMP_SET_AVAILABLE_CURRENT, .Length = offset, .Transaction = cmd.Transaction };
 							iap_send_cmd(&resp, resp_buffer);
 
