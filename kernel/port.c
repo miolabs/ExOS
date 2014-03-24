@@ -70,11 +70,22 @@ void exos_port_remove(const char *name)
 	exos_mutex_unlock(&_port_mutex);
 }
 
-EXOS_MESSAGE *exos_port_get_message(EXOS_PORT *port, int timeout)
+EXOS_MESSAGE *exos_port_get_message(EXOS_PORT *port)
 {
-	EXOS_NODE *node = timeout != 0 ?
-		exos_fifo_wait(&port->Fifo, timeout) :
-		exos_fifo_dequeue(&port->Fifo);
+	EXOS_NODE *node = exos_fifo_dequeue(&port->Fifo);
+	if (node != NULL)
+	{
+#ifdef DEBUG
+		if (node->Type != EXOS_NODE_MESSAGE) kernel_panic(KERNEL_ERROR_WRONG_NODE);
+#endif
+		return (EXOS_MESSAGE *)node;
+	}
+	return NULL;
+}
+
+EXOS_MESSAGE *exos_port_wait_message(EXOS_PORT *port, int timeout)
+{
+	EXOS_NODE *node = exos_fifo_wait(&port->Fifo, timeout);
 	if (node != NULL)
 	{
 #ifdef DEBUG

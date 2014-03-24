@@ -10,9 +10,7 @@ static char _enable_rx = 0;
 static EXOS_LIST _handlers;
 static EXOS_FIFO _can_free_msgs;
 static CAN_RX_MSG _can_msg[CAN_RECEIVER_BUFFERS];
-#ifdef DEBUG
 static int _lost_msgs = 0;
-#endif
 
 void can_receiver_initialize()
 {
@@ -38,13 +36,30 @@ int can_receiver_add_handler(CAN_HANDLER *handler, int bus, unsigned long id, un
 	_enable_rx = 1;
 }
 
+static void _recycle_message(CAN_RX_MSG *rx_msg)
+{
+	exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)rx_msg);
+}
+
 int can_receiver_read(CAN_HANDLER *handler, CAN_MSG *msg, int timeout)
 {
-	CAN_RX_MSG *rx_msg = (CAN_RX_MSG *)exos_port_get_message(&handler->RxPort, timeout);
+	CAN_RX_MSG *rx_msg = (CAN_RX_MSG *)exos_port_wait_message(&handler->RxPort, timeout);
 	if (rx_msg != NULL)
 	{
 		*msg = rx_msg->CanMsg;
-		exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)rx_msg);
+		_recycle_message(rx_msg);
+		return 1;
+	}
+	return 0;
+}
+
+int can_receiver_get(CAN_HANDLER *handler, CAN_MSG *msg)
+{
+	CAN_RX_MSG *rx_msg = (CAN_RX_MSG *)exos_port_get_message(&handler->RxPort);
+	if (rx_msg != NULL)
+	{
+		*msg = rx_msg->CanMsg;
+		_recycle_message(rx_msg);
 		return 1;
 	}
 	return 0;
@@ -67,11 +82,17 @@ void hal_can_received_handler(int index, CAN_MSG *msg)
 					rx_msg->CanMsg = *msg;
 					exos_port_send_message(&handler->RxPort, (EXOS_MESSAGE *)rx_msg);
 				}
-#ifdef DEBUG
-				else _lost_msgs++;
-#endif
+				else can_receiver_msg_lost(index, msg);
 			}
 		}
 	}
 }
+
+__weak
+void can_receiver_msg_lost(int index, CAN_MSG *msg)
+{
+	_lost_msgs++;
+}
+
+
 

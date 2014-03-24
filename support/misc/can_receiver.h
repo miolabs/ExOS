@@ -22,6 +22,9 @@ typedef struct
 void can_receiver_initialize();
 int can_receiver_add_handler(CAN_HANDLER *handler, int bus, unsigned long id, unsigned long id_mask);
 int can_receiver_read(CAN_HANDLER *handler, CAN_MSG *msg, int timeout);
+int can_receiver_get(CAN_HANDLER *handler, CAN_MSG *msg);
 
+// callbacks
+void can_receiver_msg_lost(int index, CAN_MSG *msg);
 
 #endif // MISC_CAN_RECEIVER_H

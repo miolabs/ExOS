@@ -64,12 +64,13 @@
             <folder Name="classes">
               <file file_name="kernel/driver/usb/classes/scsi.c"/>
             </folder>
-            <folder Name="tests">
-              <file file_name="kernel/driver/usb/test/usbhost_test.c"/>
-            </folder>
           </folder>
         </folder>
         <file file_name="kernel/port.c"/>
+        <file file_name="kernel/dispatch.c"/>
+        <folder Name="posix">
+          <file file_name="kernel/posix/printf.c"/>
+        </folder>
       </folder>
       <folder Name="support">
         <folder Name="lpc2k">
@@ -82,6 +83,7 @@
           <file file_name="support/lpc2k/usb_otg.c"/>
           <file file_name="support/lpc2k/i2c.c"/>
           <file file_name="support/lpc2k/uart.c"/>
+          <file file_name="support/lpc2k/dma.c"/>
         </folder>
         <configuration Name="Common" build_intermediate_directory=".output/$(Configuration)/support" build_output_directory=".output/$(Configuration)/support"/>
         <folder Name="board">
@@ -100,10 +102,25 @@
             <file file_name="support/usb/driver/usbprint.c"/>
             <file file_name="support/usb/driver/ftdi.c"/>
             <file file_name="support/usb/driver/msc.c"/>
+            <file file_name="support/usb/driver/hid.c"/>
           </folder>
         </folder>
         <folder Name="misc">
           <file file_name="support/misc/eeprom.c"/>
+        </folder>
+        <folder Name="apple">
+          <file file_name="support/apple/cp20.c"/>
+          <file file_name="support/apple/iap.c"/>
+          <file file_name="support/apple/iap_comm.c"/>
+          <file file_name="support/apple/iap_core.c"/>
+          <file file_name="support/apple/iap_fid.c"/>
+        </folder>
+      </folder>
+      <folder Name="tests">
+        <folder Name="core">
+          <folder Name="drivers">
+            <file file_name="tests/core/drivers/usbhost_test.c"/>
+          </folder>
         </folder>
       </folder>
     </folder>

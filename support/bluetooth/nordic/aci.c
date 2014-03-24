@@ -234,7 +234,7 @@ static void *_service(void *arg)
 		if (-1 == exos_event_wait_multiple(events, 2, 1000))	// FIXME: change to TIMEOUT_NEVER
 			continue;
 
-		ACI_REQUEST *req = (ACI_REQUEST *)exos_port_get_message(&_service_port, 0);
+		ACI_REQUEST *req = (ACI_REQUEST *)exos_port_get_message(&_service_port);
 		if (req != NULL)
 		{
 			//TODO: cancel message if wrong state

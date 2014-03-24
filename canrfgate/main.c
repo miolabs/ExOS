@@ -30,7 +30,7 @@ void main()
 
 	while(1) 
 	{
-		RELAY_MSG *msg = (RELAY_MSG *)exos_port_get_message(&_port, 1000);
+		RELAY_MSG *msg = (RELAY_MSG *)exos_port_wait_message(&_port, 1000);
 		if (msg != NULL)
 		{
 			relay_set(msg->Unit, msg->RelayMask, msg->Time);

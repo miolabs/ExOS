@@ -25,7 +25,7 @@ void xcpu_can_initialize()
 
 XCPU_MSG *xcpu_can_get_message()
 {
-	XCPU_MSG *xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0);
+	XCPU_MSG *xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port);
 	return xmsg;
 }
 
@@ -44,10 +44,10 @@ void xcpu_can_send_messages(XCPU_MASTER_OUT1 *report, XCPU_MASTER_OUT2 *adj)
 
 #if 0	// Test
 	// Large message system
-	int busy = multipacket_msg_send (0x302,0x303);
+	int busy = multipacket_msg_send(0x302, 0x303);
 	if (!busy)
 	{
-		unsigned char* test_msg = multipacket_msg_reset ( 100);
+		unsigned char* test_msg = multipacket_msg_reset(100);
 		if (test_msg)
 		{
 			static int test_large = 0;

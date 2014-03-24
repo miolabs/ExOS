@@ -6,7 +6,7 @@ int canopen_create(CANOPEN_INSTANCE *ci, const CANOPEN_NODE_IDENTITY *identity, 
 {
 	can_receiver_initialize();
 	
-	int done = hal_can_initialize(can_module, bitrate);
+	int done = hal_can_initialize(can_module, bitrate, CAN_INITF_NONE);
 	if (done)
 	{
 		can_receiver_add_handler(&ci->Handler, can_module, 0, 0);
