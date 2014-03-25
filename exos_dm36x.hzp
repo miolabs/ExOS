@@ -16,6 +16,8 @@
           <file file_name="support/dm36x/aemif.c"/>
           <file file_name="support/dm36x/vpbe.c"/>
           <file file_name="support/dm36x/vpss.c"/>
+          <file file_name="support/dm36x/vpfe.c"/>
+          <file file_name="support/dm36x/i2c.c"/>
         </folder>
         <configuration Name="Common" build_intermediate_directory=".output/$(Configuration)/support" build_output_directory=".output/$(Configuration)/support"/>
         <folder Name="board" file_name="">

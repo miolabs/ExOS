@@ -27,7 +27,7 @@ void xcpu_can_initialize()
 
 XCPU_MSG *xcpu_can_get_message()
 {
-	XCPU_MSG *xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0);
+	XCPU_MSG *xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port);
 	return xmsg;
 }
 
