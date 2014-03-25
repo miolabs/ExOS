@@ -46,10 +46,10 @@ void xcpu_can_send_messages(XCPU_MASTER_OUT1 *report, XCPU_MASTER_OUT2 *adj,
 	CAN_BUFFER buf;
 
 	// Alternate sending of multipacket messages
-	int busy = multipacket_msg_send (0x302,0x303);
+	int busy = multipacket_msg_send(0x302,0x303);
 	if (!busy)
 	{
-		unsigned char* test_msg = multipacket_msg_reset ( 100);
+		unsigned char* test_msg = multipacket_msg_reset(100);
 		switch(alternate_msg)
 		{
 			case 0:

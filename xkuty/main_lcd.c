@@ -165,7 +165,7 @@ static XCPU_MSG _can_msg[CAN_MSG_QUEUE];
 
 static void _get_can_messages()
 {
-	XCPU_MSG *xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0);
+	XCPU_MSG *xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port);
 	while (xmsg != NULL)
 	{
 		
@@ -222,7 +222,7 @@ static void _get_can_messages()
 
 		}
 		exos_fifo_queue(&_can_free_msgs, (EXOS_NODE *)xmsg);
-        xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port, 0);
+        xmsg = (XCPU_MSG *)exos_port_get_message(&_can_rx_port);
 	}
 }
 

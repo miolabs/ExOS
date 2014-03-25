@@ -38,7 +38,6 @@
           </folder>
         </folder>
       </folder>
-      <file file_name="support/lcd/test/lcd_test.c"/>
       <folder Name="support" file_name="">
         <folder Name="lcd" file_name="">
           <file file_name="support/lcd/lcd.c"/>
@@ -53,6 +52,14 @@
         <folder Name="gfx">
           <file file_name="modules/gfx/font.c"/>
           <file file_name="modules/gfx/mono.c"/>
+        </folder>
+      </folder>
+      <folder Name="tests">
+        <folder Name="support">
+          <folder Name="lcd">
+            <file file_name="tests/support/lcd/lcd_test.c"/>
+            <file file_name="tests/support/lcd/lcd_boards.c"/>
+          </folder>
         </folder>
       </folder>
     </folder>

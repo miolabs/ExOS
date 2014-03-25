@@ -463,6 +463,9 @@ static int _slave_io()
 								case IAP_CMD_ACCESORY_DATA_TRANSFER:
 									// nothing to do here
 									break;
+								case IAP_CMP_SET_AVAILABLE_CURRENT:
+									//TODO
+									break;
 #ifdef DEBUG
 								default:
 									_warning();
@@ -507,6 +510,11 @@ static int _slave_io()
 #ifdef DEBUG
 							auth_done++;
 #endif
+							resp_buffer[offset++] = 2100 >> 8;
+							resp_buffer[offset++] = 2100 & 0xFF;
+							resp = (IAP_CMD) { .CommandID = IAP_CMP_SET_AVAILABLE_CURRENT, .Length = offset, .Transaction = cmd.Transaction };
+							iap_send_cmd(&resp, resp_buffer);
+
 							// TODO: notify app level that lingo ids are ready to be used
 						}
 #ifdef DEBUG
@@ -558,7 +566,6 @@ static int _slave_io()
 static void *_service(void *arg)
 {
 	exos_thread_sleep(1000);
-
 
 	if (_identify())
 	{
