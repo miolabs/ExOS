@@ -44,7 +44,7 @@ void main()
 
 static void _msg_rcv(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher)
 {
-	RELAY_MSG *msg = (RELAY_MSG *)exos_port_get_message(&_port, 0);
+	RELAY_MSG *msg = (RELAY_MSG *)exos_port_get_message(&_port);
 	if (msg != NULL)
 	{
 		exos_dispatcher_remove(context, &_relay_done);	// NOTE: it's safe to remove it even if not added 
