@@ -1,6 +1,8 @@
 #ifndef MULTIPACKET_MSG__H
 #define MULTIPACKET_MSG__H
 
+#include <support/can_hal.h>
+
 #define MULTIPACKET_MAX_LEN   128
 
 // Loads (copy) a multipacket msg to be sent. Max len is MULTIPACKET_MAX_LEN bytes

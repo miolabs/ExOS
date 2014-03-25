@@ -111,7 +111,10 @@ void main()
 				.ThrottleAdjMin = 66, 
 				.ThrottleAdjMax = 166,
 				.MaxSpeed = 40,
-				.CustomCurve = {255, 255, 255, 255, 255, 255, 255} };
+				.CustomCurve = {255, 255, 255, 255, 255, 255, 255},
+				.Phones = {{0,""},{0,""},{0,""},{0,""},{0,""},{0,""}}
+				//.Phones = {{1,"Jose Antonio"},{1,"Ramiro Ledesma"},{1,"AstolfoHinkel"},{0,""},{0,""},{1,"Paquito"}}
+				};
 	}
 
 	xcpu_bt_initialize();
@@ -431,7 +434,7 @@ static void _can_send_messages(unsigned speed, unsigned long dist, unsigned thro
 		.ThrottleMin = _storage.ThrottleAdjMin,
 		.WheelRatio = _storage.WheelRatioAdj,
 		.MaxSpeed = _storage.MaxSpeed };
-	xcpu_can_send_messages(&report, &adj);
+	xcpu_can_send_messages(&report, &adj, &_storage);
 	//&_storage.CustomCurve[0]);
 }
 

@@ -3,6 +3,7 @@
 #include "xanalog.h"
 #include "xiap.h"
 #include "event_recording.h"
+#include "multipacket_msg.h"
 
 #include <kernel/thread.h>
 #include <kernel/event.h>
@@ -30,8 +31,12 @@ static DASH_DATA _dash =
 	.ThrottleMin = 0, 
 	.ThrottleMax = 0, 
 	.CustomCurve = {0},
-	{{0,""},{0,""},{0,""},{0,""},{0,""},{0,""}}
- };
+	.Phones = {{0,""},{0,""},{0,""},{0,""},{0,""},{0,""}},
+	.AdjThrottleMin = 0,
+	.AdjThrottleMax = 0,
+	.PhoneAddOrDel = 0, 
+	.PhoneLine = 0
+};
 
 static const EVREC_CHECK _maintenance_screen_access[] =
 {
@@ -73,7 +78,7 @@ typedef struct
 	char adj_up, adj_down;
 	char adj_max_speed_down, adj_max_speed_up;
 	char next_drive_mode;
-	//char confirm_new_phone, next_phone, choose_phone;
+	char confirm_new_phone, remove_phone;
 } EVENT_TRIGGERS;
 
 static EVENT_TRIGGERS _trigs = {};
@@ -114,9 +119,8 @@ static XCPU_BUTTONS _read_send_inputs(int state)
 	events |= _trigger_event(&_trigs.switch_lights, XCPU_EVENT_SWITCH_LIGHTS);
 	events |= _trigger_event(&_trigs.switch_units, XCPU_EVENT_SWITCH_UNITS);
 	events |= _trigger_event(&_trigs.next_drive_mode, XCPU_EVENT_NEXT_DRIVE_MODE);
-	/*events |= _trigger_event(&_trigs.next_phone, XCPU_EVENT_ADJUST_DOWN);
-	events |= _trigger_event(&_trigs.confirm_new_phone, XCPU_EVENT_NEXT_PHONE);
-	events |= _trigger_event(&_trigs.choose_phone, XCPU_EVENT_CHOOSE_PHONE);*/
+	events |= _trigger_event(&_trigs.remove_phone, XCPU_EVENT_REMOVE_PHONE);
+	events |= _trigger_event(&_trigs.confirm_new_phone, XCPU_EVENT_CONFIRM_PHONE);
 
 	// Record inputs for sequence triggering (to start debug services)
 	 int input_status = (( buttons & XCPU_BUTTON_BRAKE_REAR) ? BRAKE_REAR_MASK : 0) |
@@ -202,13 +206,13 @@ static void _get_can_messages()
 					{
 						case XCPU_MULTI_CUSTOM_CURVE:
 							for(int i=0; i<7; i++)
-								_dash.CustomCurve[i] = xmsg->CanMsg.Data.u8[i];
+								_dash.CustomCurve[i] = multi_msg[1 + i];
 							break;
 						case XCPU_MULTI_PHONE_LOG:
 						{
-							int msg_len = sizeof(_dash.PhoneList);
-							unsigned char* dst = (unsigned char*)&_dash.PhoneList[0]; 
-							__mem_copy(dst, dst + msg_len, &multi_msg[1]);
+							int dst_len = sizeof(_dash.Phones);
+							unsigned char* dst = (unsigned char*)&_dash.Phones[0]; 
+							__mem_copy(dst, dst + dst_len, &multi_msg[1]);
 						}
 						break;
 					}
@@ -344,18 +348,31 @@ static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 			break;
 
 		case ST_ADD_PHONE:
-			/*if (event_happening(_menu_press, 1) && _dash.PhoneList[5].active)
+			if (event_happening(_menu_press, 1) && (_dash.Phones[5].flags & 1))
 				_trigs.confirm_new_phone = RESEND_COUNTER,
 				*state = ST_DASH;
 			if (event_happening(_menu_exit, 1))
-				*state = ST_DASH;*/		
+				*state = ST_DASH;
 			break;
 
 		case ST_SHOW_PHONES:
-			/*if (event_happening(_menu_move, 1))
-				_trigs.next_phone = RESEND_COUNTER;
+			if (event_happening(_menu_move, 1))
+			{
+				int i, found = 0;
+				int copy = _dash.PhoneLine;
+				for(i=copy; i<4; i++)
+				{
+					_dash.PhoneLine = (_dash.PhoneLine + 1) % 5;
+					if (_dash.Phones[_dash.PhoneLine].flags & 1)
+					{
+						found = 1;
+						break;
+					}
+				}
+				_dash.PhoneLine = found ? _dash.PhoneLine : copy;
+			}
 			if (event_happening(_menu_press, 1))
-				_trigs.choose_phone = RESEND_COUNTER;*/
+				_trigs.remove_phone = RESEND_COUNTER;
 			break;
 	}
 }
@@ -385,8 +402,8 @@ void main()
 
 	DISPLAY_STATE init_state = ST_LOGO_IN;
 	DISPLAY_STATE state = init_state;
-
-//_dash.CpuStatus |= XCPU_STATE_ON;
+	//_dash.CpuStatus |= XCPU_STATE_ON;
+	//init_state = ST_SHOW_PHONES;
 
 	int prev_cpu_state = 0;	// Default state is OFF, wait for master to start
 	while(1)

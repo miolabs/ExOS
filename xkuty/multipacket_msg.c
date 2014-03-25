@@ -1,9 +1,8 @@
+#include "multipacket_msg.h"
+
 #include <kernel/machine/hal.h>
-#include <support/can_hal.h>
 #include <kernel/types.h>
 #include <assert.h>
-
-#include "multipacket_msg.h"
 
 // Sends "large_message_buffer", 128 bytes length max.
 // Generic tool to send buffers to the lcd. Takes lots of time
@@ -11,17 +10,19 @@ static unsigned char _send_message_buffer[MULTIPACKET_MAX_LEN];
 static short _send_message_len = 0;
 static short _send_message_cnt = 0;
 
+#define REPEAT_PACKETS  (1)
+
 int multipacket_msg_send (int id1, int id2)
 {
 	if (_send_message_len > 0)
 	{
 		CAN_BUFFER buf;
-		int seg = _send_message_cnt >> 1;	// Repeat each part 2 times
-		int seg0 = seg * 2;
-		int seg1 = seg * 2 + 1;
+		int seg = _send_message_cnt / REPEAT_PACKETS;	// Repeat each if chosen
+		int seg0 = seg * 2;			// Packet A
+		int seg1 = seg * 2 + 1;		// Packet B
 		buf.u8[0] = seg0 | ((_send_message_len <= 7) ? 0x80 : 0); // Mark end of message
 		for(int i=0; i<7; i++) 
-			buf.u8[1+i] = _send_message_buffer[seg0 * 7 + i];
+			buf.u8[1 + i] = _send_message_buffer[seg0 * 7 + i];
 		int done = hal_can_send((CAN_EP) { .Id =id1 }, &buf, 8, CANF_NONE);
 		if (!done) 
 			hal_can_cancel_tx();
@@ -30,13 +31,14 @@ int multipacket_msg_send (int id1, int id2)
 		{
 			buf.u8[0] = seg1 | ((_send_message_len <= 14) ? 0x80 : 0); // Mark end of message
 			for(int i=0; i<7; i++) 
-				buf.u8[1+i] = _send_message_buffer[seg1 * 7 + 7 + i];
+				buf.u8[1 + i] = _send_message_buffer[seg1 * 7 + i];
 			done = hal_can_send((CAN_EP) { .Id = id2 }, &buf, 8, CANF_NONE);
 			if (!done) 
 				hal_can_cancel_tx();
 		}
 
-		if((_send_message_cnt & 0x1) == 1)	// Discount on each 4th repeated sending
+		// Discount each time we reach REPEAT_PACKETS 
+		if((_send_message_cnt % REPEAT_PACKETS) == (REPEAT_PACKETS - 1))	
 			_send_message_len -= 14;
 		_send_message_cnt++;
 		return 1;
