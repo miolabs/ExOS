@@ -368,25 +368,40 @@ void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 			break;
 		case ST_SHOW_PHONES:
 			{
+				int i;
 				_print_small("KNOWN PHONES",-1,8);
-				for(int i=0; i<5; i++)
+				for(i=0; i<XCPU_VIEW_PHONES; i++)
 				{
 					if (dash->Phones[i].flags & 1)
 						_print_small(dash->Phones[i].name, -1, 17 + 9 * i);
+					else
+						_print_small("empty", -1, 17 + 9 * i);
 				}
-				if (dash->PhoneAddOrDel)
-					_print_small("Add new phone", -1, 63);
+				int f = 0;
+				for(i=0; i<XCPU_VIEW_PHONES; i++)
+					f += (dash->Phones[i].flags & 1) ? 1 : 0;
+				if(f < XCPU_VIEW_PHONES)
+				{
+					if (dash->PhoneAddOrDel == 0)
+						_print_small("Add new phone", -1, 63);
+					else
+						_print_small("Delete phone?", -1, 63);
+				}
 				else
-					_print_small("Delete phone?", -1, 63);
-				_print_small(">>", 0, 17 + 9 * dash->PhoneLine);
+					_print_small("Mem. full, delete entry", -1, 63);
+				if (_frame_dumps & 0x8)
+					_print_small(">>", 0, 17 + 9 * dash->PhoneLine);
 			}
 			break;
 
 		case ST_ADD_PHONE:
 			_print_small("CONFIRM THIS PHONE", -1, 12);
 
-			if (dash->Phones[5].flags & 1)
-				_print_small(dash->Phones[5].name,-1,32);
+			if (dash->Phones[XCPU_NEW_PHONE].flags & 1)
+			{
+				_print_small(dash->Phones[XCPU_NEW_PHONE].name,-1,32);
+				_print_small("Accept?", 0, 60);
+			}
 			else              
 				_print_small("waiting for a phone",-1,32);
 			break;

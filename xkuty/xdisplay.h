@@ -42,7 +42,7 @@ typedef struct
 	short MaxSpeed;	
 	short CurrentMenuOption;
 	unsigned short AdjThrottleMin, AdjThrottleMax;
-	unsigned short PhoneAddOrDel, PhoneLine;
+	short PhoneAddOrDel, PhoneLine;
 	//int AppliedThrottle;
 } DASH_DATA;
 

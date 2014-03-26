@@ -87,7 +87,7 @@ const unsigned char* multipacket_msg_receive (int* recv_len, const CAN_MSG* msg)
 		}
 		else
 		{
-   			_recv_message_marks = -1;	// Msg incomplete, fail!
+   			_recv_message_marks = 0;	// Msg incomplete, fail!
 			return 0;
 		}
 	}

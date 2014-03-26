@@ -49,14 +49,16 @@ void xcpu_can_send_messages(XCPU_MASTER_OUT1 *report, XCPU_MASTER_OUT2 *adj,
 	int busy = multipacket_msg_send(0x302,0x303);
 	if (!busy)
 	{
-		unsigned char* test_msg = multipacket_msg_reset(100);
+		unsigned char* test_msg = 0;
 		switch(alternate_msg)
 		{
 			case 0:
+				test_msg = multipacket_msg_reset(1 +sizeof(storage->Phones));
 				test_msg[0] = XCPU_MULTI_PHONE_LOG;
 				__mem_copy(&test_msg[1], &test_msg[1 +sizeof(storage->Phones)], storage->Phones);
 				break;
 			case 1:
+				test_msg = multipacket_msg_reset(1 +sizeof(char) * 7);
 				test_msg[0] = XCPU_MULTI_CUSTOM_CURVE;
 				__mem_copy(&test_msg[1], &test_msg[1 +sizeof(char) * 7], storage->CustomCurve);
 				break;

@@ -4,6 +4,8 @@
 #define XCPU_PERSIST_MAGIC (('X') | ('C' << 8) | ('P' << 16) | (3 << 24))
 
 #define XCPU_PHONE_LOGS  6
+#define XCPU_VIEW_PHONES  (XCPU_PHONE_LOGS - 1)
+#define XCPU_NEW_PHONE   XCPU_VIEW_PHONES
 
 typedef struct
 {
