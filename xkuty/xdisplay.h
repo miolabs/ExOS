@@ -2,6 +2,7 @@
 #define XDISPLAY_H
 
 #include "xcpu.h"
+#include "xcpu/persist.h"
 
 typedef enum
 {
@@ -26,12 +27,6 @@ typedef enum
 	ST_ADD_PHONE,
 } DISPLAY_STATE;
 
-typedef struct
-{
-	char active;
-	char name[17];
-} PHONE_REG;
-
 typedef struct 
 {
 	int CpuStatus;
@@ -43,10 +38,12 @@ typedef struct
 	unsigned char ThrottleMin;
 	unsigned char ThrottleMax;
 	unsigned char CustomCurve[7];
-	PHONE_REG PhoneList[6]; // Max 5 phones. The 6 th one is the new candidate
-	int CurrentMenuOption;
+	XCPU_PHONE_REG Phones[XCPU_PHONE_LOGS]; // Max 5 phones. The 6th one is the new candidate
+	short MaxSpeed;	
+	short CurrentMenuOption;
+	unsigned short AdjThrottleMin, AdjThrottleMax;
+	short PhoneAddOrDel, PhoneLine;
 	//int AppliedThrottle;
-	int MaxSpeed;
 } DASH_DATA;
 
 void xdisplay_initialize();

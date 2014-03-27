@@ -111,7 +111,10 @@ void main()
 				.ThrottleAdjMin = 66, 
 				.ThrottleAdjMax = 166,
 				.MaxSpeed = 40,
-				.CustomCurve = {255, 255, 255, 255, 255, 255, 255} };
+				.CustomCurve = {255, 255, 255, 255, 255, 255, 255},
+				.Phones = {{0,""},{0,""},{0,""},{0,""},{0,""},{0,""}}
+				//.Phones = {{1,"Jose Antonio"},{1,"Ramiro Ledesma"},{1,"Astolfo Hinkel"},{0,""},{0,""},{1,"Paquito"}}
+				};
 	}
 
 	xcpu_bt_initialize();
@@ -388,6 +391,30 @@ static XCPU_EVENTS _do_lcd_command(XCPU_MASTER_INPUT2 *input)
         	_storage.ThrottleAdjMin = input->Data[0];
 			_storage.ThrottleAdjMax = input->Data[1];
 			break;
+		case XCPU_CMD_REMOVE_PHONE:
+			{
+				int rem = input->Data[0] % XCPU_VIEW_PHONES;
+				if (rem < (XCPU_VIEW_PHONES - 1))
+					for(i=rem; i<XCPU_VIEW_PHONES; i++)
+						_storage.Phones[i] = _storage.Phones[i + 1]; 
+				_storage.Phones[XCPU_VIEW_PHONES - 1].flags = 0;
+				_storage.Phones[XCPU_VIEW_PHONES - 1].name[0] = 0;
+			}	
+			break;
+		case XCPU_CMD_CONFIRM_PHONE:
+			{
+				// Find 1s free slot and copy the candidate there
+				int found = -1;
+				for(i = 0; i < XCPU_VIEW_PHONES; i++)
+					if(_storage.Phones[i].flags == 0)
+					{
+						found = 1;
+						break;
+					}
+				if (found >= 0)
+					_storage.Phones[i] = _storage.Phones[XCPU_NEW_PHONE];
+			}
+			break;
 		case XCPU_CMD_INVOKE_BOOTLOADER: 
 			return XCPU_EVENT_TURN_OFF | XCPU_EVENT_ENTER_BOOTLOADER;
 	}
@@ -431,7 +458,7 @@ static void _can_send_messages(unsigned speed, unsigned long dist, unsigned thro
 		.ThrottleMin = _storage.ThrottleAdjMin,
 		.WheelRatio = _storage.WheelRatioAdj,
 		.MaxSpeed = _storage.MaxSpeed };
-	xcpu_can_send_messages(&report, &adj);
+	xcpu_can_send_messages(&report, &adj, &_storage);
 	//&_storage.CustomCurve[0]);
 }
 

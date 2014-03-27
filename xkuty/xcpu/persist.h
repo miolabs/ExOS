@@ -3,17 +3,33 @@
 
 #define XCPU_PERSIST_MAGIC (('X') | ('C' << 8) | ('P' << 16) | (3 << 24))
 
+#define XCPU_PHONE_LOGS  6
+#define XCPU_VIEW_PHONES  (XCPU_PHONE_LOGS - 1)
+#define XCPU_NEW_PHONE   XCPU_VIEW_PHONES
+
+typedef struct
+{
+	char flags;		// Bit 0: Slot empty or used, bit 1: name complete or incomplete
+	char name[19];	// Bigger names will not fit the screen 
+} XCPU_PHONE_REG;
+
+// Limit this structure to 248 bytes max., limit of the EEPROM
 typedef struct
 {
 	unsigned long Magic;
 	unsigned long TotalSteps;
 	unsigned char ConfigBits;
 	unsigned char DriveMode;
-	unsigned char Reserved;
 	signed char   WheelRatioAdj;
+	unsigned char Reserved1;
+   	// aligned 4
 	unsigned char ThrottleAdjMin, ThrottleAdjMax;
 	unsigned char MaxSpeed;
 	unsigned char CustomCurve[7];
+	unsigned short Reserved2;  
+	// aligned 4
+	XCPU_PHONE_REG Phones[XCPU_PHONE_LOGS];	// Phones allowed to connect
+	// aligned 4
 } XCPU_PERSIST_DATA;
 
 typedef enum

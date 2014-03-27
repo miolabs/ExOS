@@ -1,6 +1,8 @@
 #include "can_comms.h"
 #include "../multipacket_msg.h"
+#include "persist.h"
 #include <support/can_hal.h>
+#include <kernel/machine/hal.h>
 #include <kernel/types.h>
 
 static const CAN_EP _eps[] = { {0x200, 0}, {0x201, 0} };
@@ -36,34 +38,35 @@ void xcpu_can_release_message(XCPU_MSG *xmsg)
 }
 
 
-void xcpu_can_send_messages(XCPU_MASTER_OUT1 *report, XCPU_MASTER_OUT2 *adj)
+void xcpu_can_send_messages(XCPU_MASTER_OUT1 *report, XCPU_MASTER_OUT2 *adj, 
+							XCPU_PERSIST_DATA* storage)
 {
-	int done;
-	int i;
+	static int alternate_msg = 0;
+	int done, i;
 	CAN_BUFFER buf;
 
-#if 0	// Test
-	// Large message system
-	int busy = multipacket_msg_send(0x302, 0x303);
+	// Alternate sending of multipacket messages
+	int busy = multipacket_msg_send(0x302); //,0x303);
 	if (!busy)
 	{
-		unsigned char* test_msg = multipacket_msg_reset(100);
-		if (test_msg)
+		unsigned char* test_msg = 0;
+		switch(alternate_msg)
 		{
-			static int test_large = 0;
-			if (test_large == 0)
-			{
+			case 0:
+				test_msg = multipacket_msg_reset(1 +sizeof(storage->Phones));
 				test_msg[0] = XCPU_MULTI_PHONE_LOG;
-				for(int i=1; i<101; i++)
-					test_msg[i] = 'a' + (i & 0x1f);
-				test_large = 1;
-			}
+				__mem_copy(&test_msg[1], &test_msg[1 +sizeof(storage->Phones)], storage->Phones);
+				break;
+			case 1:
+				test_msg = multipacket_msg_reset(1 +sizeof(char) * 7);
+				test_msg[0] = XCPU_MULTI_CUSTOM_CURVE;
+				__mem_copy(&test_msg[1], &test_msg[1 +sizeof(char) * 7], storage->CustomCurve);
+				break;
+			default:
+				break;
 		}
+		alternate_msg = (alternate_msg + 1) % 2;
 	}
-
-	//if (cust)
-   	//	multipacket_msg_load ( 100, cust->Curve);
-#endif
 
 	if (adj != NULL)
 	{

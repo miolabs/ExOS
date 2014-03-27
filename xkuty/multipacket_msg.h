@@ -1,6 +1,8 @@
 #ifndef MULTIPACKET_MSG__H
 #define MULTIPACKET_MSG__H
 
+#include <support/can_hal.h>
+
 #define MULTIPACKET_MAX_LEN   128
 
 // Loads (copy) a multipacket msg to be sent. Max len is MULTIPACKET_MAX_LEN bytes
@@ -10,7 +12,7 @@ unsigned char* multipacket_msg_reset ( int len);
 
 // This module send 2 CAN packets each iteration to improve speed
 // If a prev. msg is still pending, returns 0
-int multipacket_msg_send ( int id1, int id2);
+int multipacket_msg_send ( int id1); //, int id2);
 
 // Appends read info until buffer is complete. If complete, return pointer & len
 // If msg was received uncomplete, returns len -1

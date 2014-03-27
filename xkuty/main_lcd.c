@@ -31,8 +31,12 @@ static DASH_DATA _dash =
 	.ThrottleMin = 0, 
 	.ThrottleMax = 0, 
 	.CustomCurve = {0},
-	{{0,""},{0,""},{0,""},{0,""},{0,""},{0,""}}
- };
+	.Phones = {{0,""},{0,""},{0,""},{0,""},{0,""},{0,""}},
+	.AdjThrottleMin = 0,
+	.AdjThrottleMax = 0,
+	.PhoneAddOrDel = 0, 
+	.PhoneLine = 0
+};
 
 static const EVREC_CHECK _maintenance_screen_access[] =
 {
@@ -69,12 +73,11 @@ static char _configuring = 0;
 
 typedef struct
 {
-	char switch_lights;
-	char switch_units;
-	char adj_up, adj_down;
-	char adj_max_speed_down, adj_max_speed_up;
-	char next_drive_mode;
-	//char confirm_new_phone, next_phone, choose_phone;
+	char SwitchLights;
+	char SwitchUnits;
+	char AdjUp, AdjDown;
+	char AdjMaxSpeedDown, AdjMaxSpeedUp;
+	char NextDriveMode;
 } EVENT_TRIGGERS;
 
 static EVENT_TRIGGERS _trigs = {};
@@ -108,16 +111,13 @@ static XCPU_BUTTONS _read_send_inputs(int state)
 	if (_configuring)
 		events |= XCPU_EVENT_CONFIGURING;
 
-	events |= _trigger_event(&_trigs.adj_up, XCPU_EVENT_ADJUST_UP);
-	events |= _trigger_event(&_trigs.adj_down, XCPU_EVENT_ADJUST_DOWN);
-	events |= _trigger_event(&_trigs.adj_max_speed_up, XCPU_EVENT_ADJUST_MAX_SPEED_UP);
-	events |= _trigger_event(&_trigs.adj_max_speed_down, XCPU_EVENT_ADJUST_MAX_SPEED_DOWN);
-	events |= _trigger_event(&_trigs.switch_lights, XCPU_EVENT_SWITCH_LIGHTS);
-	events |= _trigger_event(&_trigs.switch_units, XCPU_EVENT_SWITCH_UNITS);
-	events |= _trigger_event(&_trigs.next_drive_mode, XCPU_EVENT_NEXT_DRIVE_MODE);
-	/*events |= _trigger_event(&_trigs.next_phone, XCPU_EVENT_ADJUST_DOWN);
-	events |= _trigger_event(&_trigs.confirm_new_phone, XCPU_EVENT_NEXT_PHONE);
-	events |= _trigger_event(&_trigs.choose_phone, XCPU_EVENT_CHOOSE_PHONE);*/
+	events |= _trigger_event(&_trigs.AdjUp, XCPU_EVENT_ADJUST_UP);
+	events |= _trigger_event(&_trigs.AdjDown, XCPU_EVENT_ADJUST_DOWN);
+	events |= _trigger_event(&_trigs.AdjMaxSpeedUp, XCPU_EVENT_ADJUST_MAX_SPEED_UP);
+	events |= _trigger_event(&_trigs.AdjMaxSpeedDown, XCPU_EVENT_ADJUST_MAX_SPEED_DOWN);
+	events |= _trigger_event(&_trigs.SwitchLights, XCPU_EVENT_SWITCH_LIGHTS);
+	events |= _trigger_event(&_trigs.SwitchUnits, XCPU_EVENT_SWITCH_UNITS);
+	events |= _trigger_event(&_trigs.NextDriveMode, XCPU_EVENT_NEXT_DRIVE_MODE);
 
 	// Record inputs for sequence triggering (to start debug services)
 	 int input_status = (( buttons & XCPU_BUTTON_BRAKE_REAR) ? BRAKE_REAR_MASK : 0) |
@@ -203,13 +203,13 @@ static void _get_can_messages()
 					{
 						case XCPU_MULTI_CUSTOM_CURVE:
 							for(int i=0; i<7; i++)
-								_dash.CustomCurve[i] = xmsg->CanMsg.Data.u8[i];
+								_dash.CustomCurve[i] = multi_msg[1 + i];
 							break;
 						case XCPU_MULTI_PHONE_LOG:
 						{
-							int msg_len = sizeof(_dash.PhoneList);
-							unsigned char* dst = (unsigned char*)&_dash.PhoneList[0]; 
-							__mem_copy(dst, dst + msg_len, &multi_msg[1]);
+							int dst_len = sizeof(_dash.Phones);
+							unsigned char* dst = (unsigned char*)&_dash.Phones[0]; 
+							__mem_copy(dst, dst + dst_len, &multi_msg[1]);
 						}
 						break;
 					}
@@ -244,6 +244,29 @@ static void	_get_iphone_messages()
 	}
 }
 
+static int _next_phone_entry (int start) 
+{
+	int i, found = -1;
+	for(i=start; i<XCPU_VIEW_PHONES; i++)	// Only XCPU_VIEW_PHONES options on screen
+	{
+		if (_dash.Phones[i].flags & 1)
+		{
+			found = i;
+			break;
+		}
+	}
+	return found;
+}
+
+static int _count_phone_entries () 
+{
+	int i, c = 0;
+	for(i=0; i<XCPU_VIEW_PHONES; i++)	// Only XCPU_VIEW_PHONES options on screen
+		if ((_dash.Phones[i].flags & 1) == 0)
+			c++;
+	return c;
+}
+
 
 static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 {
@@ -273,9 +296,9 @@ static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 
 		case ST_ADJUST_WHEEL_DIA:
 			if (buttons & XCPU_BUTTON_BRAKE_REAR)
-				_trigs.adj_up = RESEND_COUNTER;
+				_trigs.AdjUp = RESEND_COUNTER;
 			if (buttons & XCPU_BUTTON_BRAKE_FRONT)
-				_trigs.adj_down = RESEND_COUNTER;
+				_trigs.AdjDown = RESEND_COUNTER;
 			if ( event_happening(_menu_exit, 1) ||  event_happening(_menu_press, 1))
 				*state = ST_DASH;
 			break;
@@ -304,10 +327,10 @@ static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 			{
 				switch(_dash.CurrentMenuOption)
 				{
-					case 0:	_trigs.switch_units = RESEND_COUNTER; break;
+					case 0:	_trigs.SwitchUnits = RESEND_COUNTER; break;
 					case 1:	*state = ST_ADJUST_WHEEL_DIA; break;
 					case 2: *state = ST_ADJUST_THROTTLE_MAX; break;
-					case 3: _trigs.switch_lights = RESEND_COUNTER; break;
+					case 3: _trigs.SwitchLights = RESEND_COUNTER; break;
 					case 4: *state = ST_DEBUG_INPUT; break;
 					case 5: *state = ST_ADJUST_MAX_SPEED; break;
 					default: assert(0);
@@ -324,10 +347,14 @@ static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 			{
 				switch(_dash.CurrentMenuOption)
 				{
-					case 0: _trigs.next_drive_mode = RESEND_COUNTER; break;
-					case 1: _trigs.switch_units = RESEND_COUNTER; break;
-					case 2: _trigs.switch_lights = RESEND_COUNTER; break;
-					//case 3: break; // Move to new phone menu
+					case 0: _trigs.NextDriveMode = RESEND_COUNTER; break;
+					case 1: _trigs.SwitchUnits = RESEND_COUNTER; break;
+					case 2: _trigs.SwitchLights = RESEND_COUNTER; break;
+					case 3: *state = ST_SHOW_PHONES;
+							_dash.PhoneLine = _next_phone_entry ( 0);
+                            _dash.PhoneLine = (_dash.PhoneLine >= 0) ? _dash.PhoneLine : 0;
+                            _dash.PhoneAddOrDel = 0;
+							break; 
 					default: break;
 				}
 			}
@@ -337,26 +364,61 @@ static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 
 		case ST_ADJUST_MAX_SPEED:
 			if(buttons & XCPU_BUTTON_BRAKE_REAR)
-				_trigs.adj_max_speed_up = RESEND_COUNTER;
+				_trigs.AdjMaxSpeedUp = RESEND_COUNTER;
 			if(buttons & XCPU_BUTTON_BRAKE_FRONT)
-				_trigs.adj_max_speed_down = RESEND_COUNTER;
+				_trigs.AdjMaxSpeedDown = RESEND_COUNTER;
 			if (event_happening(_menu_press, 1) || event_happening(_menu_exit, 1))
 				*state = ST_DASH;
 			break;
 
 		case ST_ADD_PHONE:
-			/*if (event_happening(_menu_press, 1) && _dash.PhoneList[5].active)
-				_trigs.confirm_new_phone = RESEND_COUNTER,
+			if (event_happening(_menu_press, 1) && (_dash.Phones[XCPU_NEW_PHONE].flags & 1))
+				_set_command_to_xcpu(XCPU_CMD_CONFIRM_PHONE, 0, 0),
 				*state = ST_DASH;
 			if (event_happening(_menu_exit, 1))
-				*state = ST_DASH;*/		
+				*state = ST_DASH;
 			break;
 
 		case ST_SHOW_PHONES:
-			/*if (event_happening(_menu_move, 1))
-				_trigs.next_phone = RESEND_COUNTER;
+			if (event_happening(_menu_move, 1))
+			{
+				// Move menu marker to the next valid phone entry, or "add" option.
+				if ( _dash.PhoneLine == XCPU_NEW_PHONE)	// We are in "add phone"
+				{
+					_dash.PhoneLine = _next_phone_entry (0);
+					if( _dash.PhoneLine < 0)
+						_dash.PhoneLine = 0;	// Log is empty, keep
+				}
+				else
+				{
+					int next = XCPU_NEW_PHONE;
+					if (_dash.PhoneLine < (XCPU_NEW_PHONE - 1))
+						next = _next_phone_entry (_dash.PhoneLine + 1);	
+					_dash.PhoneLine = ( next < 0) ? XCPU_NEW_PHONE : next; // Move to "add phone" if suitable
+				}
+                _dash.PhoneAddOrDel = 0;
+			}
+			// Press offers to delete an entry, or enter into the "add phone" screen
 			if (event_happening(_menu_press, 1))
-				_trigs.choose_phone = RESEND_COUNTER;*/
+			{
+				if(_dash.PhoneLine == XCPU_NEW_PHONE)	// Add phone option
+				{
+					if (_count_phone_entries() > 0)
+						*state = ST_ADD_PHONE;
+				}
+				else
+				{
+					if( _dash.PhoneAddOrDel == 0)
+						_dash.PhoneAddOrDel = 1;
+					else
+					{
+						// Delete is confirmed
+						unsigned char arg = _dash.PhoneLine;
+						_set_command_to_xcpu(XCPU_CMD_REMOVE_PHONE, &arg, 2);
+						_dash.PhoneAddOrDel = 0;
+					}
+				}
+			}
 			break;
 	}
 }
@@ -386,13 +448,11 @@ void main()
 
 	DISPLAY_STATE init_state = ST_LOGO_IN;
 	DISPLAY_STATE state = init_state;
-
-//_dash.CpuStatus |= XCPU_STATE_ON;
+	//init_state = ST_SHOW_PHONES;
 
 	int prev_cpu_state = 0;	// Default state is OFF, wait for master to start
 	while(1)
 	{
-		//_dash.status |= XCPU_STATE_ON;
 		// Read CAN messages from master 
 		_get_can_messages();
 
@@ -406,6 +466,7 @@ void main()
 			_cmd_resend_cnt--;
 		}
 
+		//_dash.CpuStatus |= XCPU_STATE_ON;
 		if (_dash.CpuStatus & XCPU_STATE_ON)
 		{
 			if ((prev_cpu_state & XCPU_STATE_ON) == 0)
