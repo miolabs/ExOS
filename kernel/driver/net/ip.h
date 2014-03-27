@@ -77,11 +77,10 @@ typedef struct __attribute__((__packed__))
 #define DSCP_EF		0b101110	// voice
 
 extern const IP_ENDPOINT __ep_broadcast;
-extern const IP_ADDR __ip_any;
 
 #define IP_ENDPOINT_BROADCAST ((IP_ENDPOINT *)&__ep_broadcast)
-#define IP_ADDR_BROADCAST (__ep_broadcast.IP)
-#define IP_ADDR_ANY (__ip_any)
+#define IP_ADDR_BROADCAST (IP_ADDR){255, 255, 255, 255}
+#define IP_ADDR_ANY (IP_ADDR){0, 0, 0, 0}
 
 typedef struct
 {

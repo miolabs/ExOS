@@ -11,7 +11,6 @@
 const IP_ENDPOINT __ep_broadcast = {
 	.MAC = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, 
 	.IP = {255, 255, 255, 255} };
-const IP_ADDR __ip_any = { .Value = 0 };
 
 static int _packet_id = 0;
 
@@ -145,16 +144,13 @@ int net_ip_resolve(NET_ADAPTER *adapter, IP_ENDPOINT *ep)
 	if (adapter == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
 
-	// FIXME: we should try to match broadcast ip first!
-
-	int found = net_arp_obtain_hw_addr(adapter, &ep->IP, &ep->MAC);
-	if (!found &&
-		0 == ~(ep->IP.Value | adapter->NetMask.Value))	// broadcast ip
+	if (0 == ~(ep->IP.Value | adapter->NetMask.Value)) // broadcast ip
 	{
 		ep->MAC = IP_ENDPOINT_BROADCAST->MAC;
-		found = 1;
+		return 1;
 	}
-	return found;
+
+	return net_arp_obtain_hw_addr(adapter, &ep->IP, &ep->MAC);
 }
 
 int net_ip_set_addr(NET_ADAPTER *driver, IP_ADDR ip, IP_ADDR mask, IP_ADDR gateway)

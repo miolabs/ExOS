@@ -47,8 +47,6 @@
         <folder Name="bluetooth">
           <folder Name="nordic">
             <file file_name="support/bluetooth/nordic/aci.c"/>
-            <file file_name="support/bluetooth/nordic/boards_lpc11.c"/>
-            <file file_name="support/bluetooth/nordic/aci_support.c"/>
             <file file_name="support/bluetooth/nordic/ble_hal.c"/>
           </folder>
           <folder Name="ble">
@@ -58,7 +56,13 @@
       </folder>
       <folder Name="tests">
         <folder Name="support">
-          <file file_name="tests/support/ble_test.c"/>
+          <folder Name="bluetooth">
+            <file file_name="tests/support/bluetooth/ble_test.c"/>
+            <file file_name="tests/support/bluetooth/boards_lpc11.c"/>
+            <file file_name="tests/support/bluetooth/services.c">
+              <configuration Name="Common" c_user_include_directories=".;support/bluetooth/nordic"/>
+            </file>
+          </folder>
         </folder>
       </folder>
     </folder>

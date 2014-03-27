@@ -58,7 +58,6 @@
           </folder>
           <folder Name="nordic">
             <file file_name="support/bluetooth/nordic/aci.c"/>
-            <file file_name="support/bluetooth/nordic/aci_support.c"/>
             <file file_name="support/bluetooth/nordic/ble_hal.c"/>
           </folder>
         </folder>
@@ -73,6 +72,10 @@
           <file file_name="xkuty/xcpu/throttle_curves.c"/>
           <file file_name="xkuty/xcpu/bt.c"/>
           <file file_name="xkuty/xcpu/can_comms.c"/>
+          <folder Name="nordic">
+            <file file_name="xkuty/xcpu/nordic/services.c"/>
+            <configuration Name="Common" c_user_include_directories=".;support/bluetooth/nordic"/>
+          </folder>
         </folder>
         <file file_name="xkuty/pid.c"/>
         <file file_name="xkuty/multipacket_msg.c"/>
