@@ -12,7 +12,7 @@ unsigned char* multipacket_msg_reset ( int len);
 
 // This module send 2 CAN packets each iteration to improve speed
 // If a prev. msg is still pending, returns 0
-int multipacket_msg_send ( int id1, int id2);
+int multipacket_msg_send ( int id1); //, int id2);
 
 // Appends read info until buffer is complete. If complete, return pointer & len
 // If msg was received uncomplete, returns len -1

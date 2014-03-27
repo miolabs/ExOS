@@ -113,7 +113,7 @@ void main()
 				.MaxSpeed = 40,
 				.CustomCurve = {255, 255, 255, 255, 255, 255, 255},
 				.Phones = {{0,""},{0,""},{0,""},{0,""},{0,""},{0,""}}
-				//.Phones = {{1,"Jose Antonio"},{1,"Ramiro Ledesma"},{1,"AstolfoHinkel"},{0,""},{0,""},{1,"Paquito"}}
+				//.Phones = {{1,"Jose Antonio"},{1,"Ramiro Ledesma"},{1,"Astolfo Hinkel"},{0,""},{0,""},{1,"Paquito"}}
 				};
 	}
 
@@ -396,7 +396,7 @@ static XCPU_EVENTS _do_lcd_command(XCPU_MASTER_INPUT2 *input)
 				int rem = input->Data[0] % XCPU_VIEW_PHONES;
 				if (rem < (XCPU_VIEW_PHONES - 1))
 					for(i=rem; i<XCPU_VIEW_PHONES; i++)
-						_storage.Phones[rem] = _storage.Phones[rem + 1]; 
+						_storage.Phones[i] = _storage.Phones[i + 1]; 
 				_storage.Phones[XCPU_VIEW_PHONES - 1].flags = 0;
 				_storage.Phones[XCPU_VIEW_PHONES - 1].name[0] = 0;
 			}	
@@ -412,7 +412,7 @@ static XCPU_EVENTS _do_lcd_command(XCPU_MASTER_INPUT2 *input)
 						break;
 					}
 				if (found >= 0)
-					_storage.Phones[found] = _storage.Phones[XCPU_NEW_PHONE];
+					_storage.Phones[i] = _storage.Phones[XCPU_NEW_PHONE];
 			}
 			break;
 		case XCPU_CMD_INVOKE_BOOTLOADER: 
