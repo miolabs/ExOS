@@ -91,94 +91,6 @@
             <PeriodForProperties/>
         </Characteristic>
     </Service>
-    <Service Type="local" PrimaryService="true">
-        <Name>Device Information</Name>
-        <Uuid>180a</Uuid>
-        <Characteristic>
-            <Name>Model Number String</Name>
-            <Uuid>2a24</Uuid>
-            <DefaultValue>nRF8001</DefaultValue>
-            <UsePresentationFormat>1</UsePresentationFormat>
-            <MaxDataLength>8</MaxDataLength>
-            <AttributeLenType>1</AttributeLenType>
-            <ForceOpen>false</ForceOpen>
-            <Properties>
-                <WriteWithoutResponse>false</WriteWithoutResponse>
-                <Write>false</Write>
-                <Notify>false</Notify>
-                <Indicate>false</Indicate>
-                <Broadcast>false</Broadcast>
-            </Properties>
-            <SetPipe>false</SetPipe>
-            <AckIsAuto>false</AckIsAuto>
-            <PresentationFormatDescriptor Value="0000" Exponent="0" Format="25" NameSpace="01" Unit="0000"/>
-            <PeriodForReadingThisCharacteristic>0</PeriodForReadingThisCharacteristic>
-            <PeriodForProperties/>
-        </Characteristic>
-        <Characteristic>
-            <Name>Hardware Revision String</Name>
-            <Uuid>2a27</Uuid>
-            <DefaultValue>1.0</DefaultValue>
-            <UsePresentationFormat>1</UsePresentationFormat>
-            <MaxDataLength>3</MaxDataLength>
-            <AttributeLenType>1</AttributeLenType>
-            <ForceOpen>false</ForceOpen>
-            <Properties>
-                <WriteWithoutResponse>false</WriteWithoutResponse>
-                <Write>false</Write>
-                <Notify>false</Notify>
-                <Indicate>false</Indicate>
-                <Broadcast>false</Broadcast>
-            </Properties>
-            <SetPipe>false</SetPipe>
-            <AckIsAuto>false</AckIsAuto>
-            <PresentationFormatDescriptor Value="0000" Exponent="0" Format="25" NameSpace="01" Unit="0000"/>
-            <PeriodForReadingThisCharacteristic>0</PeriodForReadingThisCharacteristic>
-            <PeriodForProperties/>
-        </Characteristic>
-        <Characteristic>
-            <Name>Firmware Revision String</Name>
-            <Uuid>2a26</Uuid>
-            <DefaultValue>0.1.1</DefaultValue>
-            <UsePresentationFormat>1</UsePresentationFormat>
-            <MaxDataLength>5</MaxDataLength>
-            <AttributeLenType>1</AttributeLenType>
-            <ForceOpen>false</ForceOpen>
-            <Properties>
-                <WriteWithoutResponse>false</WriteWithoutResponse>
-                <Write>false</Write>
-                <Notify>false</Notify>
-                <Indicate>false</Indicate>
-                <Broadcast>false</Broadcast>
-            </Properties>
-            <SetPipe>false</SetPipe>
-            <AckIsAuto>false</AckIsAuto>
-            <PresentationFormatDescriptor Value="0000" Exponent="0" Format="25" NameSpace="01" Unit="0000"/>
-            <PeriodForReadingThisCharacteristic>0</PeriodForReadingThisCharacteristic>
-            <PeriodForProperties/>
-        </Characteristic>
-        <Characteristic>
-            <Name>Manufacturer Name String</Name>
-            <Uuid>2a29</Uuid>
-            <DefaultValue>NordicSemiconductor</DefaultValue>
-            <UsePresentationFormat>1</UsePresentationFormat>
-            <MaxDataLength>20</MaxDataLength>
-            <AttributeLenType>1</AttributeLenType>
-            <ForceOpen>false</ForceOpen>
-            <Properties>
-                <WriteWithoutResponse>false</WriteWithoutResponse>
-                <Write>false</Write>
-                <Notify>false</Notify>
-                <Indicate>false</Indicate>
-                <Broadcast>false</Broadcast>
-            </Properties>
-            <SetPipe>false</SetPipe>
-            <AckIsAuto>false</AckIsAuto>
-            <PresentationFormatDescriptor Value="0000" Exponent="0" Format="25" NameSpace="01" Unit="0000"/>
-            <PeriodForReadingThisCharacteristic>0</PeriodForReadingThisCharacteristic>
-            <PeriodForProperties/>
-        </Characteristic>
-    </Service>
     <Gapsettings>
         <Name>Nordic nRF8001</Name>
         <DeviceNameWriteLength>0</DeviceNameWriteLength>
@@ -193,13 +105,13 @@
         <MinimumKeySize>7</MinimumKeySize>
         <MaximumKeySize>16</MaximumKeySize>
         <AdvertisingDataBondedBitmap>0</AdvertisingDataBondedBitmap>
-        <AdvertisingDataGeneralBitmap>a</AdvertisingDataGeneralBitmap>
+        <AdvertisingDataGeneralBitmap>0</AdvertisingDataGeneralBitmap>
         <AdvertisingDataBrodcastBitmap>0</AdvertisingDataBrodcastBitmap>
         <AdvertisingDataBondedScanResponseBitmap>0</AdvertisingDataBondedScanResponseBitmap>
         <AdvertisingDataGeneralScanResponseBitmap>0</AdvertisingDataGeneralScanResponseBitmap>
         <AdvertisingDataBrodcastScanResponseBitmap>0</AdvertisingDataBrodcastScanResponseBitmap>
         <AdvertisingDataBondedBitmapCustom>0</AdvertisingDataBondedBitmapCustom>
-        <AdvertisingDataGeneralBitmapCustom>0</AdvertisingDataGeneralBitmapCustom>
+        <AdvertisingDataGeneralBitmapCustom>1</AdvertisingDataGeneralBitmapCustom>
         <AdvertisingDataBrodcastBitmapCustom>0</AdvertisingDataBrodcastBitmapCustom>
         <AdvertisingDataBondedScanResponseBitmapCustom>0</AdvertisingDataBondedScanResponseBitmapCustom>
         <AdvertisingDataGeneralScanResponseBitmapCustom>0</AdvertisingDataGeneralScanResponseBitmapCustom>
@@ -211,10 +123,12 @@
         <TimeoutMultipler>65535</TimeoutMultipler>
         <AddServiceUpdateCharacteristic>false</AddServiceUpdateCharacteristic>
         <AddServiceUpdateCharacteristicPipe>false</AddServiceUpdateCharacteristicPipe>
-        <ServiceToAdvertise>
-            <Uuid BaseUUID="06f50000434047d8bb87e5121946e7b7" BaseUUIDName="iBeacon conf">641f</Uuid>
-        </ServiceToAdvertise>
-        <CustomAdTypes/>
+        <CustomAdTypes>
+            <AdType index="1">
+                <Type>ff</Type>
+                <Value>4C0002</Value>
+            </AdType>
+        </CustomAdTypes>
     </Gapsettings>
     <Hardwaresettings>
         <Clocksource>1</Clocksource>
