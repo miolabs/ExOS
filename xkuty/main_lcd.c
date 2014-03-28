@@ -258,16 +258,6 @@ static int _next_phone_entry (int start)
 	return found;
 }
 
-static int _count_phone_entries () 
-{
-	int i, c = 0;
-	for(i=0; i<XCPU_VIEW_PHONES; i++)	// Only XCPU_VIEW_PHONES options on screen
-		if ((_dash.Phones[i].flags & 1) == 0)
-			c++;
-	return c;
-}
-
-
 static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 {
 	const EVREC_CHECK _menu_exit[] = {{CRUISE_MASK, CHECK_RELEASE}, {0x00000000, CHECK_END}};
@@ -403,18 +393,18 @@ static void _state_machine(XCPU_BUTTONS buttons, DISPLAY_STATE *state)
 			{
 				if(_dash.PhoneLine == XCPU_NEW_PHONE)	// Add phone option
 				{
-					if (_count_phone_entries() > 0)
+					if (phone_manager_count(&_dash.Phones[0]) < XCPU_VIEW_PHONES)
 						*state = ST_ADD_PHONE;
 				}
 				else
 				{
-					if( _dash.PhoneAddOrDel == 0)
+					if(( _dash.PhoneAddOrDel == 0) && (_dash.Phones[_dash.PhoneLine].flags & 1))
 						_dash.PhoneAddOrDel = 1;
 					else
 					{
 						// Delete is confirmed
-						unsigned char arg = _dash.PhoneLine;
-						_set_command_to_xcpu(XCPU_CMD_REMOVE_PHONE, &arg, 2);
+						unsigned char arg[2] = {_dash.PhoneLine, phone_name_cheksum(&_dash.Phones[_dash.PhoneLine])};
+						_set_command_to_xcpu(XCPU_CMD_REMOVE_PHONE, arg, 2);
 						_dash.PhoneAddOrDel = 0;
 					}
 				}

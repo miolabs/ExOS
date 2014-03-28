@@ -377,9 +377,7 @@ void xdisplay_runtime_screens(DISPLAY_STATE state, DASH_DATA *dash)
 					else
 						_print_small("empty", -1, 17 + 9 * i);
 				}
-				int f = 0;
-				for(i=0; i<XCPU_VIEW_PHONES; i++)
-					f += (dash->Phones[i].flags & 1) ? 1 : 0;
+				int f = phone_manager_count(&dash->Phones[0]);
 				if(f < XCPU_VIEW_PHONES)
 				{
 					if (dash->PhoneAddOrDel == 0)

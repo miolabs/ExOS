@@ -76,6 +76,7 @@
             <file file_name="xkuty/xcpu/nordic/services.c"/>
             <configuration Name="Common" c_user_include_directories=".;support/bluetooth/nordic"/>
           </folder>
+          <file file_name="xkuty/xcpu/phone_manager.c"/>
         </folder>
         <file file_name="xkuty/pid.c"/>
         <file file_name="xkuty/multipacket_msg.c"/>
