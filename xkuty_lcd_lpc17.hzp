@@ -112,6 +112,7 @@
         <file file_name="xkuty/xanalog.c"/>
         <file file_name="xkuty/xiap.c"/>
         <file file_name="xkuty/multipacket_msg.c"/>
+        <file file_name="xkuty/xcpu/phone_manager.c"/>
       </folder>
       <folder Name="modules">
         <folder Name="gfx" file_name="">

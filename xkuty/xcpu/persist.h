@@ -1,17 +1,9 @@
 #ifndef XCPU_PERSIST_H
 #define XCPU_PERSIST_H
 
+#include "phone_manager.h"
+
 #define XCPU_PERSIST_MAGIC (('X') | ('C' << 8) | ('P' << 16) | (3 << 24))
-
-#define XCPU_PHONE_LOGS  6
-#define XCPU_VIEW_PHONES  (XCPU_PHONE_LOGS - 1)
-#define XCPU_NEW_PHONE   XCPU_VIEW_PHONES
-
-typedef struct
-{
-	char flags;		// Bit 0: Slot empty or used, bit 1: name complete or incomplete
-	char name[19];	// Bigger names will not fit the screen 
-} XCPU_PHONE_REG;
 
 // Limit this structure to 248 bytes max., limit of the EEPROM
 typedef struct

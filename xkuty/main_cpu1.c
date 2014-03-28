@@ -1,7 +1,6 @@
 #include <kernel/thread.h>
 #include <kernel/port.h>
 #include <kernel/timer.h>
-#include <kernel/machine/hal.h>
 #include <support/pwm_hal.h>
 #include <support/lpc11/uart.h>
 #include "xcpu.h"
@@ -393,37 +392,10 @@ static XCPU_EVENTS _do_lcd_command(XCPU_MASTER_INPUT2 *input)
 			_storage.ThrottleAdjMax = input->Data[1];
 			break;
 		case XCPU_CMD_REMOVE_PHONE:
-			{
-				int rem = input->Data[0] % XCPU_VIEW_PHONES;
-				if (rem < (XCPU_VIEW_PHONES - 1))
-					for (i=rem; i<XCPU_VIEW_PHONES; i++)
-						_storage.Phones[i] = _storage.Phones[i + 1]; 
-				_storage.Phones[XCPU_VIEW_PHONES - 1].flags = 0;
-				_storage.Phones[XCPU_VIEW_PHONES - 1].name[0] = 0;
-			}	
+			phone_manager_remove (_storage.Phones, input->Data[0], input->Data[1]);
 			break;
 		case XCPU_CMD_CONFIRM_PHONE:
-			{
-				// Check if the phone already exist
-				int dup = 0;
-				for (i = 0; i < XCPU_VIEW_PHONES; i++)
-					if (_storage.Phones[i].flags)
-						if (__str_comp(_storage.Phones[i].name, _storage.Phones[XCPU_NEW_PHONE].name) == 0)
-							dup = 1;
-				// Find 1s free slot and copy the candidate there
-				if(!dup)
-				{
-					int found = -1;
-					for (i = 0; i < XCPU_VIEW_PHONES; i++)
-						if(_storage.Phones[i].flags == 0)
-						{
-							found = 1;
-							break;
-						}
-					if (found >= 0)
-						_storage.Phones[i] = _storage.Phones[XCPU_NEW_PHONE];
-				}
-			}
+			phone_manager_confirm (_storage.Phones);
 			break;
 		case XCPU_CMD_INVOKE_BOOTLOADER: 
 			return XCPU_EVENT_TURN_OFF | XCPU_EVENT_ENTER_BOOTLOADER;
