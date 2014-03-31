@@ -7,7 +7,11 @@
 #include "net_service.h"
 #include <kernel/fifo.h>
 #include <kernel/panic.h>
- 
+
+#ifdef ENABLE_ETHERCAT
+#include <support/ethercat/ethercat.h>
+#endif
+
 static EXOS_MUTEX _adapters_lock;
 static EXOS_LIST _adapters;
 static EXOS_FIFO _free_wrappers;
@@ -152,6 +156,11 @@ void net_adapter_input(NET_ADAPTER *adapter)
 			case ETH_TYPE_IP:
 				queued = net_ip_input(adapter, buffer, (IP_HEADER *)payload);
 				break;
+#ifdef ENABLE_ETHERCAT
+			case ETH_TYPE_ETHERCAT:
+				queued = net_ecat_input(adapter, buffer, (ECAT_HEADER *)payload);
+				break;
+#endif
 		}
 		if (!queued) 
 			driver->DiscardInputBuffer(adapter, buffer);
