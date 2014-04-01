@@ -34,6 +34,7 @@ typedef struct
 	EXOS_NODE;
 	ECAT_DATAGRAM_HEADER Header;
 	void *Data;
+	unsigned int WorkCounter;
 } ECAT_DATAGRAM;
 
 // prototypes

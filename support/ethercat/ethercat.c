@@ -55,7 +55,7 @@ int net_ecat_send(NET_ADAPTER *adapter, EXOS_LIST *datagram_list)
 			__mem_copy(data, data + payload, dgram->Data);
 			unsigned short *rcnt = (unsigned short *)(data + payload);
 			
-			*rcnt = 2;
+			*rcnt = dgram->WorkCounter;
 			header = (ECAT_DATAGRAM_HEADER *)++rcnt;
 		}
 
@@ -63,13 +63,13 @@ int net_ecat_send(NET_ADAPTER *adapter, EXOS_LIST *datagram_list)
 		if (done)
 		{
 #ifdef DEBUG
-			if (exos_event_wait(&completed_event, 1000) != 0)
+			if (exos_event_wait(&completed_event, 5000) != 0)
 				kernel_panic(KERNEL_ERROR_UNKNOWN);
 #else			
 			exos_event_wait(&completed_event, EXOS_TIMEOUT_NEVER);
 #endif
+			return total;
 		}
-		return total;
 	}
 	return -1;
 }
