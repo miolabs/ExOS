@@ -22,6 +22,8 @@ static void _msg_rcv(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatch
 static void _relay_timeout(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher);
 static EXOS_DISPATCHER _relay_done;
 
+#define DISPATCH_TIMEOUT 1000
+
 void main()
 {
 	exos_port_create(&_port, NULL);
@@ -34,7 +36,7 @@ void main()
 	EXOS_DISPATCHER_CONTEXT context;
 	exos_dispatcher_context_create(&context);
 	EXOS_DISPATCHER msg_dispatcher = (EXOS_DISPATCHER) { .Callback = _msg_rcv, .Event = &_port.Event };
-	exos_dispatcher_add(&context, &msg_dispatcher, 1000);	// NOTE: will timeout every second
+	exos_dispatcher_add(&context, &msg_dispatcher, DISPATCH_TIMEOUT);
 
 	while(1)
 	{
@@ -61,11 +63,12 @@ static void _msg_rcv(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatch
 #ifdef DEBUG
 	static unsigned char dummy = 0;
 	static unsigned long seq = 0;
-	CAN_BUFFER buf = (CAN_BUFFER) { .u32[0] = seq++ };
-	hal_can_send((CAN_EP) { .Id = 0x300 | dummy++ }, &buf, 4, CANF_PRI_ANY); 
+	CAN_BUFFER buf = (CAN_BUFFER) { .u32[0] = seq };
+	if (hal_can_send((CAN_EP) { .Id = 0x300 | dummy++ }, &buf, 4, CANF_PRI_ANY))
+		seq++;
 #endif
 
-	exos_dispatcher_add(context, dispatcher, 1000); // re-issue this dispatcher
+	exos_dispatcher_add(context, dispatcher, DISPATCH_TIMEOUT); // re-issue this dispatcher
 }
 
 static void _relay_timeout(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher)
