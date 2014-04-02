@@ -39,20 +39,20 @@ void main()
 	}
 }
 
-int set_relay(int unit, unsigned short mask, unsigned short value, unsigned long time)
-{
-	RELAY_MSG *msg = (RELAY_MSG *)exos_fifo_dequeue(&_free_msgs);
-	if (msg != NULL)
-	{
-		msg->Time = time;
-		msg->Unit = unit;
-		msg->Mask = mask;
-		msg->Value = value;
-		exos_port_send_message(&_port, (EXOS_MESSAGE *)msg);
-		return 1;
-	}
-	return 0;
-}
+//int set_relay(int unit, unsigned short mask, unsigned short value, unsigned long time)
+//{
+//	RELAY_MSG *msg = (RELAY_MSG *)exos_fifo_dequeue(&_free_msgs);
+//	if (msg != NULL)
+//	{
+//		msg->Time = time;
+//		msg->Unit = unit;
+//		msg->Mask = mask;
+//		msg->Value = value;
+//		exos_port_send_message(&_port, (EXOS_MESSAGE *)msg);
+//		return 1;
+//	}
+//	return 0;
+//}
 
 void usb_host_add_drivers()
 {

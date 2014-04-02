@@ -190,7 +190,7 @@ static void _parse_input(unsigned char *buffer, int length)
 			{
 				done = parse_dec(&buffer, &time);
 	
-				set_relay(0, mask, mask, time);
+				relay_set(0, mask, mask, time);
 			}
 		}
 		else if (strcmp(buf2, "reset") == 0)
@@ -200,7 +200,7 @@ static void _parse_input(unsigned char *buffer, int length)
 			{
 				done = parse_dec(&buffer, &time);
 	
-				set_relay(0, mask, 0, time);
+				relay_set(0, mask, 0, time);
 			}			
 		}
 	}

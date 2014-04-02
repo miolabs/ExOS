@@ -119,6 +119,7 @@
         <folder Name="misc">
           <file file_name="support/misc/mac_24xx02.c"/>
           <file file_name="support/misc/eeprom.c"/>
+          <file file_name="support/misc/can_receiver.c"/>
         </folder>
       </folder>
       <folder Name="modules">
