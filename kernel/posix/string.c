@@ -16,10 +16,15 @@ void *memcpy(void *restrict s1, const void *restrict s2, size_t n)
 	__mem_copy(s1, s1 + n, s2);
 }
 
-size_t strlen ( const char * str )
+int strcmp(const char *s1, const char *s2)
+{
+	return __str_comp(s1, s2);
+}
+
+size_t strlen(const char * str)
 {
 	int i=0;
-	while ( str[i])
+	while(str[i])
 		i++;
 	return i;
 }
