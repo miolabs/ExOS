@@ -1,3 +1,4 @@
+#include "server.h"
 #ifndef RFGATE_UDP
 #include <net/tcp_io.h>
 #else
@@ -7,8 +8,10 @@
 #include <kernel/tree.h>
 #include <support/board_hal.h>
 #include <stdio.h>
+#include <string.h>
 #include "relay.h"
 #include "rf.h"
+#include "parser.h"
 
 #define SERVER_THREAD_STACK 1024
 static EXOS_THREAD _thread;
@@ -23,15 +26,16 @@ TCP_IO_ENTRY _socket;
 #define TCP_BUFFER_SIZE 8192 // tiny window for stress
 static unsigned char _rcv_buffer[TCP_BUFFER_SIZE]; 
 static unsigned char _snd_buffer[TCP_BUFFER_SIZE] __attribute__((section(".dma")));
+static unsigned char _line_buffer[256];
 #else
 IP_PORT_ADDR _remote;
 UDP_IO_ENTRY _socket;
 #endif
 static void *_server(void *);
-static void _parse_input();
 
 static RF_STATE _reader0, _reader1;
-static void _parse_rf(RF_CARD *card, void *state);
+static void _rf_callback(RF_CARD *card, void *state);
+static void _parse_input(unsigned char *buffer, int length);
 
 void server_start()
 {
@@ -63,6 +67,9 @@ static void *_server(void *arg)
 	while(1)
 	{
 #ifndef RFGATE_UDP
+		LINE_PARSER parser;
+		parser_create(&parser, _line_buffer, sizeof(_line_buffer));
+
 		EXOS_IO_STREAM_BUFFERS buffers = (EXOS_IO_STREAM_BUFFERS) {
 			.RcvBuffer = _rcv_buffer, .RcvBufferSize = TCP_BUFFER_SIZE,
 			.SndBuffer = _snd_buffer, .SndBufferSize = TCP_BUFFER_SIZE };
@@ -97,8 +104,8 @@ static void *_server(void *arg)
 		comm1 = _open(&_comm1, "dev/usbftdi1");
 		if (comm1) events[count++] = &comm1->InputEvent;
 
-		rf_init_state(&_reader0, _parse_rf, "R0");
-		rf_init_state(&_reader1, _parse_rf, "R1");
+		rf_init_state(&_reader0, _rf_callback, "R0");
+		rf_init_state(&_reader1, _rf_callback, "R1");
 
 #if !defined RFGATE_UDP && defined DEBUG
 		done = sprintf(_buffer, "Connection accepted!\r\n");
@@ -107,7 +114,9 @@ static void *_server(void *arg)
 				
 		while(1)
 		{
-			done = exos_event_wait_multiple(events, count, EXOS_TIMEOUT_NEVER);
+			done = exos_event_wait_multiple(events, count, 10000);
+			if (done < 0) 
+				break; // activity timeout -> close conn
 
 			if (_socket.InputEvent.State)
 			{
@@ -118,11 +127,14 @@ static void *_server(void *arg)
 #endif
 				if (done < 0) break;
 
-				if (done >= 1) _parse_input();
-#ifdef DEBUG
-				RF_CARD ex = (RF_CARD) { .Id = 0x123 };
-				_parse_rf(&ex, "EX");
+				if (done >= 1)
+				{
+#ifndef RFGATE_UDP
+					parser_parse_line(&parser, _parse_input, _buffer, done);
+#else
+					_parse_input(_buffer, done);
 #endif
+				}
 			}
 
 			if (_comm0.InputEvent.State)
@@ -151,26 +163,7 @@ static void *_server(void *arg)
 	}
 }
 
-static void _parse_input()
-{
-	switch(_buffer[0])
-	{
-		case 'A':
-			open_relay(0, 1<<0, 1000);
-			break;
-		case 'a':
-			open_relay(0, 1<<1, 1000);
-			break;
-		case 'B':
-			open_relay(1, 1<<0, 1000);
-			break;
-		case 'b':
-			open_relay(1, 1<<1, 1000);
-			break;
-	}
-}
-
-static void _parse_rf(RF_CARD *card, void *state)
+static void _rf_callback(RF_CARD *card, void *state)
 {
 	int done = sprintf(_buf_out, "%s:%x%x\r\n", state, (unsigned long)(card->Id >> 32), (unsigned long)card->Id);
 
@@ -181,3 +174,35 @@ static void _parse_rf(RF_CARD *card, void *state)
 	done = net_io_send((NET_IO_ENTRY *)&_socket, _buf_out, done, &_remote);
 #endif
 }
+
+static void _parse_input(unsigned char *buffer, int length)
+{
+	unsigned int mask, time = 0;
+	unsigned char buf2[16];
+	int done;
+	done = parse_string(&buffer, buf2, 15);
+	if (done)
+	{ 
+		if (strcmp(buf2, "set") == 0)
+		{
+			done = parse_hex(&buffer, &mask);
+			if (done)
+			{
+				done = parse_dec(&buffer, &time);
+	
+				set_relay(0, mask, mask, time);
+			}
+		}
+		else if (strcmp(buf2, "reset") == 0)
+		{
+			done = parse_hex(&buffer, &mask);
+			if (done)
+			{
+				done = parse_dec(&buffer, &time);
+	
+				set_relay(0, mask, 0, time);
+			}			
+		}
+	}
+}
+

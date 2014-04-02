@@ -33,20 +33,21 @@ void main()
 		RELAY_MSG *msg = (RELAY_MSG *)exos_port_wait_message(&_port, 1000);
 		if (msg != NULL)
 		{
-			relay_set(msg->Unit, msg->RelayMask, msg->Time);
+			relay_set(msg->Unit, msg->Mask, msg->Value, msg->Time);
 			exos_fifo_queue(&_free_msgs, (EXOS_NODE *)msg);
 		}
 	}
 }
 
-int open_relay(int unit, unsigned long mask, unsigned long time)
+int set_relay(int unit, unsigned short mask, unsigned short value, unsigned long time)
 {
 	RELAY_MSG *msg = (RELAY_MSG *)exos_fifo_dequeue(&_free_msgs);
 	if (msg != NULL)
 	{
 		msg->Time = time;
 		msg->Unit = unit;
-		msg->RelayMask = mask;
+		msg->Mask = mask;
+		msg->Value = value;
 		exos_port_send_message(&_port, (EXOS_MESSAGE *)msg);
 		return 1;
 	}

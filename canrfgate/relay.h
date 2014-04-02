@@ -8,13 +8,12 @@ typedef struct
 	EXOS_MESSAGE;
 	unsigned short Time;
 	unsigned short Unit;
-	unsigned long RelayMask;
+	unsigned short Mask;
+	unsigned short Value;
 } RELAY_MSG;
 
 void relay_initialize();
-void relay_set(int unit, unsigned long mask, unsigned long time);
-
-int open_relay(int unit, unsigned long mask, unsigned long time);
+void relay_set(int unit, unsigned short mask, unsigned short value, unsigned long time);
 
 #endif // RELAY_H
 
