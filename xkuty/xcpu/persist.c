@@ -36,11 +36,11 @@ void persist_enter_bootloader()
 
 void eeprom_lock_i2c()
 {
-
+	exos_mutex_lock(&_i2c_mutex);
 }
 
 void eeprom_unlock_i2c()
 {
-
+	exos_mutex_unlock(&_i2c_mutex);
 }
 
