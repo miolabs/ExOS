@@ -5,9 +5,8 @@
 
 #define XCPU_PERSIST_MAGIC (('X') | ('C' << 8) | ('P' << 16) | (3 << 24))
 
-#define XCPU_PERSIST_MAX_SIZE 248
+#define XCPU_PERSIST_MAX_SIZE 128 // limit of 24AA02
 
-// Limit this structure to 248 bytes max., limit of the EEPROM
 typedef struct
 {
 	unsigned long Magic;
