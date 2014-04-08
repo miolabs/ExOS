@@ -1,34 +1,32 @@
 #include "persist.h"
 #include <support/misc/iap.h>
-#include <CMSIS/LPC11xx.h>
+#include <support/misc/eeprom.h>
+#include <kernel/mutex.h>
+#include <kernel/panic.h>
+
+static EXOS_MUTEX _i2c_mutex;
 
 int persist_load(XCPU_PERSIST_DATA *data)
 {
-	FLASH_INFO fi;
-    iap_get_flash_info(&fi);
-	void *base;
-	if (flash_nor_find_last_large_sector_base(&fi, &base, sizeof(XCPU_PERSIST_DATA)))
-	{
-		*data = *(XCPU_PERSIST_DATA *)base;
-		if (data->Magic == XCPU_PERSIST_MAGIC)
-			return 1;
-	}
-	return 0;
+	if (sizeof(XCPU_PERSIST_DATA) > XCPU_PERSIST_MAX_SIZE)
+		kernel_panic(KERNEL_ERROR_UNKNOWN);
+
+	if (!eeprom_initialize())
+		return 0;
+
+	exos_mutex_create(&_i2c_mutex);
+
+	EEPROM_RESULT res = eeprom_read((void *)data, 0, sizeof(XCPU_PERSIST_DATA));
+	if (res != EEPROM_RES_OK)
+		return 0;
+
+	return data->Magic == XCPU_PERSIST_MAGIC;	// FIXME: checksum data or whatever
 }
 
 int persist_save(const XCPU_PERSIST_DATA *data)
 {
-	FLASH_INFO fi;
-    iap_get_flash_info(&fi);
-	void *base;
-	if (flash_nor_find_last_large_sector_base(&fi, &base, sizeof(XCPU_PERSIST_DATA)))
-	{
-		__disable_irq();
-		int done = 0; //iap_write_block(&fi, base, data);
-		__enable_irq();
-		return done;
-	}
-	return 0;
+	EEPROM_RESULT res = eeprom_write((void *)data, 0, sizeof(XCPU_PERSIST_DATA));
+	return res == EEPROM_RES_OK;
 }
 
 void persist_enter_bootloader()
@@ -36,6 +34,13 @@ void persist_enter_bootloader()
 	iap_reinvoke_isp();
 }
 
+void eeprom_lock_i2c()
+{
 
+}
 
+void eeprom_unlock_i2c()
+{
+
+}
 

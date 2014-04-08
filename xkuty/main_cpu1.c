@@ -2,7 +2,6 @@
 #include <kernel/port.h>
 #include <kernel/timer.h>
 #include <support/pwm_hal.h>
-#include <support/lpc11/uart.h>
 #include "xcpu.h"
 #include "xcpu/board.h"
 #include "xcpu/speed.h"
@@ -70,10 +69,6 @@ typedef struct
 //	unsigned short ios_mode;
 } PUSH_CNT;
 
-#define UART_BUFFER_SIZE 4
-static char _input_buffer[UART_BUFFER_SIZE];
-static char _output_buffer[UART_BUFFER_SIZE];
-
 #define LCD_INPUT_TIMEOUT  (200)
 static char throttle_timeout = LCD_INPUT_TIMEOUT / MAIN_LOOP_TIME;
 
@@ -82,11 +77,6 @@ void main()
 	int result;
 	hal_pwm_initialize(PWM_TIMER_MODULE, PWM_RANGE - 1, 200000);
 	hal_pwm_set_output(PWM_TIMER_MODULE, 0, 1025);
-
-	UART_CONTROL_BLOCK cb = (UART_CONTROL_BLOCK) { .Baudrate = 9600,
-		.InputBuffer = (UART_BUFFER) { .Size = UART_BUFFER_SIZE, .Buffer = _input_buffer },
-		.OutputBuffer = (UART_BUFFER) { .Size = UART_BUFFER_SIZE, .Buffer = _output_buffer }};
-	uart_initialize(0, &cb);
 
 	xcpu_sensor_initialize();
 	PUSH_CNT push = { };
@@ -148,19 +138,6 @@ void main()
 			throttle_timeout = LCD_INPUT_TIMEOUT / MAIN_LOOP_TIME;
 		if (throttle_timeout <= 0)
 			_lcd.ThrottleRaw = 0, throttle_timeout = 0;
-
-#ifdef __XCPU_BLUETOOTH_VIA_UART__
-		unsigned char bt_value;
-		int done = uart_read(0, &bt_value, 1);
-		if (done)
-		{
-			switch(bt_value)
-			{
-				case 'E': events |= XCPU_EVENT_TURN_ON;	break;
-				case 'D': events |= XCPU_EVENT_TURN_OFF;	break;
-			}
-		}
-#endif
 
 		int curve_in = (int)(4096.f * (sp.speed / (float) MAX_SPEED));
 		int throttle_factor = get_curve_value(curve_in, _drive_mode) >> 4;

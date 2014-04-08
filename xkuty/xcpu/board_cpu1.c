@@ -144,12 +144,19 @@ static int _setup_adc(int unit)
 	return 0x03;	// 0,1,6,7
 }
 
+static int _setup_i2c(int unit)
+{
+	LPC_IOCON->PIO0_4 = 1;
+	LPC_IOCON->PIO0_5 = 1;
+	return 1;
+}
 
 int hal_board_init_pinmux(HAL_RESOURCE res, int unit)
 {
 	switch(res)
 	{
 		case HAL_RESOURCE_ADC: return _setup_adc(unit);
+		case HAL_RESOURCE_I2C: return _setup_i2c(unit);
 		default:
 			assert(0);
 	}
