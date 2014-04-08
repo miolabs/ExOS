@@ -2,7 +2,7 @@
 #include <support/usb/driver/usbprint.h>
 #include <support/usb/driver/ftdi.h>
 #include <net/adapter.h>
-//#include "discovery.h"
+#include <support/services/discovery/discovery.h>
 #include "server.h"
 #include "relay.h"
 
@@ -28,31 +28,8 @@ void main()
 
 	server_start();
 
-	while(1) 
-	{
-		RELAY_MSG *msg = (RELAY_MSG *)exos_port_wait_message(&_port, 1000);
-		if (msg != NULL)
-		{
-			relay_set(msg->Unit, msg->Mask, msg->Value, msg->Time);
-			exos_fifo_queue(&_free_msgs, (EXOS_NODE *)msg);
-		}
-	}
+	discovery_loop();
 }
-
-//int set_relay(int unit, unsigned short mask, unsigned short value, unsigned long time)
-//{
-//	RELAY_MSG *msg = (RELAY_MSG *)exos_fifo_dequeue(&_free_msgs);
-//	if (msg != NULL)
-//	{
-//		msg->Time = time;
-//		msg->Unit = unit;
-//		msg->Mask = mask;
-//		msg->Value = value;
-//		exos_port_send_message(&_port, (EXOS_MESSAGE *)msg);
-//		return 1;
-//	}
-//	return 0;
-//}
 
 void usb_host_add_drivers()
 {

@@ -121,6 +121,11 @@
           <file file_name="support/misc/eeprom.c"/>
           <file file_name="support/misc/can_receiver.c"/>
         </folder>
+        <folder Name="services">
+          <folder Name="discovery">
+            <file file_name="support/services/discovery/discovery.c"/>
+          </folder>
+        </folder>
       </folder>
       <folder Name="modules">
         <folder Name="services">
