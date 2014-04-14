@@ -1,0 +1,73 @@
+<!DOCTYPE CrossStudio_Project_File>
+<solution Name="exos_nuc100" target="8" version="2">
+  <project Name="exos_nuc100">
+    <configuration Name="Common" Target="NUC140VE3CN" arm_architecture="v6M" arm_core_type="Cortex-M0" arm_gcc_target="arm-unknown-eabi" arm_interwork="No" arm_linker_heap_size="128" arm_linker_process_stack_size="256" arm_linker_stack_size="256" arm_simulator_memory_simulation_filename="$(TargetsDir)/NuMicro/NuMicroSimulatorMemory.dll" arm_simulator_memory_simulation_parameter="NUC100;0x20000;0x4000" arm_target_debug_interface_type="ADIv5" arm_target_interface_type="SWD" c_only_additional_options="-fms-extensions" c_preprocessor_definitions="USE_PROCESS_STACK" c_system_include_directories="$(TargetsDir)/NuMicro/CMSIS/Device/Nuvoton/NUC1xx;$(TargetsDir)/CMSIS_3/CMSIS/Include;$(ProjectDir)/include;$(ProjectDir)/kernel/driver" c_user_include_directories="." gcc_entry_point="Reset_Handler" link_include_startup_code="No" linker_additional_files="$(TargetsDir)/NuMicro/lib/cw_numicro$(LibExt)$(LIB)" linker_memory_map_file="$(TargetsDir)/NuMicro/NUC140VE3CN_MemoryMap.xml" macros="NuMicro_Series=NUC140" project_directory="" project_type="Executable" property_groups_file_path="$(TargetsDir)/NuMicro/propertyGroupsNUC100.xml"/>
+    <configuration Name="Flash" Placement="Flash" arm_target_flash_loader_file_path="$(TargetsDir)/NuMicro/Release/Loader.elf" arm_target_flash_loader_type="LIBMEM RPC Loader" linker_section_placement_file="$(StudioDir)/targets/Cortex_M/flash_placement.xml" target_loader_reset_script="APROMLoaderReset()" target_reset_script="FLASHReset()"/>
+    <folder Name="Source Files">
+      <configuration Name="Common" filter="c;cpp;cxx;cc;h;s;asm;inc"/>
+      <folder Name="tests">
+        <folder Name="platform">
+          <folder Name="nuc100">
+            <file file_name="tests/platform/nuc100/nuc100_test.c"/>
+          </folder>
+        </folder>
+      </folder>
+      <folder Name="kernel">
+        <folder Name="machine">
+          <folder Name="armv6m">
+            <file file_name="kernel/machine/armv6m/kernel_armv6m.c"/>
+          </folder>
+          <folder Name="nuc100">
+            <file file_name="kernel/machine/nuc100/vectors_nuc11.s"/>
+            <file file_name="kernel/machine/nuc100/machine_nuc100.c"/>
+            <file file_name="kernel/machine/nuc100/startup_nuc100.c"/>
+            <file file_name="kernel/machine/nuc100/time_nuc100.c"/>
+          </folder>
+          <file file_name="kernel/machine/hal.c"/>
+        </folder>
+        <file file_name="kernel/datetime.c"/>
+        <file file_name="kernel/dispatch.c"/>
+        <file file_name="kernel/event.c"/>
+        <file file_name="kernel/fifo.c"/>
+        <file file_name="kernel/io.c"/>
+        <file file_name="kernel/list.c"/>
+        <file file_name="kernel/memory.c"/>
+        <file file_name="kernel/mutex.c"/>
+        <file file_name="kernel/panic.c"/>
+        <file file_name="kernel/port.c"/>
+        <file file_name="kernel/signal.c"/>
+        <file file_name="kernel/startup.c"/>
+        <file file_name="kernel/thread.c"/>
+        <file file_name="kernel/thread_pool.c"/>
+        <file file_name="kernel/timer.c"/>
+        <file file_name="kernel/tree.c"/>
+      </folder>
+      <folder Name="driver">
+        <folder Name="comm">
+          <file file_name="kernel/driver/comm/comm.c"/>
+        </folder>
+      </folder>
+      <folder Name="support">
+        <folder Name="nuc100">
+          <file file_name="support/nuc100/uart.c"/>
+          <file file_name="support/nuc100/gpio.c"/>
+        </folder>
+      </folder>
+    </folder>
+    <folder Name="System Files">
+      <file file_name="$(TargetsDir)/NuMicro/NUC100_Target.js">
+        <configuration Name="Common" file_type="Reset Script"/>
+      </file>
+    </folder>
+    <folder Name="CMSIS Files">
+      <file file_name="$(TargetsDir)/NuMicro/CMSIS/Device/Nuvoton/NUC1xx/system_NUC1xx.c"/>
+    </folder>
+  </project>
+  <configuration Name="THUMB Flash Debug" inherited_configurations="THUMB;Flash;Debug"/>
+  <configuration Name="THUMB" Platform="ARM" arm_instruction_set="THUMB" arm_library_instruction_set="THUMB" c_preprocessor_definitions="__THUMB" hidden="Yes"/>
+  <configuration Name="Flash" hidden="Yes"/>
+  <configuration Name="Debug" build_debug_information="Yes" c_preprocessor_definitions="DEBUG" gcc_optimization_level="None" hidden="Yes" link_include_startup_code="No"/>
+  <configuration Name="THUMB Flash Release" inherited_configurations="THUMB;Flash;Release"/>
+  <configuration Name="Release" build_debug_information="No" c_additional_options="-g1" c_preprocessor_definitions="NDEBUG" gcc_optimization_level="Level 1" hidden="Yes" link_include_startup_code="No"/>
+  <configuration Name="Common" c_preprocessor_definitions="MAIN_THREAD_STACK=1024;MAIN_THREAD_PRI=0;EXOS_NO_NET"/>
+</solution>
