@@ -9,6 +9,7 @@
 static UDP_IO_ENTRY _io;
 static unsigned char _frame_buffer[256];
 static int _reset;
+static 	DISCOVERY_CONFIG _cfg;
 
 static int _parse(DISCOVERY_MSG *msg, NET_ADAPTER *adapter);
 static int _fill_reply(DISCOVERY_CMD cmd, void *data, int data_length);
@@ -32,7 +33,6 @@ void discovery_loop()
 			int reply = _parse((DISCOVERY_MSG *)_frame_buffer, adapter);
 			if (reply > 0)
 			{
-				
 				net_io_send((NET_IO_ENTRY *)&_io, _frame_buffer, reply, &remote);
 			}
 		}
@@ -46,7 +46,8 @@ static int _parse(DISCOVERY_MSG *msg, NET_ADAPTER *adapter)
 		switch(msg->Command)
 		{
 			case DISCOVERY_CMD_DISCOVER:
-				return _fill_reply(DISCOVERY_CMD_READY, NULL, 0);
+				_cfg = (DISCOVERY_CONFIG) { .IP = adapter->IP.Value, .Mask = adapter->NetMask.Value };
+				return _fill_reply(DISCOVERY_CMD_READY, &_cfg, sizeof(DISCOVERY_CONFIG));
 			case DISCOVERY_CMD_RESET:
 				_reset = 1;
 				break;

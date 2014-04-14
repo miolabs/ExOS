@@ -17,12 +17,18 @@ typedef struct
 	unsigned char Data[0];
 } DISCOVERY_MSG;
 
+typedef struct
+{
+	unsigned long IP;
+	unsigned long Mask;
+	unsigned long Services;
+} DISCOVERY_CONFIG;
+
 #ifndef DISCOVERY_PORT
 #define DISCOVERY_PORT 18180
 #endif
 
 void discovery_loop();
-
 
 #endif // EXOS_DISCOVERY_H
 
