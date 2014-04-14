@@ -2,6 +2,7 @@
 #define NET_ETHERCAT_H
 
 #include <net/net.h>
+#include <net/mbuf.h>
 #include <net/adapter.h>
 
 typedef struct __attribute__((__packed__))
@@ -33,13 +34,17 @@ typedef struct
 {
 	EXOS_NODE;
 	ECAT_DATAGRAM_HEADER Header;
-	void *Data;
-	unsigned int WorkCounter;
+	NET_MBUF HeaderBuffer;
+	NET_MBUF DataBuffer;
+	NET_MBUF FooterBuffer;
+	unsigned short WorkCounter;
 } ECAT_DATAGRAM;
 
 // prototypes
 int net_ecat_input(NET_ADAPTER *adapter, ETH_HEADER *buffer, ECAT_HEADER *ecat);
-void *net_ecat_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *output, ECAT_FRAME_TYPE type, int length);
+
+void net_ecat_datagram_create(ECAT_DATAGRAM *dgram, void *data, int offset, int length);
+int net_ecat_build_buffer(NET_MBUF *ecat_mbuf, ECAT_HEADER *ecat, ECAT_FRAME_TYPE ecat_type, EXOS_LIST *datagram_list);
 int net_ecat_send(NET_ADAPTER *adapter, EXOS_LIST *datagram_list);
 
 #endif // NET_ETHERCAT_H

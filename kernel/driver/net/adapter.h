@@ -86,7 +86,7 @@ NET_ADAPTER *net_adapter_find_gateway(IP_ADDR addr);
 
 void net_adapter_input(NET_ADAPTER *adapter);
 
-void *net_adapter_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *buf, unsigned hdr_size, HW_ADDR *destination, ETH_TYPE type);
+void *net_adapter_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *buf, unsigned hdr_size, const HW_ADDR *destination, ETH_TYPE type);
 int net_adapter_send_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *buf);
 
 NET_BUFFER *net_adapter_alloc_buffer(NET_ADAPTER *adapter, void *buffer, void *data, unsigned long length);

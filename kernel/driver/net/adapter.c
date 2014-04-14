@@ -167,7 +167,7 @@ void net_adapter_input(NET_ADAPTER *adapter)
 	}
 }
 
-void *net_adapter_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *output, unsigned hdr_size, HW_ADDR *destination, ETH_TYPE type)
+void *net_adapter_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *output, unsigned hdr_size, const HW_ADDR *destination, ETH_TYPE type)
 {
 #ifdef DEBUG
 	if (adapter == NULL)

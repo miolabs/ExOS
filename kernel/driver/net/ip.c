@@ -55,7 +55,7 @@ int net_ip_input(NET_ADAPTER *adapter, ETH_HEADER *eth, IP_HEADER *ip)
 	return 0;
 }
 
-void *net_ip_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *output, unsigned hdr_size, IP_ENDPOINT *destination, IP_PROTOCOL protocol)
+void *net_ip_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *output, unsigned hdr_size, const IP_ENDPOINT *destination, IP_PROTOCOL protocol)
 {
 	hdr_size += sizeof(IP_HEADER);
 	IP_HEADER *ip = (IP_HEADER *)net_adapter_output(adapter, output, hdr_size, &destination->MAC, ETH_TYPE_IP);

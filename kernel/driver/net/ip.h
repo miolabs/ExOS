@@ -91,7 +91,7 @@ typedef struct
 // prototypes
 void net_ip_initialize();
 int net_ip_input(NET_ADAPTER *adapter, ETH_HEADER *eth, IP_HEADER *ip);
-void *net_ip_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *output, unsigned hdr_size, IP_ENDPOINT *destination, IP_PROTOCOL protocol);
+void *net_ip_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *output, unsigned hdr_size, const IP_ENDPOINT *destination, IP_PROTOCOL protocol);
 int net_ip_send_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *output, unsigned payload);
 void *net_ip_get_payload(IP_HEADER *ip, unsigned short *plength);
 
