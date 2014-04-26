@@ -8,13 +8,14 @@
 
 static UDP_IO_ENTRY _io;
 static unsigned char _frame_buffer[256];
-static int _reset;
+static int _quit;
 static 	DISCOVERY_CONFIG _cfg;
 
-static int _parse(DISCOVERY_MSG *msg, NET_ADAPTER *adapter);
+static int _parse(DISCOVERY_MSG *msg, NET_ADAPTER *adapter, const DISCOVERY_CONFIG_CALLBACK *callback);
 static int _fill_reply(DISCOVERY_CMD cmd, void *data, int data_length);
+static int _fill_config(DISCOVERY_CMD cmd, const DISCOVERY_CONFIG_CALLBACK *callback);
 
-void discovery_loop()
+void discovery_loop(const DISCOVERY_CONFIG_CALLBACK *callback)
 {
 	net_udp_io_create(&_io, EXOS_IOF_WAIT);
 	exos_io_set_timeout((EXOS_IO_ENTRY *)&_io, 10000);
@@ -23,14 +24,14 @@ void discovery_loop()
 	int done = net_io_bind((NET_IO_ENTRY *)&_io, &local);
 
 	IP_PORT_ADDR remote;
-	_reset = 0;
-	while(!_reset)
+	_quit = 0;
+	while(!_quit)
 	{
 		done = net_io_receive((NET_IO_ENTRY *)&_io, _frame_buffer, 256, &remote);
 		if (done >= (signed)sizeof(DISCOVERY_MSG))
 		{
 			NET_ADAPTER *adapter = net_adapter_find(remote.Address);
-			int reply = _parse((DISCOVERY_MSG *)_frame_buffer, adapter);
+			int reply = _parse((DISCOVERY_MSG *)_frame_buffer, adapter, callback);
 			if (reply > 0)
 			{
 				net_io_send((NET_IO_ENTRY *)&_io, _frame_buffer, reply, &remote);
@@ -39,7 +40,7 @@ void discovery_loop()
 	}
 }
 
-static int _parse(DISCOVERY_MSG *msg, NET_ADAPTER *adapter)
+static int _parse(DISCOVERY_MSG *msg, NET_ADAPTER *adapter, const DISCOVERY_CONFIG_CALLBACK *callback)
 {
 	if (msg->Magic == MAGIC_CMD)
 	{
@@ -48,8 +49,8 @@ static int _parse(DISCOVERY_MSG *msg, NET_ADAPTER *adapter)
 			case DISCOVERY_CMD_DISCOVER:
 				_cfg = (DISCOVERY_CONFIG) { .IP = adapter->IP.Value, .Mask = adapter->NetMask.Value };
 				return _fill_reply(DISCOVERY_CMD_READY, &_cfg, sizeof(DISCOVERY_CONFIG));
-			case DISCOVERY_CMD_RESET:
-				_reset = 1;
+			case DISCOVERY_CMD_QUIT:
+				_quit = 1;
 				break;
 //			case DISCOVERY_CMD_RECONFIG:
 //				__config.Network = *(NET_CONFIG *)msg->Data;
@@ -74,6 +75,17 @@ static int _fill_reply(DISCOVERY_CMD cmd, void *data, int data_length)
 		length += data_length;
 	}
 	return length;
+}
+
+static int _fill_config(DISCOVERY_CMD cmd, const DISCOVERY_CONFIG_CALLBACK *callback)
+{
+	DISCOVERY_MSG *msg = (DISCOVERY_MSG *)_frame_buffer;
+	*msg = (DISCOVERY_MSG) {
+		.Magic = MAGIC_REPLY,
+		.Command = cmd };
+	
+	int cfg_len = callback->FillConfig(msg->Data);
+	return sizeof(DISCOVERY_MSG) + cfg_len;
 }
 
 

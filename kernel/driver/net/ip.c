@@ -143,7 +143,9 @@ int net_ip_resolve(NET_ADAPTER *adapter, IP_ENDPOINT *ep)
 {
 	if (adapter == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-
+	if (adapter->Speed == 0)
+		return 0; // adapter is down
+	
 	if (0 == ~(ep->IP.Value | adapter->NetMask.Value)) // broadcast ip
 	{
 		ep->MAC = IP_ENDPOINT_BROADCAST->MAC;

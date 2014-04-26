@@ -34,6 +34,8 @@ int can_receiver_add_handler(CAN_HANDLER *handler, int bus, unsigned long id, un
 	_enable_rx = 0;
 	list_add_tail(&_handlers, (EXOS_NODE *)handler);
 	_enable_rx = 1;
+
+	return 1;
 }
 
 static void _recycle_message(CAN_RX_MSG *rx_msg)

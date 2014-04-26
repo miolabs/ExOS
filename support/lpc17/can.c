@@ -106,7 +106,8 @@ int hal_can_initialize(int module, int bitrate, CAN_INIT_FLAGS initf)
 
 	can->IER = CAN_RI | CAN_EI | CAN_BEI | CAN_DOI | 
 		CAN_TI1 | CAN_TI2 | CAN_TI3;  // Enable Interrupts
-	can->MOD = 4; // Operating Mode Normal (Self Test Mode - No ACK required)
+	can->MOD = 4 // Operating Mode Normal (Self Test Mode - No ACK required)
+		| (initf & CAN_INITF_LISTEN_ONLY ? 2 : 0);
 
 	_fcan->AFMR = AFMR_AccBP; // bypass Accept Filter
 	return 1;

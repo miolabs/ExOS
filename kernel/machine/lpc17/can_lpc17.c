@@ -30,7 +30,7 @@ static int _reset(NET_ADAPTER *adapter)
 	exos_fifo_create(&_input_fifo, NULL);
 	exos_fifo_create(&_output_fifo, NULL);
 	adapter->Speed = 1000;	// kbps
-	return hal_can_initialize(0, 1000000);
+	return hal_can_initialize(0, 1000000, CAN_INITF_NONE);
 }
 
 static void _link_up(NET_ADAPTER *adapter)

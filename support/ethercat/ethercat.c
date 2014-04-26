@@ -20,6 +20,7 @@ int net_ecat_build_buffer(NET_MBUF *ecat_mbuf, ECAT_HEADER *ecat, ECAT_FRAME_TYP
 	int payload = 0;
 	net_mbuf_init(ecat_mbuf, ecat, 0, sizeof(ECAT_HEADER));
 
+	ECAT_DATAGRAM_HEADER *prev_header = NULL;
 	NET_MBUF *mbuf = ecat_mbuf;
 	FOREACH(node, datagram_list)
 	{
@@ -27,6 +28,9 @@ int net_ecat_build_buffer(NET_MBUF *ecat_mbuf, ECAT_HEADER *ecat, ECAT_FRAME_TYP
 		// TODO: set bits in header according to datagram sequence
 
        	dgram->Header.Length = net_mbuf_length(&dgram->DataBuffer);
+		if (prev_header != NULL)
+			prev_header->Length |= ECAT_DGRAM_LENGTH_NOT_LAST;
+		prev_header = &dgram->Header;
 
 		net_mbuf_init(&dgram->HeaderBuffer, &dgram->Header, 0, sizeof(ECAT_DATAGRAM_HEADER));
 		net_mbuf_init(&dgram->FooterBuffer, &dgram->WorkCounter, 0, 2);
@@ -73,6 +77,7 @@ int net_ecat_send(NET_ADAPTER *adapter, EXOS_LIST *datagram_list)
 void net_ecat_datagram_create(ECAT_DATAGRAM *dgram, void *data, int offset, int length)
 {
 	dgram->Header = (ECAT_DATAGRAM_HEADER ) { .Length = length };
+	dgram->WorkCounter = 0;
 	net_mbuf_init(&dgram->DataBuffer, data, offset, length);
 }
 

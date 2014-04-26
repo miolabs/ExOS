@@ -10,6 +10,11 @@ void exos_dispatcher_context_create(EXOS_DISPATCHER_CONTEXT *context)
 	exos_event_create(&context->WakeEvent);
 }
 
+void exos_dispatcher_create(EXOS_DISPATCHER *dispatcher, EXOS_EVENT *event, EXOS_DISPATCHER_CALLBACK callback, void *state)
+{
+	*dispatcher = (EXOS_DISPATCHER) { .Event = event, .Callback = callback, .CallbackState = state };
+}
+
 void exos_dispatcher_add(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher, unsigned long timeout)
 {
 #ifdef DEBUG
@@ -67,7 +72,7 @@ void exos_dispatch(EXOS_DISPATCHER_CONTEXT *context, unsigned long timeout)
 	array[count++] = &context->WakeEvent;
 
 	EXOS_DISPATCHER *coming = NULL;
-	int wait = timeout != 0 ? timeout : MAXINT;
+	int wait = timeout != EXOS_TIMEOUT_NEVER ? timeout : MAXINT;
 	unsigned long time = exos_timer_time();
 	FOREACH(node, &context->Dispatchers)
 	{
@@ -77,7 +82,7 @@ void exos_dispatch(EXOS_DISPATCHER_CONTEXT *context, unsigned long timeout)
 			array[count++] = event;
 
 		int rem_time;
-		if (dispatcher->Timeout != EXOS_TIMEOUT_NEVER)
+		if (dispatcher->Timeout != 0)	// NOTE: EXOS_TIMEOUT_NEVER = 0, means immediate dispatch
 		{
 			rem_time = dispatcher->Timeout + dispatcher->Issued - time;
 		}

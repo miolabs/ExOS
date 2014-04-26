@@ -27,6 +27,7 @@ struct __EXOS_DISPATCHER_CONTEXT
 };
 
 void exos_dispatcher_context_create(EXOS_DISPATCHER_CONTEXT *context);
+void exos_dispatcher_create(EXOS_DISPATCHER *dispatcher, EXOS_EVENT *event, EXOS_DISPATCHER_CALLBACK callback, void *state);
 void exos_dispatcher_add(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher, unsigned long timeout); 
 int exos_dispatcher_remove(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher);
 void exos_dispatch(EXOS_DISPATCHER_CONTEXT *context, unsigned long timeout);

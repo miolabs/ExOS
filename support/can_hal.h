@@ -39,6 +39,7 @@ typedef enum
 {
 	CAN_INITF_NONE = 0,
 	CAN_INITF_DISABLE_RETRANSMISSION = 1<<0,
+	CAN_INITF_LISTEN_ONLY = 1<<1,
 } CAN_INIT_FLAGS;
 
 typedef void (* HAL_CAN_HANDLER)(int module);
