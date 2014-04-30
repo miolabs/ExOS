@@ -108,8 +108,17 @@ static void _complete_request(ACI_REQUEST *req, int length, ACI_COMMAND_RESPONSE
 		for (int i = 0; i < (length - 2); i++) 
 			req->Data[i] = data->ResponseData[i];
 
-		exos_event_set(&req->Done);
 		req->State = ACI_REQUEST_DONE;
+		exos_event_set(&req->Done);
+	}
+}
+
+static void _cancel_request(ACI_REQUEST *req)
+{
+	if (req->State == ACI_REQUEST_PENDING)
+	{
+		req->State = ACI_REQUEST_CANCELLED;
+		exos_event_set(&req->Done);
 	}
 }
 
@@ -136,6 +145,8 @@ static void _update_pipe_status(ACI_PIPE_STATUS_EVENT_DATA *data)
 		_pipes_open[1] = data->PipesOpen[4] | (data->PipesOpen[5] << 8) | (data->PipesOpen[6] << 16) | (data->PipesOpen[7] << 24);
 		_pipes_closed[0] =  data->PipesClosed[0] | (data->PipesClosed[1] << 8) | (data->PipesClosed[2] << 16) | (data->PipesClosed[3] << 24);
 		_pipes_closed[1] =  data->PipesClosed[4] | (data->PipesClosed[5] << 8) | (data->PipesClosed[6] << 16) | (data->PipesClosed[7] << 24);
+
+		//TODO
 	}
 }
 
@@ -168,6 +179,9 @@ static void _received(unsigned char *buffer, int length)
 			_connected((ACI_CONNECTED_EVENT_DATA *)&buffer[offset]);
 			break;
 		case ACI_EVENT_DISCONNECTED:
+			if (_pending_request != NULL)
+				_cancel_request(_pending_request);
+
 			_disconnected((ACI_DISCONNECTED_EVENT_DATA *)&buffer[offset]);
 			break;
 		case ACI_EVENT_PIPE_STATUS:
