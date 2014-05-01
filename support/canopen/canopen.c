@@ -1,56 +1,75 @@
 #include "canopen.h"
+#include "canopen_service.h"
 
-static void *_service(void *args);
+static int _can_module;
 
-int canopen_create(CANOPEN_INSTANCE *ci, const CANOPEN_NODE_IDENTITY *identity, int can_module, int bitrate)
+int canopen_initialize(int can_module, int bitrate)
 {
 	can_receiver_initialize();
 	
+	_can_module = can_module;
 	int done = hal_can_initialize(can_module, bitrate, CAN_INITF_NONE);
 	if (done)
 	{
-		can_receiver_add_handler(&ci->Handler, can_module, 0, 0);
-
+		canopen_service_initialize(can_module);
 		return 1;
 	}
 	return 0;
 }
 
-int canopen_run(CANOPEN_INSTANCE *ci, int pri, void *stack, int stack_size)
+int canopen_slave_create(CANOPEN_INSTANCE *ci, const CANOPEN_NODE_IDENTITY *identity)
 {
-	exos_thread_create(&ci->Thread, pri, stack, stack_size, NULL, _service, ci);
+	*ci = (CANOPEN_INSTANCE) { .Identity = identity };
 	return 1;
 }
 
-int canopen_nmt_send_cmd(CANOPEN_INSTANCE *ci, int cmd)
+int canopen_slave_add(CANOPEN_INSTANCE *ci)
 {
-	//TODO
+	int done = 0;
+//	exos_mutex_lock(&_instances_lock);
+//	if (!_find_instance(ci->Identity->Node))
+//	{
+//		list_add_tail(&_instances, (EXOS_NODE *)ci);
+//		done = 1;
+//	}
+//	exos_mutex_unlock(&_instances_lock);
+
+//	if (done)
+//	{
+//		ci->State = CANOPEN_NODE_BOOTUP;
+//		_send_node_guard(ci);
+//		ci->State = CANOPEN_NODE_PRE_OPERATIONAL;
+//	}
+
+	return done;
 }
 
-int canopen_sdo_download(CANOPEN_INSTANCE *ci, int cob_id, CANOPEN_MUX mux, void *data)
+int canopen_nmt_send_cmd(int cmd, int target_node)
 {
-	//TODO
+	CAN_EP ep = (CAN_EP) { .Bus = _can_module, .Id = 0x000 };
+	CANOPEN_NMT_MSG data = (CANOPEN_NMT_MSG) { .Cmd = cmd, .NodeId = target_node };
+	int done = hal_can_send(ep, (CAN_BUFFER *)&data, sizeof(data), CANF_PRI_HIGH);
+	return done;
 }
 
-int canopen_sdo_download_expedited(CANOPEN_INSTANCE *ci, int cob_id, CANOPEN_MUX mux, unsigned long data)
+int canopen_master_sync()
 {
-	
-	//TODO
+	CAN_EP ep = (CAN_EP) { .Bus = _can_module, .Id = 0x080 };
+	int done = hal_can_send(ep, NULL, 0, CANF_PRI_HIGH);
+	return done;
 }
 
-static void *_service(void *args)
-{
-	CANOPEN_INSTANCE *ci = (CANOPEN_INSTANCE *)args;
 
-	CAN_MSG msg;
-	while(1)
-	{
-		if (can_receiver_read(&ci->Handler, &msg, 1000))
-		{
-			
-		}
-	}
+
+int canopen_sdo_read(int target_node, CANOPEN_MUX mux, void *data)
+{
 }
+
+int canopen_sdo_read_expedited(int target_node, CANOPEN_MUX mux, unsigned long *data)
+{
+}
+
+
 
 
 

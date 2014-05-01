@@ -133,6 +133,7 @@
         </folder>
         <folder Name="canopen">
           <file file_name="support/canopen/canopen.c"/>
+          <file file_name="support/canopen/canopen_service.c"/>
         </folder>
       </folder>
       <folder Name="modules">

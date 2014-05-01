@@ -17,7 +17,7 @@ static const CANOPEN_NODE_IDENTITY _canopen_identity = {
 	.ProductCode = 0, .Revision = 1, .SerialNumber = 0,
 	.DeviceName = "Exos CANopen Test Device",
 	.HwVersion = "1.0", .SwVersion = "0.1",
-	.NodeID = 100 };
+	.Node = 5 };
 
 COMM_IO_ENTRY _comm;
 TCP_IO_ENTRY _socket;
@@ -38,8 +38,13 @@ void main()
 	{
 		sprintf(_buffer, "%d.%d.%d.%d", adapter->IP.Bytes[0], adapter->IP.Bytes[1], adapter->IP.Bytes[2], adapter->IP.Bytes[3]);
 	}
+	
+	canopen_initialize(0, 250000);
 
-	canopen_create(&_canopen, &_canopen_identity, 0, 250000);
+	canopen_slave_create(&_canopen, &_canopen_identity);
+	canopen_slave_add(&_canopen);
+
+	
 
 	int kk = 0;
 	while(1)
