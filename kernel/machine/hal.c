@@ -84,30 +84,23 @@ unsigned int __uint32_hexl(char *dst, unsigned int value)
 	return length;
 }
 
-unsigned int __int32_decl(char *str, int value) 
+unsigned int __int32_decl(char *dst, int value) 
 {
-    const static char dig[] = "0123456789abcdefghijklmnopqrstuvwxyz";	// Support radix > 10
-	int radix = 10;
-    int n = 0, neg = 0;
-    unsigned int v;
-    int p, q;
-    if (radix == 10 && value < 0) 
+	unsigned int length = 0;
+	if (value < 0)
 	{
-        value = -value;
-        neg = 1;
-    }
-    v = value;
-    do 
+		*dst++ = '-';
+		value = -value;
+	}
+	do
 	{
-		str[n++] = dig[v % radix];
-		v /= radix;
-    } while (v);
-    if (neg)
-        str[n++] = '-';
-    //str[n] = '\0';
+		int digit = value % 10;
+		value /= 10;
+		dst[length++] = digit + '0';
+	} while(value != 0);
 
-	_reverse_str(str, n);
-    return n;
+	_reverse_str(dst, length);
+	return length;
 }
 
 unsigned int __decl_uint32(char *src, unsigned int *pvalue)
