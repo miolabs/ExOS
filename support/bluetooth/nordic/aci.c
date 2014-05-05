@@ -384,6 +384,11 @@ int aci_connect_wait(unsigned short adv_interval, unsigned int timeout)
 	return 0;
 }
 
+int aci_is_connected()
+{
+	return _connected_event.State;
+}
+
 int aci_set_local_data(unsigned char pipe, unsigned char *data, int length)
 {
 	ACI_REQUEST req;

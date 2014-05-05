@@ -22,28 +22,6 @@ void exos_ble_service_create(EXOS_BLE_SERVICE *service, const EXOS_BLE_UUID *uui
 	list_initialize(&service->Characteristics);
 }
 
-void exos_ble_server_add_service(EXOS_BLE_SERVICE *service)
-{
-	exos_mutex_lock(&_services_lock);
-#ifdef DEBUG
-	if (list_find_node(&_services, (EXOS_NODE *)service))
-		kernel_panic(KERNEL_ERROR_LIST_ALREADY_CONTAINS_NODE);
-#endif
-	list_add_tail(&_services, (EXOS_NODE *)service);
-	exos_mutex_unlock(&_services_lock);
-}
-
-EXOS_BLE_ERROR exos_ble_service_add_char(EXOS_BLE_SERVICE *service, EXOS_BLE_CHAR *characteristic)
-{
-	if (characteristic == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
-	if (characteristic->Service != NULL)
-		return EXOS_BLE_ERROR_CHARACTERISTIC_ALREADY_ADDED;
-	
-	characteristic->Service = service;
-	list_add_tail(&service->Characteristics, (EXOS_NODE *)characteristic);
-	return EXOS_BLE_OK;
-}
-
 static void _renum_chars()
 {
 	int index = 0;
@@ -60,10 +38,33 @@ static void _renum_chars()
 	exos_mutex_unlock(&_services_lock);
 }
 
+void exos_ble_server_add_service(EXOS_BLE_SERVICE *service)
+{
+	exos_mutex_lock(&_services_lock);
+#ifdef DEBUG
+	if (list_find_node(&_services, (EXOS_NODE *)service))
+		kernel_panic(KERNEL_ERROR_LIST_ALREADY_CONTAINS_NODE);
+#endif
+	list_add_tail(&_services, (EXOS_NODE *)service);
+
+    _renum_chars();
+	exos_mutex_unlock(&_services_lock);
+}
+
+EXOS_BLE_ERROR exos_ble_service_add_char(EXOS_BLE_SERVICE *service, EXOS_BLE_CHAR *characteristic)
+{
+	if (characteristic == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
+	if (characteristic->Service != NULL)
+		return EXOS_BLE_ERROR_CHARACTERISTIC_ALREADY_ADDED;
+	
+	characteristic->Service = service;
+	list_add_tail(&service->Characteristics, (EXOS_NODE *)characteristic);
+	return EXOS_BLE_OK;
+}
+
+
 EXOS_BLE_ERROR exos_ble_server_start_advertising(EXOS_BLE_SERVICE *services[], unsigned int count, unsigned int adv_interval)
 {
-	_renum_chars();
-
 	if (services == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
 	return ble_hal_start_advertising(services, count, adv_interval);
 }

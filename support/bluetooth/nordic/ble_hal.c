@@ -20,7 +20,8 @@ int exos_ble_server_is_advertising()
 
 int exos_ble_server_is_connected()
 {
-	// TODO
+	int done = aci_is_connected();
+	return done;
 }
 
 int exos_ble_server_wait_connexion(int timeout)
@@ -30,8 +31,17 @@ int exos_ble_server_wait_connexion(int timeout)
 
 EXOS_BLE_ERROR ble_hal_set_local_data(EXOS_BLE_CHAR *characteristic, void *data)
 {
-	int done = aci_send_data(characteristic->Index + 1, // TODO: translate char->Index to pipe number
-		data, characteristic->Size);
+	int done = aci_is_connected();
+	if (done)
+	{
+		done = aci_send_data(characteristic->Index + 1, // TODO: translate char->Index to pipe number
+			data, characteristic->Size);
+	}
+	else
+	{
+		done = aci_set_local_data(characteristic->Index + 1, // TODO: translate char->Index to pipe number
+			data, characteristic->Size);
+	}
 	return done ? EXOS_BLE_OK : EXOS_BLE_ERROR_REJECTED; // FIXME
 }
 

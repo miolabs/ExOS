@@ -194,6 +194,7 @@ int aci_send_setup(ACI_REQUEST *req, int *pcomplete);
 int aci_broadcast(unsigned short adv_interval);
 int aci_connect(unsigned short adv_interval);
 int aci_connect_wait(unsigned short adv_interval, unsigned int timeout);
+int aci_is_connected();
 int aci_set_local_data(unsigned char pipe, unsigned char *data, int length);
 int aci_send_data(unsigned char pipe, unsigned char *data, int length);
 
