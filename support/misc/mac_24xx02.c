@@ -1,7 +1,5 @@
 #include "mac_24xx02.h"
-#include <net/board.h>
 #include <support/misc/eeprom.h>
-
 
 int mac_24xx02_get(HW_ADDR *mac)
 {
@@ -18,6 +16,9 @@ int mac_24xx02_get(HW_ADDR *mac)
 	return 0;
 }
 
+#ifndef EXOS_NO_NET
+#include <net/board.h>
+
 void net_board_set_mac_address(NET_ADAPTER *adapter, int index)
 {
 	HW_ADDR mac;
@@ -26,4 +27,5 @@ void net_board_set_mac_address(NET_ADAPTER *adapter, int index)
 		adapter->MAC = mac;
 	}
 }
+#endif
 
