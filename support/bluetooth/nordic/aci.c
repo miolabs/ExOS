@@ -92,6 +92,8 @@ void aci_initialize()
 
 static void _warning()
 {
+	static int dummy = 0;
+	dummy = !dummy;
 }
 
 static void _rdy_handler(int port, int pin)
@@ -148,6 +150,14 @@ static void _update_pipe_status(ACI_PIPE_STATUS_EVENT_DATA *data)
 
 		//TODO
 	}
+}
+
+static void _display_key(ACI_DISPLAY_KEY_EVENT_DATA *data)
+{
+	EXOS_BLE_BOND_DATA bond_data = (EXOS_BLE_BOND_DATA) { };	// FIXME, setup for display key
+	for(int i = 0; i < 6; i++) bond_data.Passkey[i] = data->Passkey[i];
+
+	exos_ble_bond_event(&bond_data);
 }
 
 static void _received_data(ACI_DATA_RECEIVED_EVENT_DATA *data, int length)
@@ -211,6 +221,15 @@ static void _received(unsigned char *buffer, int length)
 			break;
 		case ACI_EVENT_DATA_RECEIVED:
 			_received_data((ACI_DATA_RECEIVED_EVENT_DATA *)&buffer[offset], length - offset);
+			break;
+		case ACI_EVENT_DISPLAY_KEY:
+			_display_key((ACI_DISPLAY_KEY_EVENT_DATA *)&buffer[offset]);
+			break;
+		case ACI_EVENT_KEY_REQUEST:
+			// TODO
+			break;
+		case ACI_EVENT_BOND_STATUS:
+			// TODO
 			break;
 		default:
 			// TODO
@@ -342,7 +361,7 @@ int aci_send_setup(ACI_REQUEST *req, int *pcomplete)
 	return 0;
 }
 
-static int _start_advertising(ACI_COMMAND cmd, unsigned short adv_interval)
+static int _start_advertising(ACI_COMMAND cmd, unsigned short timeout, unsigned short adv_interval)
 {
 	adv_interval += ((adv_interval * 6) / 10);	// ms -> 0.625 ms
 	if (adv_interval < 32) adv_interval = 32;
@@ -351,37 +370,71 @@ static int _start_advertising(ACI_COMMAND cmd, unsigned short adv_interval)
 	req.Command = cmd; 
 	req.Length = sizeof(ACI_CONNECT_COMMAND_DATA);
 	*((ACI_CONNECT_COMMAND_DATA *)&req.Data) = (ACI_CONNECT_COMMAND_DATA) { 
-		.Timeout = 0, .AdvInterval = adv_interval };
+		.Timeout = timeout, .AdvInterval = adv_interval };
 
 	if (_state == ACI_STATE_STANDBY)
 	{
 		if (_do_request(&req))
 		{
-			ACI_STATUS_CODE status = req.Status;
-			return (status == ACI_STATUS_SUCCESS);
+			return req.Status;
 		}
 	}
-	return 0;
+	return ACI_STATUS_ERROR_UNKNOWN;
 }
 
-int aci_broadcast(unsigned short adv_interval)
+ACI_STATUS_CODE aci_broadcast(unsigned short adv_interval)
 {
-	return _start_advertising(ACI_COMMAND_BROADCAST, adv_interval);
+	return _start_advertising(ACI_COMMAND_BROADCAST, 0, adv_interval);
 }
 
-int aci_connect(unsigned short adv_interval)
+ACI_STATUS_CODE aci_connect(unsigned short adv_interval, int timeout)
 {
-	return _start_advertising(ACI_COMMAND_CONNECT, adv_interval);
+	return _start_advertising(ACI_COMMAND_CONNECT, timeout, adv_interval);
 }
 
-int aci_connect_wait(unsigned short adv_interval, unsigned int timeout)
+ACI_STATUS_CODE aci_bond(unsigned short adv_interval, int timeout)
 {
-	if (aci_connect(adv_interval))
+	return _start_advertising(ACI_COMMAND_BOND, timeout, adv_interval);	
+}
+
+int aci_connect_wait(unsigned short adv_interval, int timeout)
+{
+	int timeout_sec = (timeout + 999) / 1000;
+	ACI_STATUS_CODE status = aci_connect(adv_interval, timeout_sec);
+	if (status == ACI_STATUS_SUCCESS)
 	{
-		exos_event_wait(&_connected_event, timeout);
+		exos_event_wait(&_connected_event, EXOS_TIMEOUT_NEVER);	// FIXME: ensure that aci_connect resets event upon timeout
 		return _connected_event.State;
 	}
 	return 0;
+}
+
+ACI_STATUS_CODE aci_disconnect()
+{
+	ACI_REQUEST req;
+	req.Command = ACI_COMMAND_DISCONNECT; 
+	req.Length = 1;
+	req.Data[0] = 0x01;	// reason for peer: remote disconnect
+	if (_do_request(&req))
+	{
+		ACI_STATUS_CODE status = req.Status;
+		return status;	
+	}
+	return ACI_STATUS_ERROR_UNKNOWN;
+}
+
+ACI_STATUS_CODE aci_reset()
+{
+	ACI_REQUEST req;
+	req.Command = ACI_COMMAND_RADIO_RESET; 
+	req.Length = 0;
+	if (_do_request(&req))
+	{
+		ACI_STATUS_CODE status = req.Status;
+		exos_event_reset(&_connected_event);
+		return status;	
+	}
+	return ACI_STATUS_ERROR_UNKNOWN;
 }
 
 int aci_is_connected()
@@ -423,7 +476,7 @@ int aci_send_data(unsigned char pipe, unsigned char *data, int length)
 		if (_do_request(&req))
 		{
 			ACI_STATUS_CODE status = req.Status;
-			return (status == ACI_STATUS_SUCCESS);	
+			return (status == ACI_STATUS_SUCCESS);
 		}
 	}
 	return 0;

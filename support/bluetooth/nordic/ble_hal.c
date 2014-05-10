@@ -6,27 +6,31 @@ void ble_hal_initialize()
 	aci_initialize();
 }
 
-EXOS_BLE_ERROR ble_hal_start_advertising(EXOS_BLE_SERVICE *services[], unsigned int count, unsigned int adv_interval)
+EXOS_BLE_ERROR ble_hal_connect(EXOS_BLE_SERVICE *services[], unsigned int count, unsigned int adv_interval)
 {
-	//int done = aci_broadcast(adv_interval > 32767 ? 32767 : adv_interval);
-	int done = aci_connect(adv_interval > 32767 ? 32767 : adv_interval);
-	return done ? EXOS_BLE_OK : EXOS_BLE_ERROR_REJECTED;
+	if (adv_interval > 32767) adv_interval = 32767;
+	ACI_STATUS_CODE status = aci_connect(adv_interval, 0);
+	return (status == ACI_STATUS_SUCCESS) ? EXOS_BLE_OK : 
+		((status == ACI_STATUS_ERROR_BOND_REQUIRED) ? EXOS_BLE_ERROR_BOND_REQUIRED : EXOS_BLE_ERROR_REJECTED);
 }
 
-int exos_ble_server_is_advertising()
+EXOS_BLE_ERROR ble_hal_bond(EXOS_BLE_SERVICE *services[], unsigned int count, unsigned int adv_interval)
 {
-	// TODO
+	if (adv_interval > 32767) adv_interval = 32767;
+	ACI_STATUS_CODE status = aci_bond(adv_interval, 60);	// FIXME: define bond timeout seconds
+	return (status == ACI_STATUS_SUCCESS) ? EXOS_BLE_OK : EXOS_BLE_ERROR_REJECTED;
 }
 
-int exos_ble_server_is_connected()
+EXOS_BLE_ERROR ble_hal_disconnect()
+{
+	ACI_STATUS_CODE status = aci_reset();	// FIXME: we call reset instead of disconnect because we want bond status to be cleared
+	return (status == ACI_STATUS_SUCCESS) ? EXOS_BLE_OK : EXOS_BLE_ERROR_REJECTED;
+}
+
+int ble_hal_server_is_connected()
 {
 	int done = aci_is_connected();
 	return done;
-}
-
-int exos_ble_server_wait_connexion(int timeout)
-{
-	// TODO
 }
 
 EXOS_BLE_ERROR ble_hal_set_local_data(EXOS_BLE_CHAR *characteristic, void *data)

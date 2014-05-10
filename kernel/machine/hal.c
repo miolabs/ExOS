@@ -37,7 +37,6 @@ __weak unsigned int __str_copy(char *dst, const char *src, unsigned int max_leng
 	}
 
 	if (done < max_length) dst[done] = '\0';
-	else if (done == max_length && done > 0) dst[done - 1] = '\0';
 	return done;  
 }
 

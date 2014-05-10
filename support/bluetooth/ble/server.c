@@ -1,16 +1,40 @@
 #include "server.h"
+#include <support/bluetooth/ble_hal.h>
 #include <kernel/panic.h>
 #include <kernel/mutex.h>
 
 static EXOS_LIST _services;
 static EXOS_MUTEX _services_lock;
+static EXOS_BLE_BOND_CALLBACK _bond_callback = NULL;
 
-void exos_ble_server_initialize()
+void exos_ble_server_initialize(EXOS_BLE_BOND_CALLBACK callback)
 {
 	list_initialize(&_services);
 	exos_mutex_create(&_services_lock);
 
 	ble_hal_initialize();
+	_bond_callback = callback;
+}
+
+void exos_ble_bond_event(EXOS_BLE_BOND_DATA *data)
+{
+	if (_bond_callback != NULL)
+		_bond_callback(data);
+}
+
+int exos_ble_server_is_advertising()
+{
+	// TODO
+}
+
+int exos_ble_server_is_connected()
+{
+	return ble_hal_server_is_connected();
+}
+
+int exos_ble_server_wait_connexion(int timeout)
+{
+	// TODO
 }
 
 void exos_ble_service_create(EXOS_BLE_SERVICE *service, const EXOS_BLE_UUID *uuid, EXOS_BLE_SERVICE_HANDLER handler, EXOS_BLE_SERVICE_FLAGS flags)
@@ -62,11 +86,26 @@ EXOS_BLE_ERROR exos_ble_service_add_char(EXOS_BLE_SERVICE *service, EXOS_BLE_CHA
 	return EXOS_BLE_OK;
 }
 
-
-EXOS_BLE_ERROR exos_ble_server_start_advertising(EXOS_BLE_SERVICE *services[], unsigned int count, unsigned int adv_interval)
+EXOS_BLE_ERROR exos_ble_server_start_advertising(EXOS_BLE_SERVICE *services[], unsigned int count, unsigned int adv_interval, EXOS_BLE_CONNECT_FLAGS flags)
 {
 	if (services == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
-	return ble_hal_start_advertising(services, count, adv_interval);
+
+	EXOS_BLE_ERROR error;
+	if (flags & EXOS_BLECF_BOND) 
+	{
+		error = ble_hal_bond(services, count, adv_interval);
+	}
+	else 
+	{
+		error = ble_hal_connect(services, count, adv_interval);
+	}
+	return error;
+}
+
+EXOS_BLE_ERROR exos_ble_server_disconnect()
+{
+	EXOS_BLE_ERROR error = ble_hal_disconnect();	
+	return error;
 }
 
 void exos_ble_characteristic_create(EXOS_BLE_CHAR *characteristic, const EXOS_BLE_UUID *uuid, unsigned short size)

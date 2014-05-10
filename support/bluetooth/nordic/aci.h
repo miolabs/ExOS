@@ -174,8 +174,16 @@ typedef struct
 typedef struct
 {
 	unsigned char Reason;
-	// TODO
+	unsigned char Error;
 } ACI_DISCONNECTED_EVENT_DATA;
+
+typedef enum
+{
+	ACI_DISCONNECT_REASON_ERROR = 0x03,
+	ACI_DISCONNECT_REASON_ADV_TIMEOUT = 0x93,
+	ACI_DISCONNECT_REASON_REMOTE_SECURITY = 0x94,
+	ACI_DISCONNECT_REASON_BOND_REQUIRED = 0x8D,
+} ACI_DISCONNECT_REASON;
 
 typedef struct
 {
@@ -189,11 +197,19 @@ typedef struct
 	unsigned char Data[];
 } ACI_DATA_RECEIVED_EVENT_DATA;
 
+typedef struct __attribute__((__packed__))
+{
+	unsigned char Passkey[6];
+} ACI_DISPLAY_KEY_EVENT_DATA;
+
 void aci_initialize();
 int aci_send_setup(ACI_REQUEST *req, int *pcomplete);
-int aci_broadcast(unsigned short adv_interval);
-int aci_connect(unsigned short adv_interval);
-int aci_connect_wait(unsigned short adv_interval, unsigned int timeout);
+ACI_STATUS_CODE aci_broadcast(unsigned short adv_interval);
+ACI_STATUS_CODE aci_bond(unsigned short adv_interval, int timeout);
+ACI_STATUS_CODE aci_connect(unsigned short adv_interval, int timeout);
+int aci_connect_wait(unsigned short adv_interval, int timeout);
+ACI_STATUS_CODE aci_disconnect();
+ACI_STATUS_CODE aci_reset();
 int aci_is_connected();
 int aci_set_local_data(unsigned char pipe, unsigned char *data, int length);
 int aci_send_data(unsigned char pipe, unsigned char *data, int length);
