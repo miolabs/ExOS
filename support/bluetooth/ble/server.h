@@ -34,7 +34,7 @@ typedef enum
 {
 	EXOS_BLE_ATT_OK = 0,
 	EXOS_BLE_ATT_NOT_IMPLEMENTED,
-	// TODO :check response codes for compatibility with CoreBluetooth / Nordic ACI / whatever
+	// TODO: check response codes for compatibility with CoreBluetooth / Nordic ACI / whatever
 } EXOS_BLE_ATT_ERROR;
 
 typedef struct

@@ -20,7 +20,23 @@ void hal_board_initialize()
 #else
 #error Unsupported Board
 #endif
+
+#if defined BOARD_BTSMART
+	hal_gpio_config(2, 1<<11, 1<<11);
+	hal_gpio_pin_set(2, 11, 1);
+#endif
 }
+
+void hal_led_set(HAL_LED led, int state)
+{
+	switch(led)
+	{
+		case 0:
+			hal_gpio_pin_set(2, 11, !state);
+			break;
+	}
+}
+
 
 
 

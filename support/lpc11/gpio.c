@@ -41,6 +41,16 @@ unsigned int hal_gpio_read(int port, unsigned int mask)
 	return _gpio[port]->MASKED_ACCESS[mask & 0xFFF];
 }
 
+void hal_gpio_pin_set(int port, int pin, int state)
+{
+	hal_gpio_write(port, 1<<pin, state ? 1<<pin : 0);
+}
+
+int hal_gpio_pin(int port, int pin)
+{
+	return hal_gpio_read(port, 1<<pin);
+}
+
 void hal_gpio_config(int port, unsigned int mask, unsigned int output)
 {
 	mask &= 0xFFF;
