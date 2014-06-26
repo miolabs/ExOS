@@ -14,7 +14,6 @@ static EXOS_EVENT _status_event;
 
 void hal_mci_initialize()
 {
-	hal_board_init_pinmux(HAL_RESOURCE_MCI, 0);
 	exos_event_create(&_status_event);
 
 	// peripheral clock selection

@@ -3,6 +3,8 @@
 
 #include <support/lpc2k/cpu.h>
 
+#define ADC_MAX_CLK 13000000
+
 #define ADCR_SEL_BIT 0
 #define ADCR_SEL_MASK 0x000000FF
 #define ADCR_CLKDIV_BIT 8

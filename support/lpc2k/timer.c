@@ -97,7 +97,6 @@ void timer_initialize(int module, int freq, int period, TIMER_MODE mode, MATCH_H
 
 int hal_cap_initialize(int module, unsigned long freq, HAL_CAP_MODE mode, HAL_CAP_HANDLER callback)
 {
-	int mask = hal_board_init_pinmux(HAL_RESOURCE_CAP, module);
 	LPC_TIM_TypeDef *timer = _initialize(module, freq);
 	
 	if (timer)
