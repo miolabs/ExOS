@@ -28,14 +28,14 @@ int _send_node_guard(CANOPEN_INSTANCE *ci)
 		if (ci->Flags.NodeGuardToggle) data |= 0x80;
 		ci->Flags.NodeGuardToggle ^= 1;
 	}
-	int done = hal_can_send(ep, (CAN_BUFFER *)&data, 1, CANF_PRI_HIGH);
+	int done = hal_can_send(ep, (CAN_BUFFER *)&data, 1, CANF_NONE);
 	return done;
 }
 
 static int _send_sdo(int cob, CANOPEN_SDO_MSG *msg)
 {
 	CAN_EP ep = (CAN_EP) { .Bus = _can_module, .Id = cob };
-	int done = hal_can_send(ep, (CAN_BUFFER *)msg, 8, CANF_PRI_HIGH);
+	int done = hal_can_send(ep, (CAN_BUFFER *)msg, 8, CANF_NONE);
 	return done;
 }
 

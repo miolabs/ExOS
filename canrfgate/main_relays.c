@@ -12,7 +12,7 @@
 #define RELAY_COUNT 2
 
 static const CAN_EP _eps[] = { {0x200, 0}, {0x201, 0} };
-static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
+static FULLCAN_SETUP_CODE _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
 
 static EXOS_PORT _port;
 static EXOS_FIFO _free_msgs;
@@ -53,7 +53,7 @@ static void _set_relays(unsigned short mask)
 	LPC_GPIO2->MASKED_ACCESS[RELAY1] = (mask & 1<<1) ? RELAY1 : 0;
 
 	CAN_BUFFER buf = (CAN_BUFFER) { .u16[0] = mask };
-	hal_can_send((CAN_EP) { .Id = 0x301 }, &buf, 2, CANF_PRI_ANY);
+	hal_can_send((CAN_EP) { .Id = 0x301 }, &buf, 2, CANF_NONE);
 }
 
 static void _msg_rcv(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher)
@@ -82,7 +82,7 @@ static void _msg_rcv(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatch
 #ifdef DEBUG
 	static unsigned long seq = 0;
 	CAN_BUFFER buf = (CAN_BUFFER) { .u16[0] = _current_mask, .u16[1] = seq++ };
-	hal_can_send((CAN_EP) { .Id = 0x300 }, &buf, 4, CANF_PRI_ANY);
+	hal_can_send((CAN_EP) { .Id = 0x300 }, &buf, 4, CANF_NONE);
 #endif
 
 	exos_dispatcher_add(context, dispatcher, HEARTBEAT_TIMEOUT); // re-issue this dispatcher
@@ -94,16 +94,16 @@ static void _relay_timeout(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *di
 	_set_relays(_current_mask);
 }
 
-static int _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state)
+static FULLCAN_SETUP_CODE _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state)
 {
 	int count = sizeof(_eps) / sizeof(CAN_EP);
 	if (index < count)
 	{
 		*ep = _eps[index];
 		*pflags = CANF_RXINT;
-		return 1;
+		return FULLCAN_SETUP_RX;
 	}
-	return 0;
+	return FULLCAN_SETUP_END;
 }
 
 void hal_can_received_handler(int index, CAN_MSG *msg)

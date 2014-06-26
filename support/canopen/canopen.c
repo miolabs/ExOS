@@ -48,14 +48,14 @@ int canopen_nmt_send_cmd(int cmd, int target_node)
 {
 	CAN_EP ep = (CAN_EP) { .Bus = _can_module, .Id = 0x000 };
 	CANOPEN_NMT_MSG data = (CANOPEN_NMT_MSG) { .Cmd = cmd, .NodeId = target_node };
-	int done = hal_can_send(ep, (CAN_BUFFER *)&data, sizeof(data), CANF_PRI_HIGH);
+	int done = hal_can_send(ep, (CAN_BUFFER *)&data, sizeof(data), CANF_NONE);
 	return done;
 }
 
 int canopen_master_sync()
 {
 	CAN_EP ep = (CAN_EP) { .Bus = _can_module, .Id = 0x080 };
-	int done = hal_can_send(ep, NULL, 0, CANF_PRI_HIGH);
+	int done = hal_can_send(ep, NULL, 0, CANF_NONE);
 	return done;
 }
 

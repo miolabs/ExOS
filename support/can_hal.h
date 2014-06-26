@@ -18,13 +18,9 @@ typedef struct
 typedef enum
 {
 	CANF_NONE = 0,
-	CANF_RTR = 1<<0,
-	CANF_EXTID = 1<<1,
-	CANF_PRI_LOW = 1<<4,
-	CANF_PRI_MED = 1<<5,
-	CANF_PRI_HIGH = 1<<6,
-	CANF_PRI_ANY = (CANF_PRI_HIGH | CANF_PRI_MED | CANF_PRI_LOW),
-	CANF_RXINT = 1<<7,
+	CANF_RXINT = 1<<0,
+	CANF_RTR = 1<<1,
+	CANF_EXTID = 1<<2,
 } CAN_MSG_FLAGS;
 
 typedef struct
@@ -44,7 +40,14 @@ typedef enum
 
 typedef void (* HAL_CAN_HANDLER)(int module);
 
-typedef int(* HAL_FULLCAN_SETUP_CALLBACK)(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
+typedef enum
+{
+	FULLCAN_SETUP_END = 0,
+	FULLCAN_SETUP_RX,
+	FULLCAN_SETUP_TX,
+} FULLCAN_SETUP_CODE;
+
+typedef FULLCAN_SETUP_CODE (* HAL_FULLCAN_SETUP_CALLBACK)(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
 
 // prototypes
 int hal_can_initialize(int module, int bitrate, CAN_INIT_FLAGS initf);
@@ -53,6 +56,8 @@ void hal_can_cancel_tx();
 
 int hal_fullcan_setup(HAL_FULLCAN_SETUP_CALLBACK callback, void *state);
 int hal_fullcan_read_msg(int index, CAN_MSG *msg);
+int hal_fullcan_write_msg(int index, CAN_MSG *msg);
+int hal_fullcan_write_data(int index, CAN_BUFFER *data, int length);
 
 // callbacks
 void hal_can_received_handler(int index, CAN_MSG *msg) __attribute__((__weak__));

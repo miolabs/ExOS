@@ -169,9 +169,10 @@ typedef struct
 #define AFMR_AccBP	(1<<1)
 #define AFMR_eFCAN	(1<<2)
 
-#define FCAN_DISABLE (1<<12)
-#define FCAN_INTEN (1<<11)
-#define FCAN_MAKE_ID(scc, id, inten) (((scc) << 13) | ((id) & 0x7FF) | ((inten) ? 1<<27 : 0))
+#define FCAN_SFF_DISABLE (1<<12)
+#define FCAN_SFF_INTEN (1<<11)
+#define FCAN_SFF_MASK (FCAN_SFF_DISABLE|FCAN_SFF_INTEN)
+#define FCAN_MAKE_SFF(scc, id, flags) (((scc) << 13) | ((id) & 0x7FF) | ((flags) & FCAN_SFF_MASK))
 
 typedef struct
 {
@@ -180,7 +181,7 @@ typedef struct
 		volatile unsigned long Status;
 		volatile struct
 		{
-			unsigned ID_High:11;
+			unsigned ID:11;
 			unsigned :2;
 			unsigned SCC:3;
 			unsigned DLC:4;
@@ -195,8 +196,17 @@ typedef struct
 	volatile CAN_BUFFER Data;
 } FCAN_MSG;
 
+#define FCAN_MSG_SCC_BIT 13
+#define FCAN_MSG_DLC_BIT 16
 #define FCAN_MSG_SEM_BIT 24
 #define FCAN_MSG_SEM_MASK (3<<FCAN_MSG_SEM_BIT)
+
+typedef enum
+{
+	CAN_TB1 = 1,
+	CAN_TB2 = 2,
+	CAN_TB3 = 3,
+} CAN_TBUF;
 
 // prototypes
 void can_flush(int module);

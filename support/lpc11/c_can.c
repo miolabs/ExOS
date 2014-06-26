@@ -9,6 +9,7 @@ static int _fullcan_reserved = 0;
 static EXOS_MUTEX _lock;
 #ifdef DEBUG
 static unsigned long _errors_ack = 0;
+static unsigned long _errors_other = 0;
 static unsigned long _resets_tx = 0;
 static unsigned long _unhandled_irq= 0;
 #endif
@@ -127,14 +128,37 @@ void CAN_IRQHandler()
 		if (ir & 0x8000)
 		{
 			unsigned char stat = _can->STAT;
-			if ((stat & 0x7) == C_CAN_ERROR_ACK)
+			unsigned long txreq;
+
+			switch(stat & 0x7)
 			{
+				case C_CAN_ERROR_ACK:
 #ifdef DEBUG
-				_errors_ack++;
+					_errors_ack++;
 #endif
-				// FIXME: dirty hack for receiver not present / not working / not listening
-				for(int i = _fullcan_reserved; i < 32; i++)
-					_usage[i] = 0;
+					// FIXME: dirty hack for receiver not present / not working / not listening
+					txreq = _can->TXREQ1 | (_can->TXREQ2 << 16); 
+					for(int i = 0; i < 32; i++)
+					{
+						if (txreq & (1<<i))
+						{
+							C_CAN_FUNCTION *fn = &_can->Interface2;	// use function 2
+							fn->CMDMSK = C_CAN_CMDMSK_ARB | C_CAN_CMDMSK_CLRINTPND | C_CAN_CMDMSK_WR;
+							fn->ARB1 = fn->ARB2 = 0;
+							fn->CMDREQ = i + 1;
+							_usage[i] = 0;
+							break;
+						}
+					}
+					break;
+#ifdef DEBUG
+				case C_CAN_ERROR_NONE:
+					break;
+				
+				default:
+					_errors_other++;
+					break;
+#endif 
 			}
 		}
 		else
@@ -171,8 +195,7 @@ void CAN_IRQHandler()
 			else if (fn->MCTRL & C_CAN_MCTRL_INTPND)
 			{
 				// message successfully transmitted
-				if ((intid - 1) >= _fullcan_reserved)
-					_usage[intid - 1] = 0;
+				_usage[intid - 1] = 0;
 			}
 #ifdef DEBUG
 			else _unhandled_irq++;
@@ -185,7 +208,7 @@ void CAN_IRQHandler()
 int hal_can_send(CAN_EP ep, CAN_BUFFER *data, unsigned char length, CAN_MSG_FLAGS flags)
 {
 	int index;
-	int done =_get_free_index(&index, ep.Id);
+	int done = _get_free_index(&index, ep.Id);
 	if (!done)
 	{
 		hal_can_cancel_tx();
@@ -237,7 +260,8 @@ int hal_fullcan_setup(HAL_FULLCAN_SETUP_CALLBACK callback, void *state)
 	{
 		CAN_EP ep;
 		CAN_MSG_FLAGS flags = CANF_NONE;
-		if (!callback(count, &ep, &flags, state))
+        FULLCAN_SETUP_CODE code = callback(count, &ep, &flags, state);
+		if (code == FULLCAN_SETUP_END)
 			break;
 		
 		_usage[count] = 2;
@@ -247,21 +271,33 @@ int hal_fullcan_setup(HAL_FULLCAN_SETUP_CALLBACK callback, void *state)
 			| C_CAN_CMDMSK_CTRL //| C_CAN_CMDMSK_TXRQST
 			| C_CAN_CMDMSK_WR;
 	
-//		if (mode_id & CAN_MSGOBJ_EXT)
-//		{
-//			int id = mode_id & 0x1fffffff;
-//			fn->ARB1 = id;
-//			fn->ARB2 = (id >> 16) | C_CAN_ARB2_MSGVAL | C_CAN_ARB2_XTD;
-//		}
-//		else
-//		{
+		if (flags & CANF_EXTID)
+		{
+			int id = (ep.Id & 0x1fffffff);
+			fn->ARB1 = id;
+			fn->ARB2 = (id >> 16) | C_CAN_ARB2_MSGVAL | C_CAN_ARB2_XTD;
+		}
+		else
+		{
 			int id = (ep.Id & 0x7ff) << 18;
 			fn->ARB1 = id;
 			fn->ARB2 = (id >> 16) | C_CAN_ARB2_MSGVAL;
-//		}
-		fn->MCTRL = (8 & C_CAN_MCTRL_DLC_MASK) 
-			| ((flags & CANF_RXINT) ? C_CAN_MCTRL_RXIE : 0);
-	
+		}
+		
+		switch(code)
+		{
+			case FULLCAN_SETUP_RX:
+				fn->MCTRL = (8 & C_CAN_MCTRL_DLC_MASK) 
+					| ((flags & CANF_RXINT) ? C_CAN_MCTRL_RXIE : 0);
+				break;
+			case FULLCAN_SETUP_TX:
+				fn->ARB2 |= C_CAN_ARB2_DIR;
+				fn->MCTRL = (8 & C_CAN_MCTRL_DLC_MASK)
+					| C_CAN_MCTRL_EOB;
+//					| C_CAN_MCTRL_TXIE
+//					| C_CAN_MCTRL_NEWDAT;
+				break;
+		}
 		fn->CMDREQ = ++count; // make transfer
 	}
 	_fullcan_reserved = count;
@@ -270,4 +306,60 @@ int hal_fullcan_setup(HAL_FULLCAN_SETUP_CALLBACK callback, void *state)
 	return count;
 }
 
+int hal_fullcan_write_msg(int index, CAN_MSG *msg)
+{
+	C_CAN_FUNCTION *fn = &_can->Interface1;	// use function 1
+
+	fn->CMDMSK = C_CAN_CMDMSK_ARB // transfer id, DIR, XTD, MSGVAL
+		| C_CAN_CMDMSK_DATA_A | C_CAN_CMDMSK_DATA_B
+		| C_CAN_CMDMSK_CTRL | C_CAN_CMDMSK_TXRQST
+		| C_CAN_CMDMSK_WR;
+	int dlc = msg->Length & 0xf;
+	if (dlc >= 1) fn->DA1 = msg->Data.u8[0] | (msg->Data.u8[1] << 8);
+	if (dlc >= 3) fn->DA2 = msg->Data.u8[2] | (msg->Data.u8[3] << 8);
+	if (dlc >= 5) fn->DB1 = msg->Data.u8[4] | (msg->Data.u8[5] << 8);
+	if (dlc >= 7) fn->DB2 = msg->Data.u8[6] | (msg->Data.u8[7] << 8);
+
+	if (msg->Flags & CANF_EXTID)
+	{
+		int id = msg->EP.Id & 0x1fffffff;
+		fn->ARB1 = id;
+		fn->ARB2 = (id >> 16) | C_CAN_ARB2_MSGVAL | C_CAN_ARB2_DIR | C_CAN_ARB2_XTD;
+	}
+	else
+	{
+		int id = (msg->EP.Id & 0x7ff) << 18;
+		fn->ARB1 = id;
+		fn->ARB2 = (id >> 16) | C_CAN_ARB2_MSGVAL | C_CAN_ARB2_DIR;
+	}
+	fn->MCTRL = (msg->Length & C_CAN_MCTRL_DLC_MASK) 
+		| C_CAN_MCTRL_EOB
+		| C_CAN_MCTRL_TXIE
+		| C_CAN_MCTRL_NEWDAT;
+	
+	// make transfer
+	fn->CMDREQ = index + 1;
+}
+
+int hal_fullcan_write_data(int index, CAN_BUFFER *data, int length)
+{
+	C_CAN_FUNCTION *fn = &_can->Interface1;	// use function 1
+
+	int dlc = length & 0xf;
+	if (dlc >= 1) fn->DA1 = data->u8[0] | (data->u8[1] << 8);
+	if (dlc >= 3) fn->DA2 = data->u8[2] | (data->u8[3] << 8);
+	if (dlc >= 5) fn->DB1 = data->u8[4] | (data->u8[5] << 8);
+	if (dlc >= 7) fn->DB2 = data->u8[6] | (data->u8[7] << 8);
+
+	fn->MCTRL = (length & C_CAN_MCTRL_DLC_MASK) 
+		| C_CAN_MCTRL_EOB
+		| C_CAN_MCTRL_TXIE
+		| C_CAN_MCTRL_NEWDAT;
+
+	fn->CMDMSK = C_CAN_CMDMSK_DATA_A | C_CAN_CMDMSK_DATA_B |
+		C_CAN_CMDMSK_CTRL | C_CAN_CMDMSK_TXRQST |
+		C_CAN_CMDMSK_WR;
+
+	fn->CMDREQ = index + 1;
+}
 

@@ -28,7 +28,7 @@ void main()
 
 	server_start();
 
-	discovery_loop();
+	discovery_loop(NULL);	// FIXME: implement config callback
 }
 
 void usb_host_add_drivers()
