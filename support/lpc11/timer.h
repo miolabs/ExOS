@@ -3,7 +3,12 @@
 
 #include "cpu.h"
 
+#define TIMER_IR_MAT0 (1<<0)
+#define TIMER_IR_MAT1 (1<<1)
+#define TIMER_IR_MAT2 (1<<2)
+#define TIMER_IR_MAT3 (1<<3)
 #define TIMER_IR_CAP0 (1<<4)
+#define TIMER_IR_CAP1 (1<<5)
 
 #define TIMER_MCR_MR0I (1<<0)
 #define TIMER_MCR_MR0R (1<<1)
@@ -21,6 +26,7 @@
 #define TIMER_CCR_CAP0RE	(1<<0)
 #define TIMER_CCR_CAP0FE	(1<<1)
 #define TIMER_CCR_CAP0I		(1<<2)
+
 
 #endif // LPC11_TIMER32_H
 
