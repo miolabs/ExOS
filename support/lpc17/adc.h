@@ -22,6 +22,7 @@ typedef struct
 #define ADCR_CLKDIV_MASK (0xFF << ADCR_CLKDIV_BIT)
 #define ADCR_BURST (1<<16)
 #define ADCR_CLKS_BIT 17
+#define ADCR_PDN (1<<21)
 #define ADCR_START_BIT 24
 
 #define ADCR_START_NOW 1

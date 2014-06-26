@@ -22,14 +22,11 @@ unsigned long hal_adc_initialize(int rate, int bits)
 
 #ifdef ADC_BURST_MASK
 	_adc->CR = ADC_BURST_MASK | // AD pins to be sampled
-				  (clkdiv << ADCR_CLKDIV_BIT) | //clkdiv
-				  ADCR_BURST | // burst mode
-				  (0 << ADCR_CLKS_BIT) | // Clocks (0=11 clocks, max. precision)
-				  (0 << ADCR_START_BIT); // sw start
+		(clkdiv << ADCR_CLKDIV_BIT) | //clkdiv
+		ADCR_BURST | ADCR_PDN;
 #else
 	_adc->CR = (clkdiv << ADCR_CLKDIV_BIT) | //clkdiv
-				  (0 << ADCR_CLKS_BIT) | // Clocks (0=11 clocks, max. precision)
-				  (0 << ADCR_START_BIT); // sw start
+		ADCR_PDN;
 #endif	
 	_adc->INTEN = 0;	// No interrupts
 	return 1;
@@ -50,7 +47,7 @@ unsigned short hal_adc_read(int channel)
 {
 	channel &= 0x7;
 #ifndef ADC_BURST_MASK
-	_adc->CR = (_adc->CR & ADCR_CLKDIV_MASK) | (1 << channel) | (1 << 21) | (ADCR_START_NOW << ADCR_START_BIT);
+	_adc->CR = (_adc->CR & ADCR_CLKDIV_MASK) | (1 << channel) | ADCR_PDN | (ADCR_START_NOW << ADCR_START_BIT);
 #endif
 	unsigned short v;
 	while(!_read(channel, &v));
@@ -65,6 +62,6 @@ int hal_adc_read_no_wait(int channel, unsigned short *presult)
 int adc_start_conversion(int channel, int start)
 {
 	channel &= 0x7;
-	_adc->CR = (_adc->CR & ADCR_CLKDIV_MASK) | (1 << channel) | (1 << 21) | (start << ADCR_START_BIT);
+	_adc->CR = (_adc->CR & ADCR_CLKDIV_MASK) | (1 << channel) | ADCR_PDN | (start << ADCR_START_BIT);
 	return channel;
 }
