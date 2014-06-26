@@ -1,7 +1,17 @@
 #ifndef LPC11_CPU_H
 #define LPC11_CPU_H
 
+#if defined LPC11_SERIES_11UXX
+#include <CMSIS/LPC11Uxx.h>
+// CMSIS Type Incoherencies
+#define LPC_TMR_TypeDef LPC_CTxxBx_Type 
+#define LPC_TMR32B0 LPC_CT32B0
+#define LPC_TMR32B1 LPC_CT32B1
+#define LPC_TMR16B0 LPC_CT16B0
+#define LPC_TMR16B1 LPC_CT16B1
+#else
 #include <CMSIS/LPC11xx.h>
+#endif
 
 #define PRESETCTRL_SSP0_RST_N 0x1
 #define PRESETCTRL_I2C_RST_N 0x2
@@ -181,6 +191,15 @@
 #define PDRUNCFG_SYSOSC_PD 0x20
 #define PDRUNCFG_WDTOSC_PD 0x40
 #define PDRUNCFG_SYSPLL_PD 0x80
+
+#define IOCON_PULL_NONE (0<<3)
+#define IOCON_PULL_DOWN (1<<3)
+#define IOCON_PULL_UP (2<<3)
+#define IOCON_REPEATER (3<<3)
+#define IOCON_HYSTERESIS (1<<5)
+#define IOCON_ANALOG_MODE (0<<7)
+#define IOCON_DIGITAL_MODE (1<<7)
+#define IOCON_OPEN_DRAIN (1<<10)
 
 int cpu_pclk(int cclk, int setting);
 

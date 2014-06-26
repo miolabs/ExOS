@@ -19,7 +19,6 @@ void hal_i2c_initialize(int module, int bitrate)
 			return;
 	}
 
-	hal_board_init_pinmux(HAL_RESOURCE_I2C, module);
 	i2c->I2CONCLR = 0xFF;
 	int third_divider = SystemCoreClock / (bitrate * 3);
 	i2c->I2SCLH = third_divider;
