@@ -463,8 +463,8 @@ static int _slave_io()
 								case IAP_CMD_ACCESORY_DATA_TRANSFER:
 									// nothing to do here
 									break;
-								case IAP_CMP_SET_AVAILABLE_CURRENT:
-									//TODO
+								case IAP_CMD_SET_AVAILABLE_CURRENT:
+									//FIXME: check command result
 									break;
 #ifdef DEBUG
 								default:
@@ -510,9 +510,10 @@ static int _slave_io()
 #ifdef DEBUG
 							auth_done++;
 #endif
+							// NOTE: EXPERIMENTAL: try to enable ipad charging using iap 
 							resp_buffer[offset++] = 2100 >> 8;
 							resp_buffer[offset++] = 2100 & 0xFF;
-							resp = (IAP_CMD) { .CommandID = IAP_CMP_SET_AVAILABLE_CURRENT, .Length = offset, .Transaction = cmd.Transaction };
+							resp = (IAP_CMD) { .CommandID = IAP_CMD_SET_AVAILABLE_CURRENT, .Length = offset, .Transaction = cmd.Transaction };
 							iap_send_cmd(&resp, resp_buffer);
 
 							// TODO: notify app level that lingo ids are ready to be used
@@ -566,6 +567,8 @@ static int _slave_io()
 static void *_service(void *arg)
 {
 	exos_thread_sleep(1000);
+
+	// FIXME: add usb class setup here. charge capability notify?
 
 	if (_identify())
 	{

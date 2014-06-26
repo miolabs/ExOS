@@ -24,13 +24,13 @@ static void _vpfe_config_isif()
 					 (0<<7) | // CCDMD
 					 (0<<12);  // INPMOD
 
-	_isif->CCDFG =	 (0<<0) | // VDLC
-					 (0<<0) | // EXTRG
-					 (0<<0); // YCINSWP
-
-	_isif->REC565IF = (1<<) | //R656ON
-
-	_isif->SYNCEN = ;
+//	_isif->CCDFG =	 (0<<0) | // VDLC
+//					 (0<<0) | // EXTRG
+//					 (0<<0); // YCINSWP
+//
+//	_isif->REC565IF = (1<<) | //R656ON
+//
+//	_isif->SYNCEN = ;
 }
 
 

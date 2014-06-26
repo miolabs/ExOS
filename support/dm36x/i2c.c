@@ -1,45 +1,43 @@
 // DM36 I2C Peripheral Support
 
-#include "cpu.h"
+#include "system.h"
 #include <support/i2c_hal.h>
 #include <support/board_hal.h>
 
 typedef volatile struct
 {
-	unsigned long ICOAR, // 0h I2C Own Address 
-	unsigned long ICIMR, // 4h I2C Interrupt Mask 
-	unsigned long ICSTR, // 8h I2C Interrupt Status 
-	unsigned long ICCLKL, // Ch I2C Clock Low-Time Divider 
-	unsigned long ICCLKH, // 10h I2C Clock High-Time Divider 
-	unsigned long ICCNT, // 14h I2C Data Count 
-	unsigned long ICDRR, // 18h I2C Data Receive 
-	unsigned long ICSAR, // 1Ch I2C Slave Address
-	unsigned long ICDXR, // 20h I2C Data Transmit
-	unsigned long ICMDR, // 24h I2C Mode
-	unsigned long ICIVR, // 28h I2C Interrupt Vector
-	unsigned long ICEMDR, // 2Ch I2C Extended Mode
-	unsigned long ICPSC, // 30h I2C Prescaler
-	unsigned long REVID1, // 34h I2C Revision ID Register
-	unsigned long REVID2, // 38h I2C Revision ID Register
-	unsigned long reserved1, // 3Ch 
-   	unsigned long reserved2, // 40h 
-    unsigned long reserved3, // 44h 
-	unsigned long ICPFUNC, // 48h I2C Pin Function
-	unsigned long ICPDIR, // 4Ch I2C Pin Direction
-	unsigned long ICPDIN, // 50h I2C Pin Data In
-	unsigned long ICPDOUT, // 54h I2C Pin Data Out
-	unsigned long ICPDSET, // 58h I2C Pin Data Set
-	unsigned long ICPDCLR, // 5ch I2C Pin Data Clear register
+	unsigned long ICOAR; // 0h I2C Own Address 
+	unsigned long ICIMR; // 4h I2C Interrupt Mask 
+	unsigned long ICSTR; // 8h I2C Interrupt Status 
+	unsigned long ICCLKL; // Ch I2C Clock Low-Time Divider 
+	unsigned long ICCLKH; // 10h I2C Clock High-Time Divider 
+	unsigned long ICCNT; // 14h I2C Data Count 
+	unsigned long ICDRR; // 18h I2C Data Receive 
+	unsigned long ICSAR; // 1Ch I2C Slave Address
+	unsigned long ICDXR; // 20h I2C Data Transmit
+	unsigned long ICMDR; // 24h I2C Mode
+	unsigned long ICIVR; // 28h I2C Interrupt Vector
+	unsigned long ICEMDR; // 2Ch I2C Extended Mode
+	unsigned long ICPSC; // 30h I2C Prescaler
+	unsigned long REVID1; // 34h I2C Revision ID Register
+	unsigned long REVID2; // 38h I2C Revision ID Register
+	unsigned long reserved1; // 3Ch 
+   	unsigned long reserved2; // 40h 
+    unsigned long reserved3; // 44h 
+	unsigned long ICPFUNC; // 48h I2C Pin Function
+	unsigned long ICPDIR; // 4Ch I2C Pin Direction
+	unsigned long ICPDIN; // 50h I2C Pin Data In
+	unsigned long ICPDOUT; // 54h I2C Pin Data Out
+	unsigned long ICPDSET; // 58h I2C Pin Data Set
+	unsigned long ICPDCLR; // 5ch I2C Pin Data Clear register
 } I2C_CONTROLLER;
 
-static I2C_CONTROLLER *_i2c = (ISIF_CONTROLLER *)0x01C21000; 
+static I2C_CONTROLLER *_i2c = (I2C_CONTROLLER *)0x01C21000; 
 
 void hal_i2c_initialize(int module, int bitrate)
 {
 	//Enable I2C clock from the Power and Sleep Controller if it is driven by Power and Sleep Controller (see the SoC Reference Guide ).
-	psc_set_module_state(PSC_MODULE_I2C, PSC_MODULE_ENABLE)
-
-	hal_board_init_pinmux(HAL_RESOURCE_I2C, module);
+	psc_set_module_state(PSC_MODULE_I2C, PSC_MODULE_ENABLE);
 
 	//Place I2C in reset (clear IRS = 0 in ICMDR).
 	_i2c->ICMDR &= ~(1<<5);
@@ -64,10 +62,10 @@ void hal_i2c_initialize(int module, int bitrate)
 				  (1<<10);	// MST = 1 Master
 
 	//Configure Slave Address: the I2C device this I2C master would be addressing (ICSAR = 7BIT ADDRESS).
-	_i2c->ICSAR = ;
+	//_i2c->ICSAR = ;
 
 	//Configure the peripheral clock operation frequency (ICPSC). This value should be selected in such a way that the frequency is between 7 and 12 MHZ.
-	int pclk = cpu_pclk(SystemCoreClock, 1);
+	int pclk = OSCILLATOR_CLOCK_FREQUENCY; //sure?
 	int icpsc = (pclk / 12000000) - 1;
 	_i2c->ICPSC = icpsc;	
 	int d = 7;
@@ -92,7 +90,7 @@ void hal_i2c_initialize(int module, int bitrate)
 	//(a) Read ICSTR and write it back (write 1 to clear) ICSTR = ICSTR. 
 	//(b) Read ICIVR until it is zero.
 	
-	// Take I2 Ccontroller out of reset: enable I2C controller (set IRS bit = 1 in ICMDR).
+	// Take I2C controller out of reset: enable I2C controller (set IRS bit = 1 in ICMDR).
 	_i2c->ICMDR |= (1<<5);
 }
 
