@@ -9,11 +9,21 @@
 #define ADCR_CLKS_BIT 17
 #define ADCR_START_BIT 24
 
+#define ADCR_START_NOW 1
+#define ADCR_START_TMR16B0_CAP0 2
+#define ADCR_START_TMR16B0_CAP1 3
+#define ADCR_START_TMR32B0_MAT0 4
+#define ADCR_START_TMR32B0_MAT1 5
+#define ADCR_START_TMR16B0_MAT0 6
+#define ADCR_START_TMR16B0_MAT1 7
+#define ADCR_START_FALLING_EDGE 8
+
 #define ADDR_DONE (1<<31)
 #define ADDR_OVERRUN (1<<30)
 #define ADDR_CHN_MASK 0x07000000
 #define ADDR_CHN_BIT 24
 
+int adc_start_conversion(int index, int start);
 
 #endif //LPC11_ADC_H
 
