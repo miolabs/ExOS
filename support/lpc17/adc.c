@@ -7,60 +7,64 @@
 #include <support/board_hal.h>
 
 static ADC_MODULE *_adc = (ADC_MODULE *)LPC_ADC;
-static unsigned char _mask;
-static unsigned char _ch_table[8];
 
 unsigned long hal_adc_initialize(int rate, int bits)
 {	
-	_mask = (unsigned char)hal_board_init_pinmux(HAL_RESOURCE_ADC, 0);
-	int ch = 0;
-	for (int bit = 0; bit < 8; bit++)
-	{
-		if (_mask & (1 << bit)) _ch_table[ch++] = bit;
-	}
-	int ch_count = ch;
-	while(ch < 8)
-	{
-		_ch_table[ch++] = 0;
-	}
-
-	int clks = rate * ch_count * 65; 
-
     LPC_SC->PCONP |= PCONP_PCADC;
 	int pclk = cpu_pclk(SystemCoreClock, 0);
 
-	_adc->CR = 0;	//reset module
-	_adc->CR = (((pclk / clks) - 1) << ADCR_CLKDIV_BIT) 
-#ifdef ADC_BURST_MODE
-		| (_mask << ADCR_SEL_BIT) | ADCR_BURST 
-#endif
-		| ADCR_PDN;
+	// AD conf.
+	// Accurate conversion requires 65 cycles
+	int freq = rate * 65;
+	if (freq > ADC_MAX_CLK) freq = ADC_MAX_CLK;
+	int clkdiv = ((SystemCoreClock + (freq - 1)) / freq) - 1;
+	if (clkdiv > 0xFF) clkdiv = 0xFF;
 
-	/* NVIC_EnableIRQ(ADC_IRQn); */
-	_adc->INTEN = 0;	// disable general DONE int
-	return _mask;
+#ifdef ADC_BURST_MASK
+	_adc->CR = ADC_BURST_MASK | // AD pins to be sampled
+				  (clkdiv << ADCR_CLKDIV_BIT) | //clkdiv
+				  ADCR_BURST | // burst mode
+				  (0 << ADCR_CLKS_BIT) | // Clocks (0=11 clocks, max. precision)
+				  (0 << ADCR_START_BIT); // sw start
+#else
+	_adc->CR = (clkdiv << ADCR_CLKDIV_BIT) | //clkdiv
+				  (0 << ADCR_CLKS_BIT) | // Clocks (0=11 clocks, max. precision)
+				  (0 << ADCR_START_BIT); // sw start
+#endif	
+	_adc->INTEN = 0;	// No interrupts
+	return 1;
 }
 
 void ADC_IRQHandler()
 {
 }
 
-unsigned short hal_adc_read(int index)
+static int _read(int channel, unsigned short *presult)
 {
-	unsigned short value;
-	int channel = _ch_table[index & 0x7];
+	unsigned long dr = _adc->DR[channel];
+	*presult = dr & 0xFFC0;
+	return dr & (1<<31);
+}
 
-#ifndef ADC_BURST_MODE
-	unsigned long acr = _adc->CR & (0xFF << ADCR_CLKDIV_BIT); 
-	_adc->CR = acr | ((1 << channel) << ADCR_SEL_BIT) | 
-		(1 << ADCR_START_BIT) | ADCR_PDN;
-	unsigned long gdr;
-	do 
-	{ 
-		gdr = _adc->GDR; 
-	} while(!(gdr & ADDR_DONE));
+unsigned short hal_adc_read(int channel)
+{
+	channel &= 0x7;
+#ifndef ADC_BURST_MASK
+	_adc->CR = (_adc->CR & ADCR_CLKDIV_MASK) | (1 << channel) | (1 << 21) | (ADCR_START_NOW << ADCR_START_BIT);
 #endif
-	value = _adc->DR[channel] & 0xFFFF;
+	unsigned short v;
+	while(!_read(channel, &v));
+	return v;
+}
 
-	return value;
+int hal_adc_read_no_wait(int channel, unsigned short *presult)
+{
+	return _read(channel & 0x7, presult);
+}
+
+int adc_start_conversion(int channel, int start)
+{
+	channel &= 0x7;
+	_adc->CR = (_adc->CR & ADCR_CLKDIV_MASK) | (1 << channel) | (1 << 21) | (start << ADCR_START_BIT);
+	return channel;
 }
