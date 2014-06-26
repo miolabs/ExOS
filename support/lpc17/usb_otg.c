@@ -9,7 +9,7 @@ static void _isr();
 
 void usb_otg_initialize_host()
 {
-	hal_board_init_pinmux(HAL_RESOURCE_USBHOST, 0);
+	// NOTE: ensure that pins are setup for USBHOST functionality in board initialization
 
 	// enable power control for peripheral
     LPC_SC->PCONP |= PCONP_PUSB; 
@@ -30,7 +30,7 @@ void usb_otg_initialize_host()
 
 void usb_otg_initialize_device()
 {
-	hal_board_init_pinmux(HAL_RESOURCE_USBDEV, 0);
+	// NOTE: ensure that pins are setup for USBDEVice host functionality in board initialization
 
 	// enable power control for peripheral
     LPC_SC->PCONP |= PCONP_PUSB; 
