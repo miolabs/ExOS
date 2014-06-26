@@ -49,7 +49,6 @@ static int _open(COMM_IO_ENTRY *io)
 			cb->Handler = _handler;
 			cb->HandlerState = io;
 			cb->Baudrate = 9600;
-			hal_board_init_pinmux(HAL_RESOURCE_UART, io->Port);
 			
 			uart_initialize(io->Port, cb);
 
