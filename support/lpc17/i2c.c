@@ -36,7 +36,6 @@ void hal_i2c_initialize(int module, int bitrate)
 
 	if (i2c)
 	{
-		hal_board_init_pinmux(HAL_RESOURCE_I2C, module);
 		i2c->I2CONCLR = 0xFF;
 		int pclk = cpu_pclk(SystemCoreClock, 1);
 		int third_divider = pclk / (bitrate * 3);

@@ -23,7 +23,7 @@ static inline SSP_MODULE *_get_module(int module)
 void hal_ssp_initialize(int module, int bitrate, HAL_SSP_MODE mode, HAL_SSP_FLAGS flags)
 {
 	SSP_MODULE *ssp = _get_module(module);
-	if (ssp && hal_board_init_pinmux(HAL_RESOURCE_SSP, module))
+	if (ssp)
 	{
 		int pclk_div;
 #if (__TARGET_PROCESSOR == LPC1778 || __TARGET_PROCESSOR == LPC1788)

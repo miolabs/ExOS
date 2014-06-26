@@ -32,7 +32,6 @@ typedef enum
 
 // prototypes
 void hal_board_initialize() __attribute__((__weak__));
-int hal_board_init_pinmux(HAL_RESOURCE res, int unit);
 
 void hal_led_set(HAL_LED led, int state);
 
