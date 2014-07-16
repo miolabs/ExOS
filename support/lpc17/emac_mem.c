@@ -17,14 +17,14 @@ static ETH_RX_DESC _rx_desc[ENET_LPC_RX_DESCRIPTORS] __eth;
 static ETH_RX_STATUS _rx_stat[ENET_LPC_RX_DESCRIPTORS] __eth;
 static ETH_BUFFER _rx_buffers[ENET_LPC_RX_DESCRIPTORS] __eth;
 
-#define ENET_LPC_TX_DESCRIPTORS (8)   // TX Fragments
+#define ENET_LPC_TX_DESCRIPTORS (32)   // TX Fragments
 static ETH_TX_DESC _tx_desc[ENET_LPC_TX_DESCRIPTORS] __eth;
 static ETH_TX_STATUS _tx_stat[ENET_LPC_TX_DESCRIPTORS] __eth;
 static ETH_TX_REQUEST _tx_req[ENET_LPC_TX_DESCRIPTORS];
 
 static unsigned long _tx_free_index, _rx_read_index;
 
-#define ENET_LPC_TX_BUFFERS ((ENET_LPC_TX_DESCRIPTORS + 1) / 2)
+#define ENET_LPC_TX_BUFFERS (2)
 static ETH_BUFFER _tx_buffers[ENET_LPC_TX_BUFFERS] __eth;
 static ETH_BUFFER *_free_buffers[ENET_LPC_TX_BUFFERS];
 static unsigned long _txbuf_alloc_index, _txbuf_free_index;
@@ -105,7 +105,8 @@ int emac_send_output(NET_MBUF *mbuf, NET_CALLBACK callback, void *state)
 	while(mbuf != NULL)
 	{
 		unsigned long index = next++;
-		if (next == ENET_LPC_TX_DESCRIPTORS) next = 0;
+		if (next == ENET_LPC_TX_DESCRIPTORS) 
+			next = 0;
 		
 		if (next == LPC_EMAC->TxConsumeIndex)
 			break;
