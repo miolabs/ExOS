@@ -49,7 +49,7 @@ void iap_comm_add_protocol(APPLE_IAP_PROTOCOL_MANAGER *iap)
 	list_add_tail(&_managers, (EXOS_NODE *)iap);
 	exos_mutex_unlock(&_managers_lock);
 
-	exos_tree_add_device(&iap->KernelDevice, "dev/iap");
+	comm_add_device(&iap->KernelDevice, "dev/iap");
 }
 
 int iap_comm_get_protocol_count()

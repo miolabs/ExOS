@@ -18,6 +18,13 @@ typedef struct
 	unsigned PortCount;
 } COMM_DEVICE;
 
+typedef struct
+{
+	EXOS_TREE_NODE;
+	COMM_DEVICE *Device;
+	unsigned long Unit;
+} EXOS_TREE_DEVICE;
+
 typedef struct 
 {
 	EXOS_IO_ENTRY;
@@ -60,19 +67,12 @@ struct _COMM_DRIVER
 
 
 void comm_initialize();
+void comm_add_device(EXOS_TREE_DEVICE *device, const char *parent_path);
 void comm_io_create(COMM_IO_ENTRY *io, COMM_DEVICE *device, unsigned port, EXOS_IO_FLAGS flags);
 int comm_io_open(COMM_IO_ENTRY *io);
 void comm_io_close(COMM_IO_ENTRY *io);
 int comm_io_get_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value);
 int comm_io_set_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value);
-
-
-typedef struct
-{
-	EXOS_TREE_NODE;
-	COMM_DEVICE *Device;
-	unsigned long Unit;
-} EXOS_TREE_DEVICE;
 
 
 #endif // COMM_COMM_H

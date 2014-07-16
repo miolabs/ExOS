@@ -21,6 +21,13 @@ void comm_initialize()
 	}
 }
 
+void comm_add_device(EXOS_TREE_DEVICE *device, const char *parent_path)
+{
+    device->Type = EXOS_TREE_NODE_DEVICE;
+    exos_tree_add_child_path((EXOS_TREE_NODE *)device, parent_path);
+}
+
+
 void comm_io_create(COMM_IO_ENTRY *io, COMM_DEVICE *device, unsigned port, EXOS_IO_FLAGS flags)
 {
 	if (io == NULL || device == NULL) 
