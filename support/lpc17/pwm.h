@@ -28,4 +28,6 @@
 #define PWM_PCR_PWMENA5 (1<<13)
 #define PWM_PCR_PWMENA6 (1<<14)
 
+int pwm_initialize(int module, int range, int rate, int mask);
+
 #endif // LPC17_PWM_H

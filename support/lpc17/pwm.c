@@ -12,7 +12,7 @@ static LPC_PWM_TypeDef *_modules[PWM_MODULE_COUNT] = { (LPC_PWM_TypeDef *)LPC_PW
 static void _isr_pwm(int module);
 static void _setup(int module, unsigned long channel_mask, int period);
 
-int hal_pwm_initialize(int module, int range, int rate)
+int pwm_initialize(int module, int range, int rate, int mask)
 {
 	int freq = range * rate;
 	LPC_PWM_TypeDef *pwm;
@@ -39,10 +39,48 @@ int hal_pwm_initialize(int module, int range, int rate)
 
 	NVIC_EnableIRQ(PWM1_IRQn);
 
-	int mask = hal_board_init_pinmux(HAL_RESOURCE_PWM, module);
-	_setup(module, mask, range);
-	pwm->TCR |= 1;
+	if (mask != 0)
+	{
+		for (int channel = 0; channel < 6; channel++)
+		{
+			if (mask & (1<<channel))
+				switch(channel)
+				{
+					case 0: 
+						pwm->PCR |= PWM_PCR_PWMENA1;
+						break;
+					case 1:
+						pwm->PCR &= ~PWM_PCR_PWMSEL2;
+						pwm->PCR |= PWM_PCR_PWMENA2;
+						break;
+					case 2:
+						pwm->PCR &= ~PWM_PCR_PWMSEL3;
+						pwm->PCR |= PWM_PCR_PWMENA3;
+						break;
+					case 3:
+						pwm->PCR &= ~PWM_PCR_PWMSEL4;
+						pwm->PCR |= PWM_PCR_PWMENA4;
+						break;
+					case 4:
+						pwm->PCR &= ~PWM_PCR_PWMSEL5;
+						pwm->PCR |= PWM_PCR_PWMENA5;
+						break;
+					case 5:
+						pwm->PCR &= ~PWM_PCR_PWMSEL6;
+						pwm->PCR |= PWM_PCR_PWMENA6;
+						break;
+				}
+		}
+		hal_pwm_set_period(module, range);
+		pwm->TCR |= PWM_TCR_PWMEN | PWM_TCR_RUN;
+	}
 	return 1;
+}
+
+int hal_pwm_initialize(int module, int range, int rate, int channel_for_period)
+{
+	// NOTE: channel_for_period is ignored because module uses separate channel for period
+	pwm_initialize(module, range, rate, 0x3f);
 }
 
 static void _isr_pwm(int module)
@@ -70,49 +108,6 @@ static void _isr_pwm(int module)
 void PWM1_IRQHandler()
 {
 	_isr_pwm(0);
-}
-
-static void _setup(int module, unsigned long channel_mask, int period)
-{
-	if (module < PWM_MODULE_COUNT)
-	{
-		LPC_PWM_TypeDef *pwm = _modules[module];
-		if (channel_mask != 0)
-		{
-			for (int channel = 0; channel < 6; channel++)
-			{
-				if (channel_mask & (1<<channel))
-					switch(channel)
-					{
-						case 0: 
-							pwm->PCR |= PWM_PCR_PWMENA1;
-							break;
-						case 1:
-							pwm->PCR &= ~PWM_PCR_PWMSEL2;
-							pwm->PCR |= PWM_PCR_PWMENA2;
-							break;
-						case 2:
-							pwm->PCR &= ~PWM_PCR_PWMSEL3;
-							pwm->PCR |= PWM_PCR_PWMENA3;
-							break;
-						case 3:
-							pwm->PCR &= ~PWM_PCR_PWMSEL4;
-							pwm->PCR |= PWM_PCR_PWMENA4;
-							break;
-						case 4:
-							pwm->PCR &= ~PWM_PCR_PWMSEL5;
-							pwm->PCR |= PWM_PCR_PWMENA5;
-							break;
-						case 5:
-							pwm->PCR &= ~PWM_PCR_PWMSEL6;
-							pwm->PCR |= PWM_PCR_PWMENA6;
-							break;
-					}
-			}
-			hal_pwm_set_period(module, period);
-			pwm->TCR |= PWM_TCR_PWMEN;
-		}
-	}
 }
 
 void hal_pwm_set_period(int module, int value)
