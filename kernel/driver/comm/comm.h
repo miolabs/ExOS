@@ -74,6 +74,5 @@ typedef struct
 	unsigned long Unit;
 } EXOS_TREE_DEVICE;
 
-void exos_tree_add_device(EXOS_TREE_DEVICE *device, const char *parent_path);
 
 #endif // COMM_COMM_H

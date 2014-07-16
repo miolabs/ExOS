@@ -16,7 +16,8 @@ void comm_initialize()
 		NULL != (device = comm_board_get_device(index));
 		index++)
 	{
-		exos_tree_add_device(device, "dev");
+		device->Type = EXOS_TREE_NODE_DEVICE;
+		exos_tree_add_child_path((EXOS_TREE_NODE *)device, "dev");
 	}
 }
 
@@ -99,13 +100,6 @@ static int _write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length)
 	int done = driver->Write((COMM_IO_ENTRY *)io, buffer, length);
 	return done;
 }
-
-void exos_tree_add_device(EXOS_TREE_DEVICE *device, const char *parent_path)
-{
-	device->Type = EXOS_TREE_NODE_DEVICE;
-	exos_tree_add_child_path((EXOS_TREE_NODE *)device, parent_path);
-}
-
 
 
 // defined in board_support
