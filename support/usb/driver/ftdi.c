@@ -173,7 +173,7 @@ static void _start(USB_HOST_FUNCTION *usb_func)
 			.Unit = func->DeviceUnit };
 	
 		ftdi->State = FTDI_HANDLE_CLOSED;
-		exos_tree_add_device(&ftdi->KernelDevice, "dev");
+		comm_add_device(&ftdi->KernelDevice, "dev");
 	}
 	else
 	{
