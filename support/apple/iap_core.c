@@ -568,8 +568,6 @@ static void *_service(void *arg)
 {
 	exos_thread_sleep(1000);
 
-	// FIXME: add usb class setup here. charge capability notify?
-
 	if (_identify())
 	{
 		_slave_io();

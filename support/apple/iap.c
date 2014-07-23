@@ -52,7 +52,15 @@ static int _match_handler(HID_FUNCTION_HANDLER *handler, HID_REPORT_INPUT *input
 
 static void _start(HID_FUNCTION_HANDLER *handler)
 {
-	// FIXME: check running state
+#ifdef IAP_ENABLE_IPAD_CHARGING
+	USB_REQUEST setup = (USB_REQUEST) {
+		.RequestType = USB_REQTYPE_HOST_TO_DEVICE | USB_REQTYPE_VENDOR | USB_REQTYPE_RECIPIENT_DEVICE,
+		.RequestCode = USB_IAP_REQ_DEVICE_POWER_REQUEST,
+		.Value = 0x6400, .Index = 0x6400, .Length = 0 };
+	int done = usb_host_ctrl_setup(handler->Function->Device, &setup, NULL, 0);
+	// TODO: somehow notify if failed
+#endif
+
 	iap_core_start();
 }
 
