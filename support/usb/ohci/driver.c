@@ -147,11 +147,14 @@ void ohci_device_destroy(int port)
 	exos_mutex_lock(&_mutex);
 	USB_HOST_DEVICE *device = &_devices[port];	// FIXME
 
-	device->State = USB_HOST_DEVICE_DETACHED;
-	_stop_pipe(&device->ControlPipe);
-
-	usb_host_destroy_device(device);
-   	exos_mutex_unlock(&_mutex);
+	if (device->State != USB_HOST_DEVICE_DETACHED)
+	{
+		device->State = USB_HOST_DEVICE_DETACHED;
+		_stop_pipe(&device->ControlPipe);
+	
+		usb_host_destroy_device(device);
+   	}
+	exos_mutex_unlock(&_mutex);
 }
 
 static int _ctrl_setup_read(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *in_data, int in_length)
