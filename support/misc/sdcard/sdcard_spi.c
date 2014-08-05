@@ -1,13 +1,14 @@
 #include "sdcard_spi.h"
 #include <support/ssp_hal.h>
 #include <support/misc/crc16.h>
+#include <kernel/thread.h>
 
 static unsigned short _crc16_table[256];
 
 void sd_hw_initialize()
 {
 	crc16_initialize(_crc16_table, 0x1021);
-
+	
 	hal_ssp_initialize(SDCARD_SPI_MODULE, 400000, HAL_SSP_MODE_SPI, HAL_SSP_CLK_IDLE_HIGH | HAL_SSP_IDLE_HIGH);
 
 	sd_spi_power_control(1);
@@ -67,8 +68,9 @@ static SD_ERROR _read_data(unsigned char *result, unsigned long length)
 
 static SD_ERROR _send_seq_r1(unsigned char *data, unsigned long length)
 {
+	unsigned char stuff1 = _transmit(0xFF);
 	hal_ssp_transmit(SDCARD_SPI_MODULE, data, data, length);
-	unsigned char stuff = _transmit(0xFF);
+	unsigned char stuff2 = _transmit(0xFF);
 	unsigned char r1 = _wait_token(0x80, 0x00);
 	return r1;
 }
@@ -85,14 +87,13 @@ static SD_ERROR _send_cmd_r3(unsigned char cmd, unsigned long arg, unsigned long
 	if (cmd == 8) data6[5] = crc7_do(data6, 5);
 
 	unsigned short r1 = _send_seq_r1(data6, 6);
-	if (r1 == SD_SPI_R1_IDLE || r1 == SD_SPI_R1_BUSY)
-	{
-		unsigned long r3 = (_transmit(0xFF) << 24) |
-			(_transmit(0xFF) << 16) | 
-			(_transmit(0xFF) << 8) | 
-			_transmit(0xFF);
-		*result = r3;
-	}
+
+	unsigned long r3 = (_transmit(0xFF) << 24) |
+		(_transmit(0xFF) << 16) | 
+		(_transmit(0xFF) << 8) | 
+		_transmit(0xFF);
+	*result = r3;
+
 	int error;
 	switch(r1)
 	{
@@ -104,13 +105,19 @@ static SD_ERROR _send_cmd_r3(unsigned char cmd, unsigned long arg, unsigned long
 	return (idle == 0xFF) ? error : SD_ERROR_NOT_IDLE;
 }
 
-void sd_hw_card_reset()
+int sd_hw_card_reset()
 {
 	_flush();
 	
 	// card initialization
-	unsigned char cmd0[] = { 0x40, 0x00, 0x00, 0x00, 0x00, 0x95 };	// CMD0
-	SD_ERROR status = _send_seq_r1(cmd0, 6);	// CMD0 + CS enables SPI mode
+	sd_spi_cs_assert();
+	unsigned char cmd0[] = { 0x40, 0x00, 0x00, 0x00, 0x00, 0x95 };	// CMD0: GO_IDLE_STATE
+	SD_ERROR state = _send_seq_r1(cmd0, 6);	// CMD0 + CS enables SPI mode
+	sd_spi_cs_release();
+
+	_transmit(0xFF);
+
+	return (state == SD_OK_IDLE);
 }
 
 int sd_hw_card_identification(void *cid, unsigned short *prca)
@@ -130,6 +137,8 @@ SD_ERROR sd_send_cmd_resp(unsigned char cmd, unsigned long arg, void *resp, int 
 {
 	// in SPI mode, responses are transfered as short resp (r1) followed by 4 or 16 bytes of data
 	// but some commands are not supported in SPI mode or produce different response data
+
+	sd_spi_cs_assert();
 	SD_ERROR status;
 	switch(resp_length)
 	{
@@ -145,23 +154,26 @@ SD_ERROR sd_send_cmd_resp(unsigned char cmd, unsigned long arg, void *resp, int 
 			}
 			break;
 	}
+    sd_spi_cs_release();
 	return status;
 }
 
 SD_ERROR sd_send_acmd_resp(unsigned char cmd, unsigned long arg, void *resp, int resp_length)
 {
+	sd_spi_cs_assert();
 	SD_ERROR status = _send_cmd_r1(55, 0);	// CMD55: APP_CMD
 	if (status == SD_OK_IDLE)
 	{
 		status = sd_send_cmd_resp(cmd, arg, resp, resp_length);
 	}
 	else status = SD_ERROR_NOT_IDLE;
+    sd_spi_cs_release();
 	return status;
 }
 
 SD_ERROR sd_send_op_cond(unsigned long arg, unsigned long *ocr_ptr)
 {
-	SD_ERROR status = sd_send_acmd_resp(41, arg, SD_NULL, 0);	// ACMD41: SD_SEND_OP_COND
+	SD_ERROR status = sd_send_acmd_resp(41, arg | 0x00FF8000, SD_NULL, 0);	// ACMD41: SD_SEND_OP_COND
 	if (status == SD_OK)
 	{
 		status = sd_send_cmd_resp(58, 0, ocr_ptr, 4);	// CMD58: GET_CCS
@@ -171,16 +183,19 @@ SD_ERROR sd_send_op_cond(unsigned long arg, unsigned long *ocr_ptr)
 
 SD_ERROR sd_hw_read_single_block(unsigned long addr, unsigned char *buf)
 {
+	sd_spi_cs_assert();
 	SD_ERROR status = _send_cmd_r1(17, addr);	// CMD17: READ_SINGLE_BLOCK
 	if (status == SD_OK)
 	{
 		status = _read_data(buf, 512);
 	}
+    sd_spi_cs_release();
 	return status;
 }
 
 SD_ERROR sd_hw_read_blocks(unsigned long addr, unsigned long count, unsigned char *buf)
 {
+	sd_spi_cs_assert();
 	SD_ERROR status = _send_cmd_r1(18, addr); // CMD18: READ_MULTIPLE_BLOCKS
 	if (status == SD_OK)
 	{
@@ -192,6 +207,7 @@ SD_ERROR sd_hw_read_blocks(unsigned long addr, unsigned long count, unsigned cha
 		}
 		status = _send_cmd_r1(12, 0);	// CMD12: STOP_TRANSMISSION
 	}
+    sd_spi_cs_release();
 	return status;
 }
 
@@ -221,16 +237,19 @@ static SD_ERROR _send_data(unsigned char start_token, unsigned char *data, unsig
 
 SD_ERROR sd_hw_write_single_block(unsigned long addr, unsigned char *buf)
 {
+    sd_spi_cs_assert();
 	SD_ERROR status = _send_cmd_r1(24, addr);	// CMD24: WRITE_SINGLE_BLOCK
 	if (status == SD_OK)
 	{
 		status = _send_data(SD_SPI_START_TOKEN, buf, 512);
 	}
+	sd_spi_cs_release();
 	return status;
 }
 
 SD_ERROR sd_hw_write_blocks(unsigned long addr, unsigned long count, unsigned char *buf)
 {
+    sd_spi_cs_assert();
 	SD_ERROR status = _send_cmd_r1(25, addr); // CMD25: WRITE_MULTIPLE_BLOCKS
 	if (status == SD_OK)
 	{
@@ -244,6 +263,7 @@ SD_ERROR sd_hw_write_blocks(unsigned long addr, unsigned long count, unsigned ch
 		if (status == SD_OK) 
 			_transmit(SD_SPI_STOP_TRAN_TOKEN);	// STOP_TRAN_TOKEN
 	}
+	sd_spi_cs_release();
 	return status;
 }
 
@@ -251,8 +271,10 @@ SD_ERROR sd_hw_check_status(SD_CARD_STATE *pstate)
 {
 	if (*pstate == SD_CARD_PROGRAMMING)
 	{
+		sd_spi_cs_assert();
 		unsigned char stuff = _transmit(0xFF);
 		unsigned char idle = _transmit(0xFF);
+		sd_spi_cs_release();
 		if (idle == 0xFF)
 			*pstate = SD_CARD_TRANSFER;
 	}

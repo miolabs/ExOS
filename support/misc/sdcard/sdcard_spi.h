@@ -21,5 +21,7 @@ typedef enum
 
 // board specific
 void sd_spi_power_control(int power) __attribute__((__weak__));
+void sd_spi_cs_assert();
+void sd_spi_cs_release();
 
 #endif // SDCARD_SPI_H

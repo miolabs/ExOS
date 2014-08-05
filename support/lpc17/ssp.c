@@ -148,31 +148,7 @@ void hal_ssp_transmit(int module, unsigned char *outbuf, unsigned char *inbuf, i
 	}
 }
 
-//void hal_ssp_transmit(int module, unsigned char *outbuf, unsigned char *inbuf, int length)
-//{
-//	SSP_MODULE *ssp = _get_module(module);
-//	if (ssp)
-//	{
-//		while(ssp->SRbits.RNE) { char dummy = ssp->DR; }
-//		int input_index = 0, output_index = 0;
-//		int output_offset = 0;
-//		while(input_index < length)
-//		{
-//			if (output_offset < 8 &&
-//				output_index < length &&
-//				ssp->SRbits.TNF)
-//			{
-//				ssp->DR = outbuf[output_index++];
-//				output_offset++;
-//			}
-//			if (ssp->SRbits.RNE) 
-//			{
-//				inbuf[input_index++] = ssp->DR;
-//				output_offset--;
-//			}
-//		}
-//	}
-//}
+
 
 
 

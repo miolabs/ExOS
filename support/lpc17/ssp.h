@@ -1,5 +1,5 @@
-#ifndef LPC_SSP_H
-#define LPC_SSP_H
+#ifndef LPC17_SSP_H
+#define LPC17_SSP_H
 
 #define SSP_MODULE_COUNT 2
 
@@ -109,4 +109,4 @@ void ssp_dma_reset_event(int module) __attribute__((__weak__));
 void ssp_dma_set_event(int module) __attribute__((__weak__));
 void ssp_dma_wait(int module) __attribute__((__weak__));
 
-#endif // LPC_SPP_H
+#endif // LPC17_SPP_H

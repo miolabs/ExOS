@@ -1,10 +1,6 @@
 #ifndef HAL_SSP_HAL_H
 #define HAL_SSP_HAL_H
 
-#ifndef HAL_SSP_MODULE_COUNT
-#define HAL_SSP_MODULE_COUNT 2
-#endif
-
 typedef enum
 {
 	HAL_SSP_CLK_IDLE_HIGH = (1<<0),
