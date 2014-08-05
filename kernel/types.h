@@ -17,5 +17,18 @@
 
 #define MAXINT (0x7FFFFFFFL)
 
+typedef int bool;
+#define false 0
+#define true 1
+
+typedef struct
+{
+	unsigned char Bytes[16];
+} GUID;
+
+extern GUID GUID_NULL;
+
+// prototypes
+bool __guid_eq(GUID *guid1, GUID *guid2);
 
 #endif // EXOS_TYPES_H
