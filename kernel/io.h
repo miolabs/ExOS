@@ -25,8 +25,8 @@ typedef struct
 	const EXOS_IO_DRIVER *Driver;
 	EXOS_IO_FLAGS Flags;
 	unsigned long Timeout;
-	EXOS_EVENT InputEvent;
-	EXOS_EVENT OutputEvent;
+   	EXOS_EVENT InputEvent;
+   	EXOS_EVENT OutputEvent;
 } EXOS_IO_ENTRY;
 
 struct _EXOS_IO_DRIVER

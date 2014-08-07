@@ -75,7 +75,7 @@ static void *_server(void *arg)
 				total = 0;
 #ifdef DEBUG
 				done = sprintf(buffer, "Connection accepted:\r\n");
-				done = exos_io_write((EXOS_IO_ENTRY *)&comm, buffer, done);				
+				done = exos_io_write((EXOS_IO_ENTRY *)&socket, buffer, done);				
 #endif
 				
 				while(1)
@@ -92,7 +92,7 @@ hal_led_set(1, 0);
 
 #ifdef DEBUG
 				int done3 = sprintf(buffer, "Connection closed: %d bytes\r\n", total);
-				done3 = exos_io_write((EXOS_IO_ENTRY *)&comm, buffer, done3);
+				done3 = exos_io_write((EXOS_IO_ENTRY *)&socket, buffer, done3);
 #endif
 
 				exos_thread_sleep(100);

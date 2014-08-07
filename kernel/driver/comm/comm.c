@@ -34,6 +34,7 @@ void comm_io_create(COMM_IO_ENTRY *io, COMM_DEVICE *device, unsigned port, EXOS_
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
 
 	exos_io_create((EXOS_IO_ENTRY *)io, EXOS_IO_COMM, &_comm_driver, flags);
+
 	io->Device = device;
 	io->Port = port;
 }
@@ -43,6 +44,8 @@ int comm_io_open(COMM_IO_ENTRY *io)
 #ifdef DEBUG
 	if (io == NULL) 
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+	if (io->Type != EXOS_IO_COMM)
+		kernel_panic(KERNEL_ERROR_IO_TYPE_MISMATCH);
 #endif
 	
 	COMM_DEVICE *device = io->Device;
@@ -56,6 +59,8 @@ void comm_io_close(COMM_IO_ENTRY *io)
 #ifdef DEBUG
 	if (io == NULL) 
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+	if (io->Type != EXOS_IO_COMM)
+		kernel_panic(KERNEL_ERROR_IO_TYPE_MISMATCH);
 #endif
 
 	COMM_DEVICE *device = io->Device;
@@ -68,6 +73,8 @@ int comm_io_get_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
 #ifdef DEBUG
 	if (io == NULL || value == NULL) 
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+	if (io->Type != EXOS_IO_COMM)
+		kernel_panic(KERNEL_ERROR_IO_TYPE_MISMATCH);
 #endif
 
 	COMM_DEVICE *device = io->Device;
@@ -81,6 +88,8 @@ int comm_io_set_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
 #ifdef DEBUG
 	if (io == NULL || value == NULL) 
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+	if (io->Type != EXOS_IO_COMM)
+		kernel_panic(KERNEL_ERROR_IO_TYPE_MISMATCH);
 #endif
 
 	COMM_DEVICE *device = io->Device;
@@ -92,20 +101,29 @@ int comm_io_set_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
 
 static int _read(EXOS_IO_ENTRY *io, void *buffer, unsigned long length)
 {
-	COMM_DEVICE *device = ((COMM_IO_ENTRY *)io)->Device;
+#ifdef DEBUG
+	if (io->Type != EXOS_IO_COMM)
+		kernel_panic(KERNEL_ERROR_IO_TYPE_MISMATCH);
+#endif
+	COMM_IO_ENTRY *comm = (COMM_IO_ENTRY *)io;
+	COMM_DEVICE *device = comm->Device;
 
 	const COMM_DRIVER *driver = device->Driver;
-	int done = driver->Read((COMM_IO_ENTRY *)io, buffer, length);
+	int done = driver->Read(comm, buffer, length);
 	return done;
 }
 
 static int _write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length)
 {
-	COMM_DEVICE *device = ((COMM_IO_ENTRY *)io)->Device;
+#ifdef DEBUG
+	if (io->Type != EXOS_IO_COMM)
+		kernel_panic(KERNEL_ERROR_IO_TYPE_MISMATCH);
+#endif
+	COMM_IO_ENTRY *comm = (COMM_IO_ENTRY *)io;
+	COMM_DEVICE *device = comm->Device;
 
 	const COMM_DRIVER *driver = device->Driver;
-	int done = driver->Write((COMM_IO_ENTRY *)io, buffer, length);
-	return done;
+	return driver->Write(comm, buffer, length);
 }
 
 

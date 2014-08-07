@@ -68,7 +68,6 @@
           </folder>
           <folder Name="comm">
             <file file_name="kernel/driver/comm/comm.c"/>
-            <folder Name="tests"/>
           </folder>
           <folder Name="usb">
             <file file_name="kernel/driver/usb/usb.c"/>

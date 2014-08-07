@@ -52,7 +52,6 @@
             <file file_name="kernel/driver/net/mbuf.c"/>
             <file file_name="kernel/driver/net/net.c"/>
             <file file_name="kernel/driver/net/udp.c"/>
-            <folder Name="tests"/>
             <file file_name="kernel/driver/net/adapter.c"/>
             <file file_name="kernel/driver/net/net_service.c"/>
             <file file_name="kernel/driver/net/net_io.c"/>
@@ -67,7 +66,6 @@
           </folder>
           <folder Name="comm">
             <file file_name="kernel/driver/comm/comm.c"/>
-            <folder Name="tests"/>
           </folder>
           <folder Name="usb">
             <file file_name="kernel/driver/usb/usb.c"/>
