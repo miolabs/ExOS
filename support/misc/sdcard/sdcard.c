@@ -11,6 +11,12 @@ static SD_CARD_STATE _state = SD_CARD_DISCONNECT;
 
 static void _copy_flipped(unsigned char *src, unsigned char *dst, int size);
 
+__attribute__((__weak__))
+int sd_add_device() 
+{
+	return 1;
+}
+ 
 int sd_initialize()
 {
 	SD_ERROR status;
@@ -94,8 +100,7 @@ int sd_initialize()
 
 	if (_state == SD_CARD_TRANSFER)
 	{
-		// TODO: add device
-		return 1;
+		return sd_add_device();
 	}
 	return 0;
 }

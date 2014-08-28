@@ -28,7 +28,7 @@ void list_add_tail(EXOS_LIST *list, EXOS_NODE *node)
 
 void list_enqueue(EXOS_LIST *list, EXOS_NODE *node)
 {
-	EXOS_NODE *pred = LIST_HEAD(list);
+	EXOS_NODE *pred = LIST_TAIL(list)->Pred;
 	FOREACH(node_i, list)
 	{
 		if (node_i->Priority < node->Priority) 

@@ -10,7 +10,6 @@
     <ProgramSection alignment="4" load="Yes" name=".ARM.exidx" address_symbol="__exidx_start" end_symbol="__exidx_end"/>    
     <ProgramSection alignment="4" load="Yes" runin=".fast_run" name=".fast" />
     <ProgramSection alignment="4" load="Yes" runin=".data_run" name=".data" />
-    <ProgramSection alignment="4" load="Yes" runin=".tdata_run" name=".tdata" />
     <ProgramSection alignment="4" load="Yes" runin=".data2_run" name=".data2" />
     <ProgramSection alignment="4" load="No" name=".iap" alignment="0x8000" />
   </MemorySegment>
@@ -18,13 +17,11 @@
     <ProgramSection alignment="0x100" load="No" name=".vectors_ram" start="$(RAM_START:$(SRAM_START:))"/>
     <ProgramSection alignment="4" load="No" name=".fast_run" />
     <ProgramSection alignment="4" load="No" name=".data_run" />
-    <ProgramSection alignment="4" load="No" name=".bss" />
+	<ProgramSection alignment="4" load="No" name=".bss" />
     <ProgramSection alignment="4" load="No" name=".non_init" />
     <ProgramSection alignment="4" size="__HEAPSIZE__" load="No" name=".heap" />
     <ProgramSection alignment="4" size="__STACKSIZE__" load="No" name=".stack" />
     <ProgramSection alignment="4" size="__STACKSIZE_PROCESS__" load="No" name=".stack_process" />
-    <ProgramSection alignment="4" load="No" name=".tbss"/>
-    <ProgramSection alignment="4" load="No" name=".tdata_run"/>
   </MemorySegment>
   <MemorySegment name="AHBSRAM" >
     <ProgramSection alignment="4" load="No" name=".usb"/>

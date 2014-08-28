@@ -14,7 +14,11 @@ void __mem_init()
 	list_initialize(&_mem_list);
 	exos_mutex_create(&_mem_lock);
 
-	exos_mem_add_region(&_heap_region, &__heap_start__, &__heap_end__, -1, 0);
+#ifndef EXOS_HEAP_MEM_FLAGS
+#define EXOS_HEAP_MEM_FLAGS EXOS_MEMF_ANY
+#endif
+
+	exos_mem_add_region(&_heap_region, &__heap_start__, &__heap_end__, -1, EXOS_HEAP_MEM_FLAGS);
 }
 
 static EXOS_MEM_HEADER *_init_block(EXOS_MEM_REGION *region, void *start, void *end)

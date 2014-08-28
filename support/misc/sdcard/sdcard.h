@@ -127,4 +127,6 @@ SD_ERROR sd_hw_write_single_block(unsigned long addr, unsigned char *buf);
 SD_ERROR sd_hw_write_blocks(unsigned long addr, unsigned long count, unsigned char *buf);
 SD_ERROR sd_hw_check_status(SD_CARD_STATE *pstate);
 
+int sd_add_device();
+
 #endif //SDCARD_H

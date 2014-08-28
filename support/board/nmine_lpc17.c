@@ -45,6 +45,7 @@ void hal_board_initialize()
 	_setup_usbdev();
 	_setup_adc();
 	_setup_can(1);
+	_setup_ssp(0);
 
 	PINSEL4bits.P2_0 = 1; // PWM1.1
 	PINSEL4bits.P2_1 = 1; // PWM1.2
