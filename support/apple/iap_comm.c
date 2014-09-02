@@ -97,6 +97,11 @@ APPLE_IAP_PROTOCOL_MANAGER *iap_comm_get_protocol(int index)
 	return _find_protocol(index);
 }
 
+#ifdef DEBUG
+static void _debug()
+{
+}
+#endif
 
 static int _open(COMM_IO_ENTRY *io)
 {
@@ -196,38 +201,38 @@ static int _write(COMM_IO_ENTRY *io, const unsigned char *buffer, unsigned long 
 }
 
 
-void iap_comm_write(unsigned short session_id, unsigned char *buffer, int length)
+int iap_comm_write(unsigned short session_id, unsigned char *buffer, int length)
 {
-	APPLE_IAP_PROTOCOL_MANAGER *iap = _find_session(session_id);
-	if (iap != NULL &&
-		iap->IOState == APPLE_IAP_IO_OPENED)
+	for(int i = 0; i < 3; i++)
 	{
-		while(length > 0)
+		APPLE_IAP_PROTOCOL_MANAGER *iap = _find_session(session_id);
+		if (iap != NULL &&
+			iap->IOState == APPLE_IAP_IO_OPENED)
 		{
-			if (exos_event_wait(iap->InputIOBuffer.NotFullEvent, 1000)) 
-				break;	// timeout
-
-			int done = exos_io_buffer_write(&iap->InputIOBuffer, buffer, length);
-			buffer += done;
-			length -= done;
+			while(length > 0)
+			{
+				if (exos_event_wait(iap->InputIOBuffer.NotFullEvent, 1000)) 
+				{
+#ifdef DEBUG
+					_debug();
+#endif
+					break;	// timeout
+				}
+				int done = exos_io_buffer_write(&iap->InputIOBuffer, buffer, length);
+				buffer += done;
+				length -= done;
+			}
+			return 1;
 		}
+		exos_thread_sleep(100);
 	}
+#ifdef DEBUG
+	_debug();
+#endif
+	return 0;
 }
 
-int iap_open_session(unsigned short session_id, unsigned short protocol_index)
-{
-	iap_close_session(session_id);
-	
-	APPLE_IAP_PROTOCOL_MANAGER *iap = _find_protocol(protocol_index);
-	if (iap != NULL &&
-		iap->IOState == APPLE_IAP_IO_UNAVAILABLE)
-	{
-		iap->SessionID = session_id;
-		iap->IOState = APPLE_IAP_IO_CLOSED;
-	}
-}
-
-void iap_close_session(unsigned short session_id)
+static void _close_session(unsigned short session_id)
 {
 	APPLE_IAP_PROTOCOL_MANAGER *iap = _find_session(session_id);
 	if (iap != NULL)
@@ -236,6 +241,26 @@ void iap_close_session(unsigned short session_id)
 		if (io != NULL)	comm_io_close(io);
 		iap->IOState = APPLE_IAP_IO_UNAVAILABLE;
 	}
+}
+
+int iap_open_session(unsigned short session_id, unsigned short protocol_index)
+{
+	_close_session(session_id);
+	
+	APPLE_IAP_PROTOCOL_MANAGER *iap = _find_protocol(protocol_index);
+	if (iap != NULL &&
+		iap->IOState == APPLE_IAP_IO_UNAVAILABLE)
+	{
+		iap->SessionID = session_id;
+		iap->IOState = APPLE_IAP_IO_CLOSED;
+		return 1;
+	}
+	return 0;
+}
+
+void iap_close_session(unsigned short session_id)
+{
+	_close_session(session_id);
 }
 
 void iap_close_all()

@@ -7,7 +7,7 @@
 #include <kernel/machine/hal.h>
 #include <support/board_hal.h>
 
-#define THREAD_STACK 1536
+#define THREAD_STACK 2048
 static EXOS_THREAD _thread;
 static unsigned char _stack[THREAD_STACK] __attribute__((aligned(16)));
 static void *_service(void *arg);
@@ -235,8 +235,9 @@ void iap_core_parse(unsigned char *data, int length)
 			cmd->Transaction = tr_id;
 			cmd->CommandID = cmd_id;
 			if (payload_length < cmd->Length)
+			{
 				cmd->Length = payload_length;
-
+			}
 			int copy_length = payload != NULL ? cmd->Length : 0;
 			for (int i = 0; i < copy_length; i++) checksum += payload[i] = data[offset++];
 			for (int i = copy_length; i < payload_length; i++) checksum += data[offset++];
@@ -430,7 +431,7 @@ static int _read_cert(unsigned char *ppart, unsigned char *buffer, unsigned shor
 static int _slave_io()
 {
 	IAP_CMD cmd, resp;
-	unsigned char cmd_buffer[256];
+	unsigned char cmd_buffer[512];
 	unsigned char resp_buffer[256];
 	unsigned short total_length;
 	unsigned char parts_done;
@@ -533,17 +534,14 @@ static int _slave_io()
 					case IAP_CMD_IPOD_DATA_TRANSFER:
 						if (cmd.Length > 2)
 						{
-							iap_comm_write((cmd_buffer[0] << 8) | cmd_buffer[1], &cmd_buffer[2], cmd.Length - 2);
+							done = iap_comm_write((cmd_buffer[0] << 8) | cmd_buffer[1], &cmd_buffer[2], cmd.Length - 2);
 						}
-						resp_buffer[offset++] = IAP_OK;
+						else done = 0;
+
+						resp_buffer[offset++] = done ? IAP_OK : IAP_ERROR_BAD_PARAMETER;
 						resp_buffer[offset++] = cmd.CommandID;
 						resp = (IAP_CMD) { .CommandID = IAP_CMD_ACCESORY_ACK, .Length = offset, .Transaction = cmd.Transaction };
-                        iap_send_cmd(&resp, resp_buffer);
-#ifdef DEBUG		
-						// echo received bytes back to device
-//						resp = (IAP_CMD) { .CommandID = IAP_CMD_ACCESORY_DATA_TRANSFER, .Length = cmd.Length, .Transaction = _transaction++ };
-//						iap_send_cmd(&resp, cmd_buffer);
-#endif
+						iap_send_cmd(&resp, resp_buffer);
 						break;
 					case IAP_CMD_CLOSE_DATA_SESSION:
 						iap_close_session((cmd_buffer[0] << 8) | cmd_buffer[1]);

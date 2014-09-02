@@ -353,6 +353,10 @@ static void *_service(void *arg)
 	}
 }
 
+static void _debug()
+{
+}
+
 static void _dispatch(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher)
 {
 	HID_FUNCTION *func = (HID_FUNCTION *)dispatcher->CallbackState;
@@ -381,7 +385,7 @@ static void _dispatch(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatc
 				report_id = 0;
 				data = func->InputBuffer;
 			}
-	
+
 			exos_mutex_lock(&func->InputLock);
 			FOREACH(node, &func->Inputs)
 			{
