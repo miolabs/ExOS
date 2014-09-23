@@ -2,7 +2,7 @@
 #include "list.h"
 #include "syscall.h"
 #include "panic.h"
-#include "machine/time_hal.h"
+#include <kernel/machine/time_hal.h>
 
 static EXOS_LIST _timers;
 
