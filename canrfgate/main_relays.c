@@ -4,12 +4,16 @@
 #include <kernel/dispatch.h>
 
 #include <support/can_hal.h>
+#include <support/gpio_hal.h>
+#include <support/lpc11/cpu.h>
 
 #include "relay.h"
 
 #define RELAY0 (1<<6)
 #define RELAY1 (1<<7)
 #define RELAY_COUNT 2
+
+static unsigned char _input();
 
 static const CAN_EP _eps[] = { {0x200, 0}, {0x201, 0} };
 static FULLCAN_SETUP_CODE _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
@@ -135,4 +139,22 @@ void hal_board_initialize()
 
 	LPC_GPIO2->DIR |= RELAY0 | RELAY1;
 	LPC_GPIO2->MASKED_ACCESS[RELAY0 | RELAY1] = 0;
+
+	// gpio for input pines inp0-3 (P2_0-P2_3)
+	hal_gpio_config(2, 0x00F, 0);
+	LPC_IOCON->PIO2_0 = IOCON_HYSTERESIS | 0;
+	LPC_IOCON->PIO2_1 = IOCON_HYSTERESIS | 0;
+	LPC_IOCON->PIO2_2 = IOCON_HYSTERESIS | 0;
+	LPC_IOCON->PIO2_3 = IOCON_HYSTERESIS | 0;
+
+	// gpio for input pines inp4-5 (P2_10-P2_11)
+	hal_gpio_config(2, 0xc00, 0);
+	LPC_IOCON->PIO2_10 = IOCON_HYSTERESIS | 0;
+	LPC_IOCON->PIO2_11 = IOCON_HYSTERESIS | 0;
+}
+
+static unsigned char _input()
+{
+	unsigned int pin = hal_gpio_read(2, 0xc0F);
+	return ((pin & 0xc00) >> 6) | (pin & 0x00c);
 }
