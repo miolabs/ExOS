@@ -16,7 +16,7 @@
 static unsigned char _input();
 
 static const CAN_EP _eps[] = { {0x200, 0}, {0x201, 0} };
-static FULLCAN_SETUP_CODE _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
+static CAN_SETUP_CODE _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state);
 
 static EXOS_PORT _port;
 static EXOS_FIFO _free_msgs;
@@ -38,7 +38,7 @@ void main()
 	for(int i = 0; i < MSG_QUEUE; i++) exos_fifo_queue(&_free_msgs, (EXOS_NODE *)&_msg[i]);
 
 	hal_can_initialize(0, 250000, CAN_INITF_DISABLE_RETRANSMISSION);
-	hal_fullcan_setup(_can_setup, NULL);
+	hal_can_setup(_can_setup, NULL);
 
 	EXOS_DISPATCHER_CONTEXT context;
 	exos_dispatcher_context_create(&context);
@@ -98,16 +98,16 @@ static void _relay_timeout(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *di
 	_set_relays(_current_mask);
 }
 
-static FULLCAN_SETUP_CODE _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state)
+static CAN_SETUP_CODE _can_setup(int index, CAN_EP *ep, CAN_MSG_FLAGS *pflags, void *state)
 {
 	int count = sizeof(_eps) / sizeof(CAN_EP);
 	if (index < count)
 	{
 		*ep = _eps[index];
 		*pflags = CANF_RXINT;
-		return FULLCAN_SETUP_RX;
+		return CAN_SETUP_RX;
 	}
-	return FULLCAN_SETUP_END;
+	return CAN_SETUP_END;
 }
 
 void hal_can_received_handler(int index, CAN_MSG *msg)

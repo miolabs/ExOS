@@ -1,9 +1,6 @@
-#include "cpu.h"
 #include "c_can.h"
-#include <support/can_hal.h>
 #include <kernel/mutex.h>
 
-static C_CAN_MODULE *const _can = (C_CAN_MODULE*)LPC_CAN;
 static unsigned long _usage[32];
 static int _fullcan_reserved = 0;
 static EXOS_MUTEX _lock;
@@ -14,29 +11,26 @@ static unsigned long _resets_tx = 0;
 static unsigned long _unhandled_irq= 0;
 #endif
 
-int hal_can_initialize(int module, int bitrate, CAN_INIT_FLAGS initf)
+int ccan_initialize(C_CAN_MODULE *can, unsigned int pclk, unsigned int bitrate, CAN_INIT_FLAGS initf)
 {
-	if (module != 0)
-		return 0;
-
 	for(int i = 0; i < 32; i++) _usage[i] = 0;
 	_fullcan_reserved = 0;
 	exos_mutex_create(&_lock);
 
-	LPC_SYSCON->SYSAHBCLKCTRL |= SYSAHBCLKCTRL_CAN;
-	LPC_SYSCON->PRESETCTRL |= PRESETCTRL_CAN_RST_N;
-	_can->CLKDIV = 0;
+//	LPC_SYSCON->SYSAHBCLKCTRL |= SYSAHBCLKCTRL_CAN;
+//	LPC_SYSCON->PRESETCTRL |= PRESETCTRL_CAN_RST_N;
+	can->CLKDIV = 0;
 
-	_can->CNTL = C_CAN_CNTL_INIT | C_CAN_CNTL_CCE;
+	can->CNTL = C_CAN_CNTL_INIT | C_CAN_CNTL_CCE;
 
 	// obtain a 12MHz CAN clock
 	unsigned long bit_clock = bitrate * 12;  
-	int brp = SystemCoreClock / bit_clock;
-	if ((SystemCoreClock % bit_clock) != 0) return 0;	 // clock must be exact
-	_can->BT = C_CANBT_F((brp - 1), 1, 8, 1);  // BRP, SJW, TSEG1, TSEG2		
-	_can->BRPE = 0;
+	int brp = pclk / bit_clock;
+	if ((pclk % bit_clock) != 0) return 0;	 // clock must be exact
+	can->BT = C_CANBT_F((brp - 1), 1, 8, 1);  // BRP, SJW, TSEG1, TSEG2		
+	can->BRPE = 0;
 		
-	C_CAN_FUNCTION *fn = &_can->Interface1;	// use function 1
+	C_CAN_FUNCTION *fn = &can->Interface1;	// use function 1
 	for (int i = 0; i < 32; i++)
 	{
 #ifdef DEBUG
@@ -57,12 +51,12 @@ int hal_can_initialize(int module, int bitrate, CAN_INIT_FLAGS initf)
 		fn->CMDREQ = i + 1;
 	}
 
-	_can->CNTL = C_CAN_CNTL_IE | C_CAN_CNTL_EIE | C_CAN_CNTL_SIE
+	can->CNTL = C_CAN_CNTL_IE | C_CAN_CNTL_EIE | C_CAN_CNTL_SIE
 		| (initf & CAN_INITF_DISABLE_RETRANSMISSION ? C_CAN_CNTL_DAR : 0)	// disable automatic retransmission
 		;
 
-	NVIC_EnableIRQ(CAN_IRQn);
-	NVIC_SetPriority(CAN_IRQn, 3);
+//	NVIC_EnableIRQ(CAN_IRQn);
+//	NVIC_SetPriority(CAN_IRQn, 3);
 	return 1;
 }
 
@@ -86,16 +80,16 @@ static int _get_free_index(int *pindex, unsigned long id)
 	return done;
 }
 
-void hal_can_cancel_tx()
+void ccan_cancel_tx(C_CAN_MODULE *can)
 {
 #ifdef DEBUG
 	_resets_tx++;
 #endif
-	C_CAN_FUNCTION *fn = &_can->Interface1;	// use function 1
+	C_CAN_FUNCTION *fn = &can->Interface1;	// use function 1
 
 	exos_mutex_lock(&_lock);
 
-	unsigned long stall =  _can->ND1 | (_can->ND2 << 16);
+	unsigned long stall =  can->ND1 | (can->ND2 << 16);
 
 	for(int i = 32 - 1; i >= _fullcan_reserved; i--)
 	{
@@ -119,15 +113,15 @@ void hal_can_cancel_tx()
 	exos_mutex_unlock(&_lock);
 }
 
-void CAN_IRQHandler()
+void ccan_isr(C_CAN_MODULE *can)
 {
 	while(1)
 	{
-		unsigned short ir = _can->INT;
+		unsigned short ir = can->INT;
 
 		if (ir & 0x8000)
 		{
-			unsigned char stat = _can->STAT;
+			unsigned char stat = can->STAT;
 			unsigned long txreq;
 
 			switch(stat & 0x7)
@@ -137,12 +131,12 @@ void CAN_IRQHandler()
 					_errors_ack++;
 #endif
 					// FIXME: dirty hack for receiver not present / not working / not listening
-					txreq = _can->TXREQ1 | (_can->TXREQ2 << 16); 
+					txreq = can->TXREQ1 | (can->TXREQ2 << 16); 
 					for(int i = 0; i < 32; i++)
 					{
 						if (txreq & (1<<i))
 						{
-							C_CAN_FUNCTION *fn = &_can->Interface2;	// use function 2
+							C_CAN_FUNCTION *fn = &can->Interface2;	// use function 2
 							fn->CMDMSK = C_CAN_CMDMSK_ARB | C_CAN_CMDMSK_CLRINTPND | C_CAN_CMDMSK_WR;
 							fn->ARB1 = fn->ARB2 = 0;
 							fn->CMDREQ = i + 1;
@@ -166,7 +160,7 @@ void CAN_IRQHandler()
 			int intid = ir & 0x3f;
 			if (intid == 0) break;
 		
-			C_CAN_FUNCTION *fn = &_can->Interface2;	// use function 2
+			C_CAN_FUNCTION *fn = &can->Interface2;	// use function 2
 			fn->CMDMSK = C_CAN_CMDMSK_ARB | C_CAN_CMDMSK_DATA_A | C_CAN_CMDMSK_DATA_B 
 				| C_CAN_CMDMSK_NEWDAT | C_CAN_CMDMSK_CLRINTPND
 				| C_CAN_CMDMSK_CTRL;
@@ -202,45 +196,46 @@ void CAN_IRQHandler()
 #endif
 		}
 	}
-	NVIC_ClearPendingIRQ(CAN_IRQn);
+//	NVIC_ClearPendingIRQ(CAN_IRQn);
 }
 
-int hal_can_send(CAN_EP ep, CAN_BUFFER *data, unsigned char length, CAN_MSG_FLAGS flags)
+int ccan_send(C_CAN_MODULE *can, unsigned int id, C_CAN_DATA *data, CAN_MSG_FLAGS flags)
 {
 	int index;
-	int done = _get_free_index(&index, ep.Id);
+	int done = _get_free_index(&index, id);
 	if (!done)
 	{
 		hal_can_cancel_tx();
-		done = _get_free_index(&index, ep.Id);
+		done = _get_free_index(&index, id);
 	}
 	if (done)
 	{
-		C_CAN_FUNCTION *fn = &_can->Interface1;	// use function 1
+		CAN_BUFFER *buf = data->Buffer;
+		C_CAN_FUNCTION *fn = &can->Interface1;	// use function 1
 
 		fn->CMDMSK = C_CAN_CMDMSK_ARB // transfer id, DIR, XTD, MSGVAL
 			| C_CAN_CMDMSK_DATA_A | C_CAN_CMDMSK_DATA_B
 			| C_CAN_CMDMSK_CTRL | C_CAN_CMDMSK_TXRQST
 			| C_CAN_CMDMSK_WR;
-		int dlc = length & 0xf;
-		if (dlc >= 1) fn->DA1 = data->u8[0] | (data->u8[1] << 8);
-		if (dlc >= 3) fn->DA2 = data->u8[2] | (data->u8[3] << 8);
-		if (dlc >= 5) fn->DB1 = data->u8[4] | (data->u8[5] << 8);
-		if (dlc >= 7) fn->DB2 = data->u8[6] | (data->u8[7] << 8);
+		int dlc = data->Length & 0xf;
+		if (dlc >= 1) fn->DA1 = buf->u8[0] | (buf->u8[1] << 8);
+		if (dlc >= 3) fn->DA2 = buf->u8[2] | (buf->u8[3] << 8);
+		if (dlc >= 5) fn->DB1 = buf->u8[4] | (buf->u8[5] << 8);
+		if (dlc >= 7) fn->DB2 = buf->u8[6] | (buf->u8[7] << 8);
 	
 		if (flags & CANF_EXTID)
 		{
-			int id = ep.Id & 0x1fffffff;
+			id &= 0x1fffffff;
 			fn->ARB1 = id;
 			fn->ARB2 = (id >> 16) | C_CAN_ARB2_MSGVAL | C_CAN_ARB2_DIR | C_CAN_ARB2_XTD;
 		}
 		else
 		{
-			int id = (ep.Id & 0x7ff) << 18;
+			id = (id & 0x7ff) << 18;
 			fn->ARB1 = id;
 			fn->ARB2 = (id >> 16) | C_CAN_ARB2_MSGVAL | C_CAN_ARB2_DIR;
 		}
-		fn->MCTRL = (length & C_CAN_MCTRL_DLC_MASK) 
+		fn->MCTRL = (data->Length & C_CAN_MCTRL_DLC_MASK) 
 			| C_CAN_MCTRL_EOB
 			| C_CAN_MCTRL_TXIE
 			| C_CAN_MCTRL_NEWDAT;
@@ -251,7 +246,7 @@ int hal_can_send(CAN_EP ep, CAN_BUFFER *data, unsigned char length, CAN_MSG_FLAG
 	return done;
 }
 
-int hal_fullcan_setup(HAL_FULLCAN_SETUP_CALLBACK callback, void *state)
+int ccan_setup(C_CAN_MODULE *can, CAN_SETUP_CALLBACK callback, void *state)
 {
 	int count = 0;
     exos_mutex_lock(&_lock);
@@ -260,13 +255,13 @@ int hal_fullcan_setup(HAL_FULLCAN_SETUP_CALLBACK callback, void *state)
 	{
 		CAN_EP ep;
 		CAN_MSG_FLAGS flags = CANF_NONE;
-        FULLCAN_SETUP_CODE code = callback(count, &ep, &flags, state);
-		if (code == FULLCAN_SETUP_END)
+        CAN_SETUP_CODE code = callback(count, &ep, &flags, state);
+		if (code == CAN_SETUP_END)
 			break;
 		
 		_usage[count] = 2;
 
-		C_CAN_FUNCTION *fn = &_can->Interface1;	// use function 1
+		C_CAN_FUNCTION *fn = &can->Interface1;	// use function 1
 		fn->CMDMSK = C_CAN_CMDMSK_ARB // transfer id, DIR, XTD, MSGVAL
 			| C_CAN_CMDMSK_CTRL //| C_CAN_CMDMSK_TXRQST
 			| C_CAN_CMDMSK_WR;
@@ -286,11 +281,11 @@ int hal_fullcan_setup(HAL_FULLCAN_SETUP_CALLBACK callback, void *state)
 		
 		switch(code)
 		{
-			case FULLCAN_SETUP_RX:
+			case CAN_SETUP_RX:
 				fn->MCTRL = (8 & C_CAN_MCTRL_DLC_MASK) 
 					| ((flags & CANF_RXINT) ? C_CAN_MCTRL_RXIE : 0);
 				break;
-			case FULLCAN_SETUP_TX:
+			case CAN_SETUP_TX:
 				fn->ARB2 |= C_CAN_ARB2_DIR;
 				fn->MCTRL = (8 & C_CAN_MCTRL_DLC_MASK)
 					| C_CAN_MCTRL_EOB;
@@ -306,19 +301,20 @@ int hal_fullcan_setup(HAL_FULLCAN_SETUP_CALLBACK callback, void *state)
 	return count;
 }
 
-int hal_fullcan_write_msg(int index, CAN_MSG *msg)
+void ccan_write_msg(C_CAN_MODULE *can, int index, CAN_MSG *msg)
 {
-	C_CAN_FUNCTION *fn = &_can->Interface1;	// use function 1
+	C_CAN_FUNCTION *fn = &can->Interface1;	// use function 1
 
 	fn->CMDMSK = C_CAN_CMDMSK_ARB // transfer id, DIR, XTD, MSGVAL
 		| C_CAN_CMDMSK_DATA_A | C_CAN_CMDMSK_DATA_B
 		| C_CAN_CMDMSK_CTRL | C_CAN_CMDMSK_TXRQST
 		| C_CAN_CMDMSK_WR;
+	CAN_BUFFER *buf = &msg->Data;
 	int dlc = msg->Length & 0xf;
-	if (dlc >= 1) fn->DA1 = msg->Data.u8[0] | (msg->Data.u8[1] << 8);
-	if (dlc >= 3) fn->DA2 = msg->Data.u8[2] | (msg->Data.u8[3] << 8);
-	if (dlc >= 5) fn->DB1 = msg->Data.u8[4] | (msg->Data.u8[5] << 8);
-	if (dlc >= 7) fn->DB2 = msg->Data.u8[6] | (msg->Data.u8[7] << 8);
+	if (dlc >= 1) fn->DA1 = buf->u8[0] | (buf->u8[1] << 8);
+	if (dlc >= 3) fn->DA2 = buf->u8[2] | (buf->u8[3] << 8);
+	if (dlc >= 5) fn->DB1 = buf->u8[4] | (buf->u8[5] << 8);
+	if (dlc >= 7) fn->DB2 = buf->u8[6] | (buf->u8[7] << 8);
 
 	if (msg->Flags & CANF_EXTID)
 	{
@@ -341,9 +337,9 @@ int hal_fullcan_write_msg(int index, CAN_MSG *msg)
 	fn->CMDREQ = index + 1;
 }
 
-int hal_fullcan_write_data(int index, CAN_BUFFER *data, int length)
+void ccan_write_data(C_CAN_MODULE *can, int index, CAN_BUFFER *data, unsigned int length)
 {
-	C_CAN_FUNCTION *fn = &_can->Interface1;	// use function 1
+	C_CAN_FUNCTION *fn = &can->Interface1;	// use function 1
 
 	int dlc = length & 0xf;
 	if (dlc >= 1) fn->DA1 = data->u8[0] | (data->u8[1] << 8);
