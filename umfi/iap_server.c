@@ -78,6 +78,7 @@ static void *_server(void *arg)
 								//	done2 = exos_io_write((EXOS_IO_ENTRY *)&comm, buffer, done2);
 								//}
 #endif
+								//exos_thread_sleep(10);
 							}
 						}
 

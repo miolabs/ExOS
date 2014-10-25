@@ -1,6 +1,8 @@
 #ifndef C_CAN_H
 #define C_CAN_H
 
+#include <support/can_hal.h>
+
 #define C_CAN_CMDREQ_BUSY (1<<15)
 
 typedef enum
@@ -134,6 +136,21 @@ typedef struct _C_CAN_MODULE
 
 #define C_CAN_MESSAGES 32
 #define C_CANBT_F(brp, sjw, tseg1, tseg2) ((brp & 0x3F) | ((sjw & 0x03) << 6) | ((tseg1 & 0x0F) << 8) | ((tseg2 & 0x07) << 12))
+
+typedef struct
+{
+	CAN_BUFFER *Buffer;
+	unsigned int Length;
+} C_CAN_DATA;
+
+// prototypes
+int ccan_initialize(C_CAN_MODULE *can, unsigned int pclk, unsigned int bitrate, CAN_INIT_FLAGS initf);
+void ccan_cancel_tx(C_CAN_MODULE *can);
+void ccan_isr(C_CAN_MODULE *can);
+int ccan_send(C_CAN_MODULE *can, unsigned int id, C_CAN_DATA *data, CAN_MSG_FLAGS flags);
+int ccan_setup(C_CAN_MODULE *can, CAN_SETUP_CALLBACK callback, void *state);
+void ccan_write_msg(C_CAN_MODULE *can, int index, CAN_MSG *msg);
+void ccan_write_data(C_CAN_MODULE *can, int index, CAN_BUFFER *data, unsigned int length);
 
 #endif // C_CAN_H
 

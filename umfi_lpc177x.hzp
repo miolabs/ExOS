@@ -26,7 +26,6 @@
         <file file_name="kernel/thread.c"/>
         <file file_name="kernel/timer.c"/>
         <folder Name="posix" file_name="">
-          <folder Name="tests"/>
           <file file_name="kernel/posix/pthread_cond.c"/>
           <file file_name="kernel/posix/pthread_time.c"/>
           <file file_name="kernel/posix/posix.c"/>

@@ -12,5 +12,15 @@ typedef struct _EXOS_DATETIME
 	unsigned short Year;
 } EXOS_DATETIME;
 
+typedef struct 
+{
+	unsigned long Days;
+	unsigned long MilliSeconds;
+} EXOS_TIMESPAN;
+
+#define EXOS_SECONDS_IN_DAY (24*60*60)
+
+//prototypes
+void exos_datetime_now(EXOS_DATETIME *datetime);
 
 #endif // EXOS_DATETIME_H

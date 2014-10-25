@@ -37,9 +37,9 @@ void CAN_IRQHandler(void)
 			{
 				if (mask & (1 << i)) 
 				{
-					if (hal_fullcan_read_msg(i, &msg))
+					if (hal_can_read_msg(i, &msg))
 						hal_can_received_handler(i, &msg);
-					if (hal_fullcan_read_msg(i + 1, &msg))
+					if (hal_can_read_msg(i + 1, &msg))
 						hal_can_received_handler(i + 1, &msg);
 				}
 			}
@@ -50,7 +50,7 @@ void CAN_IRQHandler(void)
 			for(int i = 0; i < 32; i++)
 			{
 				if ((mask & (1 << i)) &&
-					hal_fullcan_read_msg(32 + i, &msg))
+					hal_can_read_msg(32 + i, &msg))
 					hal_can_received_handler(32 + i, &msg);
 			}
 		}
@@ -269,7 +269,7 @@ unsigned long can_get_error_count(int module)
 	return _can_error_cnt[module];
 }
 
-int hal_fullcan_setup(HAL_FULLCAN_SETUP_CALLBACK callback, void *state)
+int hal_can_setup(CAN_SETUP_CALLBACK callback, void *state)
 {
 	int index = 0, tx_index = 0;
 	_fcan->AFMR = AFMR_AccBP;	// bypass acceptance filter and allow write to af_ram
@@ -281,33 +281,33 @@ int hal_fullcan_setup(HAL_FULLCAN_SETUP_CALLBACK callback, void *state)
 		CAN_MSG_FLAGS flags1 = CANF_NONE;
 		CAN_MSG_FLAGS flags2 = CANF_NONE;
 		
-		FULLCAN_SETUP_CODE setup1 = callback(index, &ep1, &flags1, state);
-		if (setup1 == FULLCAN_SETUP_END) break;
-		if (setup1 == FULLCAN_SETUP_TX)
+		CAN_SETUP_CODE setup1 = callback(index, &ep1, &flags1, state);
+		if (setup1 == CAN_SETUP_END) break;
+		if (setup1 == CAN_SETUP_TX)
 		{ 
 			_tx_index[index] = tx_index;
 			_tx_msg[tx_index++] = (FCAN_MSG) { .Status = ep1.Id | (ep1.Bus << FCAN_MSG_SCC_BIT) };
 		}
 		index++;
 		
-		FULLCAN_SETUP_CODE setup2 = callback(index, &ep2, &flags2, state);
-		if (setup2 == FULLCAN_SETUP_TX)
+		CAN_SETUP_CODE setup2 = callback(index, &ep2, &flags2, state);
+		if (setup2 == CAN_SETUP_TX)
 		{ 
 			_tx_index[index] = tx_index;
 			_tx_msg[tx_index++] = (FCAN_MSG) { .Status = ep2.Id | (ep2.Bus << FCAN_MSG_SCC_BIT) };
 		}
 		index++;
 
-		if (setup2 == FULLCAN_SETUP_END)
+		if (setup2 == CAN_SETUP_END)
 		{
-			*id_ptr++ = (FCAN_MAKE_SFF(ep1.Bus, ep1.Id, (setup1 == FULLCAN_SETUP_RX ? ((flags1 & CANF_RXINT) ? FCAN_SFF_INTEN : 0) : FCAN_SFF_DISABLE)) << 16) |
+			*id_ptr++ = (FCAN_MAKE_SFF(ep1.Bus, ep1.Id, (setup1 == CAN_SETUP_RX ? ((flags1 & CANF_RXINT) ? FCAN_SFF_INTEN : 0) : FCAN_SFF_DISABLE)) << 16) |
 				FCAN_SFF_DISABLE;
 			break;
 		}
 		else
 		{
-			*id_ptr++ = (FCAN_MAKE_SFF(ep1.Bus, ep1.Id, (setup1 == FULLCAN_SETUP_RX ? ((flags1 & CANF_RXINT) ? FCAN_SFF_INTEN : 0) : FCAN_SFF_DISABLE)) << 16) |
-				FCAN_MAKE_SFF(ep2.Bus, ep2.Id, (setup2 == FULLCAN_SETUP_RX ? ((flags2 & CANF_RXINT) ? FCAN_SFF_INTEN : 0) : FCAN_SFF_DISABLE));
+			*id_ptr++ = (FCAN_MAKE_SFF(ep1.Bus, ep1.Id, (setup1 == CAN_SETUP_RX ? ((flags1 & CANF_RXINT) ? FCAN_SFF_INTEN : 0) : FCAN_SFF_DISABLE)) << 16) |
+				FCAN_MAKE_SFF(ep2.Bus, ep2.Id, (setup2 == CAN_SETUP_RX ? ((flags2 & CANF_RXINT) ? FCAN_SFF_INTEN : 0) : FCAN_SFF_DISABLE));
 		}
 	}
 	_fcan->SFF_sa = (unsigned long)id_ptr;
@@ -330,7 +330,7 @@ int hal_fullcan_setup(HAL_FULLCAN_SETUP_CALLBACK callback, void *state)
 	return index;
 }
 
-int hal_fullcan_read_msg(int index, CAN_MSG *msg)
+int hal_can_read_msg(int index, CAN_MSG *msg)
 {
 	FCAN_MSG *msg_table = (FCAN_MSG *)(_af_ram + _fcan->ENDofTable);
 	while(1)
@@ -395,12 +395,12 @@ static void _can_irq_send_txq()
 	}
 }
 
-int hal_fullcan_write_msg(int index, CAN_MSG *msg)
+int hal_can_write_msg(int index, CAN_MSG *msg)
 {
 	return _queue_or_send(index, msg->EP, &msg->Data, msg->Length);
 }
 
-int hal_fullcan_write_data(int index, CAN_BUFFER *data, int length)
+int hal_can_write_data(int index, CAN_BUFFER *data, unsigned int length)
 {
 	int tx_index = _tx_index[index];
 	if (tx_index < FCAN_MAX_TX_MSGS)
