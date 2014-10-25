@@ -19,7 +19,7 @@ void main()
 	NET_ADAPTER *adapter = NULL;
 	if (net_adapter_enum(&adapter))
 	{
-//		adapter->IP = (IP_ADDR) { 192, 168, 1, 5 };
+		adapter->IP = (IP_ADDR) { 10, 0, 1, 36 };
 	}
 
 	exos_port_create(&_port, NULL);
