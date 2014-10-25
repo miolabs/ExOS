@@ -15,6 +15,10 @@
 #define UInt8 uint8_t
 #endif
 
+#ifndef UInt16
+#define UInt16 uint16_t
+#endif
+
 #ifndef UInt32
 #define UInt32 uint32_t
 #endif

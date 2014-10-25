@@ -8,6 +8,7 @@
 
 #include "ecf_data.h"
 #include <stdlib.h>
+#include <string.h>
 
 #define kECF_DATA_DEFAULT_SIZE 256
 
@@ -17,6 +18,9 @@ struct ecf_data_struct
     UInt32 size;
     UInt32 len;
 };
+
+// Private functions
+void __ecf_data_add_bytes(ecf_data *data, UInt8 bytes[], UInt16 len);
 
 
 ecf_data *ecf_data_create(UInt32 size)
@@ -68,10 +72,42 @@ UInt32 ecf_data_get_len(ecf_data *data)
 
 void ecf_data_append_byte(ecf_data *data, UInt8 byte)
 {
-    
+    __ecf_data_add_bytes(data, &byte, 1);
 }
 
-void ecf_data_append_bytes(ecf_data *data, UInt8 *byte, int len)
+void ecf_data_append_bytes(ecf_data *data, UInt8 *bytes, int len)
 {
-    
+    __ecf_data_add_bytes(data, bytes, len);
 }
+
+#pragma mark - Private functions
+
+void __ecf_data_add_bytes(ecf_data *data, UInt8 bytes[], UInt16 len)
+{
+    if (len < 1)
+        return;
+    
+    if (bytes == NULL)
+        return;
+    
+    if (data->len + len < data->size)
+    {
+        memcpy(data->bytes + data->len, bytes, len);
+        data->len += len;
+    }
+    else
+    {
+        UInt8 *buffer = (UInt8 *)malloc(data->len + len + 10);
+        if (buffer == NULL)
+            return;
+        // Copy old data
+        memcpy(buffer, data->bytes, data->len);
+        // Append new data
+        memcpy(buffer + data->len, bytes, len);
+        free(data->bytes);
+        data->bytes = buffer;
+        data->len += len;
+        data->size = data->len + 10;
+    }
+}
+
