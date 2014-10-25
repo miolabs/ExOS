@@ -6,8 +6,8 @@
 //  Copyright (c) 2014 MIO Research Labs. All rights reserved.
 //
 
-#ifndef __ECF_H__
-#define __ECF_H__
+#ifndef __ECF__
+#define __ECF__
 
 #include "ecf_data.h"
 

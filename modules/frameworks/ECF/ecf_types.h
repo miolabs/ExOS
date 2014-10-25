@@ -6,8 +6,8 @@
 //  Copyright (c) 2014 MIO Research Labs. All rights reserved.
 //
 
-#ifndef __ECF_TYPES_H__
-#define __ECF_TYPES_H__
+#ifndef __ECF_TYPES__
+#define __ECF_TYPES__
 
 #include <stdio.h>
 
