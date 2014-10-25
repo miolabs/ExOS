@@ -83,6 +83,11 @@ void ecf_data_append_bytes(ecf_data *data, UInt8 *bytes, int len)
     __ecf_data_add_bytes(data, bytes, len);
 }
 
+void ecf_data_append_data(ecf_data *data, ecf_data *new_data)
+{
+    __ecf_data_add_bytes(data, new_data->bytes, new_data->len);
+}
+
 #pragma mark - Private functions
 
 void __ecf_data_add_bytes(ecf_data *data, UInt8 bytes[], UInt16 len)

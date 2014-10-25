@@ -23,6 +23,7 @@ UInt8 *ecf_data_get_bytes(ecf_data *data);
 
 void ecf_data_append_byte(ecf_data *data, UInt8 byte);
 void ecf_data_append_bytes(ecf_data *data, UInt8 *byte, int len);
+void ecf_data_append_data(ecf_data *data, ecf_data *new_data);
 
 
 #endif /* defined(__ECF_DATA__) */
