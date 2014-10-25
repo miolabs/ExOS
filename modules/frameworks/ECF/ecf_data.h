@@ -11,6 +11,8 @@
 
 #include "ecf_types.h"
 
+#define kECF_DATA_DEFAULT_SIZE 256
+
 typedef struct ecf_data_struct ecf_data;
 
 ecf_data *ecf_data_create(UInt32 size);

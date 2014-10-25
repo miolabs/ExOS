@@ -10,8 +10,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define kECF_DATA_DEFAULT_SIZE 256
-
 struct ecf_data_struct
 {
     UInt8 *bytes;
