@@ -70,6 +70,11 @@ UInt32 ecf_data_get_len(ecf_data *data)
     return data->len;
 }
 
+UInt8 *ecf_data_get_bytes(ecf_data *data)
+{
+    return data->bytes;
+}
+
 void ecf_data_append_byte(ecf_data *data, UInt8 byte)
 {
     __ecf_data_add_bytes(data, &byte, 1);

@@ -17,6 +17,7 @@ ecf_data *ecf_data_create(UInt32 size);
 void ecf_data_destroy(ecf_data *data);
 
 UInt32 ecf_data_get_len(ecf_data *data);
+UInt8 *ecf_data_get_bytes(ecf_data *data);
 
 void ecf_data_append_byte(ecf_data *data, UInt8 byte);
 void ecf_data_append_bytes(ecf_data *data, UInt8 *byte, int len);
