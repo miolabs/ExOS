@@ -71,12 +71,12 @@ static void *_server(void *arg)
 								done2 = exos_io_write((EXOS_IO_ENTRY *)&comm, buffer, done);
 								if (done2 < 0) break;
 #ifdef DEBUG
-								//if (done < 2 ||
-								//	(buffer[done - 1] != 10 && buffer[done - 2] != 10))
-								//{
-								//	done2 = sprintf(buffer, "\r\n");
-								//	done2 = exos_io_write((EXOS_IO_ENTRY *)&comm, buffer, done2);
-								//}
+//								if (done < 2 ||
+//									(buffer[done - 1] != 10 && buffer[done - 2] != 10))
+//								{
+//									done2 = sprintf(buffer, "\r\n");
+//									done2 = exos_io_write((EXOS_IO_ENTRY *)&comm, buffer, done2);
+//								}
 #endif
 								//exos_thread_sleep(10);
 							}
