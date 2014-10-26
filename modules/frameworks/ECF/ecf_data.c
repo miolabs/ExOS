@@ -1,6 +1,6 @@
 //
 //  ecf_data.c
-//  EnerlinBoardTest
+//  ExOS Core Foundation
 //
 //  Created by GodShadow on 25/10/14.
 //  Copyright (c) 2014 MIO Research Labs. All rights reserved.
@@ -18,7 +18,7 @@ struct ecf_data_struct
 };
 
 // Private functions
-void __ecf_data_add_bytes(ecf_data *data, UInt8 bytes[], UInt16 len);
+void __ecf_data_add_bytes(ecf_data *data, UInt8 bytes[], UInt32 len);
 
 
 ecf_data *ecf_data_create(UInt32 size)
@@ -40,6 +40,14 @@ ecf_data *ecf_data_create(UInt32 size)
     data->len = 0;
     data->size = size;
 
+    return data;
+}
+
+ecf_data *ecf_data_create_with_bytes(UInt8 *bytes, UInt32 len)
+{
+    ecf_data *data = ecf_data_create(len);
+    __ecf_data_add_bytes(data, bytes, len);
+    
     return data;
 }
 
@@ -78,7 +86,7 @@ void ecf_data_append_byte(ecf_data *data, UInt8 byte)
     __ecf_data_add_bytes(data, &byte, 1);
 }
 
-void ecf_data_append_bytes(ecf_data *data, UInt8 *bytes, int len)
+void ecf_data_append_bytes(ecf_data *data, UInt8 *bytes, UInt32 len)
 {
     __ecf_data_add_bytes(data, bytes, len);
 }
@@ -90,7 +98,7 @@ void ecf_data_append_data(ecf_data *data, ecf_data *new_data)
 
 #pragma mark - Private functions
 
-void __ecf_data_add_bytes(ecf_data *data, UInt8 bytes[], UInt16 len)
+void __ecf_data_add_bytes(ecf_data *data, UInt8 bytes[], UInt32 len)
 {
     if (len < 1)
         return;
@@ -105,7 +113,7 @@ void __ecf_data_add_bytes(ecf_data *data, UInt8 bytes[], UInt16 len)
     }
     else
     {
-        UInt8 *buffer = (UInt8 *)malloc(data->len + len + 10);
+        UInt8 *buffer = (UInt8 *)malloc(data->len + len + kECF_DATA_DEFAULT_SIZE);
         if (buffer == NULL)
             return;
         // Copy old data
@@ -115,7 +123,7 @@ void __ecf_data_add_bytes(ecf_data *data, UInt8 bytes[], UInt16 len)
         free(data->bytes);
         data->bytes = buffer;
         data->len += len;
-        data->size = data->len + 10;
+        data->size = data->len + kECF_DATA_DEFAULT_SIZE;
     }
 }
 

@@ -1,5 +1,5 @@
 //
-//  ECF_TYPES.h
+//  ecf_types.h
 //  ExOS Core Foundation
 //
 //  Created by GodShadow on 25/10/14.

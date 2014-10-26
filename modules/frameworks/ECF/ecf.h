@@ -10,5 +10,6 @@
 #define __ECF__
 
 #include "ecf_data.h"
+#include "ecf_array.h"
 
 #endif
