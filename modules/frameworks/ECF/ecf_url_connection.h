@@ -20,6 +20,7 @@ void ecf_url_connection_destroy(ecf_url_connection *url_connection);
 void ecf_url_connection_set_http_method(ecf_url_connection *url_connection, char *http_method);
 void ecf_url_connection_add_http_header_value(ecf_url_connection *url_connection, char *header, char *value);
 void ecf_url_connection_set_http_body(ecf_url_connection *url_connection, ecf_data *data);
+void ecf_url_connection_set_http_body_string(ecf_url_connection *url_connection, char *body);
 
 void ecf_url_connection_start(ecf_url_connection *url_connection);
 void ecf_url_connection_stop(ecf_url_connection *url_connection);

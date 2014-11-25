@@ -49,6 +49,11 @@ void ecf_url_connection_set_http_body(ecf_url_connection *url_connection, ecf_da
     
 }
 
+void ecf_url_connection_set_http_body_string(ecf_url_connection *url_connection, char *body)
+{
+    
+}
+
 void ecf_url_connection_start(ecf_url_connection *url_connection)
 {
     
