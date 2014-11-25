@@ -11,10 +11,11 @@
 
 #include "ecf_types.h"
 #include "ecf_data.h"
+#include "ecf_url.h"
 
 typedef struct ecf_url_connection_struct ecf_url_connection;
 
-ecf_url_connection *ecf_url_connection_create(char *url_string);
+ecf_url_connection *ecf_url_connection_create(ecf_url *url);
 void ecf_url_connection_destroy(ecf_url_connection *url_connection);
 
 void ecf_url_connection_set_http_method(ecf_url_connection *url_connection, char *http_method);
