@@ -37,7 +37,6 @@ char *_ecf_url_get_token_until_char(const char *string, char end_char, int *offs
         {
             token = malloc(sizeof(char) * count);
             strncpy(token, buffer, count);
-            (*offset) += count;
             
             exit = true;
         }
@@ -47,6 +46,8 @@ char *_ecf_url_get_token_until_char(const char *string, char end_char, int *offs
         count++;
         
     } while (exit == false);
+    
+    (*offset) += count;
     
     return token;
 }
@@ -58,6 +59,7 @@ void _ecf_url_parse_string(ecf_url *url, const char *url_string)
     url->scheme = _ecf_url_get_token_until_char(url_string, ':', &offset);
     // skip the double '/'
     offset += 2;
+    //TODO: Add support for ports!!
     url->host = _ecf_url_get_token_until_char(url_string, '/', &offset);
     url->relative_path = _ecf_url_get_token_until_char(url_string, '\0', &offset);
 }
@@ -85,4 +87,27 @@ void ecf_url_destroy(ecf_url *url)
     free(url);
 }
 
+const char *ecf_url_get_scheme(ecf_url *url)
+{
+    if (url == NULL)
+        return NULL;
+    
+    return url->scheme;
+}
+
+const char *ecf_url_get_host(ecf_url *url)
+{
+    if (url == NULL)
+        return NULL;
+    
+    return url->host;
+}
+
+const char *ecf_url_get_relative_path(ecf_url *url)
+{
+    if (url == NULL)
+        return NULL;
+    
+    return url->relative_path;
+}
 

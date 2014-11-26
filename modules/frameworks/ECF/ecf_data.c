@@ -78,6 +78,9 @@ UInt32 ecf_data_get_len(ecf_data *data)
 
 UInt8 *ecf_data_get_bytes(ecf_data *data)
 {
+    if (data == NULL)
+        return NULL;
+    
     return data->bytes;
 }
 

@@ -12,4 +12,8 @@
 #include "ecf_data.h"
 #include "ecf_array.h"
 
+// Network
+#include "ecf_url.h"
+#include "ecf_url_connection.h"
+
 #endif

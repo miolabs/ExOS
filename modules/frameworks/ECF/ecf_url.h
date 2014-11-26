@@ -16,5 +16,9 @@ typedef struct ecf_url_struct ecf_url;
 ecf_url *ecf_url_create_with_string(const char *url_string);
 void ecf_url_destroy(ecf_url *url);
 
+const char *ecf_url_get_scheme(ecf_url *url);
+const char *ecf_url_get_host(ecf_url *url);
+const char *ecf_url_get_relative_path(ecf_url *url);
+
 
 #endif /* defined(__ECF_URL__) */
