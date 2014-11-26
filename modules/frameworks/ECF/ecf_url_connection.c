@@ -7,6 +7,7 @@
 //
 
 #include "ecf_url_connection.h"
+#include "ecf_array.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -18,7 +19,9 @@ struct ecf_url_connection_struct
 {
     ecf_url *url;
     char http_method[4];
+    ecf_array *http_headers;
     ecf_data *http_body;
+    ecf_url_connection_callbacks *callbacks;
 };
 
 ecf_url_connection *ecf_url_connection_create(ecf_url *url)
@@ -33,6 +36,8 @@ ecf_url_connection *ecf_url_connection_create(ecf_url *url)
     conn->url = url;
     strcpy(conn->http_method, "GET");
     conn->http_body = NULL;
+    conn->http_headers = ecf_array_create();
+    conn->callbacks = NULL;
     
     return conn;
 }
@@ -44,6 +49,14 @@ void ecf_url_connection_destroy(ecf_url_connection *url_connection)
     
     ecf_url_destroy(url_connection->url);
     free(url_connection->http_method);
+    ecf_array_destroy(url_connection->http_headers);
+    ecf_data_destroy(url_connection->http_body);
+    memset(url_connection->callbacks, 0, sizeof(ecf_url_connection_callbacks));
+}
+
+void ecf_url_connection_set_callbacks(ecf_url_connection *url_connection, ecf_url_connection_callbacks *callbacks)
+{
+    url_connection->callbacks = callbacks;
 }
 
 void ecf_url_connection_set_http_method(ecf_url_connection *url_connection, char *http_method)
