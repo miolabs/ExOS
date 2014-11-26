@@ -113,7 +113,7 @@ void _ecf_url_connecion_read(int sd)
 {
     char buffer[256];
     
-    int read_bytes = 0;
+    size_t read_bytes = 0;
     do {
         read_bytes = read(sd, buffer, 256);
         printf("%s", buffer);
