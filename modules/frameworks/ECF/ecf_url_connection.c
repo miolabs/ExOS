@@ -109,6 +109,17 @@ bool _ecf_url_connection_write_string(int sd, const char *string)
     return _ecf_url_connection_write(sd, (UInt8 *)string, len);
 }
 
+void _ecf_url_connecion_read(int sd)
+{
+    char buffer[256];
+    
+    int read_bytes = 0;
+    do {
+        read_bytes = read(sd, buffer, 256);
+        printf("%s", buffer);
+    } while (read_bytes > 0);
+}
+
 void ecf_url_connection_start(ecf_url_connection *url_connection)
 {
     if (url_connection == NULL)
@@ -136,7 +147,7 @@ void ecf_url_connection_start(ecf_url_connection *url_connection)
     }
 
     char message[200];
-    sprintf(message, "%s /%s HTTP/1.1\nHost: %s\n", http_method, relative_path, host);
+    sprintf(message, "%s /%s HTTP/1.1\nHost: %s\n", http_method, relative_path, "enerlin.es");
     _ecf_url_connection_write_string(sd, message);
     
     if (strcmp(http_method, "GET") == 0)
@@ -155,7 +166,7 @@ void ecf_url_connection_start(ecf_url_connection *url_connection)
         _ecf_url_connection_write(sd, ecf_data_get_bytes(url_connection->http_body), ecf_data_get_len(url_connection->http_body));
     }
     
-    read(sd, message, sizeof(message));
+    _ecf_url_connecion_read(sd);
     close(sd);
 }
 
