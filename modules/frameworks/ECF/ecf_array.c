@@ -16,7 +16,6 @@ struct ecf_array_node_struct
     void *object;
 };
 
-typedef struct ecf_array_node_struct ecf_array_node;
 
 struct ecf_array_struct
 {
@@ -29,10 +28,7 @@ struct ecf_array_struct
 void _ecf_array_add_node(ecf_array *array, ecf_array_node *node);
 void _ecf_array_remove_node(ecf_array *array, ecf_array_node *node);
 
-ecf_array_node *_ecf_array_get_node(ecf_array* array);
 ecf_array_node *_ecf_array_get_node_at_index(ecf_array *array, UInt32 index);
-ecf_array_node *_ecf_array_move_node_forward(ecf_array_node *node);
-ecf_array_node *_ecf_array_move_node_backwards(ecf_array_node *node);
 
 #pragma mark - Functions
 
@@ -60,6 +56,11 @@ UInt32 ecf_array_get_count(ecf_array *array)
         return 0;
     
     return array->count;
+}
+
+void *ecf_array_get_object_from_node(ecf_array_node *node)
+{
+    return node->object;
 }
 
 void *ecf_array_get_object_at_index(ecf_array *array, UInt32 index)
@@ -98,7 +99,7 @@ void ecf_array_remove_object(ecf_array *array, void *object)
     if (array == NULL)
         return;
     
-    ecf_array_node *node = _ecf_array_get_node(array);
+    ecf_array_node *node = ecf_array_get_start_node(array);
     while (node != NULL)
     {
         if (node->object == object)
@@ -107,7 +108,7 @@ void ecf_array_remove_object(ecf_array *array, void *object)
             node = NULL;
         }
         else
-            node = _ecf_array_move_node_forward(node);
+            node = ecf_array_move_node_forward(node);
     }
 }
 
@@ -163,13 +164,31 @@ void _ecf_array_remove_node(ecf_array *array, ecf_array_node *node)
 
 #pragma mark - Iterator functions
 
-ecf_array_node *_ecf_array_get_node(ecf_array* array)
+ecf_array_node *ecf_array_get_start_node(ecf_array* array)
 {
     if (array == NULL)
         return NULL;
     
     return array->start_node;
 }
+
+ecf_array_node *ecf_array_move_node_forward(ecf_array_node *node)
+{
+    if (node != NULL)
+        return node->next_node;
+    
+    return NULL;
+}
+
+ecf_array_node *ecf_array_move_node_backwards(ecf_array_node *node)
+{
+    if (node != NULL)
+        return node->prev_node;
+    
+    return NULL;
+}
+
+#pragma mark - Private
 
 ecf_array_node *_ecf_array_get_node_at_index(ecf_array *array, UInt32 index)
 {
@@ -202,18 +221,3 @@ ecf_array_node *_ecf_array_get_node_at_index(ecf_array *array, UInt32 index)
     return node;
 }
 
-ecf_array_node *_ecf_array_move_node_forward(ecf_array_node *node)
-{
-    if (node != NULL)
-        return node->next_node;
-    
-    return NULL;
-}
-
-ecf_array_node *_ecf_array_move_node_backwards(ecf_array_node *node)
-{
-    if (node != NULL)
-        return node->prev_node;
-    
-    return NULL;
-}
