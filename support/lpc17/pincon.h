@@ -229,7 +229,7 @@ typedef struct
 
 
 #else
-
+#define LPC177X_8X
 
 typedef struct
 {

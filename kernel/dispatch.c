@@ -82,11 +82,11 @@ void exos_dispatch(EXOS_DISPATCHER_CONTEXT *context, unsigned long timeout)
 			array[count++] = event;
 
 		int rem_time;
-		if (dispatcher->Timeout != 0)	// NOTE: EXOS_TIMEOUT_NEVER = 0, means immediate dispatch
+		if (dispatcher->Timeout != 0)
 		{
 			rem_time = dispatcher->Timeout + dispatcher->Issued - time;
 		}
-		else if (event == NULL)
+		else if (event == NULL) // EXOS_TIMEOUT_NEVER (0), without trigger event (NULL), means immediate dispatch!
 		{
 			rem_time = 0;
 		}

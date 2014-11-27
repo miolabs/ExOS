@@ -11,9 +11,13 @@ int printf(const char *restrict format, ...)
 int sprintf(char *restrict s, const char *restrict format, ...)
 {
 	va_list args;
-	int done = 0;
-
 	va_start(args, format);
+	return vsprintf(s, format, args);
+}
+
+int vsprintf(char *restrict s, const char *restrict format, va_list args)
+{
+	int done = 0;
 	while(1)
 	{
 		char c = *format++;

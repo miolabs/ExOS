@@ -253,7 +253,8 @@ typedef enum
 	USB_STATUS_REMOTE_WAKEUP  = 0x02,
 } USB_STATUS;
 
-
+// prototypes
 int usb_parse_conf(USB_CONFIGURATION_DESCRIPTOR *conf_desc, USB_DESCRIPTOR_TYPE desc_type, USB_DESCRIPTOR_HEADER **current);
+int usb_desc2str(USB_DESCRIPTOR_HEADER *str_desc, unsigned char *dest, int max_length);
 
 #endif // OHCI_USB_H
