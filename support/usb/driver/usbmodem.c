@@ -1,4 +1,4 @@
-#include "modem.h"
+#include "usbmodem.h"
 #include <usb/enumerate.h>
 #include <kernel/machine/hal.h>
 #include <kernel/panic.h>
