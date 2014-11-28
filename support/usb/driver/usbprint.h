@@ -6,7 +6,7 @@
 #include <kernel/tree.h>
 #include <comm/comm.h>
 
-#define USBPRINT_BUFFER_SIZE 64
+#define USBPRINT_USB_BUFFER 64
 
 typedef enum
 {
@@ -27,7 +27,7 @@ typedef struct
 
 	COMM_IO_ENTRY *Entry;
 	EXOS_TREE_DEVICE KernelDevice;
-	unsigned char Buffer[USBPRINT_BUFFER_SIZE];
+	unsigned char Buffer[USBPRINT_USB_BUFFER];
 
 	unsigned char Interface;
 	unsigned char Protocol;

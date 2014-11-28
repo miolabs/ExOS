@@ -178,6 +178,15 @@ int usb_host_read_device_descriptor(USB_HOST_DEVICE *device, int desc_type, int 
 	return usb_host_ctrl_setup(device, &req, data, length);
 }
 
+int usb_host_read_string_descriptor(USB_HOST_DEVICE *device, int lang_id, int str_index, void *data, int length)
+{
+	USB_REQUEST req = (USB_REQUEST) {
+		.RequestType = USB_REQTYPE_DEVICE_TO_HOST | USB_REQTYPE_RECIPIENT_DEVICE,
+		.RequestCode = USB_REQUEST_GET_DESCRIPTOR,
+		.Value = (USB_DESCRIPTOR_TYPE_STRING << 8) | str_index, .Index = lang_id, .Length = length };
+	return usb_host_ctrl_setup(device, &req, data, length);
+}
+
 int usb_host_read_if_descriptor(USB_HOST_DEVICE *device, int interface, int desc_type, int desc_index, void *data, int length)
 {
 	USB_REQUEST req = (USB_REQUEST) {

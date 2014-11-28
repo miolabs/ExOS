@@ -127,6 +127,7 @@ int usb_host_end_bulk_transfer(USB_REQUEST_BUFFER *urb, unsigned long timeout);
 
 int usb_host_ctrl_setup(USB_HOST_DEVICE *device, const USB_REQUEST *request, void *data, int length);
 int usb_host_read_device_descriptor(USB_HOST_DEVICE *device, int desc_type, int desc_index, void *data, int length);
+int usb_host_read_string_descriptor(USB_HOST_DEVICE *device, int lang_id, int str_index, void *data, int length);
 int usb_host_read_if_descriptor(USB_HOST_DEVICE *device, int interface, int desc_type, int desc_index, void *data, int length);
 int usb_host_set_address(USB_HOST_DEVICE *device, int addr);
 int usb_host_set_interface(USB_HOST_DEVICE *device, int interface, int alternate_setting);
