@@ -68,6 +68,11 @@ static int _device_if_matches(USB_HOST_DEVICE *device, USB_INTERFACE_DESCRIPTOR 
 //			return 2;
 //		}
 	}
+	if (device->Vendor == 0x12d1 && device->Product == 0x14ac) // modem device Huawei
+	{
+		if (if_desc->InterfaceNumber == 0)
+			return 2;
+	}
 
 	return 0;
 }
@@ -107,11 +112,11 @@ static USB_HOST_FUNCTION *_check_interface(USB_HOST_DEVICE *device, USB_CONFIGUR
 					out_desc = usb_enumerate_find_endpoint_descriptor(conf_desc, if_desc, USB_TT_BULK, USB_HOST_TO_DEVICE, 0);
 					in_desc = usb_enumerate_find_endpoint_descriptor(conf_desc, if_desc, USB_TT_BULK, USB_DEVICE_TO_HOST, 0);
 					int_desc = usb_enumerate_find_endpoint_descriptor(conf_desc, if_desc, USB_TT_INTERRUPT, USB_DEVICE_TO_HOST, 0);
-					if (!in_desc || !out_desc || !int_desc) return NULL;
+					if (!in_desc || !out_desc) return NULL;
 
 					usb_host_init_pipe_from_descriptor(device, &func->BulkOutputPipe, out_desc);
 					usb_host_init_pipe_from_descriptor(device, &func->BulkInputPipe, in_desc);
-					usb_host_init_pipe_from_descriptor(device, &func->InterruptPipe, int_desc);
+					if (int_desc != NULL) usb_host_init_pipe_from_descriptor(device, &func->InterruptPipe, int_desc);
 
 					func->Interface = if_desc->InterfaceNumber;
 					func->State = USBMODEM_ATTACHING;
@@ -126,11 +131,15 @@ static USB_HOST_FUNCTION *_check_interface(USB_HOST_DEVICE *device, USB_CONFIGUR
 static void _switch(USBMODEM_FUNCTION *func)
 {
 	USB_MSC_CBW *cbw = (USB_MSC_CBW *)func->OutputBuffer;
+//	*cbw = (USB_MSC_CBW) { .Signature = USB_MSC_CBW_SIGNATURE,
+//		.Tag = 0xF019BD30,
+//		.DataTransferLength = 0xC0,
+//		.Flags = 0x80, .LUN = 0, .CDBLength = 6, 
+//		.CDB = { 0x71, 0x03 } };
+
 	*cbw = (USB_MSC_CBW) { .Signature = USB_MSC_CBW_SIGNATURE,
-		.Tag = 0xF019BD30,
-		.DataTransferLength = 0xC0,
-		.Flags = 0x80, .LUN = 0, .CDBLength = 6, 
-		.CDB = { 0x71, 0x03 } };
+		.CDB = { 0x11, 0x06 } };
+
 	int done = usb_host_bulk_transfer(&func->BulkOutputPipe, cbw, sizeof(USB_MSC_CBW), EXOS_TIMEOUT_NEVER);
 }
 
