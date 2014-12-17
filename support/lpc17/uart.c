@@ -3,6 +3,7 @@
 
 #include "uart.h"
 #include "cpu.h"
+#include <kernel/panic.h>
 
 static UART_CONTROL_BLOCK *_control[UART_MODULE_COUNT];
 static LPC_UART_TypeDef *_modules[] = {
@@ -107,6 +108,7 @@ void uart_disable(unsigned module)
 static void _reset_receiver(LPC_UART_TypeDef *uart, UART_CONTROL_BLOCK *cb)
 {
 	// TODO
+	kernel_panic(KERNEL_ERROR_UNKNOWN);
 }
 
 static void _read_data(LPC_UART_TypeDef *uart, UART_CONTROL_BLOCK *cb)
