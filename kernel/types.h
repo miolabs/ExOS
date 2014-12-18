@@ -17,7 +17,11 @@
 
 #define MAXINT (0x7FFFFFFFL)
 
+#ifndef __bool_is_defined
+#define __bool_is_defined 
 typedef int bool;
+#endif
+
 #define false 0
 #define true 1
 

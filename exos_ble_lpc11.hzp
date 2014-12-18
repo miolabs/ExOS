@@ -1,100 +1,181 @@
 <!DOCTYPE CrossStudio_Project_File>
 <solution Name="exos_lpc11" target="8" version="2">
   <project Name="exos_ble_lpc11">
-    <configuration Name="Common" Target="LPC11C24/301" arm_architecture="v6M" arm_core_type="Cortex-M0" arm_gcc_target="arm-unknown-eabi" arm_interwork="No" arm_linker_heap_size="128" arm_linker_process_stack_size="512" arm_linker_stack_size="512" arm_simulator_memory_simulation_filename="$(TargetsDir)/LPC1000/LPC1000SimulatorMemory.dll" arm_simulator_memory_simulation_parameter="LPC11;0x8000;0x2000;0x0" arm_target_debug_interface_type="ADIv5" arm_target_interface_type="SWD" arm_target_loader_parameter="12000000" build_intermediate_directory=".output/$(Configuration)" build_output_directory=".output/$(Configuration)" c_only_additional_options="-fms-extensions" c_system_include_directories="$(TargetsDir)/CMSIS_3/CMSIS/Include;$(TargetsDir)/LPC1000/include" c_user_include_directories="$(ProjectDir);$(ProjectDir)/include;$(ProjectDir)/kernel/driver" gcc_entry_point="Reset_Handler" link_include_startup_code="No" linker_additional_files="$(TargetsDir)/LPC1000/lib/liblpc1000$(LibExt)$(LIB)" linker_memory_map_file="$(TargetsDir)/LPC1000/LPC11C24_MemoryMap.xml" linker_printf_enabled="No" macros="LPC1000_Series=LPC11xx" oscillator_frequency="12MHz" project_directory="" project_type="Executable" property_groups_file_path="$(TargetsDir)/LPC1000/propertyGroups11xx.xml"/>
-    <configuration Name="Flash" Placement="Flash" arm_target_flash_loader_file_path="$(TargetsDir)/LPC1000/Release/Loader_lpc1100.elf" arm_target_flash_loader_type="LIBMEM RPC Loader" linker_patch_build_command="&quot;$(StudioDir)/bin/crossscript&quot; &quot;load(\&quot;$(TargetsDir)/LPC1000/LPC1000_LinkPatch.js\&quot;);patch(\&quot;$(TargetPath)\&quot;);&quot;" linker_section_placement_file="$(StudioDir)/targets/Cortex_M/flash_placement.xml" target_reset_script="FLASHReset()"/>
+    <configuration
+      Name="Common"
+      Target="LPC11C24/301"
+      arm_architecture="v6M"
+      arm_core_type="Cortex-M0"
+      arm_gcc_target="arm-unknown-eabi"
+      arm_interwork="No"
+      arm_linker_heap_size="128"
+      arm_linker_process_stack_size="512"
+      arm_linker_stack_size="512"
+      arm_simulator_memory_simulation_filename="$(TargetsDir)/LPC1000/LPC1000SimulatorMemory.dll"
+      arm_simulator_memory_simulation_parameter="LPC11;0x8000;0x2000;0x0"
+      arm_target_debug_interface_type="ADIv5"
+      arm_target_interface_type="SWD"
+      arm_target_loader_parameter="12000000"
+      build_intermediate_directory=".output/$(Configuration)"
+      build_output_directory=".output/$(Configuration)"
+      c_only_additional_options="-fms-extensions"
+      c_system_include_directories="$(TargetsDir)/CMSIS_3/CMSIS/Include;$(TargetsDir)/LPC1000/include"
+      c_user_include_directories="$(ProjectDir);$(ProjectDir)/include;$(ProjectDir)/kernel/driver"
+      gcc_entry_point="Reset_Handler"
+      link_include_startup_code="No"
+      linker_additional_files="$(TargetsDir)/LPC1000/lib/liblpc1000$(LibExt)$(LIB)"
+      linker_memory_map_file="$(TargetsDir)/LPC1000/LPC11C24_MemoryMap.xml"
+      linker_printf_enabled="No"
+      macros="LPC1000_Series=LPC11xx"
+      oscillator_frequency="12MHz"
+      project_directory=""
+      project_type="Executable"
+      property_groups_file_path="$(TargetsDir)/LPC1000/propertyGroups11xx.xml" />
+    <configuration
+      Name="Flash"
+      Placement="Flash"
+      arm_target_flash_loader_file_path="$(TargetsDir)/LPC1000/Release/Loader_lpc1100.elf"
+      arm_target_flash_loader_type="LIBMEM RPC Loader"
+      linker_patch_build_command="&quot;$(StudioDir)/bin/crossscript&quot; &quot;load(\&quot;$(TargetsDir)/LPC1000/LPC1000_LinkPatch.js\&quot;);patch(\&quot;$(TargetPath)\&quot;);&quot;"
+      linker_section_placement_file="$(StudioDir)/targets/Cortex_M/flash_placement.xml"
+      target_reset_script="FLASHReset()" />
     <folder Name="Source Files">
-      <configuration Name="Common" filter="c;cpp;cxx;cc;h;s;asm;inc"/>
+      <configuration Name="Common" filter="c;cpp;cxx;cc;h;s;asm;inc" />
       <folder Name="kernel">
-        <file file_name="kernel/event.c"/>
-        <file file_name="kernel/fifo.c"/>
-        <file file_name="kernel/io.c"/>
-        <file file_name="kernel/list.c"/>
-        <file file_name="kernel/memory.c"/>
-        <file file_name="kernel/mutex.c"/>
-        <file file_name="kernel/panic.c"/>
-        <file file_name="kernel/port.c"/>
-        <file file_name="kernel/signal.c"/>
-        <file file_name="kernel/startup.c"/>
-        <file file_name="kernel/thread.c"/>
-        <file file_name="kernel/thread_pool.c"/>
-        <file file_name="kernel/timer.c"/>
-        <file file_name="kernel/tree.c"/>
+        <file file_name="kernel/event.c" />
+        <file file_name="kernel/fifo.c" />
+        <file file_name="kernel/io.c" />
+        <file file_name="kernel/list.c" />
+        <file file_name="kernel/memory.c" />
+        <file file_name="kernel/mutex.c" />
+        <file file_name="kernel/panic.c" />
+        <file file_name="kernel/port.c" />
+        <file file_name="kernel/signal.c" />
+        <file file_name="kernel/startup.c" />
+        <file file_name="kernel/thread.c" />
+        <file file_name="kernel/thread_pool.c" />
+        <file file_name="kernel/timer.c" />
+        <file file_name="kernel/tree.c" />
         <folder Name="machine">
           <folder Name="lpc11">
-            <file file_name="kernel/machine/lpc11/machine_lpc11.c"/>
-            <file file_name="kernel/machine/lpc11/startup_lpc11.c"/>
-            <file file_name="kernel/machine/lpc11/time_lpc11.c"/>
-            <file file_name="kernel/machine/lpc11/vectors_lpc11.s"/>
+            <file file_name="kernel/machine/lpc11/machine_lpc11.c" />
+            <file file_name="kernel/machine/lpc11/startup_lpc11.c" />
+            <file file_name="kernel/machine/lpc11/time_lpc11.c" />
+            <file file_name="kernel/machine/lpc11/vectors_lpc11.s" />
           </folder>
           <folder Name="armv6m">
-            <file file_name="kernel/machine/armv6m/kernel_armv6m.c"/>
+            <file file_name="kernel/machine/armv6m/kernel_armv6m.c" />
           </folder>
-          <file file_name="kernel/machine/hal.c"/>
+          <file file_name="kernel/machine/hal.c" />
         </folder>
         <folder Name="driver">
           <folder Name="comm">
-            <file file_name="kernel/driver/comm/comm.c"/>
+            <file file_name="kernel/driver/comm/comm.c" />
           </folder>
         </folder>
       </folder>
       <folder Name="support">
-        <folder Name="lpc11" file_name="">
-          <file file_name="support/lpc11/c_can.c"/>
-          <file file_name="support/lpc11/ssp.c"/>
-          <file file_name="support/lpc11/gpio.c"/>
+        <folder Name="lpc11">
+          <file file_name="support/lpc11/ssp.c" />
+          <file file_name="support/lpc11/gpio.c" />
+          <file file_name="support/lpc11/can.c" />
         </folder>
         <folder Name="bluetooth">
           <folder Name="nordic">
-            <file file_name="support/bluetooth/nordic/aci.c"/>
-            <file file_name="support/bluetooth/nordic/ble_hal.c"/>
+            <file file_name="support/bluetooth/nordic/aci.c" />
+            <file file_name="support/bluetooth/nordic/ble_hal.c" />
           </folder>
           <folder Name="ble">
-            <file file_name="support/bluetooth/ble/server.c"/>
+            <file file_name="support/bluetooth/ble/server.c" />
           </folder>
         </folder>
         <folder Name="misc">
-          <file file_name="support/misc/can_receiver.c"/>
+          <file file_name="support/misc/can_receiver.c" />
+          <file file_name="support/misc/c_can.c" />
         </folder>
       </folder>
       <folder Name="tests">
         <folder Name="support">
           <folder Name="bluetooth">
-            <file file_name="tests/support/bluetooth/ble_test.c"/>
-            <file file_name="tests/support/bluetooth/boards_lpc11.c"/>
+            <file file_name="tests/support/bluetooth/ble_test.c" />
+            <file file_name="tests/support/bluetooth/boards_lpc11.c" />
             <folder Name="nordic">
               <file file_name="tests/support/bluetooth/nordic/services.c">
-                <configuration Name="Common" c_user_include_directories=".;support/bluetooth/nordic/"/>
+                <configuration
+                  Name="Common"
+                  c_user_include_directories=".;support/bluetooth/nordic/" />
               </file>
             </folder>
-            <file file_name="tests/support/bluetooth/ble_can.c"/>
+            <file file_name="tests/support/bluetooth/ble_can.c" />
           </folder>
         </folder>
       </folder>
     </folder>
     <folder Name="System Files">
       <file file_name="$(TargetsDir)/LPC1000/LPC1100_Target.js">
-        <configuration Name="Common" file_type="Reset Script"/>
+        <configuration Name="Common" file_type="Reset Script" />
       </file>
     </folder>
     <folder Name="CMSIS Files">
-      <file file_name="$(TargetsDir)/LPC1000/include/CMSIS/LPC11xx.h"/>
-      <file file_name="$(TargetsDir)/LPC1000/include/CMSIS/system_LPC11xx.h"/>
-      <file file_name="$(TargetsDir)/LPC1000/include/CMSIS/system_LPC11xx.c"/>
+      <file file_name="$(TargetsDir)/LPC1000/include/CMSIS/LPC11xx.h" />
+      <file file_name="$(TargetsDir)/LPC1000/include/CMSIS/system_LPC11xx.h" />
+      <file file_name="$(TargetsDir)/LPC1000/include/CMSIS/system_LPC11xx.c" />
     </folder>
   </project>
-  <configuration Name="THUMB" Platform="ARM" arm_instruction_set="THUMB" arm_library_instruction_set="THUMB" c_preprocessor_definitions="__THUMB" hidden="Yes"/>
-  <configuration Name="Flash" hidden="Yes"/>
-  <configuration Name="Debug" build_debug_information="Yes" c_preprocessor_definitions="DEBUG" gcc_optimization_level="None" hidden="Yes" link_include_startup_code="No"/>
-  <configuration Name="Release" build_debug_information="No" c_additional_options="-g1" c_preprocessor_definitions="NDEBUG" gcc_optimization_level="Level 1" hidden="Yes" link_include_startup_code="No"/>
-  <configuration Name="Common" c_preprocessor_definitions="__EXOS__;EXOS_NO_NET;MAIN_THREAD_STACK=512;MAIN_THREAD_PRI=0"/>
-  <configuration Name="Olimex LPC-P1xxx" c_preprocessor_definitions="BOARD_OLIMEX_P1XXX" hidden="Yes"/>
-  <configuration Name="Olimex LPC-P1xxx Debug" inherited_configurations="Debug;Flash;Olimex LPC-P1xxx;THUMB"/>
-  <configuration Name="Olimex LPC-P1xxx Release" inherited_configurations="Flash;Olimex LPC-P1xxx;Release;THUMB"/>
-  <configuration Name="Xkuty-CPU1" c_preprocessor_definitions="BOARD_XKUTY_CPU1" hidden="Yes"/>
-  <configuration Name="Xkuty-CPU1 Release" inherited_configurations="Flash;Release;THUMB;Xkuty-CPU1"/>
-  <configuration Name="Xkuty-CPU1 Debug" inherited_configurations="Debug;Flash;THUMB;Xkuty-CPU1"/>
-  <configuration Name="MIO-BTSmart" c_preprocessor_definitions="BOARD_BTSMART" hidden="Yes"/>
-  <configuration Name="MIO-BTSmart Debug" inherited_configurations="Debug;Flash;MIO-BTSmart;THUMB"/>
-  <configuration Name="MIO-BTSmart Release" inherited_configurations="Flash;MIO-BTSmart;Release;THUMB"/>
+  <configuration
+    Name="THUMB"
+    Platform="ARM"
+    arm_instruction_set="THUMB"
+    arm_library_instruction_set="THUMB"
+    c_preprocessor_definitions="__THUMB"
+    hidden="Yes" />
+  <configuration Name="Flash" hidden="Yes" />
+  <configuration
+    Name="Debug"
+    build_debug_information="Yes"
+    c_preprocessor_definitions="DEBUG"
+    gcc_optimization_level="None"
+    hidden="Yes"
+    link_include_startup_code="No" />
+  <configuration
+    Name="Release"
+    build_debug_information="No"
+    c_additional_options="-g1"
+    c_preprocessor_definitions="NDEBUG"
+    gcc_optimization_level="Level 1"
+    hidden="Yes"
+    link_include_startup_code="No" />
+  <configuration
+    Name="Common"
+    c_preprocessor_definitions="__EXOS__;EXOS_NO_NET;MAIN_THREAD_STACK=512;MAIN_THREAD_PRI=0" />
+  <configuration
+    Name="Olimex LPC-P1xxx"
+    c_preprocessor_definitions="BOARD_OLIMEX_P1XXX"
+    hidden="Yes" />
+  <configuration
+    Name="Olimex LPC-P1xxx Debug"
+    inherited_configurations="Debug;Flash;Olimex LPC-P1xxx;THUMB" />
+  <configuration
+    Name="Olimex LPC-P1xxx Release"
+    inherited_configurations="Flash;Olimex LPC-P1xxx;Release;THUMB" />
+  <configuration
+    Name="Xkuty-CPU1"
+    c_preprocessor_definitions="BOARD_XKUTY_CPU1"
+    hidden="Yes" />
+  <configuration
+    Name="Xkuty-CPU1 Release"
+    inherited_configurations="Flash;Release;THUMB;Xkuty-CPU1" />
+  <configuration
+    Name="Xkuty-CPU1 Debug"
+    inherited_configurations="Debug;Flash;THUMB;Xkuty-CPU1" />
+  <configuration
+    Name="MIO-BTSmart"
+    c_preprocessor_definitions="BOARD_BTSMART"
+    hidden="Yes" />
+  <configuration
+    Name="MIO-BTSmart Debug"
+    inherited_configurations="Debug;Flash;MIO-BTSmart;THUMB" />
+  <configuration
+    Name="MIO-BTSmart Release"
+    inherited_configurations="Flash;MIO-BTSmart;Release;THUMB" />
 </solution>
