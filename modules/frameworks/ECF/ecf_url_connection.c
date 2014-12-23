@@ -53,7 +53,7 @@ void ecf_url_connection_destroy(ecf_url_connection *url_connection)
         return;
     
     ecf_url_destroy(url_connection->url);
-    free(url_connection->http_method);
+    //free(url_connection->http_method);
     ecf_array_destroy(url_connection->http_headers);
     ecf_data_destroy(url_connection->http_body);
     memset(url_connection->callbacks, 0, sizeof(ecf_url_connection_callbacks));
@@ -140,7 +140,8 @@ void _ecf_url_connecion_read(ecf_url_connection *url_connection, int sd)
     do
     {
         read_bytes = read(sd, buffer, 256);
-        _ecf_url_connection_did_receive_data_notification(url_connection, buffer, (int)read_bytes);
+        if (read_bytes > 0)
+            _ecf_url_connection_did_receive_data_notification(url_connection, buffer, (int)read_bytes);
 
     } while (read_bytes > 0);
 }
@@ -209,8 +210,10 @@ void ecf_url_connection_start(ecf_url_connection *url_connection)
 
 void ecf_url_connection_stop(ecf_url_connection *url_connection)
 {
-    if (url_connection != NULL)
-        free(url_connection);
+    if (url_connection == NULL)
+        return;
+    
+    //TODO: cancel read or write loop
 }
 
 #pragma mark - Notification callbacks
