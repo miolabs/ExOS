@@ -88,6 +88,7 @@ void hal_board_initialize()
 	pincon_setfunc(0, 28, 1);	// SCL0
 	pincon_setfunc(0, 19, 3);	// SDA1
 	pincon_setfunc(0, 20, 3);	// SCL1
+
 	pincon_setfunc(0, 10, 2);	// SDA2
 	pincon_setfunc(0, 11, 2);	// SCL2
 	pincon_setmode(0, 10, IOCON_MODE_PULL_UP, PINCONF_HYS | PINCONF_OPEN_DRAIN);

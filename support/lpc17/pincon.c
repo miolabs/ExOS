@@ -45,11 +45,12 @@ void pincon_setfunc(int port, int pin, int func)
 void pincon_setmode(int port, int pin, int mode, int flags)
 {
 	_IOCONbits *iocon = _iocon[port] + pin;
-	iocon->Mode = mode;
-	iocon->Hys = (flags & PINCONF_HYS) ? 1 : 0;
-	iocon->Inv = (flags & PINCONF_INV) ? 1 : 0;
-	iocon->ADMode = (flags & PINCONF_ANALOG) ? 1 : 0;
-	iocon->OD = (flags & PINCONF_OPEN_DRAIN) ? 1 : 0;
+	*(unsigned long *)iocon = iocon->Func |
+		(mode << 3) |
+		((flags & PINCONF_HYS) ? (1<<5) : 0) |
+		((flags & PINCONF_INV) ? (1<<6) : 0) |
+		((flags & PINCONF_ANALOG) ? (1<<7) : 0) |
+		((flags & PINCONF_OPEN_DRAIN) ? (1<<10) : 0);
 }
 
 #endif
