@@ -31,7 +31,7 @@ int ble_can_read_data(BLE_CAN_REPORT_DATA *data)
 
 void ble_can_transmit(BLE_CAN_TRANSMIT_DATA *data)
 {
-	CAN_EP ep = (CAN_EP) { .Id = (data->Id[0] << 16) | (data->Id[1] << 8) | data->Id[0] };
+	CAN_EP ep = (CAN_EP) { .Id = (data->Id[2] << 16) | (data->Id[1] << 8) | data->Id[0] };
 	CAN_BUFFER buf;
 	for (int i = 0; i < 8; i++) buf.u8[i] = data->Data[i];
 	hal_can_send(ep, &buf, 8, CANF_NONE);

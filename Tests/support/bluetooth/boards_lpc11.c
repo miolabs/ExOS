@@ -29,12 +29,14 @@ void hal_board_initialize()
 
 void hal_led_set(HAL_LED led, int state)
 {
+  #if defined BOARD_BTSMART
 	switch(led)
 	{
 		case 0:
 			hal_gpio_pin_set(2, 11, !state);
 			break;
 	}
+  #endif
 }
 
 

@@ -1,5 +1,5 @@
 <!DOCTYPE CrossStudio_Project_File>
-<solution Name="exos_lpc11" target="8" version="2">
+<solution Name="exos_lpc11_speedometer" target="8" version="2">
   <project Name="exos_ble_lpc11">
     <configuration
       Name="Common"
@@ -105,8 +105,8 @@
                   c_user_include_directories=".;support/bluetooth/nordic/" />
               </file>
             </folder>
-            <file file_name="Tests/support/bluetooth/ble_can.c" />
-            <file file_name="Tests/support/bluetooth/ble_test.c" />
+            <file file_name="Tests/support/bluetooth/ble_can_speedometer.c" />
+            <file file_name="Tests/support/bluetooth/ble_test_speedometer.c" />
           </folder>
         </folder>
       </folder>
