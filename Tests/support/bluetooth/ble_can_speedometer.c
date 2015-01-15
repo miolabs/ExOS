@@ -17,8 +17,6 @@ int ble_can_read_data(BLE_CAN_REPORT_DATA *data)
 	static unsigned seq = 0;
 
 	int done = can_receiver_read(&_handler, &msg, 1000);
-        done=1;
-        msg.EP.Id = 0x280;
 	if (done)
 	{
             if (msg.EP.Id == 0x280 || msg.EP.Id == 0x300)
