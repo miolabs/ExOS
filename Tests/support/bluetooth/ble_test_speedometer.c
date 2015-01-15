@@ -2,6 +2,8 @@
 #include <support/board_hal.h>
 #include <kernel/thread.h>
 #include "ble_can.h"
+#include <kernel/signal.h>
+#include <kernel/timer.h>
 
 static EXOS_BLE_SERVICE _service;
 static const EXOS_BLE_UUID _service_uuid = BLE_SERVICE_UUID(0xE805);
@@ -38,12 +40,13 @@ void main()
 #ifdef BOARD_XKUTY_CPU1
 		BLE_CAN_REPORT_DATA data;
                 hal_led_set(0, 1);
+                exos_thread_sleep(1000);
+                hal_led_set(0, 0);
                 if(ble_can_read_data(&data))
                 {
-
                   _update(&data);
-
                 }
+
 #else
 		exos_thread_sleep(1000);
 #endif
