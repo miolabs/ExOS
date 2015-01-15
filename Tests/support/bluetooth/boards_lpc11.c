@@ -25,18 +25,22 @@ void hal_board_initialize()
 	hal_gpio_config(2, 1<<11, 1<<11);
 	hal_gpio_pin_set(2, 11, 1);
 #endif
+
+#if defined BOARD_XKUTY_CPU1
+	hal_gpio_config(0, 1<<7, 1<<7);
+	hal_gpio_pin_set(0, 7, 1);
+#endif
 }
 
 void hal_led_set(HAL_LED led, int state)
 {
-  #if defined BOARD_BTSMART
+
 	switch(led)
 	{
 		case 0:
-			hal_gpio_pin_set(2, 11, !state);
+			hal_gpio_pin_set(0, 7, !state);
 			break;
 	}
-  #endif
 }
 
 

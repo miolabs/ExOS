@@ -37,10 +37,12 @@ void main()
 	{
 #ifdef BOARD_XKUTY_CPU1
 		BLE_CAN_REPORT_DATA data;
-                
+                hal_led_set(0, 1);
                 if(ble_can_read_data(&data))
                 {
+
                   _update(&data);
+
                 }
 #else
 		exos_thread_sleep(1000);
