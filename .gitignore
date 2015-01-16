@@ -1,4 +1,5 @@
 *.d
 *.o
 *.bak
+*.hzs
 .output
