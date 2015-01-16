@@ -1,3 +1,6 @@
+// Bosch C_CAN module support for LPC15xx
+// by Miguel Fides
+
 #include "cpu.h"
 #include <support/misc/c_can.h>
 

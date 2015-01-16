@@ -1,3 +1,6 @@
+// Switching Matrix module support for LPC15xx
+// by Miguel Fides
+
 #include "swm.h"
 
 volatile unsigned int *_assign = (unsigned int *)&(LPC_SWM->PINASSIGN0);
