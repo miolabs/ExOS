@@ -40,10 +40,12 @@ typedef enum
 	QEI_INITF_USE_INDEX = (1<<0),
 	QEI_INITF_HIGH_RES = (1<<1),
 	QEI_INITF_BACKWARDS = (1<<2),
+	QEI_INITF_CONTINOUSLY_RESET_AT_INDEX = (1<<7),
 } QEI_INIT_FLAGS;
 
 void qei_initialize(int ppr, QEI_INIT_FLAGS flags);
 unsigned int qei_read();
+int qei_is_absolute();
 
 #endif // LPC15_QEI_H
 
