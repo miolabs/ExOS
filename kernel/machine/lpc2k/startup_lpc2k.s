@@ -157,7 +157,7 @@ Reset_Handler:
 
 	orr r3, r4, #0x13	// Supervisor mode
 	msr cpsr_cxsf, r3
-    ldr sp, =__stack_svc_end__
+	ldr sp, =__stack_svc_end__
 	ldr r0, =__stack_svc_start__
 	bl init_stack
 

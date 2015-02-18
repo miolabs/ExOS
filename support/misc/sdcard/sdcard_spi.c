@@ -50,22 +50,6 @@ static unsigned char _wait_token(unsigned char mask, unsigned char value)
 	return resp;
 }
 
-static SD_ERROR _read_data(unsigned char *result, unsigned long length)
-{
-	if (length > 0)
-	{
-		unsigned char token = _wait_token(0x01, 0);
-		if (token != SD_SPI_START_TOKEN) return SD_ERROR_BAD_TOKEN;
-	
-		hal_ssp_transmit(SDCARD_SPI_MODULE, 0, result, length);	// NOTE: unidirectional, this should transmit 0xFF
-		unsigned short crc_rcv = (_transmit(0xFF) << 8) | _transmit(0xFF);
-		unsigned short crc = 0;
-		for(int i = 0; i < length; i++) CRC16(_crc16_table, crc, result[i]);
-		if (crc != crc_rcv) return SD_ERROR_BAD_CRC;
-	}
-	return SD_OK;
-}
-
 static SD_ERROR _send_seq_r1(unsigned char *data, unsigned long length)
 {
 	unsigned char stuff1 = _transmit(0xFF);
@@ -88,7 +72,7 @@ static SD_ERROR _send_cmd_r3(unsigned char cmd, unsigned long arg, unsigned long
 
 	unsigned short r1 = _send_seq_r1(data6, 6);
 
-	unsigned long r3 = (_transmit(0xFF) << 24) |
+	unsigned long r3 = (_transmit(0xFF) << 24) | 
 		(_transmit(0xFF) << 16) | 
 		(_transmit(0xFF) << 8) | 
 		_transmit(0xFF);
@@ -129,8 +113,25 @@ int sd_hw_card_identification(void *cid, unsigned short *prca)
 int sd_hw_select_card()
 {
 	// change bit rate for high speed
-	hal_ssp_initialize(SDCARD_SPI_MODULE, 25000000, HAL_SSP_MODE_SPI, HAL_SSP_CLK_IDLE_HIGH);
+	hal_ssp_initialize(SDCARD_SPI_MODULE, 24000000, HAL_SSP_MODE_SPI, HAL_SSP_CLK_IDLE_HIGH | HAL_SSP_IDLE_HIGH);
 	return 1;
+}
+
+static SD_ERROR _read_data(unsigned char *result, unsigned long length)
+{
+	if (length > 0)
+	{
+		unsigned char token = _wait_token(0x01, 0);
+		if (token != SD_SPI_START_TOKEN) return SD_ERROR_BAD_TOKEN;
+
+		hal_ssp_transmit(SDCARD_SPI_MODULE, 0, result, length);	// NOTE: unidirectional, this should transmit 0xFF
+		unsigned short crc_rcv = (_transmit(0xFF) << 8) | _transmit(0xFF);
+
+		unsigned short crc = 0;
+		for(int i = 0; i < length; i++) CRC16(_crc16_table, crc, result[i]);
+		if (crc != crc_rcv) return SD_ERROR_BAD_CRC;
+	}
+	return SD_OK;
 }
 
 SD_ERROR sd_send_cmd_resp(unsigned char cmd, unsigned long arg, void *resp, int resp_length)
@@ -205,7 +206,8 @@ SD_ERROR sd_hw_read_blocks(unsigned long addr, unsigned long count, unsigned cha
 			if (status != SD_OK) break;
 			buf += 512;
 		}
-		status = _send_cmd_r1(12, 0);	// CMD12: STOP_TRANSMISSION
+		SD_ERROR status2 = _send_cmd_r1(12, 0);	// CMD12: STOP_TRANSMISSION
+		if (status == SD_OK) status = status2;
 	}
     sd_spi_cs_release();
 	return status;

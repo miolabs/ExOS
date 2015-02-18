@@ -25,6 +25,13 @@ typedef struct
 #define IOCON_MODE_PULL_UP	2
 #define IOCON_MODE_REPEATER	3
 
+#else
+
+#define PINMODE_PULLUP 0
+#define PINMODE_REPEATER 1
+#define PINMODE_FLOAT 2
+#define PINMODE_PULLDOWN 3
+
 #endif
 
 #define PINCONF_HYS (1<<0)

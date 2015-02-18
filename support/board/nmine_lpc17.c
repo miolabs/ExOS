@@ -2,30 +2,21 @@
 #include <support/lpc17/dma.h>
 #include <support/lpc17/pincon.h>
 
-static void _setup_i2c(int unit);
-static void _setup_ssp(int unit);
-static void _setup_usbhost();
-static void _setup_usbdev();
-static void _setup_can(int unit);
-static void _setup_uart(int unit);
-static void _setup_adc();
 
 void hal_board_initialize()
 {
 	dma_initialize();
 
-#if defined BOARD_MINILCD
+#if defined BOARD_LPC1766STK
 
-	_setup_usbhost();
-	_setup_ssp(0);
-	_setup_adc();
-	_setup_can(1);
-	LPC_GPIO1->FIOSET = (1<<18);
-	LPC_GPIO1->FIODIR |= (1<<18); // USB_LED
+	pincon_setfunc(0, 29, 1);	// D+
+	pincon_setfunc(0, 30, 1);	// D-
+	pincon_setfunc(1, 18, 1);	// USB_UP_LED
+	pincon_setfunc(1, 19, 2);	// _USB_PPWR
+	pincon_setfunc(1, 22, 2);	// USB_PWRD
+	pincon_setfunc(1, 27, 2);	// _USB_OVRCR
 
-#elif defined BOARD_LPC1766STK
-
-	_setup_usbhost();
+	pincon_setfunc(1, 31, 3);	// AN5
 
 	LPC_GPIO1->FIODIR |= (1<<25);	// LED1
 	LPC_GPIO0->FIODIR |= (1<<4);	// LED2
@@ -34,25 +25,55 @@ void hal_board_initialize()
 
 #elif defined BOARD_LANDTIGER
 
-	_setup_usbhost();
-	_setup_can(0);
-	_setup_can(1);
+	pincon_setfunc(0, 29, 1);	// D+
+	pincon_setfunc(0, 30, 1);	// D-
+	pincon_setfunc(1, 18, 1);	// USB_UP_LED
+	pincon_setfunc(1, 19, 2);	// _USB_PPWR
+	pincon_setfunc(1, 22, 2);	// USB_PWRD
+	pincon_setfunc(1, 27, 2);	// _USB_OVRCR
+
+	pincon_setfunc(0, 0, 1);	// RD1
+	pincon_setfunc(0, 1, 1);	// RT1
+	pincon_setfunc(0, 4, 2);	// RD2
+	pincon_setfunc(0, 5, 2);	// RT2
+
+	pincon_setfunc(1, 31, 3);	// AN5
 
 	LPC_GPIO2->FIODIR |= 0xFF;	// all 8 lower bits are outputs
 
 #elif defined BOARD_NANO10
 
-	_setup_usbdev();
-	_setup_adc();
-	_setup_can(1);
-	_setup_ssp(0);
+	pincon_setfunc(0, 23, 1);	// AN0
+	pincon_setfunc(0, 24, 1);	// AN1
+	pincon_setfunc(0, 25, 1);	// AN2
+	pincon_setfunc(0, 26, 1);	// AN3
 
-	PINSEL4bits.P2_0 = 1; // PWM1.1
-	PINSEL4bits.P2_1 = 1; // PWM1.2
-	PINSEL4bits.P2_2 = 1; // PWM1.3
-   	PINSEL4bits.P2_3 = 1; // PWM1.4
-	PINSEL4bits.P2_4 = 1; // PWM1.5
-	PINSEL4bits.P2_5 = 1; // PWM1.6
+	pincon_setfunc(0, 27, 1);	// SDA0
+	pincon_setfunc(0, 28, 1);	// SCL0
+
+	pincon_setfunc(0, 29, 1);	// D+
+	pincon_setfunc(0, 30, 1);	// D-
+   	pincon_setfunc(2, 9, 1);	// USB_CONNECT
+
+	pincon_setfunc(0, 4, 2);	// RD2
+	pincon_setfunc(0, 5, 2);	// RT2
+
+	pincon_setfunc(1, 20, 3);	// SCK0
+	pincon_setfunc(1, 21, 3);	// SSEL0
+	pincon_setfunc(1, 23, 3);	// MISO0
+	pincon_setfunc(1, 24, 3);	// MOSI0
+
+	pincon_setfunc(0, 2, 1);	// TXD0
+	pincon_setfunc(0, 3, 1);	// RXD0
+	pincon_setfunc(0, 15, 1);	// TXD1
+	pincon_setfunc(0, 16, 1);	// RXD1
+
+	pincon_setfunc(2, 0, 1);	// PWM1.1
+	pincon_setfunc(2, 1, 1);	// PWM1.2
+	pincon_setfunc(2, 2, 1);	// PWM1.3
+	pincon_setfunc(2, 3, 1);	// PWM1.4
+	pincon_setfunc(2, 4, 1);	// PWM1.5
+	pincon_setfunc(2, 5, 1);	// PWM1.6
 
 	LPC_GPIO2->FIODIR |= (1<<6);	// STATUS_LED
 	LPC_GPIO1->FIODIR |= (1<<18);	// USB_LED
@@ -63,140 +84,6 @@ void hal_board_initialize()
 #endif
 }
 
-static void _setup_i2c(int unit)
-{
-	switch(unit)
-	{
-		case 0:
-			PINSEL1bits.P0_27 = 1; // SDA0
-			PINSEL1bits.P0_28 = 1; // SCL0
-			break;
-		case 1:
-			PINSEL1bits.P0_19 = 3; // SDA1
-			PINSEL1bits.P0_20 = 3; // SCL1
-			break;
-		case 2:
-			PINSEL0bits.P0_10 = 2; // SDA2
-			PINSEL0bits.P0_11 = 2; // SCL2
-			break;
-	}
-}
-
-static void _setup_ssp(int unit)
-{
-	switch(unit)
-	{
-		case 0:
-#if defined BOARD_MINILCD
-			PINSEL0bits.P0_15 = 2; // SCK0
-			PINSEL1bits.P0_16 = 2; // SSEL0
-			PINSEL1bits.P0_17 = 2; // MISO0
-			PINSEL1bits.P0_18 = 2; // MOSI0
-#else
-			PINSEL3bits.P1_20 = 3; // SCK0
-			PINSEL3bits.P1_21 = 3; // SSEL0
-			PINSEL3bits.P1_23 = 3; // MISO0
-			PINSEL3bits.P1_24 = 3; // MOSI0
-#endif
-			break;
-		case 1:
-			PINSEL0bits.P0_6 = 2; // SSEL1
-			PINSEL0bits.P0_7 = 2; // SCK1
-			PINSEL0bits.P0_8 = 2; // MISO1
-			PINSEL0bits.P0_9 = 2; // MOSI1
-			break;
-	}
-}
-
-static void _setup_usbhost()
-{
-#if defined BOARD_LPC1766STK
-	PINSEL1bits.P0_29 = 1;		// D+
-	PINSEL1bits.P0_30 = 1;		// D-
-	PINSEL3bits.P1_18 = 1;		// USB_UP_LED
-	PINSEL3bits.P1_19 = 2;		// _USB_PPWR
-	PINSEL3bits.P1_22 = 2;		// USB_PWRD
-	PINSEL3bits.P1_27 = 2;		// _USB_OVRCR
-#endif
-}
-
-static void _setup_usbdev()
-{
-	PINSEL1bits.P0_29 = 1;		// D+
-	PINSEL1bits.P0_30 = 1;		// D-
-	PINSEL4bits.P2_9 = 1;		// USB_CONNECT
-}
-
-static void _setup_can(int unit)
-{
-#if defined BOARD_MINILCD 
-	switch(unit)
-	{
-		case 1:
-			PINSEL4bits.P2_7 = 1;	// RD2
-			PINSEL4bits.P2_8 = 1;	// TD2
-			break;
-	}
-#elif defined BOARD_LANDTIGER 
-	switch(unit)
-	{
-		case 0:
-			PINSEL0bits.P0_0 = 1; // RD1
-			PINSEL0bits.P0_1 = 1; // TD1
-			break;
-		case 1:
-			PINSEL0bits.P0_4 = 2; // RD2
-			PINSEL0bits.P0_5 = 2; // TD2
-			break;
-	}
-#elif defined BOARD_NANO10
-	if (unit == 1)
-	{
-		PINSEL0bits.P0_4 = 2; // RD2
-		PINSEL0bits.P0_5 = 2; // TD2
-	}
-#endif
-}
-
-static void _setup_uart(int unit)
-{
-#if defined BOARD_LANDTIGER || defined BOARD_NANO10
-	switch(unit)
-	{
-		case 0:
-			PINSEL0bits.P0_2 = 1; // select TXD0
-			PINSEL0bits.P0_3 = 1; // select RXD0
-			break;
-		case 1:
-			PINSEL0bits.P0_15 = 1; // select TXD1
-			PINSEL1bits.P0_16 = 1; // select RXD1
-			break;
-	}
-#endif
-}
-
-static void _setup_adc()
-{
-#if defined BOARD_MINILCD
-	PINSEL1bits.P0_25 = 1; // AN2
-	PINSEL1bits.P0_26 = 1; // AN3
-	PINSEL3bits.P1_30 = 3; // AN4
-	//PINSEL3bits.P1_31 = 3; // AN5
-	PINSEL0bits.P0_2 = 2; // AN6
-	PINSEL0bits.P0_3 = 2; // AN7
-#elif defined BOARD_LANDTIGER
-	PINSEL3bits.P1_31 = 3; // AN5
-#elif defined BOARD_LPC1766STK
-	PINSEL3bits.P1_31 = 3; // AN5
-#elif defined BOARD_NANO10
-	PINSEL1bits.P0_23 = 1; // AN0
-	PINSEL1bits.P0_24 = 1; // AN1
-	PINSEL1bits.P0_25 = 1; // AN2
-	PINSEL1bits.P0_26 = 1; // AN3
-#else
-#error "Unsupported board"
-#endif
-}
 
 #if defined BOARD_LPC1766STK
 void hal_led_set(HAL_LED led, int state)
@@ -385,7 +272,6 @@ void hal_led_set(HAL_LED led, int state)
 }
 
 #endif
-
 
 
 

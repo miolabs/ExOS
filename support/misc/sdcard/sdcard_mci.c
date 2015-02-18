@@ -9,12 +9,13 @@ void sd_hw_initialize()
 	_rca = 0;
 }
 
-void sd_hw_card_reset()
+int sd_hw_card_reset()
 {
 	// card initialization
 	hal_mci_send_cmd(0, 0, 0);	// CMD0 (GO IDLE STATE)
 	
 	for(volatile int i = 0; i < 10000; i++);
+	return 1;
 }
 
 int sd_hw_card_identification(void *cid, unsigned short *prca)

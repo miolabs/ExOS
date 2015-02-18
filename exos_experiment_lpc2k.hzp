@@ -91,6 +91,7 @@
           <file file_name="support/lpc2k/uart.c"/>
           <file file_name="support/lpc2k/mci.c"/>
           <file file_name="support/lpc2k/dma.c"/>
+          <file file_name="support/lpc2k/gpio.c"/>
         </folder>
         <configuration Name="Common" build_intermediate_directory=".output/$(Configuration)/support" build_output_directory=".output/$(Configuration)/support"/>
         <folder Name="board">

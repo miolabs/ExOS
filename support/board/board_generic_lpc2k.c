@@ -76,16 +76,16 @@ static void _setup_i2c(int unit)
 	switch(unit)
 	{
 		case 0:
-			PINSEL1bits.P0_27 = 1; // SDA0
-			PINSEL1bits.P0_28 = 1; // SCL0
+			pincon_setfunc(0, 27, 1, PINMODE_PULLUP); // SDA0
+			pincon_setfunc(0, 28, 1, PINMODE_PULLUP); // SCL0
 			break;
 		case 1:
-			PINSEL1bits.P0_19 = 3; // SDA1
-			PINSEL1bits.P0_20 = 3; // SCL1
+			pincon_setfunc(0, 19, 3, PINMODE_PULLUP); // SDA1
+			pincon_setfunc(0, 20, 3, PINMODE_PULLUP); // SCL1
 			break;
 		case 2:
-			PINSEL0bits.P0_10 = 2; // SDA2
-			PINSEL0bits.P0_11 = 2; // SCL2
+			pincon_setfunc(0, 10, 2, PINMODE_PULLUP); // SDA2
+			pincon_setfunc(0, 11, 2, PINMODE_PULLUP); // SCL2
 			break;
 	}
 }
@@ -95,16 +95,16 @@ static void _setup_ssp(int unit)
 	switch(unit)
 	{
 		case 0:
-			PINSEL3bits.P1_20 = 3; // SCK0
-			PINSEL3bits.P1_21 = 3; // SSEL0
-			PINSEL3bits.P1_23 = 3; // MISO0
-			PINSEL3bits.P1_24 = 3; // MOSI0
+			pincon_setfunc(1, 20, 3, PINMODE_PULLUP); // SCK0
+			pincon_setfunc(1, 21, 3, PINMODE_PULLUP); // SSEL0
+			pincon_setfunc(1, 23, 3, PINMODE_PULLUP); // MISO0
+			pincon_setfunc(1, 24, 3, PINMODE_PULLUP); // MOSI0
 			break;
 		case 1:
-			PINSEL0bits.P0_6 = 2; // SSEL1
-			PINSEL0bits.P0_7 = 2; // SCK1
-			PINSEL0bits.P0_8 = 2; // MISO1
-			PINSEL0bits.P0_9 = 2; // MOSI1
+			pincon_setfunc(0, 6, 2, PINMODE_PULLUP); // SSEL1
+			pincon_setfunc(0, 7, 2, PINMODE_PULLUP); // SCK1
+			pincon_setfunc(0, 8, 2, PINMODE_PULLUP); // MISO1
+			pincon_setfunc(0, 9, 2, PINMODE_PULLUP); // MOSI1
 			break;
 	}
 }
@@ -112,18 +112,18 @@ static void _setup_ssp(int unit)
 static void _setup_usbhost()
 {
 #if defined BOARD_E2468 || defined BOARD_EA2478_MOD || defined BOARD_CR2
-	PINSEL1bits.P0_29 = 1;	// P0.29 = USB_D+1
-	PINSEL1bits.P0_30 = 1;	// P0.30 = USB_D-1
-	PINSEL1bits.P0_31 = 1;	// P0.31 = USB_D+2
-	PINSEL3bits.P1_19 = 2;	// P1.19 = _USB_PPWR1
-	PINSEL3bits.P1_22 = 2;	// P1.22 = USB_PWRD1
-	PINSEL3bits.P1_27 = 2;	// P1.27 = _USB_OVRCR1
-	PINSEL0bits.P0_12 = 1;	// P0.12 = _USB_PPWR2
-	PINSEL3bits.P1_30 = 1;	// P1.30 = USB_PWRD2
-	PINSEL3bits.P1_31 = 1;	// P1.31 = _USB_OVRCR2
+	pincon_setfunc(0, 29, 1, PINMODE_PULLUP);	// P0.29 = USB_D+1
+	pincon_setfunc(0, 30, 1, PINMODE_PULLUP);	// P0.30 = USB_D-1
+	pincon_setfunc(0, 31, 1, PINMODE_PULLUP);	// P0.31 = USB_D+2
+	pincon_setfunc(1, 19, 2, PINMODE_PULLUP);	// P1.19 = _USB_PPWR1
+	pincon_setfunc(1, 22, 2, PINMODE_PULLUP);	// P1.22 = USB_PWRD1
+	pincon_setfunc(1, 27, 2, PINMODE_PULLUP);	// P1.27 = _USB_OVRCR1
+	pincon_setfunc(0, 12, 1, PINMODE_PULLUP);	// P0.12 = _USB_PPWR2
+	pincon_setfunc(1, 30, 1, PINMODE_PULLUP);	// P1.30 = USB_PWRD2
+	pincon_setfunc(1, 31, 1, PINMODE_PULLUP);	// P1.31 = _USB_OVRCR2
 	#ifndef USB_HOST_NO_LEDS
-	PINSEL3bits.P1_18 = 1;	// P1.18 = USB_UP_LED1 __opt
-	PINSEL0bits.P0_13 = 1;	// P0.13 = USB_UP_LED2 __opt
+	pincon_setfunc(1, 18, 1, PINMODE_PULLUP);	// P1.18 = USB_UP_LED1 __opt
+	pincon_setfunc(0, 13, 1, PINMODE_PULLUP);	// P0.13 = USB_UP_LED2 __opt
 	#endif
 #endif
 }
@@ -141,12 +141,12 @@ static void _setup_can(int unit)
 	switch(unit)
 	{
 		case 0:
-			PINSEL0bits.P0_0 = 1; // RD1
-			PINSEL0bits.P0_1 = 1; // TD1
+			pincon_setfunc(0, 0, 1, PINMODE_PULLUP); // RD1
+			pincon_setfunc(0, 1, 1, PINMODE_PULLUP); // TD1
 			break;
 		case 1:
-			PINSEL0bits.P0_4 = 2; // RD2
-			PINSEL0bits.P0_5 = 2; // TD2
+			pincon_setfunc(0, 4, 2, PINMODE_PULLUP); // RD2
+			pincon_setfunc(0, 5, 2, PINMODE_PULLUP); // TD2
 			break;
 	}
 #endif
@@ -158,20 +158,20 @@ static void _setup_uart(int unit)
 	switch(unit)
 	{
 		case 0:
-			PINSEL0bits.P0_2 = 1; // select TXD0
-			PINSEL0bits.P0_3 = 1; // select RXD0
+			pincon_setfunc(0, 2, 1, PINMODE_PULLUP); // select TXD0
+			pincon_setfunc(0, 3, 1, PINMODE_PULLUP); // select RXD0
 			break;
 		case 1:
-			PINSEL0bits.P0_15 = 1; // select TXD1
-			PINSEL1bits.P0_16 = 1; // select RXD1
+			pincon_setfunc(0, 15, 1, PINMODE_PULLUP); // select TXD1
+			pincon_setfunc(0, 16, 1, PINMODE_PULLUP); // select RXD1
 			break;
 	}
 #elif defined BOARD_E2468
 	switch(unit)
 	{
 		case 0:
-			PINSEL0bits.P0_2 = 1; // select TXD0
-			PINSEL0bits.P0_3 = 1; // select RXD0
+			pincon_setfunc(0, 2, 1, PINMODE_PULLUP); // select TXD0
+			pincon_setfunc(0, 3, 1, PINMODE_PULLUP); // select RXD0
 			break;
 	}
 #endif
@@ -180,48 +180,48 @@ static void _setup_uart(int unit)
 static void _setup_adc()
 {
 #if defined BOARD_EA2478_MOD
-	PINSEL1bits.P0_23 = 1; // AN0
-	PINSEL1bits.P0_24 = 1; // AN1
-	PINSEL1bits.P0_25 = 1; // AN2
-	PINSEL1bits.P0_26 = 1; // AN3
-	PINSEL3bits.P1_30 = 3; // AN4
-	PINSEL3bits.P1_31 = 3; // AN5
+	pincon_setfunc(0, 23, 1, PINMODE_PULLUP); // AN0
+	pincon_setfunc(0, 24, 1, PINMODE_PULLUP); // AN1
+	pincon_setfunc(0, 25, 1, PINMODE_PULLUP); // AN2
+	pincon_setfunc(0, 26, 1, PINMODE_PULLUP); // AN3
+	pincon_setfunc(1, 30, 3, PINMODE_PULLUP); // AN4
+	pincon_setfunc(1, 31, 3, PINMODE_PULLUP); // AN5
 #elif defined BOARD_E2468
-	PINSEL1bits.P0_23 = 1; // AN0
-	PINSEL1bits.P0_24 = 1; // AN1
-	PINSEL1bits.P0_25 = 1; // AN2
-	PINSEL1bits.P0_26 = 1; // AN3
+	pincon_setfunc(0, 23, 1, PINMODE_PULLUP); // AN0
+	pincon_setfunc(0, 24, 1, PINMODE_PULLUP); // AN1
+	pincon_setfunc(0, 25, 1, PINMODE_PULLUP); // AN2
+	pincon_setfunc(0, 26, 1, PINMODE_PULLUP); // AN3
 #elif defined BOARD_CR2
-	PINSEL1bits.P0_23 = 1; // AN0
-	PINSEL1bits.P0_24 = 1; // AN1
-	PINSEL1bits.P0_25 = 1; // AN2
-	PINSEL1bits.P0_26 = 1; // AN3
-	PINSEL3bits.P1_30 = 3; // AN4
-	PINSEL3bits.P1_31 = 3; // AN5
-	PINSEL0bits.P0_12 = 3; // AN6
-	PINSEL0bits.P0_13 = 3; // AN7
+	pincon_setfunc(0, 23, 1, PINMODE_PULLUP); // AN0
+	pincon_setfunc(0, 24, 1, PINMODE_PULLUP); // AN1
+	pincon_setfunc(0, 25, 1, PINMODE_PULLUP); // AN2
+	pincon_setfunc(0, 26, 1, PINMODE_PULLUP); // AN3
+	pincon_setfunc(1, 30, 3, PINMODE_PULLUP); // AN4
+	pincon_setfunc(1, 31, 3, PINMODE_PULLUP); // AN5
+	pincon_setfunc(0, 12, 3, PINMODE_PULLUP); // AN6
+	pincon_setfunc(0, 13, 3, PINMODE_PULLUP); // AN7
 #endif
 }
 
 static void _setup_mci()
 {
 #if defined BOARD_ICDEV_LPC2478
-	PINSEL2bits.P1_2 = 2; // MCICLK
-	PINSEL2bits.P1_3 = 2; // MCICMD
-	PINSEL2bits.P1_5 = 2; // MCIPWR
-	PINSEL2bits.P1_6 = 2; // MCIDAT0
-	PINSEL2bits.P1_7 = 2; // MCIDAT1
-	PINSEL2bits.P1_11 = 2; // MCIDAT2
-	PINSEL2bits.P1_12 = 2; // MCIDAT3
+	pincon_setfunc(1, 2, 2, PINMODE_PULLUP); // MCICLK
+	pincon_setfunc(1, 3, 2, PINMODE_PULLUP); // MCICMD
+	pincon_setfunc(1, 5, 2, PINMODE_PULLUP); // MCIPWR
+	pincon_setfunc(1, 6, 2, PINMODE_PULLUP); // MCIDAT0
+	pincon_setfunc(1, 7, 2, PINMODE_PULLUP); // MCIDAT1
+	pincon_setfunc(1, 11, 2, PINMODE_PULLUP); // MCIDAT2
+	pincon_setfunc(1, 12, 2, PINMODE_PULLUP); // MCIDAT3
 	LPC_SC->SCS &= ~SCS_MCIPWR; // MCIPWR Active Low
 #elif defined BOARD_E2468
-	PINSEL2bits.P1_2 = 2; // MCICLK
-	PINSEL2bits.P1_3 = 2; // MCICMD
-	PINSEL2bits.P1_5 = 2; // MCIPWR
-	PINSEL2bits.P1_6 = 2; // MCIDAT0
-	PINSEL2bits.P1_7 = 2; // MCIDAT1
-	PINSEL2bits.P1_11 = 2; // MCIDAT2
-	PINSEL2bits.P1_12 = 2; // MCIDAT3
+	pincon_setfunc(1, 2, 2, PINMODE_PULLUP); // MCICLK
+	pincon_setfunc(1, 3, 2, PINMODE_PULLUP); // MCICMD
+	pincon_setfunc(1, 5, 2, PINMODE_PULLUP); // MCIPWR
+	pincon_setfunc(1, 6, 2, PINMODE_PULLUP); // MCIDAT0
+	pincon_setfunc(1, 7, 2, PINMODE_PULLUP); // MCIDAT1
+	pincon_setfunc(1, 11, 2, PINMODE_PULLUP); // MCIDAT2
+	pincon_setfunc(1, 12, 2, PINMODE_PULLUP); // MCIDAT3
 	LPC_SC->SCS |= SCS_MCIPWR; // MCIPWR Active High
 #endif
 }

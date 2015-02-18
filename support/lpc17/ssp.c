@@ -54,7 +54,8 @@ void hal_ssp_initialize(int module, int bitrate, HAL_SSP_MODE mode, HAL_SSP_FLAG
 		ssp->CR1 = SSPCR1_SSE;	// master mode, enable module
 	
 		unsigned long pclk = cpu_pclk(SystemCoreClock, pclk_div);	// required PCLK = CCLK
-		unsigned long scr = (pclk / (ssp->CPSR * bitrate)) - 1;
+		unsigned long f = ssp->CPSR * bitrate;
+		unsigned long scr = ((pclk  + (f - 1)) / f) - 1;
 		ssp->CR0 = (ssp->CR0 & ~(0xFF << SSPCR0_SCR_BIT)) | 
 			((scr & 0xFF) << SSPCR0_SCR_BIT);
 

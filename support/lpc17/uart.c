@@ -51,6 +51,24 @@ static int _initialize(unsigned module, unsigned long baudrate)
 			UART_FCR_RX_TRIGGER_2; // FIFO enabled, 8 char RX trigger
 		uart->IER = UART_IER_RBR | UART_IER_THRE | UART_IER_RX;
 
+		switch(module)
+		{
+			case 0:
+				NVIC_EnableIRQ(UART0_IRQn);
+				break;
+			case 1:
+				NVIC_EnableIRQ(UART1_IRQn);
+				break;
+			case 2:
+				LPC_SC->PCONP |= PCONP_PCUART2;
+				NVIC_EnableIRQ(UART2_IRQn);
+				break;
+			case 3:
+				LPC_SC->PCONP |= PCONP_PCUART3;
+				NVIC_EnableIRQ(UART3_IRQn);
+				break;
+		}
+
 		return 1;
 	}
 	return 0;
@@ -58,27 +76,13 @@ static int _initialize(unsigned module, unsigned long baudrate)
 
 int uart_initialize(unsigned module, UART_CONTROL_BLOCK *cb)
 {
-	switch(module)
+	if (module < UART_MODULE_COUNT)
 	{
-		case 0:
-			NVIC_EnableIRQ(UART0_IRQn);
-			break;
-		case 1:
-			NVIC_EnableIRQ(UART1_IRQn);
-			break;
-		case 2:
-			LPC_SC->PCONP |= PCONP_PCUART2;
-			NVIC_EnableIRQ(UART2_IRQn);
-			break;
-		case 3:
-			LPC_SC->PCONP |= PCONP_PCUART3;
-			NVIC_EnableIRQ(UART3_IRQn);
-			break;
-		default:
-			return 0;
-	}
+		if (_control[module] != (void *)0)
+			kernel_panic(KERNEL_ERROR_UNKNOWN);	// re-initializing without de-initializing first
 
-	_control[module] = cb;
+		_control[module] = cb;
+	}
 	return _initialize(module, cb->Baudrate);
 }
 

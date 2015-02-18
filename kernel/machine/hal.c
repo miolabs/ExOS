@@ -102,7 +102,7 @@ unsigned int __int32_decl(char *dst, int value)
 	return length;
 }
 
-unsigned int __decl_uint32(char *src, unsigned int *pvalue)
+unsigned int __decl_uint32(const char *src, unsigned int *pvalue)
 {
 	unsigned int done = 0;
 	unsigned int value = 0;
