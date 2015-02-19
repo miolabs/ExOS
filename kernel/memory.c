@@ -2,6 +2,7 @@
 #include "panic.h"
 #include <kernel/machine/hal.h>
 #include <kernel/mutex.h>
+#include <support/board_hal.h>
 
 extern unsigned char __heap_start__, __heap_end__;
 
@@ -19,6 +20,7 @@ void __mem_init()
 #endif
 
 	exos_mem_add_region(&_heap_region, &__heap_start__, &__heap_end__, -1, EXOS_HEAP_MEM_FLAGS);
+    hal_board_add_memory();
 }
 
 static EXOS_MEM_HEADER *_init_block(EXOS_MEM_REGION *region, void *start, void *end)
@@ -38,7 +40,7 @@ static EXOS_MEM_HEADER *_init_block(EXOS_MEM_REGION *region, void *start, void *
 
 void exos_mem_add_region(EXOS_MEM_REGION *region, void *start, void *end, int pri, EXOS_MEM_FLAGS flags)
 {
-	unsigned long size = end -start;
+	unsigned long size = end - start;
 	EXOS_MEM_FOOTER *head = (EXOS_MEM_FOOTER *)start;
 	*head = (EXOS_MEM_FOOTER) { .FreeSize = 0 };
 

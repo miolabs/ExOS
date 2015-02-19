@@ -32,7 +32,7 @@ typedef enum
 
 // prototypes
 void hal_board_initialize() __attribute__((__weak__));
-
+void hal_board_add_memory() __attribute__((__weak__));
 void hal_led_set(HAL_LED led, int state);
 
 #endif // HAL_BOARD_H
