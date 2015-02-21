@@ -184,8 +184,6 @@ typedef enum
 
 int cpu_cclk() __attribute__((deprecated)); 
 int cpu_pclk(int cclk, int setting);
-int cpu_trylock(unsigned char *lock, unsigned char value) __attribute__((always_inline));
-void cpu_unlock(unsigned char *lock) __attribute__((always_inline));
 
 void VIC_EnableIRQ(IRQn_Type irq);
 void VIC_DisableIRQ(IRQn_Type irq);

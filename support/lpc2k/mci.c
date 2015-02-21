@@ -22,7 +22,7 @@ void hal_mci_initialize()
 	// module initialization
 	LPC_SC->PCONP |= PCONP_PCSDC;	// power enable module
 	MCIPowerBits.Control = MCI_POWER_OFF;
-	for (volatile int time = 0; time < 10000; time++);
+	for (volatile int time = 0; time < 1000000; time++);
 
 	MCIClock = (23 & MCIClock_ClkDiv_MASK) | MCIClock_Enable | MCIClock_WideBus;
 	for (volatile int time = 0; time < 10000; time++);
@@ -64,7 +64,8 @@ static inline void _reset_status()
 
 static inline MCI_STATUS_BITS _wait_status()
 {
-	exos_event_wait(&_status_event, EXOS_TIMEOUT_NEVER);
+	if (-1 == exos_event_wait(&_status_event, 1000))	//FIXME: set timeout according (longer) to hw set timeout
+		_debug(SD_ERROR_TIMEOUT);
 	return *(MCI_STATUS_BITS *)&_int_status;
 }
 

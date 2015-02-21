@@ -42,8 +42,8 @@ void __machine_init()
 	SystemCoreClock = 72000000;
 #endif
 
-	LPC_SC->PCONP = 0;		// Disable all peripheral power
 	LPC_VIC->IntEnClr = -1; // Disable all interrupts
+	LPC_SC->PCONP = 0;		// Disable all peripheral power
 	hal_board_initialize();
 
 	// enable interrupts
