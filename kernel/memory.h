@@ -44,7 +44,7 @@ typedef struct
 
 void __mem_init();
 
-void exos_mem_add_region(EXOS_MEM_REGION *region, void *start, void *end, int pri, EXOS_MEM_FLAGS flags);
+int exos_mem_add_region(EXOS_MEM_REGION *region, void *start, void *end, int pri, EXOS_MEM_FLAGS flags);
 void *exos_mem_alloc(unsigned long size, EXOS_MEM_FLAGS flags);
 void exos_mem_free(void *addr);
 void exos_mem_stats(EXOS_MEM_REGION *region, EXOS_MEM_STATS *stats);

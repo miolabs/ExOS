@@ -38,33 +38,39 @@ static EXOS_MEM_HEADER *_init_block(EXOS_MEM_REGION *region, void *start, void *
 	return header;
 }
 
-void exos_mem_add_region(EXOS_MEM_REGION *region, void *start, void *end, int pri, EXOS_MEM_FLAGS flags)
+int exos_mem_add_region(EXOS_MEM_REGION *region, void *start, void *end, int pri, EXOS_MEM_FLAGS flags)
 {
 	unsigned long size = end - start;
-	EXOS_MEM_FOOTER *head = (EXOS_MEM_FOOTER *)start;
-	*head = (EXOS_MEM_FOOTER) { .FreeSize = 0 };
 
-	EXOS_MEM_HEADER *tail = (EXOS_MEM_HEADER *)(end - sizeof(EXOS_MEM_HEADER));
-	*tail = (EXOS_MEM_HEADER) { .Region = region, .Size = 0 };
+	if (size > (sizeof(EXOS_MEM_FOOTER) + sizeof(EXOS_MEM_HEADER) + sizeof(EXOS_MEM_HEADER)))
+	{
+		EXOS_MEM_FOOTER *head = (EXOS_MEM_FOOTER *)start;
+		*head = (EXOS_MEM_FOOTER) { .FreeSize = 0 };
 
-	EXOS_MEM_HEADER *free = _init_block(region, start + sizeof(EXOS_MEM_FOOTER), tail);
+		EXOS_MEM_HEADER *tail = (EXOS_MEM_HEADER *)(end - sizeof(EXOS_MEM_HEADER));
+		*tail = (EXOS_MEM_HEADER) { .Region = region, .Size = 0 };
 
-	*region = (EXOS_MEM_REGION) {
-		.Node = (EXOS_NODE) { 
+		EXOS_MEM_HEADER *free = _init_block(region, start + sizeof(EXOS_MEM_FOOTER), tail);
+
+		*region = (EXOS_MEM_REGION) {
+			.Node = (EXOS_NODE) { 
 #ifdef DEBUG
-			.Type = EXOS_NODE_MEM_REGION,
+				.Type = EXOS_NODE_MEM_REGION,
 #endif
-			.Priority = pri },
-		.Flags = flags,
-		.StartAddress = start,
-		.Size = size };
-	list_initialize(&region->FreeList);
-	list_add_tail(&region->FreeList, (EXOS_NODE *)free->Contents);
-	exos_mutex_create(&region->FreeListMutex);
+				.Priority = pri },
+			.Flags = flags,
+			.StartAddress = start,
+			.Size = size };
+		list_initialize(&region->FreeList);
+		list_add_tail(&region->FreeList, (EXOS_NODE *)free->Contents);
+		exos_mutex_create(&region->FreeListMutex);
 
-	exos_mutex_lock(&_mem_lock);
-	list_enqueue(&_mem_list, (EXOS_NODE *)region);
-	exos_mutex_unlock(&_mem_lock);
+		exos_mutex_lock(&_mem_lock);
+		list_enqueue(&_mem_list, (EXOS_NODE *)region);
+		exos_mutex_unlock(&_mem_lock);
+		return 1;
+	}
+	return 0;
 }
 
 static EXOS_MEM_HEADER *_find_room(EXOS_MEM_REGION *region, unsigned long size)
