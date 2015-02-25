@@ -1,6 +1,8 @@
 #include "hal.h"
 #include <kernel/panic.h>
 
+const GUID GUID_NULL = { 0, 0, 0, 0 };
+
 #pragma GCC optimize(2)
 
 __weak void __mem_copy(void *start, void *stop, const void *source)
@@ -83,7 +85,7 @@ unsigned int __uint32_hexl(char *dst, unsigned int value)
 	return length;
 }
 
-unsigned int __int32_decl(char *dst, int value) 
+unsigned int __int32_declz(char *dst, int value, int tz) 
 {
 	unsigned int length = 0;
 	if (value < 0)
@@ -98,8 +100,16 @@ unsigned int __int32_decl(char *dst, int value)
 		dst[length++] = digit + '0';
 	} while(value != 0);
 
+	while(length < tz)
+		dst[length++] = '0'; 
+
 	_reverse_str(dst, length);
 	return length;
+}
+
+unsigned int __int32_decl(char *dst, int value) 
+{
+	return __int32_declz(dst, value, 1);
 }
 
 unsigned int __decl_uint32(const char *src, unsigned int *pvalue)

@@ -25,14 +25,18 @@ typedef int bool;
 #define false 0
 #define true 1
 
-typedef struct
+typedef union
 {
+	unsigned long Longs[4];
 	unsigned char Bytes[16];
 } GUID;
 
-extern GUID GUID_NULL;
+extern const GUID GUID_NULL;
 
-// prototypes
-bool __guid_eq(GUID *guid1, GUID *guid2);
+static inline bool __guid_eq(GUID *guid1, GUID *guid2)
+{
+	return guid1->Longs[0] == guid2->Longs[0] && guid1->Longs[1] == guid2->Longs[1] &&
+		guid1->Longs[2] == guid2->Longs[2] && guid1->Longs[3] == guid2->Longs[3];
+}
 
 #endif // EXOS_TYPES_H

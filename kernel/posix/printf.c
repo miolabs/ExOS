@@ -32,6 +32,14 @@ int vsprintf(char *restrict s, const char *restrict format, va_list args)
 		c = *format++;
 		if (c == '\0') break;
 
+		int trailing_zeros = 1;
+		while(c == '0')
+		{
+			trailing_zeros++;
+			c = *format++;
+		}
+		if (c == '\0') break;
+
 		int size = 4;	// FIXME: support signed/unsigned
 		switch(c)
 		{
@@ -50,7 +58,7 @@ int vsprintf(char *restrict s, const char *restrict format, va_list args)
 				done += __str_copy(s + done, va_arg(args, char *), -1);
 				break;
 			case 'd':
-				done += __int32_decl(s + done, va_arg(args, int)); 
+				done += __int32_declz(s + done, va_arg(args, int), trailing_zeros); 
 				break;
 			case 'x':
 				switch (size)
