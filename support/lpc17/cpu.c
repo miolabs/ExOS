@@ -3,27 +3,42 @@
 
 #include "cpu.h"
 
-// for pre-CMSIS compatibility
-int cpu_cclk()
+int _pclk(int cclk, int setting)
 {
-	return SystemCoreClock;
+
 }
 
-int cpu_pclk(int cclk, int setting)
+#if (__TARGET_PROCESSOR > 1770)
+
+int cpu_pclk(PCLK_PERIPH periph)
 {
-	switch(setting & 0x03)
+	// NOTE: periph is ignored
+	int div = LPC_SC->PCLKSEL & 0x1F;
+	return div == 0 ? 0 : SystemCoreClock / div; 
+}
+
+#else
+
+int cpu_pclk(PCLK_PERIPH periph)
+{
+	int div = (periph < 16) ?
+		((LPC_SC->PCLKSEL0 >> (periph << 1)) & 3) :
+		((LPC_SC->PCLKSEL1 >> ((periph - 16) << 1)) & 3); 
+
+	switch(div)
 	{
 		case 0:
-			return cclk >> 2;
+			return SystemCoreClock >> 2;
 		case 1:
-		default:
-			return cclk;
+			return SystemCoreClock;
 		case 2:
-			return cclk >> 1;
+			return SystemCoreClock >> 1;
 		case 3:
-			return cclk >> 3;
+			return SystemCoreClock >> 3;
 	}
 }
+
+#endif
 
 
 

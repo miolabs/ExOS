@@ -13,7 +13,7 @@ unsigned long hal_adc_initialize(int rate, int bits)
 //	NOTE: bits param is ignored
 
     LPC_SC->PCONP |= PCONP_PCADC;
-	int pclk = cpu_pclk(SystemCoreClock, 0);
+	int pclk = cpu_pclk(PCLK_ADC);
 
 	// AD conf.
 	// Accurate conversion requires 65 cycles

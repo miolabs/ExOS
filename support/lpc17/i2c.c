@@ -20,24 +20,29 @@ static inline I2C_MODULE *_get_module(int module)
 
 void hal_i2c_initialize(int module, int bitrate)
 {
+	int pclk;
 	I2C_MODULE *i2c = _get_module(module);
 	switch(module)
 	{
 		case 0:
 			LPC_SC->PCONP |= PCONP_PCI2C0;
+			pclk = cpu_pclk(PCLK_I2C0);
 			break;
 		case 1:
 			LPC_SC->PCONP |= PCONP_PCI2C1;
+			pclk = cpu_pclk(PCLK_I2C1);
 			break;
 		case 2:
 			LPC_SC->PCONP |= PCONP_PCI2C2;
+			pclk = cpu_pclk(PCLK_I2C2);
 			break;
+		default:
+			return;
 	}
 
 	if (i2c)
 	{
 		i2c->I2CONCLR = 0xFF;
-		int pclk = cpu_pclk(SystemCoreClock, 1);
 		int third_divider = pclk / (bitrate * 3);
 		i2c->I2SCLH = third_divider;
 		i2c->I2SCLL = third_divider * 2;

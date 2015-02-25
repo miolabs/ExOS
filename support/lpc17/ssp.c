@@ -25,20 +25,18 @@ void hal_ssp_initialize(int module, int bitrate, HAL_SSP_MODE mode, HAL_SSP_FLAG
 	SSP_MODULE *ssp = _get_module(module);
 	if (ssp)
 	{
-		int pclk_div;
-#if (__TARGET_PROCESSOR == LPC1778 || __TARGET_PROCESSOR == LPC1788)
-			pclk_div = 1;
-#else
+		unsigned long pclk;
 		switch(module)
 		{
 			case 0:
-				pclk_div = PCLKSEL1bits.PCLK_SSP0;
+				pclk = cpu_pclk(PCLK_SSP0);
 				break;
 			case 1:
-				pclk_div = PCLKSEL0bits.PCLK_SSP1;
+				pclk = cpu_pclk(PCLK_SSP1);
 				break;
+			default:
+				return;
 		}
-#endif
 		SSP_CLK_MODE mode = flags & HAL_SSP_CLK_IDLE_HIGH ? 
 			(flags & HAL_SSP_CLK_PHASE_NEG ? SSP_CLK_POL1_PHA0 : SSP_CLK_POL1_PHA1) : // clk negative
 			(flags & HAL_SSP_CLK_PHASE_NEG ? SSP_CLK_POL0_PHA1 : SSP_CLK_POL0_PHA0); // clk positive
@@ -53,7 +51,6 @@ void hal_ssp_initialize(int module, int bitrate, HAL_SSP_MODE mode, HAL_SSP_FLAG
 			(mode << SSPCR0_CLKMODE_BIT);
 		ssp->CR1 = SSPCR1_SSE;	// master mode, enable module
 	
-		unsigned long pclk = cpu_pclk(SystemCoreClock, pclk_div);	// required PCLK = CCLK
 		unsigned long f = ssp->CPSR * bitrate;
 		unsigned long scr = ((pclk  + (f - 1)) / f) - 1;
 		ssp->CR0 = (ssp->CR0 & ~(0xFF << SSPCR0_SCR_BIT)) | 

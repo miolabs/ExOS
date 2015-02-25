@@ -4,7 +4,6 @@
 #include "cpu.h"
 
 #if (__TARGET_PROCESSOR > 1770)
-#define LPC177X_8X
 
 typedef struct
 {
@@ -20,10 +19,15 @@ typedef struct
 	unsigned DACEn:1;
 } _IOCONbits;
 
-#define IOCON_MODE_NOPULL	0
-#define IOCON_MODE_PULL_DOWN	1
-#define IOCON_MODE_PULL_UP	2
-#define IOCON_MODE_REPEATER	3
+#define PINMODE_NOPULL		0
+#define PINMODE_PULLDOWN	1
+#define PINMODE_PULL_UP		2
+#define PINMODE_REPEATER	3
+
+#define PINMODEF_HYS (1<<8)
+#define PINMODEF_INV (1<<9)
+#define PINMODEF_ANALOG (1<<10)
+#define PINMODEF_OPEN_DRAIN (1<<11)
 
 #else
 
@@ -34,13 +38,7 @@ typedef struct
 
 #endif
 
-#define PINCONF_HYS (1<<0)
-#define PINCONF_INV (1<<1)
-#define PINCONF_ANALOG (1<<2)
-#define PINCONF_OPEN_DRAIN (1<<3)
-
 // prototypes
-void pincon_setfunc(int port, int pin, int func);
-void pincon_setmode(int port, int pin, int mode, int flags);
+void pincon_setfunc(int port, int pin, int func, int mode);
 
 #endif // LPC17_PINCON_H

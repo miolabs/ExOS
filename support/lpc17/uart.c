@@ -6,8 +6,10 @@
 #include <kernel/panic.h>
 
 static UART_CONTROL_BLOCK *_control[UART_MODULE_COUNT];
-static LPC_UART_TypeDef *_modules[] = {
+static LPC_UART_TypeDef *const _modules[] = {
 	(LPC_UART_TypeDef *)LPC_UART0, (LPC_UART_TypeDef *)LPC_UART1, LPC_UART2, LPC_UART3 };
+static const PCLK_PERIPH _pclk[] = {
+	PCLK_UART0, PCLK_UART1, PCLK_UART2, PCLK_UART3 };
 
 static inline int _valid_module(unsigned module, LPC_UART_TypeDef **uart, UART_CONTROL_BLOCK **cb)
 {
@@ -26,8 +28,7 @@ static int _initialize(unsigned module, unsigned long baudrate)
 	UART_CONTROL_BLOCK *cb;
 	if (_valid_module(module, &uart, &cb))
 	{
-		int pclk = cpu_pclk(SystemCoreClock, 1);	// PCLK is fixed to CCLK/1
-	
+		int pclk = cpu_pclk(_pclk[module]);
 		unsigned short divisor = pclk / (16 * baudrate);
 		uart->LCR = UART_LCR_WLEN_8BIT | UART_LCR_STOP_1BIT | UART_LCR_DLAB; // no parity
 		uart->DLL = divisor & 0xFF;
