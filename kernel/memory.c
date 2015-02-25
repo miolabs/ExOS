@@ -3,6 +3,7 @@
 #include <kernel/machine/hal.h>
 #include <kernel/mutex.h>
 #include <support/board_hal.h>
+#include <support/services/debug.h>
 
 extern unsigned char __heap_start__, __heap_end__;
 
@@ -164,7 +165,12 @@ void exos_mem_free(void *addr)
 		kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
 
 	EXOS_NODE *pred_node = NULL;
-	// FIXME: check if coalescence causes a race condition
+
+#ifdef MEMORY_PARANOID
+	 __mem_set(header->Contents, header->Contents + header->Size, 0xdd);
+#endif
+
+	exos_mutex_lock(&region->FreeListMutex);
 
 	// coalescence to linear successor
 	EXOS_MEM_HEADER *next_header = (EXOS_MEM_HEADER *)((void *)footer + sizeof(EXOS_MEM_FOOTER));
@@ -207,7 +213,6 @@ void exos_mem_free(void *addr)
 
 	_init_block(region, header, (void *)footer + sizeof(EXOS_MEM_FOOTER));
 
-	exos_mutex_lock(&region->FreeListMutex);
 	if (pred_node != NULL)
 	{
 		list_insert(pred_node, (EXOS_NODE *)header->Contents);
@@ -240,6 +245,11 @@ void exos_mem_stats(EXOS_MEM_REGION *region, EXOS_MEM_STATS *stats)
 		if (header->Size != footer->FreeSize ||
 			((void *)footer + sizeof(EXOS_MEM_FOOTER)) >= (region->StartAddress + region->Size))
 			kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
+
+#ifdef MEMORY_DEBUG
+		debug_printf("free fragment at 0x%lx, size=0x%lx (ends at 0x%lx)\r\n", 
+			header, header->Size , header->Contents + header->Size + sizeof(EXOS_MEM_FOOTER));
+#endif	
 #endif	
 		if (header->Size > largest) largest = header->Size; 
 		total += header->Size;
@@ -281,5 +291,9 @@ unsigned long exos_mem_heap_avail()
 {
 	EXOS_MEM_STATS stats;
 	exos_mem_stats(&_heap_region, &stats);
+#ifdef MEMORY_DEBUG
+    debug_printf("free mem 0x%lx in %d fragments, largest 0x%lx\r\n", stats.Free, stats.Fragments, stats.Largest);
+#endif
 	return stats.Free;
 }
+
