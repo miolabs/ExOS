@@ -264,6 +264,8 @@ SD_ERROR sd_hw_write_blocks(unsigned long addr, unsigned long count, unsigned ch
 		}
 		if (status == SD_OK) 
 			_transmit(SD_SPI_STOP_TRAN_TOKEN);	// STOP_TRAN_TOKEN
+
+		_transmit(0xFF);
 	}
 	sd_spi_cs_release();
 	return status;

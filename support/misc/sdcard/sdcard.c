@@ -2,6 +2,7 @@
 // by Miguel Fides
 
 #include "sdcard.h"
+#include <support/board_hal.h>
 
 static SD_INFO _info;
 static unsigned short _rca; // relative card address (not used in SPI mode)
@@ -124,11 +125,16 @@ SD_ERROR sd_read_blocks(unsigned long block, unsigned long count, unsigned char 
 		SD_ERROR status = sd_hw_check_status(&_state);
 		if (status != SD_OK) return status;
 	}
-	if (_state != SD_CARD_TRANSFER) return SD_ERROR_BAD_STATE;
+	if (_state != SD_CARD_TRANSFER) 
+		return SD_ERROR_BAD_STATE;
+
+	hal_led_set(LED_SDCARD, 1);
 	unsigned long addr = _card_hc ? block : (block << 9);
-	return (count == 1) ? 
+	SD_ERROR status = (count == 1) ? 
 		sd_hw_read_single_block(addr, buf) :
 		sd_hw_read_blocks(addr, count, buf);
+	hal_led_set(LED_SDCARD, 0);
+	return status;
 }
 
 SD_ERROR sd_write_blocks(unsigned long block, unsigned long count, unsigned char *buf)
@@ -141,6 +147,7 @@ SD_ERROR sd_write_blocks(unsigned long block, unsigned long count, unsigned char
 	if (_state != SD_CARD_TRANSFER) 
 		return SD_ERROR_BAD_STATE;
 	
+	hal_led_set(LED_SDCARD, 1);
 	unsigned long addr = _card_hc ? block : (block << 9);
 	SD_ERROR status = (count == 1) ? 
 		sd_hw_write_single_block(addr, buf) :
@@ -149,6 +156,7 @@ SD_ERROR sd_write_blocks(unsigned long block, unsigned long count, unsigned char
 	{
 		_state = SD_CARD_PROGRAMMING;
 	}
+	hal_led_set(LED_SDCARD, 0);
 	return status;
 }
 
