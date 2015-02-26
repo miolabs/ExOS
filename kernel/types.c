@@ -1,7 +1,7 @@
 #include "types.h"
 #include "panic.h"
 
-GUID GUID_NULL = { /* all zeros */ };
+const GUID GUID_NULL = { /* all zeros */ };
 
 bool __guid_eq(GUID *guid1, GUID *guid2)
 {

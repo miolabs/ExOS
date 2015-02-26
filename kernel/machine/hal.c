@@ -1,8 +1,6 @@
 #include "hal.h"
 #include <kernel/panic.h>
 
-const GUID GUID_NULL = { 0, 0, 0, 0 };
-
 #pragma GCC optimize(2)
 
 __weak void __mem_copy(void *start, void *stop, const void *source)

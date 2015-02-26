@@ -33,10 +33,6 @@ typedef union
 
 extern const GUID GUID_NULL;
 
-static inline bool __guid_eq(GUID *guid1, GUID *guid2)
-{
-	return guid1->Longs[0] == guid2->Longs[0] && guid1->Longs[1] == guid2->Longs[1] &&
-		guid1->Longs[2] == guid2->Longs[2] && guid1->Longs[3] == guid2->Longs[3];
-}
+int __guid_eq(GUID *guid1, GUID *guid2);
 
 #endif // EXOS_TYPES_H
