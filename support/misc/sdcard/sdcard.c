@@ -26,11 +26,14 @@ int sd_initialize()
 	_info.BlockSize = 0;
 	_state = SD_CARD_DISCONNECT;
 
-	sd_hw_initialize();
+	sd_hw_initialize(1);
 
 	if (!sd_hw_card_reset())
+	{
+    	sd_hw_initialize(0);
 		return 0;
-	
+	}
+
 	_state = SD_CARD_IDLE;
 	_card_version = 100;
 	_card_hc = 0;
@@ -103,6 +106,8 @@ int sd_initialize()
 	{
 		return sd_add_device();
 	}
+
+	sd_hw_initialize(0);
 	return 0;
 }
 

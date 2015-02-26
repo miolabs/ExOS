@@ -3,10 +3,13 @@
 
 unsigned short _rca;
 
-void sd_hw_initialize()
+void sd_hw_initialize(int enable)
 {
-	hal_mci_initialize();
-	_rca = 0;
+	if (enable)
+	{
+		hal_mci_initialize();
+		_rca = 0;
+	}
 }
 
 int sd_hw_card_reset()

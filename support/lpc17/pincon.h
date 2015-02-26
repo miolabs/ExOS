@@ -19,9 +19,9 @@ typedef struct
 	unsigned DACEn:1;
 } _IOCONbits;
 
-#define PINMODE_NOPULL		0
+#define PINMODE_FLOAT		0
 #define PINMODE_PULLDOWN	1
-#define PINMODE_PULL_UP		2
+#define PINMODE_PULLUP		2
 #define PINMODE_REPEATER	3
 
 #define PINMODEF_HYS (1<<8)

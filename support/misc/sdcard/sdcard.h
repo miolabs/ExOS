@@ -113,7 +113,7 @@ SD_ERROR sd_write_blocks(unsigned long block, unsigned long count, unsigned char
 SD_ERROR sd_get_card_state(SD_CARD_STATE *pstate);
 
 // hal functions
-void sd_hw_initialize();
+void sd_hw_initialize(int enable);
 int sd_hw_card_reset();
 int sd_hw_card_identification(void *cid, unsigned short *prca);
 int sd_hw_select_card();
