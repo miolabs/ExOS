@@ -23,7 +23,6 @@ typedef enum
 	EXOS_SATURDAY,
 } EXOS_DAYOFWEEK;
 
-
 typedef struct 
 {
 	int Days;
@@ -36,6 +35,7 @@ typedef struct
 const char *exos_datetime_day_name(EXOS_DAYOFWEEK day);
 const char *exos_datetime_month_name(int month);
 int exos_datetime_print(char *s, EXOS_DATETIME *datetime);
+void exos_datetime_boot_setup(const EXOS_DATETIME *datetime);
 void exos_datetime_now(EXOS_DATETIME *datetime);
 void exos_datetime_seek(const EXOS_DATETIME *base, EXOS_TIMESPAN *elapsed, EXOS_DATETIME *target);
 int exos_datetime_print(char *s, EXOS_DATETIME *datetime);

@@ -139,6 +139,15 @@ void exos_datetime_seek(const EXOS_DATETIME *base, EXOS_TIMESPAN *elapsed, EXOS_
 	_seek(base, seconds, target); 
 }
 
+void exos_datetime_boot_setup(const EXOS_DATETIME *datetime)
+{
+#ifdef DEBUG
+	if (datetime == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+	_seek(datetime, -_seconds, &_boot);
+}
+
 void exos_datetime_now(EXOS_DATETIME *datetime)
 {
 #ifdef DEBUG
