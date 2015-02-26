@@ -119,6 +119,7 @@ void exos_timer_wait(EXOS_TIMER *timer)
 
 
 static unsigned long _time = 0;
+static unsigned long _subtime = 0;
 
 static int _tick(unsigned long *args)
 {
@@ -148,6 +149,13 @@ static int _tick(unsigned long *args)
 	}
 
 	_time++;
+	_subtime++;
+	if (_subtime >= 1000)
+	{
+		_subtime -= 1000;
+		__timer_second_tick();
+	}
+
 	return  0;
 }
 

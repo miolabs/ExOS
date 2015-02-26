@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include "posix.h"
+#include <kernel/datetime.h>
 #include <kernel/machine/hal.h>
 
 int printf(const char *restrict format, ...)
@@ -47,7 +48,10 @@ int vsprintf(char *restrict s, const char *restrict format, va_list args)
 				size = 4;
 				c = *format++;
 				break;
-			// TODO
+			case 'h':
+				size = 2;
+				c = *format++;
+				break;
 		}
 
 		if (c == '\0') break;
@@ -58,7 +62,15 @@ int vsprintf(char *restrict s, const char *restrict format, va_list args)
 				done += __str_copy(s + done, va_arg(args, char *), -1);
 				break;
 			case 'd':
-				done += __int32_declz(s + done, va_arg(args, int), trailing_zeros); 
+				switch (size)
+				{
+					case 4:
+						done += __int32_declz(s + done, va_arg(args, int), trailing_zeros); 
+						break;
+					case 2:
+						done += __int32_declz(s + done, (short)va_arg(args, int), trailing_zeros); 
+						break;
+				}
 				break;
 			case 'x':
 				switch (size)
@@ -66,10 +78,21 @@ int vsprintf(char *restrict s, const char *restrict format, va_list args)
 					case 4:
 						done += __uint32_hexl(s + done, va_arg(args, int));
 						break;
-					// TODO
+					case 2:
+						done += __uint32_hexl(s + done, (short)va_arg(args, int));
+						break;
 				}
 				break;
-			// TODO
+			case 't':
+				switch (size)
+				{
+					case 4:
+						done += exos_datetime_print(s + done, va_arg(args, EXOS_DATETIME *));
+						break;
+					case 2:
+						//TODO
+						break;
+				}
 		}
 	}
 	s[done] = '\0';

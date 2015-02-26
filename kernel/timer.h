@@ -38,6 +38,8 @@ int exos_timer_create(EXOS_TIMER *timer, unsigned long time, unsigned long perio
 void exos_timer_wait(EXOS_TIMER *timer);
 void exos_timer_abort(EXOS_TIMER *timer);
 
+void __timer_second_tick() __weak;
+
 unsigned long exos_timer_time();
 unsigned long exos_timer_elapsed(unsigned long time);
 
