@@ -51,21 +51,15 @@ static _IOCONbits *const _iocon[] = {
 	(_IOCONbits *)&LPC_IOCON->P4_0,
 	(_IOCONbits *)&LPC_IOCON->P5_0 };
 
-void pincon_setfunc(int port, int pin, int func)
+void pincon_setfunc(int port, int pin, int func, int mode)
 {
 	_IOCONbits *iocon = _iocon[port] + pin;
-	iocon->Func = func;
-}
-
-void pincon_setmode(int port, int pin, int mode, int flags)
-{
-	_IOCONbits *iocon = _iocon[port] + pin;
-	*(unsigned long *)iocon = iocon->Func |
-		(mode << 3) |
-		((flags & PINCONF_HYS) ? (1<<5) : 0) |
-		((flags & PINCONF_INV) ? (1<<6) : 0) |
-		((flags & PINCONF_ANALOG) ? (1<<7) : 0) |
-		((flags & PINCONF_OPEN_DRAIN) ? (1<<10) : 0);
+	*(unsigned long *)iocon = func |
+		((mode & 3) << 3) |
+		((mode & PINMODEF_HYS) ? (1<<5) : 0) |
+		((mode & PINMODEF_INV) ? (1<<6) : 0) |
+		((mode & PINMODEF_ANALOG) ? (1<<7) : 0) |
+		((mode & PINMODEF_OPEN_DRAIN) ? (1<<10) : 0);
 }
 
 #endif

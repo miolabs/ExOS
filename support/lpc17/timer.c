@@ -14,45 +14,29 @@ static LPC_TIM_TypeDef *_initialize(int module, unsigned long freq)
 {
 	LPC_TIM_TypeDef *timer;
     IRQn_Type irq;
-	int pclk_div;
+	unsigned long pclk;
 	switch(module)
 	{
 	case 0:
-#if (__TARGET_PROCESSOR == LPC1778 || __TARGET_PROCESSOR == LPC1788)
-		pclk_div = 1;
-#else
-		pclk_div = PCLKSEL0bits.PCLK_TIMER0;
-#endif
+		pclk = cpu_pclk(PCLK_TIMER0);
 		LPC_SC->PCONP |= PCONP_PCTIM0;
 		timer = LPC_TIM0;
 		irq = TIMER0_IRQn;
 		break;
 	case 1:
-#if (__TARGET_PROCESSOR == LPC1778 || __TARGET_PROCESSOR == LPC1788)
-		pclk_div = 1;
-#else	
-		pclk_div = PCLKSEL0bits.PCLK_TIMER1;
-#endif
+		pclk = cpu_pclk(PCLK_TIMER1);
 		LPC_SC->PCONP |= PCONP_PCTIM1;
 		timer = LPC_TIM1;
 		irq = TIMER1_IRQn;
 		break;
 	case 2:
-#if (__TARGET_PROCESSOR == LPC1778 || __TARGET_PROCESSOR == LPC1788)
-		pclk_div = 1;
-#else	
-		pclk_div = PCLKSEL1bits.PCLK_TIMER2;
-#endif
+		pclk = cpu_pclk(PCLK_TIMER2);
 		LPC_SC->PCONP |= PCONP_PCTIM2;
 		timer = LPC_TIM2;
 		irq = TIMER2_IRQn;
 		break;
 	case 3:
-#if (__TARGET_PROCESSOR == LPC1778 || __TARGET_PROCESSOR == LPC1788)
-		pclk_div = 1;
-#else	
-		pclk_div = PCLKSEL1bits.PCLK_TIMER3;
-#endif
+		pclk = cpu_pclk(PCLK_TIMER3);
 		LPC_SC->PCONP |= PCONP_PCTIM3;
 		timer = LPC_TIM3;
 		irq = TIMER3_IRQn;
@@ -61,7 +45,6 @@ static LPC_TIM_TypeDef *_initialize(int module, unsigned long freq)
 		return (LPC_TIM_TypeDef *)0;
 	}
 
-	unsigned long pclk = cpu_pclk(SystemCoreClock, pclk_div);
 	unsigned long prsc = (pclk + (freq / 2)) / freq;
 	timer->TCR = 0;
 	timer->PR = prsc != 0 ? prsc - 1 : 0;

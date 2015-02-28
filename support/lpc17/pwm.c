@@ -16,22 +16,16 @@ int pwm_initialize(int module, int range, int rate, int mask)
 {
 	int freq = range * rate;
 	LPC_PWM_TypeDef *pwm;
-	int pclk_div;
 	switch(module)
 	{
 		case 0:
-#if (__TARGET_PROCESSOR == LPC1778 || __TARGET_PROCESSOR == LPC1788)
-			pclk_div = 1;
-#else
-			pclk_div = PCLKSEL0bits.PCLK_PWM1;
-#endif
 			LPC_SC->PCONP |= PCONP_PCPWM1;
 			pwm = LPC_PWM1;
 			break;
 		default:
 			return 0;
 	}
-	int pclk = cpu_pclk(SystemCoreClock, pclk_div);
+	int pclk = cpu_pclk(PCLK_PWM1);
 	pwm->TCR = 0;
 	pwm->PR = (pclk / freq) - 1;	// preescaler for selected freq
 	pwm->MCR = 0;					// disable matches
