@@ -11,9 +11,9 @@ void sd_hw_initialize(int enable)
 	{
 		crc16_initialize(_crc16_table, 0x1021);
 
-		hal_ssp_initialize(SDCARD_SPI_MODULE, 400000, HAL_SSP_MODE_SPI, HAL_SSP_CLK_IDLE_HIGH | HAL_SSP_IDLE_HIGH);
-
 		sd_spi_power_control(1);
+
+		hal_ssp_initialize(SDCARD_SPI_MODULE, 400000, HAL_SSP_MODE_SPI, HAL_SSP_CLK_IDLE_HIGH | HAL_SSP_IDLE_HIGH);
 	}
 	else
 	{

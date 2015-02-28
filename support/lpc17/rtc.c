@@ -9,10 +9,6 @@ static void _wait(int c);
 
 int rtc_initialize()
 {
-	// peripheral clock selection
-//	PCLKSEL0bits.PCLK_RTC = 0; // CCLK/4
-//	PCLKSEL1bits.PCLK_BATRAM = 0; // CCLK/4
-
 	// module initialization
 	LPC_SC->PCONP |= PCONP_PCRTC;	// power enable module
 
@@ -36,6 +32,27 @@ int rtc_get_datetime(EXOS_DATETIME *datetime)
 		.Year = (ctime2 >> 16) & 0xFFF };
 
 	return 1;
+}
+
+int rtc_set_datetime(const EXOS_DATETIME *datetime)
+{
+	// stop
+	LPC_RTC->CCR &= ~RTC_CCR_CLKEN;
+	LPC_RTC->CCR |= RTC_CCR_CTCRST;
+	
+	LPC_RTC->DOM = datetime->Day;
+	LPC_RTC->MONTH = datetime->Month;
+	LPC_RTC->YEAR = datetime->Year;
+	LPC_RTC->DOW = datetime->DayOfWeek;
+	LPC_RTC->DOY = exos_datetime_day_of_year(datetime);
+	
+	LPC_RTC->HOUR = datetime->Hours;
+	LPC_RTC->MIN = datetime->Minutes;
+	LPC_RTC->SEC = datetime->Seconds;
+
+	// restart
+	LPC_RTC->CCR &= ~RTC_CCR_CTCRST;
+	LPC_RTC->CCR |= RTC_CCR_CLKEN;
 }
 
 static void _wait(int c)
