@@ -1,9 +1,9 @@
 #include "types.h"
 #include "panic.h"
 
-const GUID GUID_NULL = { /* all zeros */ };
+const GUID GUID_NULL = { /* all zeros */ }; 
 
-bool __guid_eq(GUID *guid1, GUID *guid2)
+bool __guid_eq(const GUID *guid1, const GUID *guid2)
 {
 	if (guid1 == NULL || guid2 == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
