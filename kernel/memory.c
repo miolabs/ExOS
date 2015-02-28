@@ -297,3 +297,19 @@ unsigned long exos_mem_heap_avail()
 	return stats.Free;
 }
 
+void exos_mem_debug()
+{
+	EXOS_MEM_STATS stats;
+	EXOS_MEM_REGION *region;
+	int i = 0;
+	while(1)
+	{
+		region = exos_mem_get_region(EXOS_MEMF_ANY, i++);
+		if (region == NULL) break;
+
+		debug_printf("region 0x%lx (size = 0x%lx):\r\n", region->StartAddress, region->Size);
+		exos_mem_stats(region, &stats);
+		debug_printf("free mem 0x%lx in %d fragments, largest 0x%lx\r\n", stats.Free, stats.Fragments, stats.Largest);
+	}
+}
+

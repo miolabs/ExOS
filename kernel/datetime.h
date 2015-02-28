@@ -34,6 +34,7 @@ typedef struct
 //prototypes
 const char *exos_datetime_day_name(EXOS_DAYOFWEEK day);
 const char *exos_datetime_month_name(int month);
+int exos_datetime_day_of_year(const EXOS_DATETIME *datetime);
 int exos_datetime_print(char *s, EXOS_DATETIME *datetime);
 void exos_datetime_boot_setup(const EXOS_DATETIME *datetime);
 void exos_datetime_now(EXOS_DATETIME *datetime);

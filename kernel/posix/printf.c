@@ -33,10 +33,12 @@ int vsprintf(char *restrict s, const char *restrict format, va_list args)
 		c = *format++;
 		if (c == '\0') break;
 
-		int trailing_zeros = 1;
-		while(c == '0')
+		int trailing_zeros = 0;
+		char trailing_char = ' ';
+		while(c >= '0' && c <= '9')
 		{
-			trailing_zeros++;
+			if (trailing_zeros == 0 && c == '0') trailing_char = '0';
+			trailing_zeros = (trailing_zeros * 10) + (c - '0');
 			c = *format++;
 		}
 		if (c == '\0') break;
@@ -48,10 +50,7 @@ int vsprintf(char *restrict s, const char *restrict format, va_list args)
 				size = 4;
 				c = *format++;
 				break;
-			case 'h':
-				size = 2;
-				c = *format++;
-				break;
+			//TODO: are more size possible?
 		}
 
 		if (c == '\0') break;
@@ -61,15 +60,16 @@ int vsprintf(char *restrict s, const char *restrict format, va_list args)
 			case 's':
 				done += __str_copy(s + done, va_arg(args, char *), -1);
 				break;
+			case 'c':
+				s[done++] = (char)va_arg(args, int);
+				break;
 			case 'd':
 				switch (size)
 				{
 					case 4:
-						done += __int32_declz(s + done, va_arg(args, int), trailing_zeros); 
+						done += __int32_declz(s + done, va_arg(args, int), trailing_zeros, trailing_char); 
 						break;
-					case 2:
-						done += __int32_declz(s + done, (short)va_arg(args, int), trailing_zeros); 
-						break;
+					//TODO: are more size possible?
 				}
 				break;
 			case 'x':
@@ -78,21 +78,12 @@ int vsprintf(char *restrict s, const char *restrict format, va_list args)
 					case 4:
 						done += __uint32_hexl(s + done, va_arg(args, int));
 						break;
-					case 2:
-						done += __uint32_hexl(s + done, (short)va_arg(args, int));
-						break;
+					//TODO: are more size possible?
 				}
 				break;
-			case 't':
-				switch (size)
-				{
-					case 4:
-						done += exos_datetime_print(s + done, va_arg(args, EXOS_DATETIME *));
-						break;
-					case 2:
-						//TODO
-						break;
-				}
+			case 'D':	//FIXME: non-standard
+				done += exos_datetime_print(s + done, va_arg(args, EXOS_DATETIME *));
+				break;
 		}
 	}
 	s[done] = '\0';

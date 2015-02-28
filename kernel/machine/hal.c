@@ -83,7 +83,7 @@ unsigned int __uint32_hexl(char *dst, unsigned int value)
 	return length;
 }
 
-unsigned int __int32_declz(char *dst, int value, int tz) 
+unsigned int __int32_declz(char *dst, int value, int tz, char tc) 
 {
 	unsigned int length = 0;
 	if (value < 0)
@@ -99,7 +99,7 @@ unsigned int __int32_declz(char *dst, int value, int tz)
 	} while(value != 0);
 
 	while(length < tz)
-		dst[length++] = '0'; 
+		dst[length++] = tc; 
 
 	_reverse_str(dst, length);
 	return length;
@@ -107,7 +107,7 @@ unsigned int __int32_declz(char *dst, int value, int tz)
 
 unsigned int __int32_decl(char *dst, int value) 
 {
-	return __int32_declz(dst, value, 1);
+	return __int32_declz(dst, value, 0, '\0');
 }
 
 unsigned int __decl_uint32(const char *src, unsigned int *pvalue)

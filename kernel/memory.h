@@ -52,6 +52,7 @@ EXOS_MEM_REGION *exos_mem_get_region(EXOS_MEM_FLAGS flags, int index);
 
 void exos_mem_heap_stats(EXOS_MEM_STATS *stats);
 unsigned long exos_mem_heap_avail();
+void exos_mem_debug();
 
 #endif // EXOS_MEMORY_H
 

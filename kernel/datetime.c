@@ -25,7 +25,7 @@ int exos_datetime_print(char *s, EXOS_DATETIME *datetime)
 	if (s == NULL || datetime == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
 #endif
-	return sprintf(s, "%s, %s %d, %d %0d:%0d:%0d", 
+	return sprintf(s, "%s, %s %d, %d %02d:%02d:%02d", 
 		exos_datetime_day_name(datetime->DayOfWeek),
 		exos_datetime_month_name(datetime->Month), datetime->Day, datetime->Year,
 		datetime->Hours, datetime->Minutes, datetime->Seconds);
@@ -34,6 +34,27 @@ int exos_datetime_print(char *s, EXOS_DATETIME *datetime)
 static inline int _biy(int year)
 {
 	return (year & 3) ? 1 : ((year % 100) ? 1 : !(year % 400));
+}
+
+int exos_datetime_day_of_year(const EXOS_DATETIME *datetime)
+{
+	int days = 0;
+	switch(datetime->Month)
+	{
+		case 12: days += 30;
+		case 11:	days += 31;
+		case 10: days += 30;
+		case 9:	days += 31;
+		case 8: days += 31;
+		case 7: days += 30;
+		case 6: days += 31;
+		case 5:	days += 30;
+		case 4: days += 31;
+		case 3:	days += _biy(datetime->Year) ? 29 : 28;
+		case 2:	days += 31;
+	}
+	days += datetime->Day - 1;
+	return days;
 }
 
 static int _date2days(const EXOS_DATETIME *datetime)
@@ -50,21 +71,7 @@ static int _date2days(const EXOS_DATETIME *datetime)
 		datetime->Year, qc, c, by, ry, days);
 #endif
 
-	switch(datetime->Month)
-	{
-		case 12: days += 30;
-		case 11:	days += 31;
-		case 10: days += 30;
-		case 9:	days += 31;
-		case 8: days += 31;
-		case 7: days += 30;
-		case 6: days += 31;
-		case 5:	days += 30;
-		case 4: days += 31;
-		case 3:	days += _biy(datetime->Year) ? 29 : 28;
-		case 2:	days += 31;
-	}
-	days += datetime->Day - 1;
+	days += exos_datetime_day_of_year(datetime);
 	return days;
 }
 
