@@ -38,44 +38,40 @@ void hal_board_initialize()
 
 #elif defined BOARD_MIOBOARD2
 
-	pincon_setfunc(0, 27, 1);	// SDA0
-	pincon_setfunc(0, 28, 1);	// SCL0
-	pincon_setfunc(0, 19, 3);	// SDA1
-	pincon_setfunc(0, 20, 3);	// SCL1
-	pincon_setfunc(0, 10, 2);	// SDA2
-	pincon_setfunc(0, 11, 2);	// SCL2
-	pincon_setmode(0, 10, IOCON_MODE_PULL_UP, PINCONF_HYS | PINCONF_OPEN_DRAIN);
-	pincon_setmode(0, 11, IOCON_MODE_PULL_UP, PINCONF_HYS | PINCONF_OPEN_DRAIN);
+	pincon_setfunc(0, 27, 1, PINMODE_PULLUP);	// SDA0
+	pincon_setfunc(0, 28, 1, PINMODE_PULLUP);	// SCL0
+	pincon_setfunc(0, 19, 3, PINMODE_PULLUP);	// SDA1
+	pincon_setfunc(0, 20, 3, PINMODE_PULLUP);	// SCL1
+	pincon_setfunc(0, 10, 2, PINMODE_PULLUP | PINMODEF_HYS | PINMODEF_OPEN_DRAIN);	// SDA2
+	pincon_setfunc(0, 11, 2, PINMODE_PULLUP | PINMODEF_HYS | PINMODEF_OPEN_DRAIN);	// SCL2
 
 	// usb1
-	pincon_setfunc(0, 29, 1);	// D+
-	pincon_setfunc(0, 30, 1);	// D-
-	pincon_setfunc(1, 18, 1);	// USB_UP_LED1
-	pincon_setfunc(1, 19, 2);	// _USB_PPWR1
-	pincon_setfunc(1, 22, 2);	// USB_PWRD1
-	pincon_setfunc(1, 27, 2);	// _USB_OVRCR1
+	pincon_setfunc(0, 29, 1, PINMODE_FLOAT);	// D+
+	pincon_setfunc(0, 30, 1, PINMODE_FLOAT);	// D-
+	pincon_setfunc(1, 18, 1, PINMODE_PULLUP);	// USB_UP_LED1
+	pincon_setfunc(1, 19, 2, PINMODE_PULLUP);	// _USB_PPWR1
+	pincon_setfunc(1, 22, 2, PINMODE_PULLUP);	// USB_PWRD1
+	pincon_setfunc(1, 27, 2, PINMODE_PULLUP);	// _USB_OVRCR1
 	
 	// usb2
-	pincon_setfunc(0, 31, 1);	// D+
-	pincon_setfunc(0, 13, 1);	// USB_UP_LED2
-	pincon_setfunc(0, 12, 1);	// _USB_PPWR2
-	pincon_setfunc(1, 30, 1);	// USB_PWRD2
-	pincon_setfunc(1, 31, 1);	// _USB_OVRCR2
+	pincon_setfunc(0, 31, 1, PINMODE_FLOAT);	// D+
+	pincon_setfunc(0, 13, 1, PINMODE_PULLUP);	// USB_UP_LED2
+	pincon_setfunc(0, 12, 1, PINMODE_PULLUP);	// _USB_PPWR2
+	pincon_setfunc(1, 30, 1, PINMODE_PULLUP);	// USB_PWRD2
+	pincon_setfunc(1, 31, 1, PINMODE_PULLUP);	// _USB_OVRCR2
 
 	//uart1
-	pincon_setfunc(2, 0, 2);	// U1_TXD
-	pincon_setfunc(2, 1, 2);	// U1_RXD
-	pincon_setfunc(2, 2, 2);	// U1_CTS
-	pincon_setfunc(2, 7, 2);	// U1_RTS
+	pincon_setfunc(2, 0, 2, PINMODE_PULLUP);	// U1_TXD
+	pincon_setfunc(2, 1, 2, PINMODE_PULLUP);	// U1_RXD
+	pincon_setfunc(2, 2, 2, PINMODE_PULLUP);	// U1_CTS
+	pincon_setfunc(2, 7, 2, PINMODE_PULLUP);	// U1_RTS
 
     LPC_GPIO0->DIR |= (1<<1);
 	LPC_GPIO0->CLR = (1<<1);
 	LPC_GPIO0->SET = (1<<1);
 
-	pincon_setfunc(0, 0, 1);	// CAN_RD1
-	pincon_setfunc(0, 1, 1);	// CAN_TD1 
-//	pincon_setfunc(2, 7, 1);	// CAN_RD2
-//	pincon_setfunc(2, 8, 1);	// CAN_TD2 
+	pincon_setfunc(0, 0, 1, PINMODE_PULLUP);	// CAN_RD1
+	pincon_setfunc(0, 1, 1, PINMODE_PULLUP);	// CAN_TD1 
 
 	#define LED1_PORT LPC_GPIO3
 	#define LED1_MASK (1<<23)

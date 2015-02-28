@@ -78,6 +78,7 @@ struct _NET_DRIVER
 
 // prototypes
 void net_adapter_initialize();
+int net_adapter_install(NET_ADAPTER *adapter);
 void net_adapter_list_lock();
 void net_adapter_list_unlock();
 int net_adapter_enum(NET_ADAPTER **padapter);

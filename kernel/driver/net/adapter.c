@@ -44,20 +44,34 @@ void net_adapter_initialize()
 		adapter->Speed = 0;
 		net_board_set_mac_address(adapter, index);
 
-		const NET_DRIVER *driver = adapter->Driver;
-		if (driver->Initialize(adapter))
-		{
-			list_add_tail(&_adapters, (EXOS_NODE *)adapter);
-
-			exos_mutex_create(&adapter->InputLock);
-			exos_mutex_create(&adapter->OutputLock);
-			net_service_start(adapter);
-
+		if (net_adapter_install(adapter))
 			net_board_set_ip_address(adapter, index);
-		}
+
 		index++;
 	}
 }
+
+int net_adapter_install(NET_ADAPTER *adapter)
+{
+	int done = 0;
+	exos_mutex_lock(&_adapters_lock);
+   	
+	const NET_DRIVER *driver = adapter->Driver;
+	if (driver->Initialize(adapter))
+	{
+		list_add_tail(&_adapters, (EXOS_NODE *)adapter);
+
+		exos_mutex_create(&adapter->InputLock);
+		exos_mutex_create(&adapter->OutputLock);
+		net_service_start(adapter);
+
+		done = 1;
+	}
+	
+	exos_mutex_unlock(&_adapters_lock);
+	return done;
+}
+
 
 void net_adapter_list_lock()
 {

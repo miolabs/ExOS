@@ -50,7 +50,7 @@ int vsprintf(char *restrict s, const char *restrict format, va_list args)
 				size = 4;
 				c = *format++;
 				break;
-			//TODO: are more size possible?
+			//TODO: are more sizes possible?
 		}
 
 		if (c == '\0') break;
@@ -69,7 +69,7 @@ int vsprintf(char *restrict s, const char *restrict format, va_list args)
 					case 4:
 						done += __int32_declz(s + done, va_arg(args, int), trailing_zeros, trailing_char); 
 						break;
-					//TODO: are more size possible?
+					//TODO: are more sizes possible?
 				}
 				break;
 			case 'x':
