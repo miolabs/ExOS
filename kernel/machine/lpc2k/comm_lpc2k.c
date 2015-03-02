@@ -4,14 +4,14 @@
 #include "comm_lpc2k.h"
 #include <kernel/memory.h>
 #include <support/lpc2k/uart.h>
-#include <support/board_hal.h>
+#include <support/services/init.h>
+
+static void _register();
+EXOS_INITIALIZER(_init, EXOS_INIT_IO_DRIVER, _register);
 
 #ifndef UART_BUFFER_SIZE 
 #define UART_BUFFER_SIZE 64
 #endif
-
-static void _handler(UART_EVENT event, void *state);
-static UART_CONTROL_BLOCK _cb[UART_MODULE_COUNT];
 
 static int _open(COMM_IO_ENTRY *io);
 static void _close(COMM_IO_ENTRY *io);
@@ -20,10 +20,32 @@ static int _set_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value);
 static int _read(COMM_IO_ENTRY *io, unsigned char *buffer, unsigned long length);
 static int _write(COMM_IO_ENTRY *io, const unsigned char *buffer, unsigned long length);
 
-const COMM_DRIVER __comm_driver_lpc2k = {
+static const COMM_DRIVER _comm_driver = {
 	.Open = _open, .Close = _close,
     .GetAttr = _get_attr, .SetAttr = _set_attr, 
 	.Read = _read, .Write = _write };
+
+static COMM_DEVICE _comm_device = { .Driver = &_comm_driver, .PortCount = 4 };
+static EXOS_TREE_DEVICE _devices[] = {
+	{ .Name = "comm0", .Device = &_comm_device, .Unit = 0 },
+	{ .Name = "comm1", .Device = &_comm_device, .Unit = 1 },
+	{ .Name = "comm2", .Device = &_comm_device, .Unit = 2 },
+	{ .Name = "comm3", .Device = &_comm_device, .Unit = 3 } };
+
+static void _handler(UART_EVENT event, void *state);
+static UART_CONTROL_BLOCK _cb[UART_MODULE_COUNT];
+static EXOS_MUTEX _lock;
+
+static void _register()
+{
+	exos_mutex_create(&_lock);
+
+	for(int i = 0; i < _comm_device.PortCount; i++)
+	{
+		EXOS_TREE_DEVICE *node = &_devices[i];
+		comm_add_device(node, "dev");
+	}
+}
 
 static int _alloc_uart_buffers(UART_CONTROL_BLOCK *cb)
 {
@@ -41,22 +63,26 @@ static int _alloc_uart_buffers(UART_CONTROL_BLOCK *cb)
 
 static int _open(COMM_IO_ENTRY *io)
 {
+	int done = 0;
 	if (io->Port < UART_MODULE_COUNT)
 	{
+		exos_mutex_lock(&_lock);
+
 		UART_CONTROL_BLOCK *cb = &_cb[io->Port];
 		if (_alloc_uart_buffers(cb) == 0)
 		{
 			cb->Handler = _handler;
 			cb->HandlerState = io;
 			cb->Baudrate = 9600;
-			
 			uart_initialize(io->Port, cb);
 
 			exos_event_set(&io->OutputEvent);
-			return 0;
+			
+			done = 1;
 		}
+		exos_mutex_unlock(&_lock);
 	}
-	return -1;
+	return done ? 0 : -1;
 }
 
 static int _get_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
@@ -81,15 +107,26 @@ static int _set_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
 	int done = 0;
 	if (io->Port < UART_MODULE_COUNT)
 	{
+		exos_mutex_lock(&_lock);
+
 		UART_CONTROL_BLOCK *cb = &_cb[io->Port];
 		switch(attr)
 		{
 			case COMM_ATTR_BAUDRATE:
-				cb->Baudrate = *(unsigned long *)value;
-				uart_initialize(io->Port, cb);
+				if (cb->Handler != NULL)
+				{
+					uart_disable(io->Port);
+					cb->Baudrate = *(unsigned long *)value;
+					uart_initialize(io->Port, cb);
+				}
+				else
+				{
+					cb->Baudrate = *(unsigned long *)value;
+				}
 				done = 1;
 				break;
 		}
+        exos_mutex_unlock(&_lock);
 	}
 	return done ? 0 : -1;
 }
@@ -110,10 +147,13 @@ static void _close(COMM_IO_ENTRY *io)
 {
 	if (io->Port < UART_MODULE_COUNT)
 	{
+		exos_mutex_lock(&_lock);
 		UART_CONTROL_BLOCK *cb = &_cb[io->Port];
 
 		uart_disable(io->Port);
 		_free_uart_buffers(cb);
+
+        exos_mutex_unlock(&_lock);
 	}
 }
 
