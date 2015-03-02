@@ -78,21 +78,21 @@ static void *_service(void *arg)
 
 		for(int port = 0; port < USB_HOST_ROOT_HUB_NDP; port++)
 		{
-			int status = _hc->RhPortStatus[port];
+			int status = __hc->RhPortStatus[port];
 			if (status & OHCIR_RH_PORT_CSC)	// status changed
 			{
-				_hc->RhPortStatus[port] = OHCIR_RH_PORT_CSC;
+				__hc->RhPortStatus[port] = OHCIR_RH_PORT_CSC;
 				if (status & OHCIR_RH_PORT_CCS) 
 				{
                 	exos_thread_sleep(50);	// at least 50ms before reset as of USB 2.0 spec
 					
-					_hc->RhPortStatus[port] = OHCIR_RH_PORT_PRS;	// assert reset
-					while(_hc->RhPortStatus[port] & OHCIR_RH_PORT_PRS)
+					__hc->RhPortStatus[port] = OHCIR_RH_PORT_PRS;	// assert reset
+					while(__hc->RhPortStatus[port] & OHCIR_RH_PORT_PRS)
 						exos_thread_sleep(1);
 					exos_thread_sleep(100);	// some devices need up to 100ms after port reset
 					
-					_hc->RhPortStatus[port] = OHCIR_RH_PORT_PRSC;	// clear prsc
-					USB_HOST_DEVICE_SPEED speed = (_hc->RhPortStatus[port] & OHCIR_RH_PORT_LSDA) ? 
+					__hc->RhPortStatus[port] = OHCIR_RH_PORT_PRSC;	// clear prsc
+					USB_HOST_DEVICE_SPEED speed = (__hc->RhPortStatus[port] & OHCIR_RH_PORT_LSDA) ? 
 						USB_HOST_DEVICE_LOW_SPEED : USB_HOST_DEVICE_FULL_SPEED;
 					
 					_enumerate(port, speed);			
@@ -107,7 +107,7 @@ static void *_service(void *arg)
 			}
 			if (status & OHCIR_RH_PORT_PRSC)
 			{
-				_hc->RhPortStatus[port] = OHCIR_RH_PORT_PRSC;
+				__hc->RhPortStatus[port] = OHCIR_RH_PORT_PRSC;
 			}
 		}
 	}

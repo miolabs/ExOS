@@ -12,12 +12,12 @@ void ohci_pipe_add(USB_HOST_PIPE *pipe)
 	switch(pipe->EndpointType)
 	{
 		case USB_TT_CONTROL:	
-			sed->HCED.Next = _hc->ControlHeadED;
-			_hc->ControlHeadED = &sed->HCED;
+			sed->HCED.Next = __hc->ControlHeadED;
+			__hc->ControlHeadED = &sed->HCED;
 			break;
 		case USB_TT_BULK:
-			sed->HCED.Next = _hc->BulkHeadED;
-			_hc->BulkHeadED = &sed->HCED;
+			sed->HCED.Next = __hc->BulkHeadED;
+			__hc->BulkHeadED = &sed->HCED;
 			break;
 		default:
 			_pipe_schedule(pipe);
@@ -30,17 +30,17 @@ void ohci_pipe_remove(USB_HOST_PIPE *pipe)
 	OHCI_SED *sed = (OHCI_SED *)pipe->Endpoint;
 	// FIXME: look for the matching pipe pointer for removing
 
-	unsigned long old = _hc->Control;
+	unsigned long old = __hc->Control;
 	OHCI_HCED **hced_ptr;
 	switch(pipe->EndpointType)
 	{
 		case USB_TT_CONTROL: 
-			hced_ptr = (OHCI_HCED **)&_hc->ControlHeadED;
-			_hc->ControlBits.CLE = 0;
+			hced_ptr = (OHCI_HCED **)&__hc->ControlHeadED;
+			__hc->ControlBits.CLE = 0;
 			break;
 		case USB_TT_BULK:
-			hced_ptr = (OHCI_HCED **)&_hc->BulkHeadED;
-			_hc->ControlBits.BLE = 0;
+			hced_ptr = (OHCI_HCED **)&__hc->BulkHeadED;
+			__hc->ControlBits.BLE = 0;
 			break;
 		default:
 			_pipe_unschedule(pipe);
@@ -69,7 +69,7 @@ void ohci_pipe_remove(USB_HOST_PIPE *pipe)
 	}
 
 	unsigned long mask = OHCIR_CONTROL_CLE | OHCIR_CONTROL_BLE;
-	_hc->Control = (_hc->Control & ~mask) | (old & mask); 
+	__hc->Control = (__hc->Control & ~mask) | (old & mask); 
 }
 
 int ohci_pipe_flush(USB_HOST_PIPE *pipe, USB_REQUEST_BUFFER *urb)
@@ -251,10 +251,10 @@ OHCI_STD *ohci_add_std(USB_REQUEST_BUFFER *urb, OHCI_STD *next_std, OHCI_TD_PID 
 		switch (pipe->EndpointType)
 		{
 			case USB_TT_CONTROL:
-				_hc->CommandStatus |= OHCIR_CMD_STATUS_CLF;
+				__hc->CommandStatus |= OHCIR_CMD_STATUS_CLF;
 				break;
 			case USB_TT_BULK:
-				_hc->CommandStatus |= OHCIR_CMD_STATUS_BLF;
+				__hc->CommandStatus |= OHCIR_CMD_STATUS_BLF;
 				break;
 		}
 	}

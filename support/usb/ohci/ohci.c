@@ -5,7 +5,7 @@
 #include <kernel/panic.h>
 
 // Host Controller Communications Area (must be 256-aligned)
-/*static*/ volatile OHCI_HCCA _hcca __usb __attribute__((aligned(256)));
+static volatile OHCI_HCCA _hcca __usb __attribute__((aligned(256)));
 static EXOS_EVENT _sof_event;
 static void _soft_reset();
 
@@ -16,28 +16,28 @@ int ohci_initialize()
 
 	_soft_reset();
 
-	_hc->Control = 0;
-	_hc->ControlBits.HCFS = OHCI_OP_CONTROL_FS_OPERATIONAL;
+	__hc->Control = 0;
+	__hc->ControlBits.HCFS = OHCI_OP_CONTROL_FS_OPERATIONAL;
 
 	int fi = 12000 - 1;
-	_hc->FmInterval = (((fi - 210) * 6 / 7) << 16) | fi;
-	_hc->PeriodicStart = (fi * 90 / 100);	// 10% of bandwidth reserved
+	__hc->FmInterval = (((fi - 210) * 6 / 7) << 16) | fi;
+	__hc->PeriodicStart = (fi * 90 / 100);	// 10% of bandwidth reserved
 
 	// initialize HCCA
 	for (int i = 0; i < 32; i++) _hcca.IntTable[i] = 0;
 	_hcca.FrameNumber = 0;
 	_hcca.DoneHead = 0;
 
-    _hc->HCCA = &_hcca;
+    __hc->HCCA = &_hcca;
 
 	// enable list processing
-	_hc->Control |= OHCIR_CONTROL_CLE | OHCIR_CONTROL_BLE | OHCIR_CONTROL_PLE | OHCIR_CONTROL_IE;
+	__hc->Control |= OHCIR_CONTROL_CLE | OHCIR_CONTROL_BLE | OHCIR_CONTROL_PLE | OHCIR_CONTROL_IE;
 
 	// Set Global Power
-	_hc->RhStatus = OHCIR_RH_STATUS_LPSC;
+	__hc->RhStatus = OHCIR_RH_STATUS_LPSC;
 
 	// enable interrupts
-	_hc->InterruptEnable = OHCIR_INTR_ENABLE_MIE | OHCIR_INTR_ENABLE_UE | OHCIR_INTR_ENABLE_SO |
+	__hc->InterruptEnable = OHCIR_INTR_ENABLE_MIE | OHCIR_INTR_ENABLE_UE | OHCIR_INTR_ENABLE_SO |
 				OHCIR_INTR_ENABLE_WDH | OHCIR_INTR_STATUS_SF |
 				OHCIR_INTR_ENABLE_RHSC;
 }
@@ -45,8 +45,8 @@ int ohci_initialize()
 static void _soft_reset()
 {
 	// sw reset
-	_hc->CommandStatus = OHCIR_CMD_STATUS_HCR;
-    while(_hc->CommandStatus & OHCIR_CMD_STATUS_HCR);
+	__hc->CommandStatus = OHCIR_CMD_STATUS_HCR;
+    while(__hc->CommandStatus & OHCIR_CMD_STATUS_HCR);
 }
 
 OHCI_HCED **ohci_get_periodic_ep(int index)
@@ -112,7 +112,7 @@ int ohci_init_hctd_iso(OHCI_HCTD_ISO *itd, int sf, void *buffer, int length, int
 // NOTE: this is called by lower USB host/otg layer
 void ohci_isr()
 {
-	int int_status = _hc->InterruptStatus & _hc->InterruptEnable;
+	int int_status = __hc->InterruptStatus & __hc->InterruptEnable;
 	if (int_status != 0)
 	{
 		if ((int_status & OHCIR_INTR_STATUS_UE) ||
@@ -172,13 +172,13 @@ void ohci_isr()
 			exos_event_reset(&_sof_event);
 
 		// clear interrupt flags 
-		_hc->InterruptStatus = int_status;
+		__hc->InterruptStatus = int_status;
 	}      
 }
 
 unsigned short ohci_get_current_frame()
 {
-	return _hc->FmNumber;
+	return __hc->FmNumber;
 }
 
 void ohci_wait_sof()

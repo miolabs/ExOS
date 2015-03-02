@@ -257,7 +257,7 @@ typedef volatile struct
 #define OHCIR_RH_PORT_PRSC	0x00100000
 
 
-extern OHCI_OP_REGISTERS *_hc;
+extern OHCI_OP_REGISTERS *__hc;
 
 // prototypes
 int ohci_initialize();
