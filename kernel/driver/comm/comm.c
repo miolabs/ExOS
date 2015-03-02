@@ -1,5 +1,4 @@
 #include "comm.h"
-#include "board.h"
 #include <kernel/panic.h>
 
 static int _read(EXOS_IO_ENTRY *io, void *buffer, unsigned long length);
@@ -10,15 +9,6 @@ static const EXOS_IO_DRIVER _comm_driver = {
 
 void comm_initialize()
 {
-	// add board devices to device tree
-	EXOS_TREE_DEVICE *device;
-	for(int index = 0; 
-		NULL != (device = comm_board_get_device(index));
-		index++)
-	{
-		device->Type = EXOS_TREE_NODE_DEVICE;
-		exos_tree_add_child_path((EXOS_TREE_NODE *)device, "dev");
-	}
 }
 
 void comm_add_device(EXOS_TREE_DEVICE *device, const char *parent_path)
