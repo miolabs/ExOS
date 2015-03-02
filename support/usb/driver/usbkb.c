@@ -93,7 +93,7 @@ static void _start(HID_FUNCTION_HANDLER *handler)
 		
 		USBKB_IO_HANDLE *handle = kb->IOHandle;
 		handle->State = USBKB_IO_CLOSED;
-		exos_tree_add_device(&handle->KernelDevice, "dev");	// FIXME: check re-adding the same device
+		comm_add_device(&handle->KernelDevice, "dev");	// FIXME: check re-adding the same device
 	}
 }
 

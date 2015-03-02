@@ -1,7 +1,7 @@
 #include <support/board_hal.h>
 #include <support/lpc17/dma.h>
 #include <support/lpc17/pincon.h>
-
+#include <support/gpio_hal.h>
 
 void hal_board_initialize()
 {
@@ -9,14 +9,24 @@ void hal_board_initialize()
 
 #if defined BOARD_LPC1766STK
 
-	pincon_setfunc(0, 29, 1);	// D+
-	pincon_setfunc(0, 30, 1);	// D-
-	pincon_setfunc(1, 18, 1);	// USB_UP_LED
-	pincon_setfunc(1, 19, 2);	// _USB_PPWR
-	pincon_setfunc(1, 22, 2);	// USB_PWRD
-	pincon_setfunc(1, 27, 2);	// _USB_OVRCR
+	pincon_setfunc(0, 21, 0, PINMODE_PULLUP);	// SD_PWR
+	hal_gpio_config(0, 1<<21, 1<<21);
+	hal_gpio_pin_set(0, 21, 1);
+	pincon_setfunc(0, 6, 0, PINMODE_PULLUP);	// SD_CS
 
-	pincon_setfunc(1, 31, 3);	// AN5
+#define SDCARD_POWER_PORT 0	
+#define SDCARD_POWER_PIN 21	
+#define SDCARD_SEL_PORT 0
+#define SDCARD_SEL_PIN 6	
+
+	pincon_setfunc(0, 29, 1, PINMODE_FLOAT);	// D+
+	pincon_setfunc(0, 30, 1, PINMODE_FLOAT);	// D-
+	pincon_setfunc(1, 18, 1, PINMODE_PULLUP);	// USB_UP_LED
+	pincon_setfunc(1, 19, 2, PINMODE_PULLUP);	// _USB_PPWR
+	pincon_setfunc(1, 22, 2, PINMODE_PULLUP);	// USB_PWRD
+	pincon_setfunc(1, 27, 2, PINMODE_PULLUP);	// _USB_OVRCR
+
+	pincon_setfunc(1, 31, 3, PINMODE_FLOAT);	// AN5
 
 	LPC_GPIO1->FIODIR |= (1<<25);	// LED1
 	LPC_GPIO0->FIODIR |= (1<<4);	// LED2
@@ -25,55 +35,77 @@ void hal_board_initialize()
 
 #elif defined BOARD_LANDTIGER
 
-	pincon_setfunc(0, 29, 1);	// D+
-	pincon_setfunc(0, 30, 1);	// D-
-	pincon_setfunc(1, 18, 1);	// USB_UP_LED
-	pincon_setfunc(1, 19, 2);	// _USB_PPWR
-	pincon_setfunc(1, 22, 2);	// USB_PWRD
-	pincon_setfunc(1, 27, 2);	// _USB_OVRCR
+	pincon_setfunc(3, 26, 0, PINMODE_PULLUP);	// SD_PWR
+	hal_gpio_config(3, 1<<26, 1<<26);
+	hal_gpio_pin_set(3, 25, 1);
+	pincon_setfunc(3, 25, 0, PINMODE_PULLUP);	// SD_CS
 
-	pincon_setfunc(0, 0, 1);	// RD1
-	pincon_setfunc(0, 1, 1);	// RT1
-	pincon_setfunc(0, 4, 2);	// RD2
-	pincon_setfunc(0, 5, 2);	// RT2
+#define SDCARD_POWER_PORT 3	
+#define SDCARD_POWER_PIN 26	
+#define SDCARD_SEL_PORT 3
+#define SDCARD_SEL_PIN 25	
 
-	pincon_setfunc(1, 31, 3);	// AN5
+	pincon_setfunc(0, 29, 1, PINMODE_FLOAT);	// D+
+	pincon_setfunc(0, 30, 1, PINMODE_FLOAT);	// D-
+	pincon_setfunc(1, 18, 1, PINMODE_PULLUP);	// USB_UP_LED
+	pincon_setfunc(1, 19, 2, PINMODE_PULLUP);	// _USB_PPWR
+	pincon_setfunc(1, 22, 2, PINMODE_PULLUP);	// USB_PWRD
+	pincon_setfunc(1, 27, 2, PINMODE_PULLUP);	// _USB_OVRCR
+
+	pincon_setfunc(0, 0, 1, PINMODE_PULLUP);	// RD1
+	pincon_setfunc(0, 1, 1, PINMODE_PULLUP);	// RT1
+	pincon_setfunc(0, 4, 2, PINMODE_PULLUP);	// RD2
+	pincon_setfunc(0, 5, 2, PINMODE_PULLUP);	// RT2
+
+	pincon_setfunc(1, 31, 3, PINMODE_FLOAT);	// AN5
 
 	LPC_GPIO2->FIODIR |= 0xFF;	// all 8 lower bits are outputs
 
 #elif defined BOARD_NANO10
 
-	pincon_setfunc(0, 23, 1);	// AN0
-	pincon_setfunc(0, 24, 1);	// AN1
-	pincon_setfunc(0, 25, 1);	// AN2
-	pincon_setfunc(0, 26, 1);	// AN3
+	pincon_setfunc(0, 21, 0, PINMODE_PULLUP);	// SD_PWR
+	hal_gpio_config(0, 1<<21, 1<<21);
+	hal_gpio_pin_set(0, 21, 1);
+	pincon_setfunc(1, 21, 0, PINMODE_PULLUP);	// SD_CS
+	hal_gpio_config(1, 1<<21, 1<<21);
+	hal_gpio_pin_set(1, 21, 1);
 
-	pincon_setfunc(0, 27, 1);	// SDA0
-	pincon_setfunc(0, 28, 1);	// SCL0
+#define SDCARD_POWER_PORT 0	
+#define SDCARD_POWER_PIN 21	
+#define SDCARD_SEL_PORT 1
+#define SDCARD_SEL_PIN 21	
 
-	pincon_setfunc(0, 29, 1);	// D+
-	pincon_setfunc(0, 30, 1);	// D-
-   	pincon_setfunc(2, 9, 1);	// USB_CONNECT
+	pincon_setfunc(0, 23, 1, PINMODE_FLOAT);	// AN0
+	pincon_setfunc(0, 24, 1, PINMODE_FLOAT);	// AN1
+	pincon_setfunc(0, 25, 1, PINMODE_FLOAT);	// AN2
+	pincon_setfunc(0, 26, 1, PINMODE_FLOAT);	// AN3
 
-	pincon_setfunc(0, 4, 2);	// RD2
-	pincon_setfunc(0, 5, 2);	// RT2
+	pincon_setfunc(0, 27, 1, PINMODE_PULLUP);	// SDA0
+	pincon_setfunc(0, 28, 1, PINMODE_PULLUP);	// SCL0
 
-	pincon_setfunc(1, 20, 3);	// SCK0
-	pincon_setfunc(1, 21, 3);	// SSEL0
-	pincon_setfunc(1, 23, 3);	// MISO0
-	pincon_setfunc(1, 24, 3);	// MOSI0
+	pincon_setfunc(0, 29, 1, PINMODE_FLOAT);	// D+
+	pincon_setfunc(0, 30, 1, PINMODE_FLOAT);	// D-
+   	pincon_setfunc(2, 9, 1, PINMODE_PULLUP);	// USB_CONNECT
 
-	pincon_setfunc(0, 2, 1);	// TXD0
-	pincon_setfunc(0, 3, 1);	// RXD0
-	pincon_setfunc(0, 15, 1);	// TXD1
-	pincon_setfunc(0, 16, 1);	// RXD1
+	pincon_setfunc(0, 4, 2, PINMODE_PULLUP);	// RD2
+	pincon_setfunc(0, 5, 2, PINMODE_PULLUP);	// RT2
 
-	pincon_setfunc(2, 0, 1);	// PWM1.1
-	pincon_setfunc(2, 1, 1);	// PWM1.2
-	pincon_setfunc(2, 2, 1);	// PWM1.3
-	pincon_setfunc(2, 3, 1);	// PWM1.4
-	pincon_setfunc(2, 4, 1);	// PWM1.5
-	pincon_setfunc(2, 5, 1);	// PWM1.6
+	pincon_setfunc(1, 20, 3, PINMODE_PULLUP);	// SCK0
+	pincon_setfunc(1, 21, 3, PINMODE_PULLUP);	// SSEL0
+	pincon_setfunc(1, 23, 3, PINMODE_PULLUP);	// MISO0
+	pincon_setfunc(1, 24, 3, PINMODE_PULLUP);	// MOSI0
+
+	pincon_setfunc(0, 2, 1, PINMODE_PULLUP);	// TXD0
+	pincon_setfunc(0, 3, 1, PINMODE_PULLUP);	// RXD0
+	pincon_setfunc(0, 15, 1, PINMODE_PULLUP);	// TXD1
+	pincon_setfunc(0, 16, 1, PINMODE_PULLUP);	// RXD1
+
+	pincon_setfunc(2, 0, 1, PINMODE_PULLUP);	// PWM1.1
+	pincon_setfunc(2, 1, 1, PINMODE_PULLUP);	// PWM1.2
+	pincon_setfunc(2, 2, 1, PINMODE_PULLUP);	// PWM1.3
+	pincon_setfunc(2, 3, 1, PINMODE_PULLUP);	// PWM1.4
+	pincon_setfunc(2, 4, 1, PINMODE_PULLUP);	// PWM1.5
+	pincon_setfunc(2, 5, 1, PINMODE_PULLUP);	// PWM1.6
 
 	LPC_GPIO2->FIODIR |= (1<<6);	// STATUS_LED
 	LPC_GPIO1->FIODIR |= (1<<18);	// USB_LED
@@ -119,10 +151,10 @@ void hal_led_set(HAL_LED led, int state)
 
 void lcdcon_gpo_initialize()
 {
-	PINSEL3bits.P1_26 = 0;
-//	PINSEL9bits.P4_28 = 0;
-	PINSEL0bits.P0_8 = 0;
-	PINSEL9bits.P4_29 = 0;
+	pincon_setfunc(1, 26, 0, PINMODE_PULLUP);	// CS
+//	pincon_setfunc(4, 28, 0, PINMODE_PULLUP);	// A0
+	pincon_setfunc(0, 8, 0, PINMODE_PULLUP);	// A0
+	pincon_setfunc(4, 29, 0, PINMODE_PULLUP);	// RESET
 
 	LCD_CS_PORT->FIOSET = LCD_CS_MASK;
 	LCD_CS_PORT->FIODIR |= LCD_CS_MASK;
@@ -275,30 +307,35 @@ void hal_led_set(HAL_LED led, int state)
 
 
 
-#if defined(SDCARD_POWER_PORT) && defined(SDCARD_POWER_MASK)
-
-#ifdef SDCARD_POWER_INVERTED
-#define SDCARD_POWER_ON SDCARD_POWER_PORT->FIOCLR = SDCARD_POWER_MASK
-#define SDCARD_POWER_OFF SDCARD_POWER_PORT->FIOSET = SDCARD_POWER_MASK
-#else
-#define SDCARD_POWER_ON SDCARD_POWER_PORT->FIOSET = SDCARD_POWER_MASK
-#define SDCARD_POWER_OFF SDCARD_POWER_PORT->FIOCLR = SDCARD_POWER_MASK
-#endif
+#if defined(SDCARD_POWER_PORT) && defined(SDCARD_POWER_PIN)
 
 void sd_spi_power_control(int power)
 {
-	if (power)
-	{
-		SDCARD_POWER_OFF;
-		SDCARD_POWER_PORT->FIODIR |= SDCARD_POWER_MASK;
-		for(volatile int i = 0; i < 100000; i++);
-		SDCARD_POWER_ON;
-	}
-	else
-	{
-		SDCARD_POWER_OFF;
-		SDCARD_POWER_PORT->FIODIR |= SDCARD_POWER_MASK;
-	}
+	hal_gpio_pin_set(SDCARD_POWER_PORT, SDCARD_POWER_PIN, !power);	
+	hal_gpio_config(SDCARD_SEL_PORT, 1<<SDCARD_SEL_PIN, power ? 1<<SDCARD_SEL_PIN : 0);
+
+#ifdef BOARD_LPC1766STK
+		pincon_setfunc(0, 6, 0, PINMODE_PULLUP);	// SSEL1
+		pincon_setfunc(0, 7, power ? 2 : 0, PINMODE_FLOAT);		// SCK1
+		pincon_setfunc(0, 8, power ? 2 : 0, PINMODE_PULLUP);	// MISO1
+		pincon_setfunc(0, 9, power ? 2 : 0, PINMODE_FLOAT);		// MOSI1
+#endif
+#if defined BOARD_NANOAHRS || defined BOARD_LANDTIGER
+		pincon_setfunc(1, 20, power ? 3 : 0, PINMODE_FLOAT);	// SCK0
+		pincon_setfunc(1, 21, 0, PINMODE_PULLUP);	// SSEL0
+		pincon_setfunc(1, 23, power ? 3 : 0, PINMODE_PULLUP);	// MISO0
+		pincon_setfunc(1, 24, power ? 3 : 0, PINMODE_FLOAT);	// MOSI0
+#endif
+}
+
+void sd_spi_cs_assert()
+{
+	hal_gpio_pin_set(SDCARD_SEL_PORT, SDCARD_SEL_PIN, 0);
+}
+
+void sd_spi_cs_release()
+{
+	hal_gpio_pin_set(SDCARD_SEL_PORT, SDCARD_SEL_PIN, 1);
 }
 
 #endif

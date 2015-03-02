@@ -1,150 +1,224 @@
 <!DOCTYPE CrossStudio_Project_File>
 <solution Name="rfid_lpc24" target="8" version="2">
   <project Name="rfid_lpc24">
-    <configuration Name="Common" Target="LPC2468" arm_architecture="v4T" arm_core_type="ARM7TDMI-S" arm_gcc_target="arm-unknown-eabi" arm_linker_heap_size="8192" arm_linker_jtag_pad_post_dr="0" arm_linker_jtag_pad_post_ir="0" arm_linker_jtag_pad_pre_dr="0" arm_linker_jtag_pad_pre_ir="0" arm_linker_stack_size="2048" arm_linker_svc_stack_size="512" arm_simulator_memory_simulation_filename="$(PackagesDir)/targets/Philips_LPC210X/LPC2000SimulatorMemory.dll" arm_simulator_memory_simulation_parameter="LPC24;0x80000;0x10000;0x0;0x0;0x0;0x0;0x0;0x0;0x0;0x0" arm_target_debug_interface_type="ARM7TDI" arm_target_loader_parameter="12000000" build_intermediate_directory=".output/$(Configuration)" build_output_directory=".output/$(Configuration)" c_only_additional_options="-fms-extensions" c_user_include_directories="$(ProjectDir);$(ProjectDir)/include;$(ProjectDir)/kernel/driver" gcc_entry_point="Reset_Handler" link_IOLibraryName="none" link_include_standard_libraries="No" link_include_startup_code="No" linker_additional_files="$(StudioDir)/lib/libc$(LibExt)$(LIB);$(StudioDir)/lib/libm$(LibExt)$(LIB)" linker_memory_map_file="$(PackagesDir)/targets/Philips_LPC210X/Philips_LPC2468_MemoryMap.xml" oscillator_frequency="12MHz" project_directory="" project_type="Executable" property_groups_file_path="$(PackagesDir)/targets/Philips_LPC210X/propertyGroups24xx.xml"/>
-    <configuration Name="Flash" Placement="Flash" arm_target_flash_loader_file_path="$(PackagesDir)/targets/Philips_LPC210X/Release/Loader_lpc2300.elf" arm_target_flash_loader_type="LIBMEM RPC Loader" linker_section_placement_file="$(ProjectDir)/support/lpc2k/lpc2468_placement.xml" target_reset_script="FLASHReset()"/>
+    <configuration
+      Name="Common"
+      Target="LPC2468"
+      arm_architecture="v4T"
+      arm_core_type="ARM7TDMI-S"
+      arm_gcc_target="arm-unknown-eabi"
+      arm_linker_heap_size="8192"
+      arm_linker_jtag_pad_post_dr="0"
+      arm_linker_jtag_pad_post_ir="0"
+      arm_linker_jtag_pad_pre_dr="0"
+      arm_linker_jtag_pad_pre_ir="0"
+      arm_linker_stack_size="2048"
+      arm_linker_svc_stack_size="512"
+      arm_simulator_memory_simulation_filename="$(PackagesDir)/targets/Philips_LPC210X/LPC2000SimulatorMemory.dll"
+      arm_simulator_memory_simulation_parameter="LPC24;0x80000;0x10000;0x0;0x0;0x0;0x0;0x0;0x0;0x0;0x0"
+      arm_target_debug_interface_type="ARM7TDI"
+      arm_target_loader_parameter="12000000"
+      build_intermediate_directory=".output/$(Configuration)"
+      build_output_directory=".output/$(Configuration)"
+      c_only_additional_options="-fms-extensions"
+      c_user_include_directories="$(ProjectDir);$(ProjectDir)/include;$(ProjectDir)/kernel/driver"
+      gcc_entry_point="Reset_Handler"
+      link_IOLibraryName="none"
+      link_include_standard_libraries="No"
+      link_include_startup_code="No"
+      linker_additional_files="$(StudioDir)/lib/libc$(LibExt)$(LIB);$(StudioDir)/lib/libm$(LibExt)$(LIB)"
+      linker_memory_map_file="$(PackagesDir)/targets/Philips_LPC210X/Philips_LPC2468_MemoryMap.xml"
+      oscillator_frequency="12MHz"
+      project_directory=""
+      project_type="Executable"
+      property_groups_file_path="$(PackagesDir)/targets/Philips_LPC210X/propertyGroups24xx.xml" />
+    <configuration
+      Name="Flash"
+      Placement="Flash"
+      arm_target_flash_loader_file_path="$(PackagesDir)/targets/Philips_LPC210X/Release/Loader_lpc2300.elf"
+      arm_target_flash_loader_type="LIBMEM RPC Loader"
+      linker_section_placement_file="$(ProjectDir)/support/lpc2k/lpc2468_placement.xml"
+      target_reset_script="FLASHReset()" />
     <folder Name="Source Files">
-      <configuration Name="Common" filter="c;cpp;cxx;cc;h;s;asm;inc"/>
+      <configuration Name="Common" filter="c;cpp;cxx;cc;h;s;asm;inc" />
       <folder Name="kernel">
-        <file file_name="kernel/event.c"/>
-        <file file_name="kernel/fifo.c"/>
-        <file file_name="kernel/io.c"/>
-        <file file_name="kernel/list.c"/>
-        <file file_name="kernel/memory.c"/>
-        <file file_name="kernel/mutex.c"/>
-        <file file_name="kernel/panic.c"/>
-        <file file_name="kernel/signal.c"/>
-        <file file_name="kernel/startup.c"/>
-        <file file_name="kernel/thread.c"/>
-        <file file_name="kernel/thread_pool.c"/>
-        <file file_name="kernel/timer.c"/>
-        <file file_name="kernel/tree.c"/>
+        <file file_name="kernel/event.c" />
+        <file file_name="kernel/fifo.c" />
+        <file file_name="kernel/io.c" />
+        <file file_name="kernel/list.c" />
+        <file file_name="kernel/memory.c" />
+        <file file_name="kernel/mutex.c" />
+        <file file_name="kernel/panic.c" />
+        <file file_name="kernel/signal.c" />
+        <file file_name="kernel/startup.c" />
+        <file file_name="kernel/thread.c" />
+        <file file_name="kernel/thread_pool.c" />
+        <file file_name="kernel/timer.c" />
+        <file file_name="kernel/tree.c" />
         <folder Name="machine">
           <folder Name="armv4">
-            <file file_name="kernel/machine/armv4/kernel_armv4.s"/>
-            <file file_name="kernel/machine/armv4/vectors_armv4.s"/>
+            <file file_name="kernel/machine/armv4/kernel_armv4.s" />
+            <file file_name="kernel/machine/armv4/vectors_armv4.s" />
           </folder>
           <folder Name="lpc2k">
-            <file file_name="kernel/machine/lpc2k/machine_lpc2k.c"/>
-            <file file_name="kernel/machine/lpc2k/startup_lpc2k.s"/>
-            <file file_name="kernel/machine/lpc2k/time_lpc2k.c"/>
-            <file file_name="kernel/machine/lpc2k/net_lpc2k.c"/>
-            <file file_name="kernel/machine/lpc2k/comm_lpc2k.c"/>
+            <file file_name="kernel/machine/lpc2k/machine_lpc2k.c" />
+            <file file_name="kernel/machine/lpc2k/startup_lpc2k.s" />
+            <file file_name="kernel/machine/lpc2k/time_lpc2k.c" />
+            <file file_name="kernel/machine/lpc2k/net_lpc2k.c" />
+            <file file_name="kernel/machine/lpc2k/comm_lpc2k.c" />
           </folder>
-          <file file_name="kernel/machine/hal.c"/>
+          <file file_name="kernel/machine/hal.c" />
         </folder>
         <folder Name="driver">
           <folder Name="net">
-            <file file_name="kernel/driver/net/adapter.c"/>
-            <file file_name="kernel/driver/net/arp.c"/>
-            <file file_name="kernel/driver/net/arp_tables.c"/>
-            <file file_name="kernel/driver/net/icmp.c"/>
-            <file file_name="kernel/driver/net/ip.c"/>
-            <file file_name="kernel/driver/net/mbuf.c"/>
-            <file file_name="kernel/driver/net/net.c"/>
-            <file file_name="kernel/driver/net/net_io.c"/>
-            <file file_name="kernel/driver/net/net_service.c"/>
-            <file file_name="kernel/driver/net/tcp.c"/>
-            <file file_name="kernel/driver/net/tcp_io.c"/>
-            <file file_name="kernel/driver/net/tcp_service.c"/>
-            <file file_name="kernel/driver/net/udp.c"/>
-            <file file_name="kernel/driver/net/udp_io.c"/>
+            <file file_name="kernel/driver/net/adapter.c" />
+            <file file_name="kernel/driver/net/arp.c" />
+            <file file_name="kernel/driver/net/arp_tables.c" />
+            <file file_name="kernel/driver/net/icmp.c" />
+            <file file_name="kernel/driver/net/ip.c" />
+            <file file_name="kernel/driver/net/mbuf.c" />
+            <file file_name="kernel/driver/net/net.c" />
+            <file file_name="kernel/driver/net/net_io.c" />
+            <file file_name="kernel/driver/net/net_service.c" />
+            <file file_name="kernel/driver/net/tcp.c" />
+            <file file_name="kernel/driver/net/tcp_io.c" />
+            <file file_name="kernel/driver/net/tcp_service.c" />
+            <file file_name="kernel/driver/net/udp.c" />
+            <file file_name="kernel/driver/net/udp_io.c" />
             <folder Name="support">
-              <file file_name="kernel/driver/net/support/apipa.c"/>
-              <file file_name="kernel/driver/net/support/phy.c"/>
+              <file file_name="kernel/driver/net/support/apipa.c" />
+              <file file_name="kernel/driver/net/support/phy.c" />
             </folder>
           </folder>
           <folder Name="comm">
-            <file file_name="kernel/driver/comm/comm.c"/>
+            <file file_name="kernel/driver/comm/comm.c" />
           </folder>
           <folder Name="usb">
-            <file file_name="kernel/driver/usb/enumerate.c"/>
-            <file file_name="kernel/driver/usb/host.c"/>
-            <file file_name="kernel/driver/usb/usb.c"/>
+            <file file_name="kernel/driver/usb/enumerate.c" />
+            <file file_name="kernel/driver/usb/host.c" />
+            <file file_name="kernel/driver/usb/usb.c" />
             <folder Name="classes">
-              <file file_name="kernel/driver/usb/classes/scsi.c"/>
+              <file file_name="kernel/driver/usb/classes/scsi.c" />
             </folder>
           </folder>
         </folder>
-        <file file_name="kernel/port.c"/>
+        <file file_name="kernel/port.c" />
         <folder Name="posix">
-          <file file_name="kernel/posix/printf.c"/>
-          <file file_name="kernel/posix/arpa_inet.c"/>
-          <file file_name="kernel/posix/fcntl.c"/>
-          <file file_name="kernel/posix/ioctl.c"/>
-          <file file_name="kernel/posix/posix.c"/>
-          <file file_name="kernel/posix/pthread.c"/>
-          <file file_name="kernel/posix/pthread_cond.c"/>
-          <file file_name="kernel/posix/pthread_time.c"/>
-          <file file_name="kernel/posix/select.c"/>
-          <file file_name="kernel/posix/socket.c"/>
-          <file file_name="kernel/posix/stdlib.c"/>
-          <file file_name="kernel/posix/string.c"/>
-          <file file_name="kernel/posix/termios.c"/>
-          <file file_name="kernel/posix/unistd.c"/>
+          <file file_name="kernel/posix/printf.c" />
+          <file file_name="kernel/posix/arpa_inet.c" />
+          <file file_name="kernel/posix/fcntl.c" />
+          <file file_name="kernel/posix/ioctl.c" />
+          <file file_name="kernel/posix/posix.c" />
+          <file file_name="kernel/posix/pthread.c" />
+          <file file_name="kernel/posix/pthread_cond.c" />
+          <file file_name="kernel/posix/pthread_time.c" />
+          <file file_name="kernel/posix/select.c" />
+          <file file_name="kernel/posix/socket.c" />
+          <file file_name="kernel/posix/stdlib.c" />
+          <file file_name="kernel/posix/string.c" />
+          <file file_name="kernel/posix/termios.c" />
+          <file file_name="kernel/posix/unistd.c" />
         </folder>
-        <file file_name="kernel/dispatch.c"/>
+        <file file_name="kernel/dispatch.c" />
+        <file file_name="kernel/datetime.c" />
+        <file file_name="kernel/types.c" />
       </folder>
       <folder Name="support">
         <folder Name="lpc2k">
-          <file file_name="support/lpc2k/cpu.c"/>
-          <file file_name="support/lpc2k/emac.c"/>
-          <file file_name="support/lpc2k/emac_mem.c"/>
-          <file file_name="support/lpc2k/pincon.c"/>
-          <file file_name="support/lpc2k/timer.c"/>
-          <file file_name="support/lpc2k/usb_host.c"/>
-          <file file_name="support/lpc2k/usb_otg.c"/>
-          <file file_name="support/lpc2k/i2c.c"/>
-          <file file_name="support/lpc2k/uart.c"/>
-          <file file_name="support/lpc2k/dma.c"/>
-          <file file_name="support/lpc2k/adc.c"/>
+          <file file_name="support/lpc2k/cpu.c" />
+          <file file_name="support/lpc2k/emac.c" />
+          <file file_name="support/lpc2k/emac_mem.c" />
+          <file file_name="support/lpc2k/pincon.c" />
+          <file file_name="support/lpc2k/timer.c" />
+          <file file_name="support/lpc2k/usb_host.c" />
+          <file file_name="support/lpc2k/usb_otg.c" />
+          <file file_name="support/lpc2k/i2c.c" />
+          <file file_name="support/lpc2k/uart.c" />
+          <file file_name="support/lpc2k/dma.c" />
+          <file file_name="support/lpc2k/adc.c" />
         </folder>
-        <configuration Name="Common" build_intermediate_directory=".output/$(Configuration)/support" build_output_directory=".output/$(Configuration)/support"/>
+        <configuration
+          Name="Common"
+          build_intermediate_directory=".output/$(Configuration)/support"
+          build_output_directory=".output/$(Configuration)/support" />
         <folder Name="board">
-          <file file_name="support/board/board_generic_lpc2k.c"/>
-          <file file_name="support/board/drivers_generic_lpc2k.c"/>
+          <file file_name="support/board/board_generic_lpc2k.c" />
+          <file file_name="support/board/drivers_generic_lpc2k.c" />
         </folder>
         <folder Name="usb">
           <folder Name="ohci">
-            <file file_name="support/usb/ohci/buffers.c"/>
-            <file file_name="support/usb/ohci/driver.c"/>
-            <file file_name="support/usb/ohci/hub.c"/>
-            <file file_name="support/usb/ohci/ohci.c"/>
-            <file file_name="support/usb/ohci/pipes.c"/>
+            <file file_name="support/usb/ohci/buffers.c" />
+            <file file_name="support/usb/ohci/driver.c" />
+            <file file_name="support/usb/ohci/hub.c" />
+            <file file_name="support/usb/ohci/ohci.c" />
+            <file file_name="support/usb/ohci/pipes.c" />
           </folder>
           <folder Name="driver">
-            <file file_name="support/usb/driver/usbprint.c"/>
-            <file file_name="support/usb/driver/ftdi.c"/>
-            <file file_name="support/usb/driver/msc.c"/>
-            <file file_name="support/usb/driver/hid.c"/>
-            <file file_name="support/usb/driver/usbkb.c"/>
+            <file file_name="support/usb/driver/usbprint.c" />
+            <file file_name="support/usb/driver/ftdi.c" />
+            <file file_name="support/usb/driver/msc.c" />
+            <file file_name="support/usb/driver/hid.c" />
+            <file file_name="support/usb/driver/usbkb.c" />
           </folder>
         </folder>
         <folder Name="misc">
-          <file file_name="support/misc/eeprom.c"/>
+          <file file_name="support/misc/eeprom.c" />
+        </folder>
+        <folder Name="services">
+          <file file_name="support/services/debug.c" />
+          <file file_name="support/services/init.c" />
         </folder>
       </folder>
       <folder Name="rfid">
-        <file file_name="rfid/main.c"/>
-        <file file_name="rfid/pseudokb.c"/>
-        <file file_name="rfid/temperature.c"/>
-        <file file_name="rfid/main_posix.c"/>
+        <file file_name="rfid/main.c" />
+        <file file_name="rfid/pseudokb.c" />
+        <file file_name="rfid/temperature.c" />
+        <file file_name="rfid/main_posix.c" />
       </folder>
     </folder>
     <folder Name="System Files">
       <file file_name="$(TargetsDir)/Philips_LPC210X/Philips_LPC210X_Target.js">
-        <configuration Name="Common" file_type="Target Script"/>
+        <configuration Name="Common" file_type="Target Script" />
       </file>
     </folder>
   </project>
-  <configuration Name="Flash" hidden="Yes"/>
-  <configuration Name="Debug" build_debug_information="Yes" c_preprocessor_definitions="DEBUG" gcc_optimization_level="None" hidden="Yes" link_include_startup_code="No"/>
-  <configuration Name="Release" build_debug_information="No" c_additional_options="-g1" c_preprocessor_definitions="NDEBUG" gcc_optimization_level="Level 1" hidden="Yes" link_include_startup_code="No"/>
-  <configuration Name="Common" c_preprocessor_definitions="__EXOS__;MAIN_THREAD_STACK=1024;MAIN_THREAD_PRI=0;ARMV4_VECTORS_CHECKSUM=0xB8A06F60;FTDI_BAUDRATE=38400"/>
-  <configuration Name="EA2478-Mod" c_preprocessor_definitions="BOARD_EA2478_MOD" hidden="Yes"/>
-  <configuration Name="EA2478-Mod Release" inherited_configurations="EA2478-Mod;Flash;Release"/>
-  <configuration Name="EA2478-Mod Debug" inherited_configurations="Debug;EA2478-Mod;Flash"/>
-  <configuration Name="Olimex-E2468" c_preprocessor_definitions="BOARD_E2468;EEPROM_SIZE=32768;EEPROM_I2C_MODULE=0" hidden="Yes"/>
-  <configuration Name="Olimex-E2468 Debug" inherited_configurations="Debug;Flash;Olimex-E2468"/>
-  <configuration Name="Olimex-E2468 Release" inherited_configurations="Flash;Olimex-E2468;Release"/>
+  <configuration Name="Flash" hidden="Yes" />
+  <configuration
+    Name="Debug"
+    build_debug_information="Yes"
+    c_preprocessor_definitions="DEBUG"
+    gcc_optimization_level="None"
+    hidden="Yes"
+    link_include_startup_code="No" />
+  <configuration
+    Name="Release"
+    build_debug_information="No"
+    c_additional_options="-g1"
+    c_preprocessor_definitions="NDEBUG"
+    gcc_optimization_level="Level 1"
+    hidden="Yes"
+    link_include_startup_code="No" />
+  <configuration
+    Name="Common"
+    c_preprocessor_definitions="__EXOS__;MAIN_THREAD_STACK=1024;MAIN_THREAD_PRI=0;ARMV4_VECTORS_CHECKSUM=0xB8A06F60;FTDI_BAUDRATE=38400" />
+  <configuration
+    Name="EA2478-Mod"
+    c_preprocessor_definitions="BOARD_EA2478_MOD"
+    hidden="Yes" />
+  <configuration
+    Name="EA2478-Mod Release"
+    inherited_configurations="EA2478-Mod;Flash;Release" />
+  <configuration
+    Name="EA2478-Mod Debug"
+    inherited_configurations="Debug;EA2478-Mod;Flash" />
+  <configuration
+    Name="Olimex-E2468"
+    c_preprocessor_definitions="BOARD_E2468;EEPROM_SIZE=32768;EEPROM_I2C_MODULE=0"
+    hidden="Yes" />
+  <configuration
+    Name="Olimex-E2468 Debug"
+    inherited_configurations="Debug;Flash;Olimex-E2468" />
+  <configuration
+    Name="Olimex-E2468 Release"
+    inherited_configurations="Flash;Olimex-E2468;Release" />
 </solution>
