@@ -24,6 +24,7 @@ void hal_mci_initialize()
 	MCIPowerBits.Control = MCI_POWER_OFF;
 	for (volatile int time = 0; time < 1000000; time++);
 
+	//NOTE: clk is pclk / (2 * (div + 1)) for low speed, then bypassed for high speed
 	MCIClock = (23 & MCIClock_ClkDiv_MASK) | MCIClock_Enable | MCIClock_WideBus;
 	for (volatile int time = 0; time < 10000; time++);
 

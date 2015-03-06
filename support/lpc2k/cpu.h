@@ -140,6 +140,46 @@ typedef struct
 
 #define PCLKSEL1bits (*(_PCLKSEL1 *) &LPC_SC->PCLKSEL1)
 
+typedef enum
+{
+	PCLK_WDT = 0,
+	PCLK_TIMER0,
+	PCLK_TIMER1,
+	PCLK_UART0,
+	PCLK_UART1,
+	PCLK_PWM0,
+	PCLK_PWM1,
+	PCLK_I2C0,
+	PCLK_SPI,
+	PCLK_RTC,
+	PCLK_SSP1,
+	PCLK_DAC,
+	PCLK_ADC,
+	PCLK_CAN1,
+	PCLK_CAN2,
+	PCLK_ACF,
+
+	PCLK_BAT_RAM,
+	PCLK_GPIO,
+	PCLK_PCB,
+	PCLK_I2C1,
+
+	PCLK_RES20,
+	PCLK_SSP0,
+	PCLK_TIMER2,
+	PCLK_TIMER3,
+	
+	PCLK_UART2,
+	PCLK_UART3,
+	PCLK_I2C2,
+	PCLK_I2S,
+	
+	PCLK_MCI,
+	PCLK_RES29,
+	PCLK_SYSCON,
+	PCLK_RES31
+} PCLK_PERIPH;
+
 
 typedef struct
 {
@@ -171,6 +211,7 @@ typedef enum
 	UART1_IRQn = 7,
     ENET_IRQn = 21,
 	USB_IRQn = 22,
+	CAN_IRQn = 23,
 	MCI_IRQn = 24,
 	DMA_IRQn = 25,
     TIMER2_IRQn = 26,
@@ -181,9 +222,9 @@ typedef enum
 
 
 // prototypes
+///////////////////////////////
 
-int cpu_cclk() __attribute__((deprecated)); 
-int cpu_pclk(int cclk, int setting);
+int cpu_pclk(PCLK_PERIPH periph);
 
 void VIC_EnableIRQ(IRQn_Type irq);
 void VIC_DisableIRQ(IRQn_Type irq);

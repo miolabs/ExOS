@@ -36,6 +36,15 @@ typedef struct
 	volatile  unsigned char  FIFOLVL;
 } LPC_UART_TypeDef;
 
+#define LPC_UART0_BASE	0xE000C000
+#define LPC_UART1_BASE	0xE0010000
+#define LPC_UART2_BASE	0xE0078000
+#define LPC_UART3_BASE	0xE007C000
+#define LPC_UART0 ((LPC_UART_TypeDef *)LPC_UART0_BASE)
+#define LPC_UART1 ((LPC_UART_TypeDef *)LPC_UART1_BASE)
+#define LPC_UART2 ((LPC_UART_TypeDef *)LPC_UART2_BASE)
+#define LPC_UART3 ((LPC_UART_TypeDef *)LPC_UART3_BASE)
+
 #define UART_LCR_WLEN_5BIT (0 << 0)
 #define UART_LCR_WLEN_6BIT (1 << 0)
 #define UART_LCR_WLEN_7BIT (2 << 0)

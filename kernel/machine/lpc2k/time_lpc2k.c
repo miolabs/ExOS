@@ -8,6 +8,6 @@
 void hal_time_initialize(int period_us)
 {
 	// setup tick (1ms) timer
-	timer_initialize(TICK_TIMER, 1000000, period_us - 1, TIMER_MODE_CONTINUOUS_RELOAD, 
-		(MATCH_HANDLER)__kernel_tick, 0);
+	timer_match_initialize(TICK_TIMER, 1000, 1000000 / period_us, 3);
+	timer_match_set_handler(TICK_TIMER, 3, (HAL_PWM_HANDLER)__kernel_tick);
 }

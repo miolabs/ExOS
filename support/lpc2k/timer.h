@@ -2,6 +2,7 @@
 #define LPC_TIMER_H
 
 #include <support/lpc2k/cpu.h>
+#include <support/pwm_hal.h>
 
 /*------------- Timer (TIM) --------------------------------------------------*/
 typedef struct
@@ -25,47 +26,63 @@ typedef struct
   __IO unsigned long CTCR;
 } LPC_TIM_TypeDef;
 
-extern LPC_TIM_TypeDef *LPC_TIM0;
-extern LPC_TIM_TypeDef *LPC_TIM1;
-extern LPC_TIM_TypeDef *LPC_TIM2;
-extern LPC_TIM_TypeDef *LPC_TIM3;
+#define LPC_TIM0_BASE	0xE0004000
+#define LPC_TIM1_BASE	0xE0008000
+#define LPC_TIM2_BASE	0xE0070000
+#define LPC_TIM3_BASE	0xE0074000
 
+#define LPC_TIM0 ((LPC_TIM_TypeDef *)LPC_TIM0_BASE)
+#define LPC_TIM1 ((LPC_TIM_TypeDef *)LPC_TIM1_BASE)
+#define LPC_TIM2 ((LPC_TIM_TypeDef *)LPC_TIM2_BASE)
+#define LPC_TIM3 ((LPC_TIM_TypeDef *)LPC_TIM3_BASE)
 
-typedef enum
-{
-	CAPM_RISING = 1,
-	CAPM_FALLING = 2,
-	CAPM_INT = 4,
-} TIMER_CAPM;
+#define TIMER_IR_MAT0 (1<<0)
+#define TIMER_IR_MAT1 (1<<1)
+#define TIMER_IR_MAT2 (1<<2)
+#define TIMER_IR_MAT3 (1<<3)
+#define TIMER_IR_CAP0 (1<<4)
+#define TIMER_IR_CAP1 (1<<5)
 
-typedef struct
-{
-	TIMER_CAPM CR0:3;
-	TIMER_CAPM CR1:3;
-} TIMER_CCR;
+#define TIMER_MCR_MR0I (1<<0)
+#define TIMER_MCR_MR0R (1<<1)
+#define TIMER_MCR_MR0S (1<<2)
+#define TIMER_MCR_MR1I (1<<3)
+#define TIMER_MCR_MR1R (1<<4)
+#define TIMER_MCR_MR1S (1<<5)
+#define TIMER_MCR_MR2I (1<<6)
+#define TIMER_MCR_MR2R (1<<7)
+#define TIMER_MCR_MR2S (1<<8)
+#define TIMER_MCR_MR3I (1<<9)
+#define TIMER_MCR_MR3R (1<<10)
+#define TIMER_MCR_MR3S (1<<11)
 
-#define TIMER_IR_MR0 (1<<0)
-#define TIMER_IR_MR1 (1<<1)
-#define TIMER_IR_MR2 (1<<2)
-#define TIMER_IR_MR3 (1<<3)
-#define TIMER_IR_CR0 (1<<4)
-#define TIMER_IR_CR1 (1<<5)
+#define TIMER_CCR_CAP0RE	(1<<0)
+#define TIMER_CCR_CAP0FE	(1<<1)
+#define TIMER_CCR_CAP0I		(1<<2)
 
-#define TIMER_MR_INT (1<<0)
-#define TIMER_MR_RESET (1<<1)
-#define TIMER_MR_STOP (1<<2)
+#define TIMER_EMR_EM0 (1<<0)
+#define TIMER_EMR_EM1 (1<<1)
+#define TIMER_EMR_EM2 (1<<2)
+#define TIMER_EMR_EM3 (1<<3)
+#define TIMER_EMR_EMC0_BIT (4)
+#define TIMER_EMR_EMC0_MASK (3<<TIMER_EMR_EMC0_BIT)
+#define TIMER_EMR_EMC1_BIT (6)
+#define TIMER_EMR_EMC1_MASK (3<<TIMER_EMR_EMC1_BIT)
+#define TIMER_EMR_EMC2_BIT (8)
+#define TIMER_EMR_EMC2_MASK (3<<TIMER_EMR_EMC2_BIT)
+#define TIMER_EMR_EMC3_BIT (10)
+#define TIMER_EMR_EMC3_MASK (3<<TIMER_EMR_EMC3_BIT)
 
-typedef enum
-{
-	TIMER_MODE_DISABLED = 0,
-	TIMER_MODE_CONTINUOUS,
-	TIMER_MODE_ONCE,
-	TIMER_MODE_CONTINUOUS_RELOAD,
-} TIMER_MODE;
+#define TIMER_EMC_NOTHING 0
+#define TIMER_EMC_CLEAR 1
+#define TIMER_EMC_SET 2
+#define TIMER_EMC_TOGGLE 3
 
-typedef void (* MATCH_HANDLER)(int module);
-
-void timer_initialize(int module, int freq, int period, TIMER_MODE mode, MATCH_HANDLER fn, int pri);
+int timer_match_initialize(int module, int range, int rate, int channel_for_period);
+void timer_match_set_handler(int module, int channel, HAL_PWM_HANDLER callback);
+void timer_match_set_value(int module, int channel, int value);
+void timer_match_set_trigger(int module, int channel, int trigger, int state);
+unsigned long timer_actual(int module);
 
 #endif // LPC_TIMER_H
 

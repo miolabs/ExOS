@@ -8,24 +8,22 @@ LPC_VIC_TypeDef *LPC_VIC = (LPC_VIC_TypeDef *)0xFFFFF000;
 
 unsigned long SystemCoreClock = OSCILLATOR_CLOCK_FREQUENCY;
 
-int cpu_cclk()
+int cpu_pclk(PCLK_PERIPH periph)
 {
-	return OSCILLATOR_CLOCK_FREQUENCY;
-}
+	int div = (periph < 16) ?
+		((LPC_SC->PCLKSEL0 >> (periph << 1)) & 3) :
+		((LPC_SC->PCLKSEL1 >> ((periph - 16) << 1)) & 3); 
 
-int cpu_pclk(int cclk, int setting)
-{
-	switch(setting & 0x03)
+	switch(div)
 	{
 		case 0:
-			return cclk >> 2;
+			return SystemCoreClock >> 2;
 		case 1:
-		default:
-			return cclk;
+			return SystemCoreClock;
 		case 2:
-			return cclk >> 1;
+			return SystemCoreClock >> 1;
 		case 3:
-			return cclk >> 3;
+			return SystemCoreClock >> 3;
 	}
 }
 
