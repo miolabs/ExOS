@@ -3,11 +3,6 @@
 
 #include "cpu.h"
 
-int _pclk(int cclk, int setting)
-{
-
-}
-
 #if (__TARGET_PROCESSOR > 1770)
 
 int cpu_pclk(PCLK_PERIPH periph)

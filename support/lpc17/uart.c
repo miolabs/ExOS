@@ -6,7 +6,7 @@
 #include <kernel/panic.h>
 
 static UART_CONTROL_BLOCK *_control[UART_MODULE_COUNT];
-static LPC_UART_TypeDef *const _modules[] = {
+static LPC_UART_TypeDef *const _modules[] = { 
 	(LPC_UART_TypeDef *)LPC_UART0, (LPC_UART_TypeDef *)LPC_UART1, LPC_UART2, LPC_UART3 };
 static const PCLK_PERIPH _pclk[] = {
 	PCLK_UART0, PCLK_UART1, PCLK_UART2, PCLK_UART3 };
@@ -28,24 +28,25 @@ static int _initialize(unsigned module, unsigned long baudrate)
 	UART_CONTROL_BLOCK *cb;
 	if (_valid_module(module, &uart, &cb))
 	{
+		switch(module)
+		{
+			case 0:	LPC_SC->PCONP |= PCONP_PCUART0;	break;
+			case 1:	LPC_SC->PCONP |= PCONP_PCUART1;	break;
+			case 2:	LPC_SC->PCONP |= PCONP_PCUART2;	break;
+			case 3:	LPC_SC->PCONP |= PCONP_PCUART3;	break;
+		}
+
 		int pclk = cpu_pclk(_pclk[module]);
 		unsigned short divisor = pclk / (16 * baudrate);
 		uart->LCR = UART_LCR_WLEN_8BIT | UART_LCR_STOP_1BIT | UART_LCR_DLAB; // no parity
+		uart->SCR = 0;
 		uart->DLL = divisor & 0xFF;
 		uart->DLM = (divisor >> 8) & 0xFF;
-		uart->SCR = 0;
-	
-		int rem = pclk - (divisor * 16 * baudrate);
-		if (rem != 0)
-		{
-			int m = pclk / rem;
-			int mm = 15 / m;
-			int m2 = (pclk * mm) / rem;
-			int s = (rem * m2) / pclk;
-			uart->FDR = m << 4 | s;
-			cb->Baudrate = (pclk * m) / (16 * divisor * (m + s)); 
-		}
-		else uart->FDR = 1 << 4;
+		uart->FDR = 1 << 4;
+		cb->Baudrate = pclk / (16 * divisor);
+
+//		unsigned int rem = pclk - (divisor * 16 * baudrate);
+//		cb->Baudrate = (pclk * m) / (16 * divisor * (m + s));
 	
 		uart->LCR &= ~UART_LCR_DLAB; // disable DLAB
 		uart->FCR = UART_FCR_FIFO_ENABLE | UART_FCR_RXFIFO_RESET | UART_FCR_TXFIFO_RESET |
@@ -54,20 +55,10 @@ static int _initialize(unsigned module, unsigned long baudrate)
 
 		switch(module)
 		{
-			case 0:
-				NVIC_EnableIRQ(UART0_IRQn);
-				break;
-			case 1:
-				NVIC_EnableIRQ(UART1_IRQn);
-				break;
-			case 2:
-				LPC_SC->PCONP |= PCONP_PCUART2;
-				NVIC_EnableIRQ(UART2_IRQn);
-				break;
-			case 3:
-				LPC_SC->PCONP |= PCONP_PCUART3;
-				NVIC_EnableIRQ(UART3_IRQn);
-				break;
+			case 0:	NVIC_EnableIRQ(UART0_IRQn);	break;
+			case 1:	NVIC_EnableIRQ(UART1_IRQn);	break;
+			case 2:	NVIC_EnableIRQ(UART2_IRQn);	break;
+			case 3:	NVIC_EnableIRQ(UART3_IRQn);	break;
 		}
 
 		return 1;

@@ -52,9 +52,6 @@ static LPC_TIM_TypeDef *_initialize(int module, unsigned long freq)
 	timer->CCR = 0;
 	timer->TC = 0;
 
-//	_capture_handlers[module] = (HAL_CAP_HANDLER)0;
-//	_match_handlers[module] = callback;
-//
 //	NVIC_EnableIRQ(irq);
 	return timer;
 }

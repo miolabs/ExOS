@@ -59,23 +59,19 @@ void CAN_IRQHandler(void)
 
 int hal_can_initialize(int module, int bitrate, CAN_INIT_FLAGS initf)
 {
-#if (__TARGET_PROCESSOR < 1770)
 	// NOTE: PCLK_CAN1 and PCLK_CAN2 must have the same PCLK divide value when the CAN function is used
-	PCLKSEL0bits.PCLK_CAN1 = 1;
-	PCLKSEL0bits.PCLK_CAN2 = 1;
-	PCLKSEL0bits.PCLK_ACF = 1;
-#endif
-
+	// NOTE: for 1Mb CAN bitrate, lower pclk divisor setting may be needed (reset value is 0 = cclk/4)
+	unsigned long pclk = cpu_pclk(PCLK_CAN1);
 	unsigned long btr;
 	int cdiv;
-	if ((SystemCoreClock % (12 * bitrate)) == 0)
+	if ((pclk % (12 * bitrate)) == 0)
 	{
-		int brp = SystemCoreClock / (12 * bitrate);
+		int brp = pclk / (12 * bitrate);
 		btr = CANBTR_F((brp - 1), 1, 8, 1, 0);  // BRP, SJW, TSEG1, TSEG2, SAM (12 clk/bit)
 	}
-	else if ((SystemCoreClock % (5 * bitrate)) == 0)
+	else if ((pclk % (5 * bitrate)) == 0)
 	{
-		int brp = SystemCoreClock / (5 * bitrate);
+		int brp = pclk / (5 * bitrate);
 		btr = CANBTR_F((brp - 1), 1, 2, 0, 0);  // BRP, SJW, TSEG1, TSEG2, SAM (5 clk /bit)
 	}
 	else return 0;

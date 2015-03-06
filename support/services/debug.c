@@ -19,10 +19,14 @@ static void _register()
 	if (node != NULL && node->Type == EXOS_TREE_NODE_DEVICE)
 	{
 		EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)node;
-		
 		comm_io_create(&_comm, dev_node->Device, dev_node->Unit, EXOS_IOF_WAIT);
+		unsigned long baudrate = 115200;
+		comm_io_set_attr(&_comm, COMM_ATTR_BAUDRATE, &baudrate);
 		if (0 == comm_io_open(&_comm))
 		{
+#ifdef DEBUG
+			comm_io_get_attr(&_comm, COMM_ATTR_BAUDRATE, &baudrate);
+#endif
 			_io = (EXOS_IO_ENTRY *)&_comm;
 		}
 	}

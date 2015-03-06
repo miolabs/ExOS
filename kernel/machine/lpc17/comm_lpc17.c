@@ -42,6 +42,7 @@ static void _register()
 
 	for(int i = 0; i < _comm_device.PortCount; i++)
 	{
+		_cb[i] = (UART_CONTROL_BLOCK) { .Baudrate = 9600 };
 		EXOS_TREE_DEVICE *node = &_devices[i];
 		comm_add_device(node, "dev");
 	}
@@ -73,7 +74,7 @@ static int _open(COMM_IO_ENTRY *io)
 		{
 			cb->Handler = _handler;
 			cb->HandlerState = io;
-			cb->Baudrate = 9600;
+			if (cb->Baudrate == 0) cb->Baudrate = 9600;
 			uart_initialize(io->Port, cb);
 
 			exos_event_set(&io->OutputEvent);
