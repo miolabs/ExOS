@@ -1,4 +1,5 @@
 #include <support/board_hal.h>
+#include <support/gpio_hal.h>
 #include <support/lpc2k/pincon.h>
 #include <support/lpc2k/dma.h>
 
@@ -18,24 +19,40 @@ void hal_board_initialize()
 
 #if defined BOARD_EA2478_MOD
 
-	_setup_usbhost();
-	_setup_can(0);
-	_setup_can(1);
-	_setup_uart(0);
-	_setup_uart(1);
-    _setup_adc();
-    _setup_mci();
+	pincon_setfunc(0, 2, 1, PINMODE_PULLUP);	// TXD0
+	pincon_setfunc(0, 3, 1, PINMODE_PULLUP);	// RXD0
+	pincon_setfunc(0, 15, 1, PINMODE_PULLUP);	// TXD1
+	pincon_setfunc(0, 16, 1, PINMODE_PULLUP);	// RXD1
+
+	pincon_setfunc(0, 0, 1, PINMODE_PULLUP);	// RD1
+	pincon_setfunc(0, 1, 1, PINMODE_PULLUP);	// TD1
+	pincon_setfunc(0, 4, 2, PINMODE_PULLUP);	// RD2
+	pincon_setfunc(0, 5, 2, PINMODE_PULLUP);	// TD2
  
+ 	pincon_setfunc(0, 23, 1, PINMODE_PULLUP); // AN0
+	pincon_setfunc(0, 24, 1, PINMODE_PULLUP); // AN1
+	pincon_setfunc(0, 25, 1, PINMODE_PULLUP); // AN2
+	pincon_setfunc(0, 26, 1, PINMODE_PULLUP); // AN3
+	pincon_setfunc(1, 30, 3, PINMODE_PULLUP); // AN4
+	pincon_setfunc(1, 31, 3, PINMODE_PULLUP); // AN5
+
+	_setup_usbhost();
+    _setup_mci();
+
 	LPC_GPIO2->FIODIR |= (1<<6);	// LED_GPS
 	LPC_GPIO2->FIODIR |= (1<<9);	// LED_SD
 
 #elif defined BOARD_E2468
 
+	pincon_setfunc(0, 23, 1, PINMODE_PULLUP); // AN0
+	pincon_setfunc(0, 24, 1, PINMODE_PULLUP); // AN1
+	pincon_setfunc(0, 25, 1, PINMODE_PULLUP); // AN2
+	pincon_setfunc(0, 26, 1, PINMODE_PULLUP); // AN3
+
+	pincon_setfunc(0, 2, 1, PINMODE_PULLUP);	// TXD0
+	pincon_setfunc(0, 3, 1, PINMODE_PULLUP);	// RXD0
+
 	_setup_usbhost();
-	_setup_can(0);
-	_setup_can(1);
-	_setup_uart(0);
-    _setup_adc();
     _setup_mci();
 
 	LPC_GPIO4->FIODIR |= (1<<17);	// STAT1
@@ -45,9 +62,21 @@ void hal_board_initialize()
 
 #elif defined BOARD_CR2
 
+	pincon_setfunc(0, 23, 1, PINMODE_PULLUP); // AN0
+	pincon_setfunc(0, 24, 1, PINMODE_PULLUP); // AN1
+	pincon_setfunc(0, 25, 1, PINMODE_PULLUP); // AN2
+	pincon_setfunc(0, 26, 1, PINMODE_PULLUP); // AN3
+	pincon_setfunc(1, 30, 3, PINMODE_PULLUP); // AN4
+	pincon_setfunc(1, 31, 3, PINMODE_PULLUP); // AN5
+	pincon_setfunc(0, 12, 3, PINMODE_PULLUP); // AN6
+	pincon_setfunc(0, 13, 3, PINMODE_PULLUP); // AN7
+
+	pincon_setfunc(0, 0, 1, PINMODE_PULLUP); // RD1
+	pincon_setfunc(0, 1, 1, PINMODE_PULLUP); // TD1
+	pincon_setfunc(0, 4, 2, PINMODE_PULLUP); // RD2
+	pincon_setfunc(0, 5, 2, PINMODE_PULLUP); // TD2
+
 	_setup_usbhost();
-	_setup_can(0);
-	_setup_can(1);
     _setup_adc();
 	_setup_mci();
 
@@ -63,8 +92,14 @@ void hal_board_initialize()
 #elif defined BOARD_ICDEV_LPC2478
 
     _setup_mci();
-	LPC_GPIO0->FIODIR |= (1<<13);	// USB_LED
-	hal_led_set(LED_USB, 0);
+
+	hal_gpio_config(0, 1<<13, 1<<13);	// STATUS_LED
+	hal_gpio_pin_set(0, 13, 0);
+
+	pincon_setfunc(0, 2, 1, PINMODE_PULLUP);	// TXD0
+	pincon_setfunc(0, 3, 1, PINMODE_PULLUP);	// RXD0
+	pincon_setfunc(0, 10, 1, PINMODE_PULLUP);	// TXD2
+	pincon_setfunc(0, 11, 1, PINMODE_PULLUP);	// RXD2
 
 #else
 #error Unsupported Board
@@ -90,28 +125,27 @@ static void _setup_i2c(int unit)
 	}
 }
 
-static void _setup_ssp(int unit)
-{
-	switch(unit)
-	{
-		case 0:
-			pincon_setfunc(1, 20, 3, PINMODE_PULLUP); // SCK0
-			pincon_setfunc(1, 21, 3, PINMODE_PULLUP); // SSEL0
-			pincon_setfunc(1, 23, 3, PINMODE_PULLUP); // MISO0
-			pincon_setfunc(1, 24, 3, PINMODE_PULLUP); // MOSI0
-			break;
-		case 1:
-			pincon_setfunc(0, 6, 2, PINMODE_PULLUP); // SSEL1
-			pincon_setfunc(0, 7, 2, PINMODE_PULLUP); // SCK1
-			pincon_setfunc(0, 8, 2, PINMODE_PULLUP); // MISO1
-			pincon_setfunc(0, 9, 2, PINMODE_PULLUP); // MOSI1
-			break;
-	}
-}
+//static void _setup_ssp(int unit)
+//{
+//	switch(unit)
+//	{
+//		case 0:
+//			pincon_setfunc(1, 20, 3, PINMODE_PULLUP); // SCK0
+//			pincon_setfunc(1, 21, 3, PINMODE_PULLUP); // SSEL0
+//			pincon_setfunc(1, 23, 3, PINMODE_PULLUP); // MISO0
+//			pincon_setfunc(1, 24, 3, PINMODE_PULLUP); // MOSI0
+//			break;
+//		case 1:
+//			pincon_setfunc(0, 6, 2, PINMODE_PULLUP); // SSEL1
+//			pincon_setfunc(0, 7, 2, PINMODE_PULLUP); // SCK1
+//			pincon_setfunc(0, 8, 2, PINMODE_PULLUP); // MISO1
+//			pincon_setfunc(0, 9, 2, PINMODE_PULLUP); // MOSI1
+//			break;
+//	}
+//}
 
 static void _setup_usbhost()
 {
-#if defined BOARD_E2468 || defined BOARD_EA2478_MOD || defined BOARD_CR2
 	pincon_setfunc(0, 29, 1, PINMODE_PULLUP);	// P0.29 = USB_D+1
 	pincon_setfunc(0, 30, 1, PINMODE_PULLUP);	// P0.30 = USB_D-1
 	pincon_setfunc(0, 31, 1, PINMODE_PULLUP);	// P0.31 = USB_D+2
@@ -121,87 +155,18 @@ static void _setup_usbhost()
 	pincon_setfunc(0, 12, 1, PINMODE_PULLUP);	// P0.12 = _USB_PPWR2
 	pincon_setfunc(1, 30, 1, PINMODE_PULLUP);	// P1.30 = USB_PWRD2
 	pincon_setfunc(1, 31, 1, PINMODE_PULLUP);	// P1.31 = _USB_OVRCR2
-	#ifndef USB_HOST_NO_LEDS
-	pincon_setfunc(1, 18, 1, PINMODE_PULLUP);	// P1.18 = USB_UP_LED1 __opt
-	pincon_setfunc(0, 13, 1, PINMODE_PULLUP);	// P0.13 = USB_UP_LED2 __opt
-	#endif
-#endif
+
+// NOTE: use on boards with usb leds only
+//	pincon_setfunc(1, 18, 1, PINMODE_PULLUP);	// P1.18 = USB_UP_LED1 __opt
+//	pincon_setfunc(0, 13, 1, PINMODE_PULLUP);	// P0.13 = USB_UP_LED2 __opt
 }
 
-static void _setup_usbdev()
-{
+//static void _setup_usbdev()
+//{
 //	PINSEL1bits.P0_29 = 1;		// D+
 //	PINSEL1bits.P0_30 = 1;		// D-
 //	PINSEL4bits.P2_9 = 1;		// USB_CONNECT
-}
-
-static void _setup_can(int unit)
-{
-#if defined BOARD_EA2478_MOD || defined BOARD_CR2
-	switch(unit)
-	{
-		case 0:
-			pincon_setfunc(0, 0, 1, PINMODE_PULLUP); // RD1
-			pincon_setfunc(0, 1, 1, PINMODE_PULLUP); // TD1
-			break;
-		case 1:
-			pincon_setfunc(0, 4, 2, PINMODE_PULLUP); // RD2
-			pincon_setfunc(0, 5, 2, PINMODE_PULLUP); // TD2
-			break;
-	}
-#endif
-}
-
-static void _setup_uart(int unit)
-{
-#if defined BOARD_EA2478_MOD
-	switch(unit)
-	{
-		case 0:
-			pincon_setfunc(0, 2, 1, PINMODE_PULLUP); // select TXD0
-			pincon_setfunc(0, 3, 1, PINMODE_PULLUP); // select RXD0
-			break;
-		case 1:
-			pincon_setfunc(0, 15, 1, PINMODE_PULLUP); // select TXD1
-			pincon_setfunc(0, 16, 1, PINMODE_PULLUP); // select RXD1
-			break;
-	}
-#elif defined BOARD_E2468
-	switch(unit)
-	{
-		case 0:
-			pincon_setfunc(0, 2, 1, PINMODE_PULLUP); // select TXD0
-			pincon_setfunc(0, 3, 1, PINMODE_PULLUP); // select RXD0
-			break;
-	}
-#endif
-}
-
-static void _setup_adc()
-{
-#if defined BOARD_EA2478_MOD
-	pincon_setfunc(0, 23, 1, PINMODE_PULLUP); // AN0
-	pincon_setfunc(0, 24, 1, PINMODE_PULLUP); // AN1
-	pincon_setfunc(0, 25, 1, PINMODE_PULLUP); // AN2
-	pincon_setfunc(0, 26, 1, PINMODE_PULLUP); // AN3
-	pincon_setfunc(1, 30, 3, PINMODE_PULLUP); // AN4
-	pincon_setfunc(1, 31, 3, PINMODE_PULLUP); // AN5
-#elif defined BOARD_E2468
-	pincon_setfunc(0, 23, 1, PINMODE_PULLUP); // AN0
-	pincon_setfunc(0, 24, 1, PINMODE_PULLUP); // AN1
-	pincon_setfunc(0, 25, 1, PINMODE_PULLUP); // AN2
-	pincon_setfunc(0, 26, 1, PINMODE_PULLUP); // AN3
-#elif defined BOARD_CR2
-	pincon_setfunc(0, 23, 1, PINMODE_PULLUP); // AN0
-	pincon_setfunc(0, 24, 1, PINMODE_PULLUP); // AN1
-	pincon_setfunc(0, 25, 1, PINMODE_PULLUP); // AN2
-	pincon_setfunc(0, 26, 1, PINMODE_PULLUP); // AN3
-	pincon_setfunc(1, 30, 3, PINMODE_PULLUP); // AN4
-	pincon_setfunc(1, 31, 3, PINMODE_PULLUP); // AN5
-	pincon_setfunc(0, 12, 3, PINMODE_PULLUP); // AN6
-	pincon_setfunc(0, 13, 3, PINMODE_PULLUP); // AN7
-#endif
-}
+//}
 
 static void _setup_mci()
 {

@@ -119,6 +119,7 @@
           <file file_name="support/lpc2k/i2c.c" />
           <file file_name="support/lpc2k/uart.c" />
           <file file_name="support/lpc2k/dma.c" />
+          <file file_name="support/lpc2k/gpio.c" />
         </folder>
         <configuration
           Name="Common"
@@ -211,4 +212,14 @@
   <configuration
     Name="Olimex-E2468 Release"
     inherited_configurations="Flash;Olimex-E2468;Release" />
+  <configuration
+    Name="ICDev-LPC2478"
+    c_preprocessor_definitions="BOARD_ICDEV_LPC2478;EXOS_NO_NET;EEPROM_SIZE=32768;EEPROM_I2C_MODULE=0"
+    hidden="Yes" />
+  <configuration
+    Name="ICDev-LPC2478 Debug"
+    inherited_configurations="Debug;Flash;ICDev-LPC2478" />
+  <configuration
+    Name="ICDev-LPC2478 Release"
+    inherited_configurations="Flash;ICDev-LPC2478;Release" />
 </solution>
