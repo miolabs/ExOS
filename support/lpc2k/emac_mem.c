@@ -121,7 +121,8 @@ int emac_send_output(NET_MBUF *mbuf, NET_CALLBACK callback, void *state)
 			data = ptr;
 			ptr += mbuf->Length;
 		}
-        _tx_desc[index].Data = data;
+
+		_tx_desc[index].Data = data;
 		_tx_desc[index].Control = ((mbuf->Length - 1) & ETH_TX_DESC_CONTROL_SIZE_MASK)
 			| ETH_TX_DESC_CONTROL_OVERRIDE
 			| ETH_TX_DESC_CONTROL_PAD | ETH_TX_DESC_CONTROL_CRC 

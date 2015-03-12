@@ -112,7 +112,7 @@ int emac_send_output(NET_MBUF *mbuf, NET_CALLBACK callback, void *state)
 			break;
 		
 		// setup fragment
-        unsigned char *data = mbuf->Buffer + mbuf->Offset;
+		unsigned char *data = mbuf->Buffer + mbuf->Offset;
 		if (!done)
 		{
 			ptr = data + mbuf->Length;

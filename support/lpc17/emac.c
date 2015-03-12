@@ -29,24 +29,24 @@ int emac_initialize(ETH_MAC *mac, void (*handler)(void *), void *state)
 	// clock selection
 	
 	// pinsel for RMII
-	pincon_setfunc(1, 0, 1, PINMODE_PULLUP);	// 1_0 = ENET_TXD0
-	pincon_setfunc(1, 1, 1, PINMODE_PULLUP);	// 1_1 = ENET_TXD1
-	pincon_setfunc(1, 4, 1, PINMODE_PULLUP);	// 1_4 = ENET_TX_EN
+	pincon_setfunc(1, 0, 1, PINMODE_PULLUP);	// ENET_TXD0
+	pincon_setfunc(1, 1, 1, PINMODE_PULLUP);	// ENET_TXD1
+	pincon_setfunc(1, 4, 1, PINMODE_PULLUP);	// ENET_TX_EN
 
 	if (LPC_EMAC->Module_ID == OLD_EMAC_MODULE_ID)
 	{
 		// On Rev '-' P1.6 MUST BE SET (See ERRATA Ethernet.1)
-		pincon_setfunc(1, 6, 1, PINMODE_PULLUP);	// 1_6 = ENET_TX_CLK
+		pincon_setfunc(1, 6, 1, PINMODE_PULLUP);	// ENET_TX_CLK
 	}
 
-	pincon_setfunc(1, 8, 1, PINMODE_PULLUP);	//PINSEL2bits.P1_8 = 1;	// ENET_CRS
-	pincon_setfunc(1, 9, 1, PINMODE_PULLUP);	//PINSEL2bits.P1_9 = 1;	// ENET_RXD0
-	pincon_setfunc(1, 10, 1, PINMODE_PULLUP);	//PINSEL2bits.P1_10 = 1;	// ENET_RXD1
-	pincon_setfunc(1, 14, 1, PINMODE_PULLUP);	//PINSEL2bits.P1_14 = 1;	// ENET_RX_ER
-	pincon_setfunc(1, 15, 1, PINMODE_PULLUP);	//PINSEL2bits.P1_15 = 1;	// ENET_REF_CLK
+	pincon_setfunc(1, 8, 1, PINMODE_PULLUP);	// ENET_CRS
+	pincon_setfunc(1, 9, 1, PINMODE_PULLUP);	// ENET_RXD0
+	pincon_setfunc(1, 10, 1, PINMODE_PULLUP);	// ENET_RXD1
+	pincon_setfunc(1, 14, 1, PINMODE_PULLUP);	// ENET_RX_ER
+	pincon_setfunc(1, 15, 1, PINMODE_PULLUP);	// ENET_REF_CLK
 
-	pincon_setfunc(1, 16, 1, PINMODE_PULLUP);	//PINSEL3bits.P1_16 = 1;	// ENET_MDC
-	pincon_setfunc(1, 17, 1, PINMODE_PULLUP);	//PINSEL3bits.P1_17 = 1;	// ENET_MDIO
+	pincon_setfunc(1, 16, 1, PINMODE_PULLUP);	// ENET_MDC
+	pincon_setfunc(1, 17, 1, PINMODE_PULLUP);	// ENET_MDIO
 
 	// module initialization
 	LPC_EMAC->MAC1 = MAC1_RESET_TX | MAC1_RESET_MCS_TX | 
@@ -70,7 +70,8 @@ int emac_initialize(ETH_MAC *mac, void (*handler)(void *), void *state)
 		MAC_COMMAND_PASS_RUNT_FRAME | MAC_COMMAND_PASS_RX_FILTER;
 
 	// init phy
-	phy_reset(&_phy);
+	if(!phy_reset(&_phy))
+		return 0;
 
 	// configure hw address 
 	LPC_EMAC->SA0 = (mac->Byte[1] << 8) | mac->Byte[0];
@@ -126,11 +127,11 @@ static void _write_phy(PHYREG reg, unsigned short value)
 	LPC_EMAC->MADR = PHY_BASE_ADDR | reg;
 	LPC_EMAC->MWTD = value;
 	
-	for (int tout = 0; tout < 300000; tout++)
+	int timeout = 0;
+	while (LPC_EMAC->MIND & MAC_MIND_BUSY)
 	{
-		if ((LPC_EMAC->MIND & MAC_MIND_BUSY) == 0)
-			break;
-	}   
+		if (++timeout > 300000) break;
+	}
 }
 
 static unsigned short _read_phy(PHYREG reg)
@@ -138,13 +139,17 @@ static unsigned short _read_phy(PHYREG reg)
 	LPC_EMAC->MADR = PHY_BASE_ADDR | reg;
 	LPC_EMAC->MCMD = MAC_MCMD_READ;
 	
-	for (int tout = 0; tout < 300000; tout++) 
+	int timeout = 0;
+	while (LPC_EMAC->MIND & MAC_MIND_BUSY)
 	{
-		if ((LPC_EMAC->MIND & MAC_MIND_BUSY) == 0) 
-			break;
+		if (++timeout > 300000)
+		{
+			LPC_EMAC->MCMD = 0;
+			return 0;
+		}
 	}
 	LPC_EMAC->MCMD = 0;
-	return (LPC_EMAC->MRDD);   
+	return LPC_EMAC->MRDD;
 }
 
 void ENET_IRQHandler()

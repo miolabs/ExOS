@@ -65,4 +65,3 @@ void pincon_setfunc(int port, int pin, int func, int mode)
 #endif
 
 
-// currently nothing
