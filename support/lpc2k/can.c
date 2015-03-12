@@ -20,42 +20,7 @@ static unsigned char _tx_index[64];
 static int _txq_length = 0;
 static unsigned char volatile _txq_busy = 0;
 
-static void _can_interrupt(int can);
 static void _can_irq_send_txq();
-
-void CAN_IRQHandler(void)
-{
-	if (_can_modules_enabled & (1<<0)) _can_interrupt(0);
-    if (_can_modules_enabled & (1<<1)) _can_interrupt(1);
-	if (_fcan->FCANIE & 1)
-	{
-		CAN_MSG msg;
-		unsigned long mask = _fcan->FCANIC0;
-		if (mask != 0) 
-		{
-			for(int i = 0; i < 32; i++)
-			{
-				if (mask & (1 << i)) 
-				{
-					if (hal_can_read_msg(i, &msg))
-						hal_can_received_handler(i, &msg);
-					if (hal_can_read_msg(i + 1, &msg))
-						hal_can_received_handler(i + 1, &msg);
-				}
-			}
-		}
-		mask = _fcan->FCANIC1;
-		if (mask != 0) 
-		{
-			for(int i = 0; i < 32; i++)
-			{
-				if ((mask & (1 << i)) &&
-					hal_can_read_msg(32 + i, &msg))
-					hal_can_received_handler(32 + i, &msg);
-			}
-		}
-	}
-}
 
 int hal_can_initialize(int module, int bitrate, CAN_INIT_FLAGS initf)
 {
@@ -64,14 +29,14 @@ int hal_can_initialize(int module, int bitrate, CAN_INIT_FLAGS initf)
 	unsigned long pclk = cpu_pclk(PCLK_CAN1);
 	unsigned long btr;
 	int cdiv;
-	if ((SystemCoreClock % (12 * bitrate)) == 0)
+	if ((pclk % (12 * bitrate)) == 0)
 	{
-		int brp = SystemCoreClock / (12 * bitrate);
+		int brp = pclk / (12 * bitrate);
 		btr = CANBTR_F((brp - 1), 1, 8, 1, 0);  // BRP, SJW, TSEG1, TSEG2, SAM (12 clk/bit)
 	}
-	else if ((SystemCoreClock % (5 * bitrate)) == 0)
+	else if ((pclk % (5 * bitrate)) == 0)
 	{
-		int brp = SystemCoreClock / (5 * bitrate);
+		int brp = pclk / (5 * bitrate);
 		btr = CANBTR_F((brp - 1), 1, 2, 0, 0);  // BRP, SJW, TSEG1, TSEG2, SAM (5 clk /bit)
 	}
 	else return 0;
@@ -110,6 +75,19 @@ int hal_can_initialize(int module, int bitrate, CAN_INIT_FLAGS initf)
 
 	_fcan->AFMR = AFMR_AccBP; // bypass Accept Filter
 	return 1;
+}
+
+static void _error(int error)
+{
+#ifdef DEBUG
+//		CAN_BUFFER data;
+//		data.u32[0] =  _can_reset_cnt[module];
+//		data.u32[1] =  _can_error_cnt[module];
+//		// don't report error for BE because it happens when no one is listening
+//		// and it will create an endless error-report-error loop
+//		if (error != 2) can_send(module, 0, &data, 8);
+#endif
+
 }
 
 static void _can_interrupt(int module)
@@ -164,14 +142,7 @@ static void _can_interrupt(int module)
 
 	if (error)
 	{
-#ifdef DEBUG
-//		CAN_BUFFER data;
-//		data.u32[0] =  _can_reset_cnt[module];
-//		data.u32[1] =  _can_error_cnt[module];
-//		// don't report error for BE because it happens when no one is listening
-//		// and it will create an endless error-report-error loop
-//		if (error != 2) can_send(module, 0, &data, 8);
-#endif
+		_error(error);
 	}
 	
 	if (icr.TI1 || icr.TI2 || icr.TI3)
@@ -179,6 +150,45 @@ static void _can_interrupt(int module)
 		if (icr.TI1)
 			hal_can_sent_handler(module);
 		else _can_irq_send_txq();	
+	}
+}
+
+void CAN_IRQHandler(void)
+{
+	if (_can_modules_enabled & (1<<0)) _can_interrupt(0);
+    if (_can_modules_enabled & (1<<1)) _can_interrupt(1);
+	if (_fcan->FCANIE & 1)
+	{
+		CAN_MSG msg;
+		unsigned long mask = _fcan->FCANIC0;
+		if (mask != 0) 
+		{
+			for(int i = 0; i < 32; i++)
+			{
+				if (mask & (1 << i)) 
+				{
+					if (hal_can_read_msg(i, &msg))
+						hal_can_received_handler(i, &msg);
+					if (hal_can_read_msg(i + 1, &msg))
+						hal_can_received_handler(i + 1, &msg);
+				}
+			}
+		}
+		mask = _fcan->FCANIC1;
+		if (mask != 0) 
+		{
+			for(int i = 0; i < 32; i++)
+			{
+				if ((mask & (1 << i)) &&
+					hal_can_read_msg(32 + i, &msg))
+					hal_can_received_handler(32 + i, &msg);
+			}
+		}
+	}
+	if (_fcan->LUTerr & 1)
+	{
+		unsigned long addr = _fcan->LUTerrAd;
+		_error(0);
 	}
 }
 
@@ -296,18 +306,20 @@ int hal_can_setup(CAN_SETUP_CALLBACK callback, void *state)
 
 		if (setup2 == CAN_SETUP_END)
 		{
-			*id_ptr++ = (FCAN_MAKE_SFF(ep1.Bus, ep1.Id, (setup1 == CAN_SETUP_RX ? ((flags1 & CANF_RXINT) ? FCAN_SFF_INTEN : 0) : FCAN_SFF_DISABLE)) << 16) |
+			*id_ptr++ = ((setup1 == CAN_SETUP_RX ? FCAN_MAKE_SFF(ep1.Bus, ep1.Id, (flags1 & CANF_RXINT) ? FCAN_SFF_INTEN : 0) : FCAN_SFF_DISABLE) << 16) |
 				FCAN_SFF_DISABLE;
 			break;
 		}
 		else
 		{
-			*id_ptr++ = (FCAN_MAKE_SFF(ep1.Bus, ep1.Id, (setup1 == CAN_SETUP_RX ? ((flags1 & CANF_RXINT) ? FCAN_SFF_INTEN : 0) : FCAN_SFF_DISABLE)) << 16) |
-				FCAN_MAKE_SFF(ep2.Bus, ep2.Id, (setup2 == CAN_SETUP_RX ? ((flags2 & CANF_RXINT) ? FCAN_SFF_INTEN : 0) : FCAN_SFF_DISABLE));
+			*id_ptr++ = ((setup1 == CAN_SETUP_RX ? FCAN_MAKE_SFF(ep1.Bus, ep1.Id, (flags1 & CANF_RXINT) ? FCAN_SFF_INTEN : 0) : FCAN_SFF_DISABLE) << 16) |
+				(setup2 == CAN_SETUP_RX ? FCAN_MAKE_SFF(ep2.Bus, ep2.Id, (flags2 & CANF_RXINT) ? FCAN_SFF_INTEN : 0) : FCAN_SFF_DISABLE);
 		}
 	}
 	_fcan->SFF_sa = (unsigned long)id_ptr;
-	_fcan->SFF_GRP_sa = _fcan->EFF_sa = _fcan->EFF_GRP_sa = _fcan->ENDofTable = _fcan->SFF_sa;
+	_fcan->SFF_GRP_sa = (unsigned long)id_ptr;
+	_fcan->EFF_sa = _fcan->EFF_GRP_sa = (unsigned long)id_ptr;
+	_fcan->ENDofTable = (unsigned long)id_ptr;
 
 	FCAN_MSG *msg = (FCAN_MSG *)id_ptr;
 	for (int i = 0; i < index; i++)

@@ -95,9 +95,6 @@ typedef struct
 #define CAN_SR_BS	0x80	// Bus (Off) Status*
 // * bits are common to single receive buffer and equal to those in GSR register 
 
-// Interrupt bits
-
-
 typedef struct
 {
     volatile unsigned long TFI;
