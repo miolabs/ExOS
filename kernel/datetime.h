@@ -29,6 +29,8 @@ typedef struct
 	int Milliseconds;
 } EXOS_TIMESPAN;
 
+extern const EXOS_TIMESPAN EXOS_TIMESPAN_ZERO;
+
 #define EXOS_SECONDS_IN_DAY (24*60*60)
 
 //prototypes
@@ -38,7 +40,7 @@ int exos_datetime_day_of_year(const EXOS_DATETIME *datetime);
 int exos_datetime_print(char *s, EXOS_DATETIME *datetime);
 void exos_datetime_boot_setup(const EXOS_DATETIME *datetime);
 void exos_datetime_now(EXOS_DATETIME *datetime);
-void exos_datetime_seek(const EXOS_DATETIME *base, EXOS_TIMESPAN *elapsed, EXOS_DATETIME *target);
+void exos_datetime_seek(const EXOS_DATETIME *base, const EXOS_TIMESPAN *elapsed, EXOS_DATETIME *target);
 int exos_datetime_print(char *s, EXOS_DATETIME *datetime);
 
 #endif // EXOS_DATETIME_H

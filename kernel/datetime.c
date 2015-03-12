@@ -3,7 +3,9 @@
 #include "panic.h"
 #include <stdio.h>
 #include <support/services/debug.h>
- 
+
+const EXOS_TIMESPAN EXOS_TIMESPAN_ZERO = { /* all zero */ };
+
 static EXOS_DATETIME _boot = { .Day = 1, .Month = 1, .Year = 2000, .DayOfWeek = EXOS_SATURDAY };
 static int _seconds = 0;
 static const char *_days[] = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
@@ -135,7 +137,7 @@ static void _seek(const EXOS_DATETIME *date1, int seconds, EXOS_DATETIME *date2)
 	_days2date(date2, delta);
 }
 
-void exos_datetime_seek(const EXOS_DATETIME *base, EXOS_TIMESPAN *elapsed, EXOS_DATETIME *target)
+void exos_datetime_seek(const EXOS_DATETIME *base, const EXOS_TIMESPAN *elapsed, EXOS_DATETIME *target)
 {
 #ifdef DEBUG
 	if (base == NULL || elapsed == NULL || target == NULL)
