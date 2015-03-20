@@ -117,6 +117,8 @@ static void _reset_receiver(LPC_UART_TypeDef *uart, UART_CONTROL_BLOCK *cb)
 {
 	unsigned char lsr = uart->LSR;
 	uart->FCR = UART_FCR_RXFIFO_RESET;
+	UART_BUFFER *buf = &cb->InputBuffer;
+	buf->ProduceIndex = buf->ConsumeIndex;
 }
 
 static void _read_data(LPC_UART_TypeDef *uart, UART_CONTROL_BLOCK *cb)
