@@ -31,11 +31,43 @@ unsigned long hal_adc_initialize(int rate, int bits)
 		ADCR_PDN;
 #endif	
 	_adc->INTEN = 0;	// No interrupts
+
+	NVIC_EnableIRQ(ADC_IRQn);
 	return 1;
+}
+
+static int _pending_mask = 0;
+static int _current_mask = 0;
+
+static void _shift_auto(int mask)
+{
+	while(mask)
+	{
+		if (mask & _pending_mask)
+		{
+			_pending_mask ^= mask;
+			_adc->CR = (_adc->CR & ADCR_CLKDIV_MASK) | (mask) | ADCR_PDN | (ADCR_START_NOW << ADCR_START_BIT);
+			break;
+		}
+		mask = (mask << 1) & 0xFF;
+	}
+	_current_mask = mask;
+	_adc->INTEN = _current_mask;
+}
+
+int hal_adc_start_multiple(int ch_mask)
+{
+	if (_current_mask == 0)
+	{
+		_pending_mask = ch_mask;
+		_shift_auto(1);
+	}
+	return 0;
 }
 
 void ADC_IRQHandler()
 {
+	_shift_auto(_current_mask << 1);
 }
 
 static int _read(int channel, unsigned short *presult)
