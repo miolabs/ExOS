@@ -1,12 +1,19 @@
 #include <kernel/machine/time_hal.h>
+#include <support/pwm_hal.h>
 #include <CMSIS/nrf51.h>
 
-void hal_time_initialize(int period_us)
-{
-	SysTick_Config((long long)SystemCoreClock * period_us / 1000000);
-}
+#ifndef TICK_TIMER
+#define TICK_TIMER 2
+#endif
 
-void SysTick_Handler() 
+static void _callback(int module)
 {
 	__kernel_tick();
 }
+
+void hal_time_initialize(int period_us)
+{
+	hal_pwm_initialize(TICK_TIMER, 1000, 1000, 3);
+	hal_pwm_set_handler(TICK_TIMER, 3, _callback);
+}
+
