@@ -74,9 +74,12 @@
       </folder>
       <folder Name="support">
         <folder Name="lpc11">
-          <file file_name="support/lpc11/c_can.c" />
           <file file_name="support/lpc11/ssp.c" />
           <file file_name="support/lpc11/uart.c" />
+          <file file_name="support/lpc11/can.c" />
+        </folder>
+        <folder Name="misc">
+          <file file_name="support/misc/c_can.c" />
         </folder>
       </folder>
       <folder Name="tests">

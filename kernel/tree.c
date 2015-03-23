@@ -38,11 +38,14 @@ void exos_tree_add_child(EXOS_TREE_GROUP *group, EXOS_TREE_NODE *child)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
 	if (group->Type != EXOS_TREE_NODE_GROUP)
 		kernel_panic(KERNEL_ERROR_WRONG_NODE);
-#ifdef DEBUG
-	child->Node.Type = EXOS_NODE_TREE_NODE;
-#endif
 
 	exos_mutex_lock(&group->Mutex);
+#ifdef DEBUG
+	if (list_find_node(&group->Children, (EXOS_NODE *)child))
+		kernel_panic(KERNEL_ERROR_LIST_ALREADY_CONTAINS_NODE);
+
+	child->Node.Type = EXOS_NODE_TREE_NODE;
+#endif
 	list_add_tail(&group->Children, (EXOS_NODE *)child);
 	exos_mutex_unlock(&group->Mutex);
 	child->Parent = group;

@@ -168,7 +168,7 @@ static void _serve_uart(int module)
 	int count;
 
 	unsigned char iir;
-	while (0 == ((iir = uart->IIR) & UART_IIR_IntStatus))
+	while (iir = uart->IIR, !(iir & UART_IIR_IntStatus))
 	{
 		switch(iir & UART_IIR_IntId_MASK)
 		{

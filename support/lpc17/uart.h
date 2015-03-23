@@ -1,6 +1,8 @@
 #ifndef LPC_UART_H
 #define LPC_UART_H
 
+#include <support/uart_hal.h>
+
 #define UART_MODULE_COUNT 4
 
 #define UART_LCR_WLEN_5BIT (0 << 0)
@@ -66,48 +68,7 @@ typedef enum
 	UART_MODE_485_ADDR_DETECT = 1<<3,
 } UART_MODE;
 
-typedef enum
-{
-	UART_EVENT_ERROR = 0,
-	UART_EVENT_INPUT_READY,
-	UART_EVENT_INPUT_EMPTY,
-	UART_EVENT_OUTPUT_FULL,
-	UART_EVENT_OUTPUT_READY,
-	UART_EVENT_MODEM,
-} UART_EVENT;
-
-typedef enum
-{
-	UART_RX_IDLE = 0,
-	UART_RX_OVERRUN = 1<<0,
-	UART_RX_FLAGS = (UART_RX_OVERRUN),
-} UART_STATUS;
-
-typedef void (*UART_HANDLER)(UART_EVENT event, void *state);
-
-typedef struct
-{
-	unsigned char *Buffer;
-	unsigned short Size;
-	volatile unsigned short ProduceIndex;
-	volatile unsigned short ConsumeIndex;
-} UART_BUFFER;
-
-typedef struct
-{
-	unsigned long Baudrate;
-	UART_STATUS Status;
-	UART_HANDLER Handler;
-	void *HandlerState;
-	UART_BUFFER InputBuffer;
-	UART_BUFFER OutputBuffer;
-} UART_CONTROL_BLOCK;
-
 // prototypes
-int uart_initialize(unsigned module, UART_CONTROL_BLOCK *cb);
-void uart_disable(unsigned module);
-int uart_read(unsigned module, unsigned char *buffer, unsigned long length);
-int uart_write(unsigned module, const unsigned char *buffer, unsigned long length);
 void uart_set_rs485(unsigned module, UART_MODE mode, unsigned char dir_delay, unsigned char address);
 
 #endif // LPC_UART_H

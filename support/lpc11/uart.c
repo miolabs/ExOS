@@ -1,5 +1,6 @@
 #include "uart.h"
 #include "cpu.h"
+#include <kernel/panic.h>
 
 static UART_CONTROL_BLOCK *_control[UART_MODULE_COUNT];
 static LPC_UART_TypeDef *_modules[] = { (LPC_UART_TypeDef *)LPC_UART };
@@ -23,24 +24,29 @@ static int _initialize(unsigned module, unsigned long baudrate)
 	{
 		int pclk = SystemCoreClock;
 
-		unsigned short divisor = pclk / (16 * baudrate);
-		uart->LCR = UART_LCR_WLEN_8BIT | UART_LCR_STOP_1BIT | UART_LCR_DLAB; // no parity
-		uart->DLL = divisor & 0xFF;
-		uart->DLM = (divisor >> 8) & 0xFF;
-		uart->SCR = 0;
-	
-		int rem = pclk - (divisor * 16 * baudrate);
-		if (rem != 0)
+		unsigned b = 16 * baudrate;
+		unsigned q = pclk / b;
+		unsigned r = pclk - (q * b);
+		unsigned m = 1;
+		unsigned s = 0;
+		if (r != 0)
 		{
-			int m = pclk / rem;
-			int mm = 15 / m;
-			int m2 = (pclk * mm) / rem;
-			int s = (rem * m2) / pclk;
-			uart->FDR = m << 4 | s;
-			cb->Baudrate = (pclk * m) / (16 * divisor * (m + s)); 
+			s = 1;
+			while(1)
+			{
+				m = ((b * q) + (r-1)) / r;
+				if (m <= 15) break;
+				q -= ((b * q) + (15 * r)) / (16 * b);
+				r = pclk - (q * b);
+			}
 		}
-		else uart->FDR = 1 << 4;
-	
+		uart->LCR = UART_LCR_WLEN_8BIT | UART_LCR_STOP_1BIT | UART_LCR_DLAB; // no parity
+		uart->SCR = 0;
+		uart->DLL = q & 0xFF;
+		uart->DLM = (q >> 8) & 0xFF;
+		uart->FDR = (m << 4) | s;
+		cb->Baudrate = (pclk  * m) / (16 * q * (m + s));
+
 		uart->LCR &= ~UART_LCR_DLAB; // disable DLAB
 		uart->FCR = UART_FCR_FIFO_ENABLE | UART_FCR_RXFIFO_RESET | UART_FCR_TXFIFO_RESET |
 			UART_FCR_RX_TRIGGER_2; // FIFO enabled, 8 char RX trigger
@@ -87,8 +93,10 @@ void uart_disable(unsigned module)
 
 static void _reset_receiver(LPC_UART_TypeDef *uart, UART_CONTROL_BLOCK *cb)
 {
-	unsigned char dummy = uart->LSR;
-	// TODO
+	unsigned char lsr = uart->LSR;
+	uart->FCR = UART_FCR_RXFIFO_RESET;
+	UART_BUFFER *buf = &cb->InputBuffer;
+	buf->ProduceIndex = buf->ConsumeIndex;
 }
 
 static void _read_data(LPC_UART_TypeDef *uart, UART_CONTROL_BLOCK *cb)
