@@ -45,7 +45,7 @@ void usbd_hid_initialize()
 		exos_fifo_queue(&_free_report_inputs, (EXOS_NODE *)&_report_array[i]);
 
 	exos_dispatcher_context_create(&_service_context);
-	exos_thread_create(&_thread, 0, _stack, THREAD_STACK, NULL, _service, &_service_context);
+	exos_thread_create(&_thread, 5, _stack, THREAD_STACK, NULL, _service, &_service_context);
 
 	exos_mutex_create(&_manager_lock);
 	list_initialize(&_manager_list);

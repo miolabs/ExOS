@@ -32,7 +32,7 @@ void net_tcp_service_start()
 		exos_fifo_queue(&_free_incoming_connections, (EXOS_NODE *)&_connections[i]);
 	}
 
-	exos_thread_create(&_thread, 1, _thread_stack, TCP_SERVICE_THREAD_STACK, NULL, _service, NULL);
+	exos_thread_create(&_thread, 5, _thread_stack, TCP_SERVICE_THREAD_STACK, NULL, _service, NULL);
 }
 
 TCP_IO_ENTRY *__tcp_io_find_io(unsigned short local_port, IP_ADDR remote_ip, unsigned short remote_port)

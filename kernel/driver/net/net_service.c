@@ -8,7 +8,7 @@ static void *_service(void *arg);
 
 void net_service_start(NET_ADAPTER *adapter)
 {
-	exos_thread_create(&adapter->Thread, 1, &adapter->Stack, NET_ADAPTER_THREAD_STACK, NULL, _service, adapter);
+	exos_thread_create(&adapter->Thread, 5, &adapter->Stack, NET_ADAPTER_THREAD_STACK, NULL, _service, adapter);
 }
 
 static void *_service(void *arg)

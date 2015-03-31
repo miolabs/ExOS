@@ -59,7 +59,7 @@ void iap_core_start()
 	if (!_service_busy)
 	{
 		_service_busy = 1;
-		exos_thread_create(&_thread, 1, _stack, THREAD_STACK, NULL, _service, NULL);
+		exos_thread_create(&_thread, 5, _stack, THREAD_STACK, NULL, _service, NULL);
 	}
 }
 

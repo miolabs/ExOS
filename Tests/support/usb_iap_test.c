@@ -29,6 +29,10 @@ void main()
 		sprintf(_buffer, "%d.%d.%d.%d", adapter->IP.Bytes[0], adapter->IP.Bytes[1], adapter->IP.Bytes[2], adapter->IP.Bytes[3]);
 	}
 
+#ifdef EXOS_NO_NET
+	while(1);
+#endif
+
 	int kk = 0;
 	while(1)
 	{
