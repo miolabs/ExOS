@@ -28,6 +28,7 @@ typedef struct
 typedef struct 
 {
 	EXOS_IO_ENTRY;
+	EXOS_EVENT SyncEvent;
 	COMM_DEVICE *Device;
 	unsigned Port;
 } COMM_IO_ENTRY;

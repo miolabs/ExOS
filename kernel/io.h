@@ -33,6 +33,7 @@ struct _EXOS_IO_DRIVER
 {
 	int (*Read)(EXOS_IO_ENTRY *io, void *buffer, unsigned long length);
 	int (*Write)(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length);
+	int (*Sync)(EXOS_IO_ENTRY *io);
 };
 
 void __io_initialize();
@@ -41,6 +42,7 @@ void exos_io_set_flags(EXOS_IO_ENTRY *io, EXOS_IO_FLAGS flags);
 void exos_io_set_timeout(EXOS_IO_ENTRY *io, unsigned long timeout);
 int exos_io_read(EXOS_IO_ENTRY *io, void *buffer, unsigned long length);
 int exos_io_write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length);
+int exos_io_sync(EXOS_IO_ENTRY *io);
 
 typedef struct
 {
@@ -58,6 +60,7 @@ typedef struct
 	volatile unsigned short ConsumeIndex;
 	EXOS_EVENT *NotFullEvent;
 	EXOS_EVENT *NotEmptyEvent;
+	EXOS_EVENT *EmptyEvent;
 } EXOS_IO_BUFFER;
 
 void exos_io_buffer_create(EXOS_IO_BUFFER *iobuf, void *buffer, unsigned short size);

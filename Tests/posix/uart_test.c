@@ -164,6 +164,9 @@ error:
 void CloseUART(int fd)
 {
     if (fd > -1)
+	{
+		fsync(fd);
         close(fd);
+	}
 }
 

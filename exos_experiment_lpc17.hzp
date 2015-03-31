@@ -206,7 +206,7 @@
     inherited_configurations="NANO2;Release" />
   <configuration
     Name="NANO2"
-    c_preprocessor_definitions="BOARD_NANO10;EXOS_NO_NET;SDCARD_SPI_MODULE=0"
+    c_preprocessor_definitions="BOARD_NANO10;EXOS_NO_NET;SDCARD_SPI_MODULE=0;EXOS_DEBUG_PATH=&quot;/dev/comm0&quot;;EXOS_DEBUG_SYNC"
     hidden="Yes" />
   <configuration
     Name="LandTiger"

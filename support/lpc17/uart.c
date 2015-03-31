@@ -124,9 +124,9 @@ static void _reset_receiver(LPC_UART_TypeDef *uart, UART_CONTROL_BLOCK *cb)
 static void _read_data(LPC_UART_TypeDef *uart, UART_CONTROL_BLOCK *cb)
 {
 	UART_BUFFER *buf = &cb->InputBuffer;
+	int index = buf->ProduceIndex + 1;
 	do
 	{
-		int index = buf->ProduceIndex + 1;
         if (index == buf->Size) index = 0;
 		if (index == buf->ConsumeIndex)
 		{
@@ -135,7 +135,7 @@ static void _read_data(LPC_UART_TypeDef *uart, UART_CONTROL_BLOCK *cb)
 			break;
 		}
 		buf->Buffer[buf->ProduceIndex] = uart->RBR;
-		buf->ProduceIndex = index;
+		buf->ProduceIndex = index++;
 	} while(uart->LSR & UART_LSR_RDR);
 
 	if (cb->Handler) cb->Handler(UART_EVENT_INPUT_READY, cb->HandlerState);
@@ -145,12 +145,18 @@ static void _write_data(LPC_UART_TypeDef *uart, UART_CONTROL_BLOCK *cb, unsigned
 {
 	UART_BUFFER *buf = &cb->OutputBuffer;
 	unsigned count = 0;
-	while (buf->ConsumeIndex != buf->ProduceIndex)
+	do
 	{
+		if (buf->ConsumeIndex == buf->ProduceIndex)
+		{
+			if (cb->Handler)
+				cb->Handler(UART_EVENT_OUTPUT_EMPTY, cb->HandlerState);
+			break;
+		}
 		uart->THR = buf->Buffer[buf->ConsumeIndex++];
 		if (buf->ConsumeIndex == buf->Size) buf->ConsumeIndex = 0;
-		if (++count >= max) break;
-	}
+		count++;
+	} while(count < max);
 
 	if (count != 0 && cb->Handler) 
 		cb->Handler(UART_EVENT_OUTPUT_READY, cb->HandlerState);

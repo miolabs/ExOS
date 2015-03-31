@@ -65,6 +65,14 @@ ssize_t write(int fd, const void *buf, size_t nbyte)
 	return exos_io_write(io, buf, nbyte);
 }
 
+int fsync(int fd)
+{
+	EXOS_IO_ENTRY *io = posix_get_file_descriptor(fd);
+	if (io == NULL) return posix_set_error(EBADF);
+	return exos_io_sync(io);
+}
+
+
 unsigned sleep(unsigned seconds)
 {
 	exos_thread_sleep(seconds * EXOS_TICK_FREQ);

@@ -102,6 +102,21 @@ int exos_io_write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length)
 	return done;
 }
 
+int exos_io_sync(EXOS_IO_ENTRY *io)
+{
+#ifdef DEBUG
+	if (io == NULL || io->Driver == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+
+	const EXOS_IO_DRIVER *driver = io->Driver;
+	if (driver->Sync != NULL)
+		return driver->Sync(io);
+
+	return -1;
+}
+
+
 void exos_io_buffer_create(EXOS_IO_BUFFER *iobuf, void *buffer, unsigned short size)
 {
 #ifdef DEBUG
@@ -124,6 +139,7 @@ int exos_io_buffer_write(EXOS_IO_BUFFER *iobuf, void *buffer, unsigned short len
 	for(done = 0; done < length; done++)
 	{
 		int index = iobuf->ProduceIndex + 1;
+		index++;
         if (index == iobuf->Size) index = 0;
 		if (index == iobuf->ConsumeIndex)
 		{
@@ -145,8 +161,13 @@ int exos_io_buffer_write(EXOS_IO_BUFFER *iobuf, void *buffer, unsigned short len
 		}
 	}
 
-	if (done != 0 && iobuf->NotEmptyEvent)
-		exos_event_set(iobuf->NotEmptyEvent);
+	if (done != 0)
+	{
+		if (iobuf->EmptyEvent != NULL)
+			exos_event_reset(iobuf->EmptyEvent);
+		if (iobuf->NotEmptyEvent)
+			exos_event_set(iobuf->NotEmptyEvent);
+	}
 	return done;
 }
 
@@ -165,6 +186,8 @@ int exos_io_buffer_read(EXOS_IO_BUFFER *iobuf, void *buffer, unsigned short leng
 		{
 			if (iobuf->NotEmptyEvent)
 				exos_event_reset(iobuf->NotEmptyEvent);
+			if (iobuf->EmptyEvent != NULL)
+				exos_event_set(iobuf->EmptyEvent);
 			break;
 		}
 		((unsigned char *)buffer)[done] = iobuf->Buffer[index++];

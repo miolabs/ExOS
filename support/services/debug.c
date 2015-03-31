@@ -44,7 +44,7 @@ void debug_printf(const char *format, ...)
 		if (length >= sizeof(_buffer))
 			kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
 
-		exos_io_write(_io, _buffer, length);
+		debug_print(_buffer, length);
 	}
 }
 
@@ -53,6 +53,9 @@ void debug_print(const char *buffer, int length)
 	if (_io != NULL)
 	{
 		exos_io_write(_io, buffer, length);
+#ifdef EXOS_DEBUG_SYNC
+		exos_io_sync(_io);
+#endif
 	}
 }
 

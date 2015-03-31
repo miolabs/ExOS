@@ -14,6 +14,10 @@ ssize_t read(int fd, void *buf, size_t nbyte);
 ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset);
 ssize_t write(int fd, const void *buf, size_t nbyte);
 
+#define _POSIX_FSYNC
+
+int fsync(int fd);
+
 unsigned sleep(unsigned);
 
 

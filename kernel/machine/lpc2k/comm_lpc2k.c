@@ -165,6 +165,8 @@ static int _read(COMM_IO_ENTRY *io, unsigned char *buffer, unsigned long length)
 
 static int _write(COMM_IO_ENTRY *io, const unsigned char *buffer, unsigned long length)
 {
+	exos_event_reset(&io->SyncEvent);
+
 	return uart_write(io->Port, buffer, length);
 }
 
@@ -184,6 +186,9 @@ static void _handler(UART_EVENT event, void *state)
 			break;
 		case UART_EVENT_OUTPUT_FULL:
 			exos_event_reset(&io->OutputEvent);
+			break;
+		case UART_EVENT_OUTPUT_EMPTY:
+			exos_event_set(&io->SyncEvent);
 			break;
 	}
 }

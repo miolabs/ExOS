@@ -3,9 +3,10 @@
 
 static int _read(EXOS_IO_ENTRY *io, void *buffer, unsigned long length);
 static int _write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length);
+static int _sync(EXOS_IO_ENTRY *io);
 
 static const EXOS_IO_DRIVER _comm_driver = {
-	.Read = _read, .Write = _write };
+	.Read = _read, .Write = _write, .Sync = _sync };
 
 void comm_initialize()
 {
@@ -24,7 +25,7 @@ void comm_io_create(COMM_IO_ENTRY *io, COMM_DEVICE *device, unsigned port, EXOS_
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
 
 	exos_io_create((EXOS_IO_ENTRY *)io, EXOS_IO_COMM, &_comm_driver, flags);
-
+	exos_event_create(&io->SyncEvent);
 	io->Device = device;
 	io->Port = port;
 }
@@ -116,9 +117,17 @@ static int _write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length)
 	return driver->Write(comm, buffer, length);
 }
 
-
-// defined in board_support
-__weak EXOS_TREE_DEVICE *comm_board_get_device(int index)
+static int _sync(EXOS_IO_ENTRY *io)
 {
-	return NULL;
+#ifdef DEBUG
+	if (io->Type != EXOS_IO_COMM)
+		kernel_panic(KERNEL_ERROR_IO_TYPE_MISMATCH);
+#endif
+	COMM_IO_ENTRY *comm = (COMM_IO_ENTRY *)io;
+	int res = exos_event_wait(&comm->SyncEvent, io->Timeout);	// NOTE: timeout 0 will never timeout
+	return res;
 }
+
+
+
+

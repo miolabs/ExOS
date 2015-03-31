@@ -116,6 +116,8 @@
         <file file_name="kernel/thread_pool.c" />
         <file file_name="kernel/port.c" />
         <file file_name="kernel/dispatch.c" />
+        <file file_name="kernel/datetime.c" />
+        <file file_name="kernel/types.c" />
       </folder>
       <folder Name="support">
         <folder Name="lpc17">
@@ -164,13 +166,9 @@
           <file file_name="support/apple/iap_fid.c" />
           <file file_name="support/apple/iap_core.c" />
         </folder>
-      </folder>
-      <folder Name="modules">
         <folder Name="services">
-          <file file_name="modules/services/services.c" />
-          <folder Name="bonjour">
-            <file file_name="modules/services/bonjour/bonjour.c" />
-          </folder>
+          <file file_name="support/services/debug.c" />
+          <file file_name="support/services/init.c" />
         </folder>
       </folder>
       <folder Name="tests">
@@ -224,4 +222,18 @@
   <configuration
     Name="Mioboard Release"
     inherited_configurations="Mioboard;Release" />
+  <configuration
+    Name="Mioboard2"
+    c_preprocessor_definitions="BOARD_MIODOCK;EEPROM_I2C_MODULE=0;EEPROM_SIZE=256;EEPROM_PAGE_SIZE=8;APPLE_CP20_I2C_MODULE=2"
+    hidden="Yes" />
+  <configuration
+    Name="NoNet"
+    c_preprocessor_definitions="EXOS_NO_NET"
+    hidden="Yes" />
+  <configuration
+    Name="Mioboard2 Nonet Debug"
+    inherited_configurations="Debug;Mioboard2;NoNet" />
+  <configuration
+    Name="Mioboard2 Nonet Release"
+    inherited_configurations="Mioboard2;NoNet;Release" />
 </solution>
