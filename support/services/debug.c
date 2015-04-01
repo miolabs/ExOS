@@ -33,30 +33,37 @@ static void _register()
 #endif
 }
 
-void debug_printf(const char *format, ...)
+int debug_printf(const char *format, ...)
 {
 	va_list args;
 	va_start(args, format);
+	return debug_vprintf(format, args);
+}
 
+int debug_vprintf(const char *format, va_list args)
+{
 	if (_io != NULL)
 	{
 		int length = vsprintf(_buffer, format, args);
 		if (length >= sizeof(_buffer))
 			kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
 
-		debug_print(_buffer, length);
+		return debug_print(_buffer, length);
 	}
+	return -1;
 }
 
-void debug_print(const char *buffer, int length)
+int debug_print(const char *buffer, int length)
 {
 	if (_io != NULL)
 	{
-		exos_io_write(_io, buffer, length);
+		int done = exos_io_write(_io, buffer, length);
 #ifdef EXOS_DEBUG_SYNC
 		exos_io_sync(_io);
 #endif
+		return done;
 	}
+	return -1;
 }
 
 
