@@ -48,14 +48,14 @@ void hal_board_initialize()
 	// usb1
 	pincon_setfunc(0, 29, 1, PINMODE_FLOAT);	// D+
 	pincon_setfunc(0, 30, 1, PINMODE_FLOAT);	// D-
-	pincon_setfunc(1, 18, 1, PINMODE_PULLUP);	// USB_UP_LED1
+//	pincon_setfunc(1, 18, 1, PINMODE_PULLUP);	// USB_UP_LED1
 	pincon_setfunc(1, 19, 2, PINMODE_PULLUP);	// _USB_PPWR1
 	pincon_setfunc(1, 22, 2, PINMODE_PULLUP);	// USB_PWRD1
 	pincon_setfunc(1, 27, 2, PINMODE_PULLUP);	// _USB_OVRCR1
 	
 	// usb2
 	pincon_setfunc(0, 31, 1, PINMODE_FLOAT);	// D+
-	pincon_setfunc(0, 13, 1, PINMODE_PULLUP);	// USB_UP_LED2
+//	pincon_setfunc(0, 13, 1, PINMODE_PULLUP);	// USB_UP_LED2
 	pincon_setfunc(0, 12, 1, PINMODE_PULLUP);	// _USB_PPWR2
 	pincon_setfunc(1, 30, 1, PINMODE_PULLUP);	// USB_PWRD2
 	pincon_setfunc(1, 31, 1, PINMODE_PULLUP);	// _USB_OVRCR2
@@ -91,14 +91,14 @@ void hal_board_initialize()
 	// usb1
 	pincon_setfunc(0, 29, 1, PINMODE_FLOAT);	// D+
 	pincon_setfunc(0, 30, 1, PINMODE_FLOAT);	// D-
-	pincon_setfunc(1, 18, 1, PINMODE_PULLUP);	// USB_UP_LED1
+//	pincon_setfunc(1, 18, 1, PINMODE_PULLUP);	// USB_UP_LED1
 	pincon_setfunc(1, 19, 2, PINMODE_PULLUP);	// _USB_PPWR1
 	pincon_setfunc(1, 22, 2, PINMODE_PULLUP);	// USB_PWRD1
 	pincon_setfunc(1, 27, 2, PINMODE_PULLUP);	// _USB_OVRCR1
 	
 	// usb2
 	pincon_setfunc(0, 31, 1, PINMODE_FLOAT);	// D+
-	pincon_setfunc(0, 13, 1, PINMODE_PULLUP);	// USB_UP_LED2
+//	pincon_setfunc(0, 13, 1, PINMODE_PULLUP);	// USB_UP_LED2
 	pincon_setfunc(0, 12, 1, PINMODE_PULLUP);	// _USB_PPWR2
 	pincon_setfunc(1, 30, 1, PINMODE_PULLUP);	// USB_PWRD2
 	pincon_setfunc(1, 31, 1, PINMODE_PULLUP);	// _USB_OVRCR2

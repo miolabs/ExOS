@@ -100,9 +100,6 @@ static void *_service(void *arg)
 				else 
 				{
 					ohci_device_destroy(port);
-//					_hc->RhPortStatus[port] = OHCIR_RH_PORT_PRS;	// assert reset
-//					while(_hc->RhPortStatus[port] & OHCIR_RH_PORT_PRS)
-//						exos_thread_sleep(1);
 				}
 			}
 			if (status & OHCIR_RH_PORT_PRSC)

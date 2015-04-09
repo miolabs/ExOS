@@ -58,7 +58,7 @@ void pincon_setfunc(int port, int pin, int func, int mode)
 		((mode & 3) << 3) |
 		((mode & PINMODEF_HYS) ? (1<<5) : 0) |
 		((mode & PINMODEF_INV) ? (1<<6) : 0) |
-		((mode & PINMODEF_ANALOG) ? (1<<7) : 0) |
+		((mode & PINMODEF_ANALOG) ? 0 : (1<<7)) |
 		((mode & PINMODEF_OPEN_DRAIN) ? (1<<10) : 0);
 }
 
