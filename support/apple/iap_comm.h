@@ -28,9 +28,13 @@ typedef struct
 	COMM_IO_ENTRY *Entry;
 	APPLE_IAP_IO_STATE IOState;
 
+#ifdef DEBUG
+	unsigned int write_req_cnt;
+	unsigned int write_byte_cnt;
+#endif
+
 	EXOS_EVENT InputEvent;
 	EXOS_IO_BUFFER InputIOBuffer;
-//	EXOS_IO_BUFFER OutputIOBuffer;
    	unsigned char InputBuffer[APPLE_IAP_IO_BUFFER];	
 	unsigned char OutputBuffer[APPLE_IAP_IO_BUFFER];
 } APPLE_IAP_PROTOCOL_MANAGER;

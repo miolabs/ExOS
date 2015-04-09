@@ -213,7 +213,8 @@ int iap_comm_write(unsigned short session_id, unsigned char *buffer, int length)
 		if (iap != NULL &&
 			iap->IOState == APPLE_IAP_IO_OPENED)
 		{
-			while(length > 0)
+			int rem = length;
+			while(rem > 0)
 			{
 				if (exos_event_wait(iap->InputIOBuffer.NotFullEvent, 1000)) 
 				{
@@ -222,10 +223,15 @@ int iap_comm_write(unsigned short session_id, unsigned char *buffer, int length)
 #endif
 					break;	// timeout
 				}
-				int done = exos_io_buffer_write(&iap->InputIOBuffer, buffer, length);
+				int done = exos_io_buffer_write(&iap->InputIOBuffer, buffer, rem);
 				buffer += done;
-				length -= done;
+				rem -= done;
 			}
+
+#ifdef DEBUG
+			iap->write_req_cnt++;
+			iap->write_byte_cnt += length;
+#endif
 			return 1;
 		}
 		exos_thread_sleep(100);
@@ -256,6 +262,10 @@ int iap_open_session(unsigned short session_id, unsigned short protocol_index)
 	{
 		iap->SessionID = session_id;
 		iap->IOState = APPLE_IAP_IO_CLOSED;
+
+#ifdef DEBUG
+		iap->write_req_cnt = iap->write_byte_cnt = 0;
+#endif
 		return 1;
 	}
 	return 0;

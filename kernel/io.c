@@ -139,7 +139,6 @@ int exos_io_buffer_write(EXOS_IO_BUFFER *iobuf, void *buffer, unsigned short len
 	for(done = 0; done < length; done++)
 	{
 		int index = iobuf->ProduceIndex + 1;
-		index++;
         if (index == iobuf->Size) index = 0;
 		if (index == iobuf->ConsumeIndex)
 		{
