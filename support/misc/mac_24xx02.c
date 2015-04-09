@@ -16,7 +16,7 @@ int mac_24xx02_get(HW_ADDR *mac)
 	return 0;
 }
 
-#ifndef EXOS_NO_NET
+#if !defined EXOS_NO_NET && !defined MAC24XX02_DISABLE
 #include <net/board.h>
 
 void net_board_set_mac_address(NET_ADAPTER *adapter, int index)
