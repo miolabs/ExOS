@@ -133,11 +133,11 @@ static void _close(COMM_IO_ENTRY *io)
 	APPLE_IAP_PROTOCOL_MANAGER *iap = _find_protocol(io->Port + 1);
 	if (iap != NULL &&
 		iap->Entry == io &&
-		iap->IOState == APPLE_IAP_IO_OPENED)
+		(iap->IOState == APPLE_IAP_IO_OPENED || iap->IOState == APPLE_IAP_IO_DETACHED))
 	{
 		// TODO
 
-		iap->IOState = APPLE_IAP_IO_CLOSED;
+		iap->IOState = (iap->IOState == APPLE_IAP_IO_DETACHED) ? APPLE_IAP_IO_UNAVAILABLE : APPLE_IAP_IO_CLOSED;
         iap->Entry = NULL;
 
         exos_event_set(&io->InputEvent);
@@ -166,9 +166,13 @@ static int _read(COMM_IO_ENTRY *io, unsigned char *buffer, unsigned long length)
 {
 	APPLE_IAP_PROTOCOL_MANAGER *iap = _find_protocol(io->Port + 1);
 	if (iap != NULL &&
-		iap->IOState == APPLE_IAP_IO_OPENED)
+		(iap->IOState == APPLE_IAP_IO_OPENED || iap->IOState == APPLE_IAP_IO_DETACHED))
 	{
 		int done = exos_io_buffer_read(&iap->InputIOBuffer, buffer, length);
+
+		if (iap->IOState == APPLE_IAP_IO_DETACHED && !io->InputEvent.State)
+			_close(io);
+
 		return done;
 	}
 	return -1;
@@ -238,8 +242,7 @@ static void _close_session(unsigned short session_id)
 	if (iap != NULL)
 	{
 		COMM_IO_ENTRY *io = iap->Entry;
-		if (io != NULL)	comm_io_close(io);
-		iap->IOState = APPLE_IAP_IO_UNAVAILABLE;
+		iap->IOState = (io != NULL) ? APPLE_IAP_IO_DETACHED : APPLE_IAP_IO_UNAVAILABLE;
 	}
 }
 
@@ -249,7 +252,7 @@ int iap_open_session(unsigned short session_id, unsigned short protocol_index)
 	
 	APPLE_IAP_PROTOCOL_MANAGER *iap = _find_protocol(protocol_index);
 	if (iap != NULL &&
-		iap->IOState == APPLE_IAP_IO_UNAVAILABLE)
+		iap->IOState == APPLE_IAP_IO_UNAVAILABLE)	// FIXME: allow re-opening in CLOSING state
 	{
 		iap->SessionID = session_id;
 		iap->IOState = APPLE_IAP_IO_CLOSED;
