@@ -3,10 +3,13 @@
 #include "posix.h"
 #include <kernel/datetime.h>
 #include <kernel/machine/hal.h>
+#include <support/services/debug.h>
 
-int printf(const char *restrict format, ...)
+__weak int printf(const char *restrict format, ...)
 {
-	return -1;
+	va_list args;
+	va_start(args, format);
+	return debug_vprintf(format, args);
 }
 
 int sprintf(char *restrict s, const char *restrict format, ...)
@@ -78,10 +81,10 @@ int vsprintf(char *restrict s, const char *restrict format, va_list args)
 					case 4:
 						done += __uint32_hexl(s + done, va_arg(args, int));
 						break;
-					//TODO: are more size possible?
+					//TODO: are more sizes possible?
 				}
 				break;
-			case 'D':	//FIXME: non-standard
+			case 'D':	//FIXME: non-standard!
 				done += exos_datetime_print(s + done, va_arg(args, EXOS_DATETIME *));
 				break;
 		}
