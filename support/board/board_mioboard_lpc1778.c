@@ -139,37 +139,6 @@ void hal_board_initialize()
 	pincon_setfunc(1, 30, 1, PINMODE_PULLUP);	// USB_PWRD2
 	pincon_setfunc(1, 31, 1, PINMODE_PULLUP);	// _USB_OVRCR2
 
-#elif defined BOARD_MIOSTAR
-
-	pincon_setfunc(0, 27, 1, PINMODE_PULLUP| PINMODEF_HYS | PINMODEF_OPEN_DRAIN);	// SDA0
-	pincon_setfunc(0, 28, 1, PINMODE_PULLUP| PINMODEF_HYS | PINMODEF_OPEN_DRAIN);	// SCL0
-	pincon_setfunc(0, 19, 3, PINMODE_PULLUP);	// SDA1
-	pincon_setfunc(0, 20, 3, PINMODE_PULLUP);	// SCL1
-
-	pincon_setfunc(0, 10, 2, PINMODE_PULLUP | PINMODEF_HYS | PINMODEF_OPEN_DRAIN);	// SDA2
-	pincon_setfunc(0, 11, 2, PINMODE_PULLUP | PINMODEF_HYS | PINMODEF_OPEN_DRAIN);	// SCL2
-
-	// usb1
-	pincon_setfunc(0, 29, 1, PINMODE_FLOAT);	// D+
-	pincon_setfunc(0, 30, 1, PINMODE_FLOAT);	// D-
-	pincon_setfunc(1, 18, 1, PINMODE_PULLUP);	// USB_UP_LED1
-	pincon_setfunc(1, 19, 2, PINMODE_PULLUP);	// _USB_PPWR1
-	pincon_setfunc(1, 22, 2, PINMODE_PULLUP);	// USB_PWRD1
-	pincon_setfunc(1, 27, 2, PINMODE_PULLUP);	// _USB_OVRCR1
-	
-	// usb2
-	pincon_setfunc(0, 31, 1, PINMODE_FLOAT);	// D+
-	pincon_setfunc(0, 13, 1, PINMODE_PULLUP);	// USB_UP_LED2
-	pincon_setfunc(0, 12, 1, PINMODE_PULLUP);	// _USB_PPWR2
-	pincon_setfunc(1, 30, 1, PINMODE_PULLUP);	// USB_PWRD2
-	pincon_setfunc(1, 31, 1, PINMODE_PULLUP);	// _USB_OVRCR2
-
-	//uart1
-	pincon_setfunc(0, 15, 1, PINMODE_PULLUP);	// U1_TXD
-	pincon_setfunc(0, 16, 1, PINMODE_PULLUP);	// U1_RXD
-	pincon_setfunc(0, 17, 1, PINMODE_PULLUP);	// U1_CTS
-	pincon_setfunc(0, 22, 1, PINMODE_PULLUP);	// U1_RTS
-
 #else
 #error Unsupported Board
 #endif
