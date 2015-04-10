@@ -18,7 +18,6 @@ void comm_add_device(EXOS_TREE_DEVICE *device, const char *parent_path)
     exos_tree_add_child_path((EXOS_TREE_NODE *)device, parent_path);
 }
 
-
 void comm_io_create(COMM_IO_ENTRY *io, COMM_DEVICE *device, unsigned port, EXOS_IO_FLAGS flags)
 {
 	if (io == NULL || device == NULL) 
@@ -28,6 +27,18 @@ void comm_io_create(COMM_IO_ENTRY *io, COMM_DEVICE *device, unsigned port, EXOS_
 	exos_event_create(&io->SyncEvent);
 	io->Device = device;
 	io->Port = port;
+}
+
+int comm_io_create_from_path(COMM_IO_ENTRY *io, const char *path, EXOS_IO_FLAGS flags)
+{
+	EXOS_TREE_NODE *node = exos_tree_find_path(NULL, path);
+	if (node != NULL && node->Type == EXOS_TREE_NODE_DEVICE)
+	{
+		EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)node;
+		comm_io_create(io, dev_node->Device, dev_node->Unit, EXOS_IOF_WAIT);
+		return 1;
+	}
+	return 0;
 }
 
 int comm_io_open(COMM_IO_ENTRY *io)

@@ -70,6 +70,7 @@ struct _COMM_DRIVER
 void comm_initialize();
 void comm_add_device(EXOS_TREE_DEVICE *device, const char *parent_path);
 void comm_io_create(COMM_IO_ENTRY *io, COMM_DEVICE *device, unsigned port, EXOS_IO_FLAGS flags);
+int comm_io_create_from_path(COMM_IO_ENTRY *io, const char *path, EXOS_IO_FLAGS flags);
 int comm_io_open(COMM_IO_ENTRY *io);
 void comm_io_close(COMM_IO_ENTRY *io);
 int comm_io_get_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value);
