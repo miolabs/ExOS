@@ -48,39 +48,43 @@ int emac_initialize(ETH_MAC *mac, void (*handler)(void *), void *state)
 	pincon_setfunc(1, 16, 1, PINMODE_PULLUP);	// ENET_MDC
 	pincon_setfunc(1, 17, 1, PINMODE_PULLUP);	// ENET_MDIO
 
-	// module initialization
-	LPC_EMAC->MAC1 = MAC1_RESET_TX | MAC1_RESET_MCS_TX | 
-		MAC1_RESET_RX | MAC1_RESET_MCS_RX |
-		MAC1_SIM_RESET | MAC1_SOFT_RESET;
-	LPC_EMAC->Command = MAC_COMMAND_REG_RESET | MAC_COMMAND_TX_RESET | MAC_COMMAND_RX_RESET;
-
+	LPC_EMAC->MAC1 = MAC1_SOFT_RESET;
 	_wait(1000);
 
-	LPC_EMAC->MAC1 = MAC1_PASS_ALL;
 	LPC_EMAC->MAC2 = MAC2_CRC_ENABLE | MAC2_PAD_ENABLE;
 	LPC_EMAC->MAXF = ETH_MAX_FRAME_LEN;
 	LPC_EMAC->CLRT = MAC_CLRT_DEFAULT;
 	LPC_EMAC->IPGR = MAC_IPGR_DEFAULT;
 
-	// initialize RMII interface
-	LPC_EMAC->MCFG = MAC_MCFG_CLK_DIV20 | MAC_MCFG_RESET_MII;
+	// RMII PHY initialization
+	LPC_EMAC->MAC1 = 0;
+	LPC_EMAC->MCFG = MAC_MCFG_CLK_DIV40 | MAC_MCFG_RESET_MII;
 	_wait(1000);
-	LPC_EMAC->MCFG = MAC_MCFG_CLK_DIV20; // 72MHz / 20 = 3.6MHz?
-	LPC_EMAC->Command = MAC_COMMAND_RMII | 
-		MAC_COMMAND_PASS_RUNT_FRAME | MAC_COMMAND_PASS_RX_FILTER;
-
-	// init phy
+	LPC_EMAC->MCFG = MAC_MCFG_CLK_DIV40;
+	LPC_EMAC->Command = MAC_COMMAND_RMII;
 	if(!phy_reset(&_phy))
 		return 0;
+
+	// module initialization
+	LPC_EMAC->MAC1 = MAC1_RESET_TX | MAC1_RESET_MCS_TX | 
+		MAC1_RESET_RX | MAC1_RESET_MCS_RX |
+		MAC1_SIM_RESET;
+	LPC_EMAC->Command = MAC_COMMAND_TX_RESET | MAC_COMMAND_RX_RESET;
+
+	_wait(1000);
+
+	// initialize Tx and Rx DMA Descriptors
+	emac_mem_initialize();
+
+	LPC_EMAC->MAC1 = MAC1_PASS_ALL;
+	LPC_EMAC->Command = MAC_COMMAND_RMII | 
+		MAC_COMMAND_PASS_RUNT_FRAME | MAC_COMMAND_PASS_RX_FILTER;
 
 	// configure hw address 
 	LPC_EMAC->SA0 = (mac->Byte[1] << 8) | mac->Byte[0];
 	LPC_EMAC->SA1 = (mac->Byte[3] << 8) | mac->Byte[2];
 	LPC_EMAC->SA2 = (mac->Byte[5] << 8) | mac->Byte[4];
 
-	// initialize Tx and Rx DMA Descriptors
-	emac_mem_initialize();
-	
 	// setup rx filter
 	LPC_EMAC->RxFilterCtrl = MAC_RXFC_BROADCAST_EN | MAC_RXFC_PERFECT_EN;
 	
@@ -89,7 +93,7 @@ int emac_initialize(ETH_MAC *mac, void (*handler)(void *), void *state)
 	LPC_EMAC->IntClear = 0xFFFF;
 	NVIC_EnableIRQ(ENET_IRQn);
 
-	// configure PHY
+	// restart link
 	phy_restart_neg(&_phy);
 	return 1;
 }

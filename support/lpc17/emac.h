@@ -77,6 +77,8 @@ typedef struct __attribute__((__packed__))
 #define MAC_MCFG_CLK_DIV14		(5<<2)
 #define MAC_MCFG_CLK_DIV20		(6<<2)
 #define MAC_MCFG_CLK_DIV28		(7<<2)
+#define MAC_MCFG_CLK_DIV36		(8<<2)
+#define MAC_MCFG_CLK_DIV40		(9<<2)
 
 // MAC_SUPP bits
 #define MAC_SUPP_SPEED	(1<<8) // Sets RMII in 100MBPS mode
