@@ -11,6 +11,7 @@ typedef enum
 	PHY_ID_NONE = 0,
 	PHY_ID_DP83848 = 0x20005C90,
 	PHY_ID_KSZ8001 = 0x00221610,
+	PHY_ID_LAN8720A = 0x0007C0F0,
 } PHY_ID;
 
 typedef enum _PHY_REG
@@ -91,6 +92,18 @@ typedef enum
 #define PHY_DP83848_PHYSTA_LINK		(1<<0)
 #define PHY_DP83848_PHYSTA_SPEED	(1<<1)
 #define PHY_DP83848_PHYSTA_DUPLEX	(1<<2)
+
+
+// SMSC LAN8720A PHY
+typedef enum
+{
+	PHYR_LAN8720A_SP_CSR = 0x1F,
+} PHYREG_LAN8720A;
+
+#define PHY_LAN8720A_S_CSR_FULLDUPLEX (1<<4)
+#define PHY_LAN8720A_S_CSR_100BASET (1<<3)
+#define PHY_LAN8720A_S_CSR_10BASET (1<<2)
+
 
 typedef struct 
 {
