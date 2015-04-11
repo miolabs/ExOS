@@ -177,7 +177,7 @@
   <configuration
     Name="Debug"
     build_debug_information="Yes"
-    c_preprocessor_definitions="DEBUG;__THUMB"
+    c_preprocessor_definitions="DEBUG;IAP_DEBUG"
     gcc_optimization_level="None"
     hidden="Yes"
     link_include_startup_code="No" />
@@ -207,7 +207,7 @@
     inherited_configurations="Mioboard;Release" />
   <configuration
     Name="uMFi"
-    c_preprocessor_definitions="BOARD_UMFI;CLOCKOUT_DEBUG"
+    c_preprocessor_definitions="BOARD_UMFI;EXOS_DEBUG_PATH=&quot;/dev/comm0&quot;"
     hidden="Yes" />
   <configuration Name="uMFi Debug" inherited_configurations="Debug;uMFi" />
   <configuration

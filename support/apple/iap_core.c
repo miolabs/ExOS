@@ -6,6 +6,9 @@
 #include <kernel/panic.h>
 #include <kernel/machine/hal.h>
 #include <support/board_hal.h>
+#ifdef IAP_DEBUG
+#include <support/services/debug.h>
+#endif
 
 #define THREAD_STACK 2048
 static EXOS_THREAD _thread;

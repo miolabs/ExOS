@@ -121,6 +121,8 @@ void hal_board_initialize()
 
 #elif defined BOARD_UMFI
 
+	pincon_setfunc(0, 2, 1, PINMODE_PULLUP);	// U0_TXD
+	pincon_setfunc(0, 3, 1, PINMODE_PULLUP);	// U0_RXD
 	pincon_setfunc(0, 27, 1, PINMODE_PULLUP);	// SDA0
 	pincon_setfunc(0, 28, 1, PINMODE_PULLUP);	// SCL0
 

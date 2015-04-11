@@ -6,9 +6,12 @@
 #include <net/adapter.h>
 #include "iap_server.h"
 #include "lock_server.h"
+#include <stdio.h>
 
 void main()
 {
+	printf("Starting USB...\r\n");
+
 	usb_host_initialize();
 	int err = 0;
 

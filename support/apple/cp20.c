@@ -1,6 +1,9 @@
 #include "cp20.h"
 #include <support/i2c_hal.h>
 #include <kernel/thread.h>
+#ifdef IAP_DEBUG
+#include <support/services/debug.h>
+#endif
 
 #ifndef APPLE_CP20_I2C_MODULE
 #define APPLE_CP20_I2C_MODULE 0
@@ -14,12 +17,21 @@ int apple_cp20_initialize()
 	int done;
 	hal_i2c_initialize(APPLE_CP20_I2C_MODULE, 400000);
 	
-	_addr = 0x10;
-	done = apple_cp2_read_device_id(&auth_id);
-	if (done && auth_id == 0x200) return 1;
-	_addr = 0x11;
-	done = apple_cp2_read_device_id(&auth_id);
-	if (done && auth_id == 0x200) return 1;
+	for(int i = 0; i <= 1; i++)
+	{
+		_addr = 0x10 + i;
+		done = apple_cp2_read_device_id(&auth_id);
+		if (done && auth_id == 0x200) 
+		{
+#ifdef IAP_DEBUG
+			debug_printf("Apple CP20 Detected at I2C addr 0x%x\r\n", _addr);
+#endif
+			return 1;
+		}
+	}
+#ifdef IAP_DEBUG
+	debug_printf("Apple CP20 Not Detected!\r\n");
+#endif
 	return 0;
 }
 
