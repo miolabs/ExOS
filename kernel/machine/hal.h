@@ -22,6 +22,7 @@ void __mem_set(void *start, void *stop, unsigned char stuff_byte);
 
 unsigned int __str_copy(char *dst, const char *src, unsigned int max_length);
 int __str_comp(const char *str1, const char *str2);
+unsigned int __uint32_hexlz(char *dst, unsigned int value, int tx, char tc);
 unsigned int __uint32_hexl(char *dst, unsigned int value);
 unsigned int __int32_declz(char *dst, int value, int tz, char tc);
 unsigned int __int32_decl(char *dst, int value);

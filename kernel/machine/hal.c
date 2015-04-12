@@ -69,7 +69,7 @@ static inline void _reverse_str(char* str, int len)
 	}
 }
 
-unsigned int __uint32_hexl(char *dst, unsigned int value)
+unsigned int __uint32_hexlz(char *dst, unsigned int value, int tz, char tc)
 {
 	unsigned int length = 0;
 	do
@@ -79,8 +79,16 @@ unsigned int __uint32_hexl(char *dst, unsigned int value)
 		dst[length++] = (digit >= 10) ? digit + 'a' - 10 : digit + '0';
 	} while(value != 0);
 
+	while(length < tz)
+		dst[length++] = tc; 
+
 	_reverse_str(dst, length);
 	return length;
+}
+
+unsigned int __uint32_hexl(char *dst, unsigned int value)
+{
+	return __int32_hexlz(dst, value, 0, '\0');
 }
 
 unsigned int __int32_declz(char *dst, int value, int tz, char tc) 

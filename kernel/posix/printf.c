@@ -79,7 +79,7 @@ int vsprintf(char *restrict s, const char *restrict format, va_list args)
 				switch (size)
 				{
 					case 4:
-						done += __uint32_hexl(s + done, va_arg(args, int));
+						done += __uint32_hexlz(s + done, va_arg(args, int), trailing_zeros, trailing_char);
 						break;
 					//TODO: are more sizes possible?
 				}

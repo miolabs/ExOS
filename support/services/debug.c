@@ -8,6 +8,7 @@
 static void _register();
 EXOS_INITIALIZER(_init, EXOS_INIT_SW_DRIVER, _register);
 
+static EXOS_MUTEX _lock;
 static EXOS_IO_ENTRY *_io = NULL;
 static unsigned char _buffer[256];
 
@@ -28,6 +29,8 @@ static void _register()
 		}
 	}
 #endif
+
+	exos_mutex_create(&_lock);
 }
 
 int debug_printf(const char *format, ...)
@@ -41,11 +44,14 @@ int debug_vprintf(const char *format, va_list args)
 {
 	if (_io != NULL)
 	{
-		int length = vsprintf(_buffer, format, args);
-		if (length >= sizeof(_buffer))
+		exos_mutex_lock(&_lock);
+		int done = vsprintf(_buffer, format, args);
+		if (done >= sizeof(_buffer))
 			kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
 
-		return debug_print(_buffer, length);
+		done = debug_print(_buffer, done);
+		exos_mutex_unlock(&_lock);
+		return done;
 	}
 	return -1;
 }
