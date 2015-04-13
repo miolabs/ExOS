@@ -74,7 +74,7 @@ void iap_core_stop()
 }
 
 #ifdef DEBUG
-static void _warning()
+static void _die()
 {
 	hal_led_set(0, 1);
 	kernel_panic(KERNEL_ERROR_UNKNOWN);
@@ -247,8 +247,8 @@ void iap_core_parse(unsigned char *data, int length)
 		}
 		else 
 		{
-#ifdef DEBUG
-			_warning();	// input buffer couldn't be allocated 
+#ifdef IAP_DEBUG
+			debug_printf("iAP core: incoming cmd discarded (could not be allocated)\r\n");
 #endif
 			break;
 		}
@@ -260,22 +260,35 @@ void iap_core_parse(unsigned char *data, int length)
 				exos_mutex_lock(&_busy_requests_lock);
 #ifdef DEBUG
 				if (!list_find_node(&_busy_requests_list, (EXOS_NODE *)req))
-					_warning();	// matching request is not pending
+					_die();	// matching request is not pending
 #endif
 				list_remove((EXOS_NODE *)req);
 				exos_mutex_unlock(&_busy_requests_lock);
-				exos_event_set(&req->CompletedEvent);		
+				exos_event_set(&req->CompletedEvent);
+
+#ifdef IAP_DEBUG
+				debug_printf("-> CMD%02x(%x) tr=%x, iap request completed (CMD%02x(%x) tr=%x)\r\n",
+					cmd->CommandID, cmd->LingoID, cmd->Transaction,
+					req->Cmd->CommandID, req->Cmd->LingoID, req->Cmd->Transaction);
+#endif						
 			}
 			else if (cmd_node != NULL)
 			{
 				exos_fifo_queue(&_incoming_cmds_fifo, (EXOS_NODE *)cmd_node);
+#ifdef IAP_DEBUG
+				debug_printf("-> CMD%02x(%x) tr=%x, cmd queued\r\n",
+					cmd->CommandID, cmd->LingoID, cmd->Transaction);
+#endif		
 			}
 #ifdef DEBUG
-			else _warning();	// received packet checksum mismatch
+			else _die();	// target cmd buffer unavailable
 #endif
 		}
 		else 
 		{
+#ifdef IAP_DEBUG
+			debug_printf("-> bad checksum!\r\n");
+#endif	
 			if (cmd_node != NULL)
 			{
 				_free_cmd(cmd_node);
@@ -303,6 +316,11 @@ IAP_REQUEST *iap_begin_req(IAP_CMD *cmd, unsigned char *cmd_data, IAP_CMD *resp,
 
 		if (iap_send_cmd(cmd, cmd_data))
 			return req;
+
+#ifdef IAP_DEBUG
+			debug_printf("cmd request could not be sent, CMD%02x(%x) tr=%x\r\n",
+				cmd->CommandID, cmd->LingoID, cmd->Transaction);
+#endif	
 
 		exos_mutex_lock(&_busy_requests_lock);
 		list_remove((EXOS_NODE *)req);
@@ -440,10 +458,6 @@ static int _slave_io()
 	unsigned char parts_done;
 	int offset;
 	int done;
-#ifdef DEBUG
-	int auth_started = 0;
-	int auth_done = 0;
-#endif
 	while(!_service_exit)
 	{
 		cmd = (IAP_CMD) { .Length = sizeof(cmd_buffer) };
@@ -465,20 +479,31 @@ static int _slave_io()
 									iap_send_cmd(&resp, resp_buffer);
 									break;
 								case IAP_CMD_ACCESORY_DATA_TRANSFER:
-									// nothing to do here
+#ifdef IAP_DEBUG
+									debug_printf("iAP core: AccessoryDataTransfer returned status 0x%02x\r\n",
+										cmd_buffer[0]);
+#endif
 									break;
 								case IAP_CMD_SET_AVAILABLE_CURRENT:
-									//FIXME: check command result
+#ifdef IAP_DEBUG
+									debug_printf("iAP core: SetAvailableCurrent returned status 0x%02x\r\n",
+										cmd_buffer[0]);
+#endif
 									break;
-#ifdef DEBUG
+#ifdef IAP_DEBUG
 								default:
-									_warning();
+									debug_printf("iAP core: received unexpected iPodAck for cmd 0x%02x\r\n",
+										cmd_buffer[1]);
 									break;
 #endif
 							}
 						}
-#ifdef DEBUG
-						else _warning();
+#ifdef IAP_DEBUG
+						else 
+						{
+							debug_printf("iAP core: iPodAck received with status 0x%02x\r\n",
+								cmd.ErrorCode);
+						};
 #endif
 						break;
 					case IAP_CMD_GET_ACC_AUTH_INFO:
@@ -499,9 +524,9 @@ static int _slave_io()
 					case IAP_CMD_GET_ACC_AUTH_SIGNATURE:
 						if (cmd.Length == 21)
 						{
-#ifdef DEBUG
-							auth_started++;
-#endif
+#ifdef IAP_DEBUG
+							debug_printf("iAP core: Authentication started!\r\n");
+#endif		
 							offset = apple_cp2_get_auth_signature(cmd_buffer, cmd.Length - 1, resp_buffer);
 							resp = (IAP_CMD) { .CommandID = IAP_CMD_RET_ACC_AUTH_SIGNATURE, .Length = offset, .Transaction = cmd.Transaction };
 							iap_send_cmd(&resp, resp_buffer);
@@ -511,10 +536,11 @@ static int _slave_io()
 						if (cmd.Length == 1 && 
 							cmd_buffer[0] == 0) // auth operation passed
 						{
-#ifdef DEBUG
-							auth_done++;
-#endif
-							// NOTE: EXPERIMENTAL: try to enable ipad charging using iap 
+#ifdef IAP_DEBUG
+							debug_printf("iAP core: Authentication completed!\r\n");
+#endif		
+
+							// EXPERIMENTAL: try to enable ipad charging using iap 
 							resp_buffer[offset++] = 2100 >> 8;
 							resp_buffer[offset++] = 2100 & 0xFF;
 							resp = (IAP_CMD) { .CommandID = IAP_CMD_SET_AVAILABLE_CURRENT, .Length = offset, .Transaction = cmd.Transaction };
@@ -523,11 +549,16 @@ static int _slave_io()
 							// TODO: notify app level that lingo ids are ready to be used
 						}
 #ifdef DEBUG
-						else _warning();
+						else _die();	// auth failed, FIXME
 #endif
 						break;
 					case IAP_CMD_OPEN_DATA_SESSION_FOR_PROTOCOL:
+#ifdef IAP_DEBUG
+						debug_printf("OpenDataSession (0x%02x) tr=%x\r\n",
+							cmd.CommandID, cmd.Transaction);
+#endif							
 						// FIXME: ensure we are not ignoring protocol field
+						
 						done = iap_open_session((cmd_buffer[0] << 8) | cmd_buffer[1], cmd_buffer[2]);
 						resp_buffer[offset++] = done ? IAP_OK : IAP_ERROR_BAD_PARAMETER;
 						resp_buffer[offset++] = cmd.CommandID;
@@ -535,6 +566,10 @@ static int _slave_io()
                         iap_send_cmd(&resp, resp_buffer);
 						break;
 					case IAP_CMD_IPOD_DATA_TRANSFER:
+#ifdef IAP_DEBUG
+						debug_printf("iPodDataTransfer (0x%02x) tr=%x, length=%d\r\n",
+							cmd.CommandID, cmd.Transaction, cmd.Length);
+#endif	
 						if (cmd.Length > 2)
 						{
 							done = iap_comm_write((cmd_buffer[0] << 8) | cmd_buffer[1], &cmd_buffer[2], cmd.Length - 2);
@@ -547,15 +582,20 @@ static int _slave_io()
 						iap_send_cmd(&resp, resp_buffer);
 						break;
 					case IAP_CMD_CLOSE_DATA_SESSION:
+#ifdef IAP_DEBUG
+						debug_printf("CloseDataSession (0x%02x) tr=%x\r\n",
+							cmd.CommandID, cmd.Transaction);
+#endif							
 						iap_close_session((cmd_buffer[0] << 8) | cmd_buffer[1]);
 						resp_buffer[offset++] = IAP_OK;
 						resp_buffer[offset++] = cmd.CommandID;
 						resp = (IAP_CMD) { .CommandID = IAP_CMD_ACCESORY_ACK, .Length = offset, .Transaction = cmd.Transaction };
                         iap_send_cmd(&resp, resp_buffer);
 						break;
-#ifdef DEBUG
+#ifdef IAP_DEBUG
 					default:
-						_warning();
+						debug_printf("iAP core: unexpected command(0x%02x) tr=%x\r\n",
+							cmd.CommandID, cmd.Transaction);
 						break;
 #endif
 				}
@@ -569,11 +609,26 @@ static void *_service(void *arg)
 {
 	exos_thread_sleep(1000);
 
+#ifdef IAP_DEBUG
+	debug_printf("iAP core: Service started...\r\n");
+#endif	
 	if (_identify())
 	{
+#ifdef IAP_DEBUG
+		debug_printf("iAP core: Identify procedure succeded!\r\n");
+#endif	
 		_slave_io();
 		iap_close_all();
 	}
+	else
+	{
+#ifdef IAP_DEBUG
+		debug_printf("iAP core: Identify procedure failed!\r\n");
+#endif	
+	}
+#ifdef IAP_DEBUG
+	debug_printf("iAP core: Service exiting...\r\n");
+#endif	
 	_service_exit = 0;
 }
 

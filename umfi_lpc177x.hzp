@@ -33,6 +33,7 @@
       linker_additional_files="$(StudioDir)/lib/libc$(LibExt)$(LIB)"
       linker_memory_map_file="$(TargetsDir)/LPC1000/LPC1778_MemoryMap.xml"
       linker_patch_build_command="&quot;$(StudioDir)/bin/crossscript&quot; &quot;load(\&quot;$(TargetsDir)/LPC1000/LPC1000_LinkPatch.js\&quot;);patch(\&quot;$(TargetPath)\&quot;);&quot;"
+      linker_section_placement_file="support/lpc17/flash_placement_17xx.xml"
       oscillator_frequency="12MHz"
       project_directory=""
       project_type="Executable"
@@ -193,8 +194,7 @@
     Name="Common"
     arm_instruction_set="Thumb"
     arm_library_instruction_set="Thumb"
-    c_preprocessor_definitions="MAIN_THREAD_STACK=1024;MAIN_THREAD_PRI=0;__THUMB;__EXOS__;EXOS_NO_NET;IAP_ENABLE_IPAD_CHARGING"
-    linker_section_placement_file="$(ProjectDir)/support/lpc17/flash_placement_17xx.xml" />
+    c_preprocessor_definitions="MAIN_THREAD_STACK=1024;MAIN_THREAD_PRI=0;__THUMB;__EXOS__;EXOS_NO_NET;IAP_ENABLE_IPAD_CHARGING" />
   <configuration
     Name="Mioboard"
     c_preprocessor_definitions="BOARD_MIOBOARD;EEPROM_I2C_MODULE=0;EEPROM_SIZE=256;EEPROM_PAGE_SIZE=8"

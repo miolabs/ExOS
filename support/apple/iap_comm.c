@@ -3,6 +3,9 @@
 #include <comm/comm.h>
 #include <kernel/tree.h>
 #include <stdio.h>
+#ifdef IAP_DEBUG
+#include <support/services/debug.h>
+#endif
 
 static int _open(COMM_IO_ENTRY *io);
 static void _close(COMM_IO_ENTRY *io);
@@ -50,6 +53,10 @@ void iap_comm_add_protocol(APPLE_IAP_PROTOCOL_MANAGER *iap)
 	exos_mutex_unlock(&_managers_lock);
 
 	comm_add_device(&iap->KernelDevice, "dev/iap");
+
+#ifdef IAP_DEBUG
+	debug_printf("Added iap protocol '%s'\r\n", iap->Name);
+#endif
 }
 
 int iap_comm_get_protocol_count()

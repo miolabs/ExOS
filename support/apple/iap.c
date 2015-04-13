@@ -1,6 +1,9 @@
 #include "iap.h"
 #include "iap_core.h"
 #include <support/usb/driver/hid.h>
+#ifdef IAP_DEBUG
+#include <support/services/debug.h>
+#endif
 
 static HID_FUNCTION_HANDLER *_match_device(HID_FUNCTION *func);
 static int _match_handler(HID_FUNCTION_HANDLER *handler, HID_REPORT_INPUT *input);
@@ -58,7 +61,10 @@ static void _start(HID_FUNCTION_HANDLER *handler)
 		.RequestCode = USB_IAP_REQ_DEVICE_POWER_REQUEST,
 		.Value = 0x6400, .Index = 0x6400, .Length = 0 };
 	int done = usb_host_ctrl_setup(handler->Function->Device, &setup, NULL, 0);
-	// TODO: somehow notify if failed
+#ifdef IAP_DEBUG
+	if (!done)
+		debug_printf("iap: DevicePowerRequest failed\r\n");
+#endif
 #endif
 
 	iap_core_start();
@@ -201,7 +207,13 @@ int iap_send_cmd(IAP_CMD *cmd, unsigned char *data)
 			buffer[i] = 0; 
 		
 		if (usbd_hid_set_report(iap->Function, USB_HID_REPORT_TYPE_OUTPUT, input->ReportId, buffer, offset))
+		{
+#ifdef IAP_DEBUG
+			debug_printf("<- CMD%02x(%x) tr=%x\r\n",
+				cmd->CommandID, cmd->LingoID, cmd->Transaction);
+#endif
 			return 1;
+		}
 	}
 	return 0;
 }
