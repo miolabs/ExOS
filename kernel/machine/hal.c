@@ -88,7 +88,7 @@ unsigned int __uint32_hexlz(char *dst, unsigned int value, int tz, char tc)
 
 unsigned int __uint32_hexl(char *dst, unsigned int value)
 {
-	return __int32_hexlz(dst, value, 0, '\0');
+	return __uint32_hexlz(dst, value, 0, '\0');
 }
 
 unsigned int __int32_declz(char *dst, int value, int tz, char tc) 
