@@ -81,6 +81,40 @@ typedef enum
 	DMA_FLOW_P2P_SP = 7,
 } DMA_FLOW;
 
+#if (__TARGET_PROCESSOR > 1770)
+
+typedef enum
+{
+	DMA_P_MCI = 1,
+	DMA_P_SSP0_TX = 2,
+	DMA_P_SSP0_RX = 3,
+	DMA_P_SSP1_TX = 4,
+	DMA_P_SSP1_RX = 5,
+	DMA_P_UART0_TX = 10,
+	DMA_P_UART0_RX = 11,
+	DMA_P_UART1_TX = 12,
+	DMA_P_UART1_RX = 13,
+	DMA_P_UART2_TX = 14,
+	DMA_P_UART2_RX = 15,
+	// alternate functions
+	DMA_P_MAT0_0 = 0,
+	DMA_P_MAT0_1 = 1,
+	DMA_P_MAT1_0 = 2,
+	DMA_P_MAT1_1 = 3,
+	DMA_P_MAT2_0 = 4,
+	DMA_P_MAT2_1 = 5,
+	DMA_P_I2S_CH0 = 6,
+	DMA_P_I2S_CH1 = 7,
+	DMA_P_UART3_TX = 10,
+	DMA_P_UART3_RX = 11,
+	DMA_P_UART4_TX = 12,
+	DMA_P_UART4_RX = 13,
+	DMA_P_MAT3_0 = 14,
+	DMA_P_MAT3_1 = 15,
+} DMA_PERIPHERAL;
+
+#else
+
 typedef enum
 {
 	DMA_P_SSP0_TX = 0,
@@ -108,6 +142,8 @@ typedef enum
 	DMA_P_MAT3_0 = 14,
 	DMA_P_MAT3_1 = 15,
 } DMA_PERIPHERAL;
+
+#endif
 
 typedef struct
 {

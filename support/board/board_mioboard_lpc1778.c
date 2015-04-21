@@ -114,6 +114,13 @@ void hal_board_initialize()
 //	pincon_setfunc(2, 7, 1, PINMODE_PULLUP);	// CAN_RD2
 //	pincon_setfunc(2, 8, 1, PINMODE_PULLUP);	// CAN_TD2 
 
+	pincon_setfunc(0, 19, 2, PINMODE_PULLUP);	// SD_CLK
+	pincon_setfunc(0, 20, 2, PINMODE_PULLUP);	// SD_CMD
+	pincon_setfunc(0, 22, 2, PINMODE_PULLUP);	// SD_DAT0
+	pincon_setfunc(2, 11, 2, PINMODE_PULLUP);	// SD_DAT1
+	pincon_setfunc(2, 12, 2, PINMODE_PULLUP);	// SD_DAT2
+	pincon_setfunc(2, 13, 2, PINMODE_PULLUP);	// SD_DAT3
+
 	#define LED1_PORT LPC_GPIO3
 	#define LED1_MASK (1<<23)
 	LED1_PORT->CLR = LED1_MASK;
