@@ -423,7 +423,20 @@ static int _identify()
 					return 1;
 			}
 		}
+#ifdef IAP_DEBUG
+		else
+		{
+			debug_printf("iAP core: IAP_CMD_REQUEST_TRANSPORT_MAX_PAYLOAD_FAILED; max_payload=0x%x, status=0x%02x!\r\n", 
+				max_payload, status);
+		}
+#endif
 	}
+#ifdef IAP_DEBUG
+	else
+	{
+		debug_printf("iAP core: IAP_CMD_START_IDPS failed; status=0x%02x!\r\n", status);
+	}
+#endif
 	return 0;
 }
 
