@@ -1,5 +1,5 @@
-#ifndef LPC17_CPU_H
-#define LPC17_CPU_H
+#ifndef LPC2K_CPU_H
+#define LPC2K_CPU_H
 
 #define LPC2387 2387
 #define LPC2468 2468
@@ -48,7 +48,9 @@ typedef struct
   __IO unsigned long IRCTRIM;                /* Clock Dividers                     */
   __IO unsigned long PCLKSEL0;
   __IO unsigned long PCLKSEL1;
-       unsigned long RESERVED8[4];
+       unsigned long RESERVED8[2];
+  __IO unsigned long LCD_CFG;
+       unsigned long RESERVED9[1];
   __IO unsigned long USBIntSt;               /* USB Device/OTG Interrupt Register  */
   __IO unsigned long DMAREQSEL;
   __IO unsigned long CLKOUTCFG;              /* Clock Output Configuration         */
@@ -73,6 +75,7 @@ extern LPC_SC_TypeDef *LPC_SC;
 #define PCONP_PCAN3		0x00008000
 #define PCONP_PCAN4		0x00010000
 #define PCONP_PCI2C1	0x00080000
+#define PCONP_PCLCD		0x00100000
 #define PCONP_PCSSP0	0x00200000
 #define PCONP_PCTIM2	0x00400000
 #define PCONP_PCTIM3	0x00800000
@@ -229,4 +232,4 @@ int cpu_pclk(PCLK_PERIPH periph);
 void VIC_EnableIRQ(IRQn_Type irq);
 void VIC_DisableIRQ(IRQn_Type irq);
 
-#endif // LPC17_CPU_H
+#endif // LPC2K_CPU_H

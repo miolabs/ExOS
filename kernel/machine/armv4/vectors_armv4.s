@@ -36,6 +36,9 @@ fiq_handler_address:
 	.section .init, "ax"
 	.code 32
 
+__div0:
+	b .	 /* Endless loop */
+
 Undef_Handler:
 	b .  /* Endless loop */
 
@@ -55,4 +58,4 @@ IRQ_Handler:
 FIQ_Handler:
 	b .  /* Endless loop */
 
-	.weak Undef_Handler, SWI_Handler, PAbort_Handler, DAbort_Handler, IRQ_Handler, FIQ_Handler
+	.weak __div0, Undef_Handler, SWI_Handler, PAbort_Handler, DAbort_Handler, IRQ_Handler, FIQ_Handler
