@@ -7,6 +7,10 @@
 #include "machine/hal.h"
 #include <modules/services/services.h>
 
+#ifndef MAIN_THREAD_PRI
+#define MAIN_THREAD_PRI 0
+#endif
+
 void main();
 
 EXOS_THREAD _main_thread;

@@ -5,7 +5,7 @@
 #include <kernel/machine/hal.h>
 #include <support/services/debug.h>
 
-__weak int printf(const char *restrict format, ...)
+int printf(const char *restrict format, ...)
 {
 	va_list args;
 	va_start(args, format);
