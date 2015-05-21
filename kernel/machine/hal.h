@@ -2,6 +2,7 @@
 #define EXOS_MACHINE_HAL_H
 
 #include <kernel/types.h>
+#include <stdint.h>
 
 #ifndef __dma
 #define __dma __attribute__((__section__(".dma")))

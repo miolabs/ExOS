@@ -18,7 +18,7 @@ int hal_gpio_set_handler(int port, int pin, HAL_GPIO_TRIGGER trigger, HAL_GPIO_H
 void hal_gpio_write(int port, unsigned int mask, unsigned int state);
 unsigned int hal_gpio_read(int port, unsigned int mask);
 void hal_gpio_pin_set(int port, int pin, int state);
-int hal_gpio_pin(int port, int pin); 
+int hal_gpio_pin(int port, int pin);
 void hal_gpio_config(int port, unsigned int mask, unsigned int output);
 
 #endif // HAL_GPIO_H
