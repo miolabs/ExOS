@@ -69,6 +69,7 @@ static USB_HOST_FUNCTION *_check_interface(USB_HOST_DEVICE *device, USB_CONFIGUR
 				{
 					func = &_function[i];
 					func->InstanceIndex = i;
+					break;
 				}
 			}
 
