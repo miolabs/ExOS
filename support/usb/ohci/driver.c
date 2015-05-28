@@ -1,5 +1,6 @@
 #include "driver.h"
 #include "buffers.h"
+#include <usb/enumerate.h>
 #include <kernel/fifo.h>
 #include <kernel/memory.h>
 #include <kernel/panic.h>
@@ -15,9 +16,7 @@ static int _end_bulk_transfer(USB_REQUEST_BUFFER *urb, unsigned long timeout);
 const USB_HOST_CONTROLLER_DRIVER __ohci_driver = {
 	_ctrl_setup_read, _ctrl_setup_write, 
 	_start_pipe, _stop_pipe, _begin_bulk_transfer, _end_bulk_transfer,
-	};
-
-static USB_HOST_DEVICE _devices[2] __usb;	// FIXME: allow more devices (each port can generate more than one)
+	ohci_device_create };
 
 static EXOS_MUTEX _mutex;
 
@@ -127,33 +126,70 @@ static int _end_bulk_transfer(USB_REQUEST_BUFFER *urb, unsigned long timeout)
 	return (urb->Status == URB_STATUS_DONE) ? urb->Done : -1;
 }
 
-USB_HOST_DEVICE *ohci_device_create(int port, USB_HOST_DEVICE_SPEED speed)
+int ohci_device_create(USB_HOST_DEVICE *device, int port, USB_HOST_DEVICE_SPEED speed)
 {
-	// first we get a device context for the connected device
-	// and configure its control ep for initialization
-	USB_HOST_DEVICE *device = &_devices[port];	// FIXME
+	static USB_DEVICE_DESCRIPTOR _dev_desc __usb;	// NOTE: buffer for descriptors, not re-entrant (lock?)
+	static volatile int _last_device = 0;	// FIXME
+
+	int done = 0;
+	exos_mutex_lock(&_mutex);
+
 	usb_host_create_device(device, &__ohci_driver, port, speed);
 
 	if (_start_pipe(&device->ControlPipe))
 	{
-    	device->State = USB_HOST_DEVICE_ATTACHED;
-		return device;
+		device->State = USB_HOST_DEVICE_ATTACHED;
+
+		USB_HOST_PIPE *pipe = &device->ControlPipe;
+		USB_DEVICE_DESCRIPTOR *dev_desc = &_dev_desc;
+
+		// read device descriptor (header)
+		done = usb_host_read_device_descriptor(device, USB_DESCRIPTOR_TYPE_DEVICE, 0, dev_desc, 8);
+		if (done)
+		{
+			OHCI_SED *sed = (OHCI_SED *)pipe->Endpoint;
+			sed->HCED.ControlBits.MaxPacketSize = dev_desc->MaxPacketSize;
+	
+			// set address
+			device->Address = ++_last_device;	// FIXME: search lowest unused
+			done = usb_host_set_address(device, device->Address);
+			if (done)
+			{
+				sed->HCED.ControlBits.FunctionAddress = device->Address;
+
+				// read device descriptor (complete) 
+				done = usb_host_read_device_descriptor(device, USB_DESCRIPTOR_TYPE_DEVICE, 0, 
+					dev_desc, sizeof(USB_DEVICE_DESCRIPTOR));
+		
+				if (done)
+				{
+					done = usb_host_enumerate(device, dev_desc); 
+				}
+			}
+		}
+
+		if (!done)
+		{
+			ohci_device_destroy(device);
+		}
 	}
-	return NULL;
+
+	exos_mutex_unlock(&_mutex);
+	return done;
 }
 
-void ohci_device_destroy(int port)
+void ohci_device_destroy(USB_HOST_DEVICE *device)
 {
 	exos_mutex_lock(&_mutex);
-	USB_HOST_DEVICE *device = &_devices[port];	// FIXME
 
 	if (device->State != USB_HOST_DEVICE_DETACHED)
 	{
 		device->State = USB_HOST_DEVICE_DETACHED;
 		_stop_pipe(&device->ControlPipe);
-	
+
 		usb_host_destroy_device(device);
-   	}
+	}
+
 	exos_mutex_unlock(&_mutex);
 }
 

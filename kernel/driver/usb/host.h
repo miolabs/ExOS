@@ -99,6 +99,7 @@ struct _USB_HOST_CONTROLLER_DRIVER
 	int (*StopPipe)(USB_HOST_PIPE *pipe);
 	int (*BeginBulkTransfer)(USB_REQUEST_BUFFER *urb, void *data, int length);
 	int (*EndBulkTransfer)(USB_REQUEST_BUFFER *urb, unsigned long timeout);
+	int (*CreateDevice)(USB_HOST_DEVICE *device, int port, USB_HOST_DEVICE_SPEED speed);
 };
 
 typedef struct
@@ -115,6 +116,7 @@ void usb_host_driver_register(USB_HOST_FUNCTION_DRIVER_NODE *driver_node);
 int usb_host_driver_enumerate(USB_HOST_DRIVER_ENUMERATE_CALLBACK callback, void *arg);
 void usb_host_create_device(USB_HOST_DEVICE *device, USB_HOST_CONTROLLER_DRIVER *hcd, int port, USB_HOST_DEVICE_SPEED speed);
 void usb_host_destroy_device(USB_HOST_DEVICE *device);
+int usb_host_create_child_device(USB_HOST_DEVICE *device, USB_HOST_DEVICE *child, int port, USB_HOST_DEVICE_SPEED speed);
 void usb_host_create_function(USB_HOST_FUNCTION *func, USB_HOST_DEVICE *device, const USB_HOST_FUNCTION_DRIVER *driver);
 void usb_host_destroy_function(USB_HOST_FUNCTION *func);
 void usb_host_init_pipe_from_descriptor(USB_HOST_DEVICE *device, USB_HOST_PIPE *pipe, USB_ENDPOINT_DESCRIPTOR *ep_desc);
