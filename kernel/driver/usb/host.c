@@ -70,6 +70,13 @@ void usb_host_destroy_device(USB_HOST_DEVICE *device)
 	}
 }
 
+int usb_host_create_child_device(USB_HOST_DEVICE *device, USB_HOST_DEVICE *child, int port, USB_HOST_DEVICE_SPEED speed)
+{
+	const USB_HOST_CONTROLLER_DRIVER *hcd = device->Controller;
+	int done = hcd->CreateDevice(child, port, speed);
+	return done;
+}
+
 void usb_host_create_function(USB_HOST_FUNCTION *func, USB_HOST_DEVICE *device, const USB_HOST_FUNCTION_DRIVER *driver)
 {
 	*func = (USB_HOST_FUNCTION) {
