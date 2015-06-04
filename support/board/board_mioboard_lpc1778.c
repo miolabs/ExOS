@@ -1,6 +1,7 @@
 #include <support/board_hal.h>
 #include <support/lpc17/dma.h>
 #include <support/lpc17/pincon.h>
+#include <kernel/memory.h>
 
 void hal_board_initialize()
 {
@@ -171,5 +172,16 @@ void hal_led_set(HAL_LED led, int state)
 }
 
 
+#ifdef DMA_HEAP_SIZE
+
+static EXOS_MEM_REGION _dma_region;
+unsigned char __dma_heap[DMA_HEAP_SIZE] __dma __attribute__((__aligned__(16)));
+
+void hal_board_add_memory()
+{
+	exos_mem_add_region(&_dma_region, __dma_heap, __dma_heap + sizeof(__dma_heap), -2, EXOS_MEMF_DMA);
+}
+
+#endif
 
 
