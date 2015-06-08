@@ -63,18 +63,15 @@ void usb_host_create_device(USB_HOST_DEVICE *device, USB_HOST_CONTROLLER_DRIVER 
 
 void usb_host_destroy_device(USB_HOST_DEVICE *device)
 {
+#ifdef DEBUG
+	if (device == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
 	FOREACH(node, &device->Functions)
 	{
 		USB_HOST_FUNCTION *func = (USB_HOST_FUNCTION *)node;
 		usb_host_destroy_function(func);
 	}
-}
-
-int usb_host_create_child_device(USB_HOST_DEVICE *device, USB_HOST_DEVICE *child, int port, USB_HOST_DEVICE_SPEED speed)
-{
-	const USB_HOST_CONTROLLER_DRIVER *hcd = device->Controller;
-	int done = hcd->CreateDevice(child, port, speed);
-	return done;
 }
 
 void usb_host_create_function(USB_HOST_FUNCTION *func, USB_HOST_DEVICE *device, const USB_HOST_FUNCTION_DRIVER *driver)
@@ -228,6 +225,35 @@ void usb_host_urb_create(USB_REQUEST_BUFFER *urb, USB_HOST_PIPE *pipe)
 	urb->Status = URB_STATUS_EMPTY;
 }
 
+
+int usb_host_create_child_device(USB_HOST_DEVICE *hub, USB_HOST_DEVICE *child, int port, USB_HOST_DEVICE_SPEED speed)
+{
+#ifdef DEBUG
+	if (hub == NULL || child == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+	const USB_HOST_CONTROLLER_DRIVER *hcd = hub->Controller;
+#ifdef DEBUG
+	if (hcd == NULL || hcd->CreateDevice == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+	int done = hcd->CreateDevice(child, port, speed);
+	return done;
+}
+
+void usb_host_destroy_child_device(USB_HOST_DEVICE *child)
+{
+#ifdef DEBUG
+	if (child == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+	const USB_HOST_CONTROLLER_DRIVER *hcd = child->Controller;
+#ifdef DEBUG
+	if (hcd == NULL || hcd->DestroyDevice == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+	hcd->DestroyDevice(child);
+}
 
 
 

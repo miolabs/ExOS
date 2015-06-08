@@ -33,6 +33,7 @@
       project_directory=""
       project_type="Executable"
       property_groups_file_path="$(TargetsDir)/LPC1000/propertyGroups177x_8x.xml"
+      target_loader_erase_all="Yes"
       target_reset_script="FLASHReset()" />
     <folder Name="Source Files">
       <configuration Name="Common" filter="c;cpp;cxx;cc;h;s;asm;inc" />
@@ -149,10 +150,11 @@
             <file file_name="support/usb/ohci/driver.c" />
           </folder>
           <folder Name="driver">
-            <file file_name="support/usb/driver/msc.c" />
             <file file_name="support/usb/driver/usbprint.c" />
             <file file_name="support/usb/driver/ftdi.c" />
             <file file_name="support/usb/driver/hid.c" />
+            <file file_name="support/usb/driver/usbhub.c" />
+            <file file_name="support/usb/driver/usbkb.c" />
           </folder>
         </folder>
         <folder Name="misc">
@@ -173,7 +175,7 @@
       </folder>
       <folder Name="tests">
         <folder Name="support">
-          <file file_name="tests/support/usb_iap_test.c" />
+          <file file_name="Tests/support/usb_hub_test.c" />
         </folder>
       </folder>
     </folder>
@@ -224,7 +226,7 @@
     inherited_configurations="Mioboard;Release" />
   <configuration
     Name="Mioboard2"
-    c_preprocessor_definitions="BOARD_MIODOCK;EEPROM_I2C_MODULE=0;EEPROM_SIZE=256;EEPROM_PAGE_SIZE=8;APPLE_CP20_I2C_MODULE=2"
+    c_preprocessor_definitions="BOARD_MIODOCK;EEPROM_I2C_MODULE=0;EEPROM_SIZE=256;EEPROM_PAGE_SIZE=8;APPLE_CP20_I2C_MODULE=2;EXOS_DEBUG_PATH=&quot;/dev/comm1&quot;"
     hidden="Yes" />
   <configuration
     Name="NoNet"
@@ -236,4 +238,14 @@
   <configuration
     Name="Mioboard2 Nonet Release"
     inherited_configurations="Mioboard2;NoNet;Release" />
+  <configuration
+    Name="MioDock Debug"
+    inherited_configurations="NoNet;Debug;MioDock" />
+  <configuration
+    Name="MioDock Release"
+    inherited_configurations="MioDock;NoNet;Release" />
+  <configuration
+    Name="MioDock"
+    c_preprocessor_definitions="BOARD_MIODOCK;EXOS_DEBUG_PATH=&quot;/dev/comm1&quot;;EEPROM_I2C_MODULE=0;EEPROM_SIZE=256;EEPROM_PAGE_SIZE=8"
+    hidden="Yes" />
 </solution>

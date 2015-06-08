@@ -100,6 +100,7 @@ struct _USB_HOST_CONTROLLER_DRIVER
 	int (*BeginBulkTransfer)(USB_REQUEST_BUFFER *urb, void *data, int length);
 	int (*EndBulkTransfer)(USB_REQUEST_BUFFER *urb, unsigned long timeout);
 	int (*CreateDevice)(USB_HOST_DEVICE *device, int port, USB_HOST_DEVICE_SPEED speed);
+	void (*DestroyDevice)(USB_HOST_DEVICE *device);
 };
 
 typedef struct
@@ -116,7 +117,6 @@ void usb_host_driver_register(USB_HOST_FUNCTION_DRIVER_NODE *driver_node);
 int usb_host_driver_enumerate(USB_HOST_DRIVER_ENUMERATE_CALLBACK callback, void *arg);
 void usb_host_create_device(USB_HOST_DEVICE *device, USB_HOST_CONTROLLER_DRIVER *hcd, int port, USB_HOST_DEVICE_SPEED speed);
 void usb_host_destroy_device(USB_HOST_DEVICE *device);
-int usb_host_create_child_device(USB_HOST_DEVICE *device, USB_HOST_DEVICE *child, int port, USB_HOST_DEVICE_SPEED speed);
 void usb_host_create_function(USB_HOST_FUNCTION *func, USB_HOST_DEVICE *device, const USB_HOST_FUNCTION_DRIVER *driver);
 void usb_host_destroy_function(USB_HOST_FUNCTION *func);
 void usb_host_init_pipe_from_descriptor(USB_HOST_DEVICE *device, USB_HOST_PIPE *pipe, USB_ENDPOINT_DESCRIPTOR *ep_desc);
@@ -133,6 +133,9 @@ int usb_host_read_string_descriptor(USB_HOST_DEVICE *device, int lang_id, int st
 int usb_host_read_if_descriptor(USB_HOST_DEVICE *device, int interface, int desc_type, int desc_index, void *data, int length);
 int usb_host_set_address(USB_HOST_DEVICE *device, int addr);
 int usb_host_set_interface(USB_HOST_DEVICE *device, int interface, int alternate_setting);
+
+int usb_host_create_child_device(USB_HOST_DEVICE *hub, USB_HOST_DEVICE *child, int port, USB_HOST_DEVICE_SPEED speed);
+void usb_host_destroy_child_device(USB_HOST_DEVICE *child);
 
 void usb_host_add_drivers() __weak;
 

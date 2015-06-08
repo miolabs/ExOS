@@ -3,6 +3,7 @@
 #include <usb/enumerate.h>
 #include <kernel/thread.h>
 #include <kernel/dispatch.h>
+#include <support/services/debug.h>
 
 #define THREAD_STACK 1024
 static EXOS_THREAD _thread;
@@ -56,11 +57,15 @@ static void _dispatch(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatc
 				USB_HOST_DEVICE_SPEED speed = (__hc->RhPortStatus[port] & OHCIR_RH_PORT_LSDA) ? 
 					USB_HOST_DEVICE_LOW_SPEED : USB_HOST_DEVICE_FULL_SPEED;
 				
-				ohci_device_create(&_devices[port], port, speed);			
+				USB_HOST_DEVICE *child = &_devices[port];
+				ohci_device_create(child, port, speed);
+				debug_printf("usb_roothub: child %04x/%04x adding at port #%d\r\n", child->Vendor, child->Product, child->Port);
 			}
 			else 
 			{
-				ohci_device_destroy(&_devices[port]);
+				USB_HOST_DEVICE *child = &_devices[port];
+				debug_printf("usb_roothub: child %04x/%04x removing at port #%d\r\n", child->Vendor, child->Product, child->Port);
+				ohci_device_destroy(child);
 			}
 		}
 		if (status & OHCIR_RH_PORT_PRSC)

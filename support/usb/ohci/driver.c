@@ -12,11 +12,13 @@ static int _start_pipe(USB_HOST_PIPE *pipe);
 static int _stop_pipe(USB_HOST_PIPE *pipe);
 static int _begin_bulk_transfer(USB_REQUEST_BUFFER *urb, void *data, int length);
 static int _end_bulk_transfer(USB_REQUEST_BUFFER *urb, unsigned long timeout);
+static int _create_device(USB_HOST_DEVICE *device, int port, USB_HOST_DEVICE_SPEED speed);
+static void _destroy_device(USB_HOST_DEVICE *device);
 
 const USB_HOST_CONTROLLER_DRIVER __ohci_driver = {
 	_ctrl_setup_read, _ctrl_setup_write, 
 	_start_pipe, _stop_pipe, _begin_bulk_transfer, _end_bulk_transfer,
-	ohci_device_create };
+	_create_device, _destroy_device };
 
 static EXOS_MUTEX _mutex;
 
@@ -126,7 +128,7 @@ static int _end_bulk_transfer(USB_REQUEST_BUFFER *urb, unsigned long timeout)
 	return (urb->Status == URB_STATUS_DONE) ? urb->Done : -1;
 }
 
-int ohci_device_create(USB_HOST_DEVICE *device, int port, USB_HOST_DEVICE_SPEED speed)
+static int _create_device(USB_HOST_DEVICE *device, int port, USB_HOST_DEVICE_SPEED speed)
 {
 	static USB_DEVICE_DESCRIPTOR _dev_desc __usb;	// NOTE: buffer for descriptors, not re-entrant (lock?)
 	static volatile int _last_device = 0;	// FIXME
@@ -178,7 +180,7 @@ int ohci_device_create(USB_HOST_DEVICE *device, int port, USB_HOST_DEVICE_SPEED 
 	return done;
 }
 
-void ohci_device_destroy(USB_HOST_DEVICE *device)
+static void _destroy_device(USB_HOST_DEVICE *device)
 {
 	exos_mutex_lock(&_mutex);
 
@@ -191,6 +193,24 @@ void ohci_device_destroy(USB_HOST_DEVICE *device)
 	}
 
 	exos_mutex_unlock(&_mutex);
+}
+
+int ohci_device_create(USB_HOST_DEVICE *device, int port, USB_HOST_DEVICE_SPEED speed)
+{
+#ifdef DEBUG
+	if (device == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+	return _create_device(device, port, speed); 
+}
+
+void ohci_device_destroy(USB_HOST_DEVICE *device)
+{
+#ifdef DEBUG
+	if (device == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+	_destroy_device(device);
 }
 
 static int _ctrl_setup_read(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *in_data, int in_length)
