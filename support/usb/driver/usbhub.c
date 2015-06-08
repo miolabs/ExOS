@@ -217,6 +217,7 @@ static void _free_device(USB_HOST_DEVICE *child)
 {
 	debug_printf("usb_hub: child %04x/%04x removing at port #%d\r\n", child->Vendor, child->Product, child->Port);
 	usb_host_destroy_child_device(child);
+	debug_printf("usb_hub: child %04x/%04x removed\r\n", child->Vendor, child->Product);
 	exos_fifo_queue(&_children_fifo, &child->Node);
 }
 
@@ -265,7 +266,7 @@ static void _notify(USB_HUB_FUNCTION *func, int port)
 				int done = usb_host_create_child_device(func->Device, child, port, speed);
 				if (done)
 				{
-					debug_printf("usb_hub: child %04x/%04x adding at port #%d\r\n", child->Vendor, child->Product, child->Port);
+					debug_printf("usb_hub: child %04x/%04x added at port #%d\r\n", child->Vendor, child->Product, child->Port);
 					list_add_tail(&func->Children, &child->Node);
 				}
 			}

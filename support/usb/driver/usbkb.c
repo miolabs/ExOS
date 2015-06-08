@@ -54,7 +54,8 @@ static HID_FUNCTION_HANDLER *_match_device(HID_FUNCTION *func)
 		for (int i = 0; i < USB_KEYBOARD_MAX_INSTANCES; i++)
 		{
 			USB_KEYBOARD_HANDLER *kb = &_instances[i];
-			if (kb->State == USB_KEYBOARD_NOT_PRESENT) 
+			if (kb->State == USB_KEYBOARD_NOT_PRESENT ||
+				kb->State == USB_KEYBOARD_REMOVED) 
 			{
 				kb->Report0 = NULL;
 				kb->Report1 = NULL;
@@ -89,11 +90,16 @@ static void _start(HID_FUNCTION_HANDLER *handler)
 	USB_KEYBOARD_HANDLER *kb = (USB_KEYBOARD_HANDLER *)handler;
 	if (kb->Report1 != NULL)
 	{
-		kb->State = USB_KEYBOARD_STARTING;
-		
 		USBKB_IO_HANDLE *handle = kb->IOHandle;
-		handle->State = USBKB_IO_CLOSED;
-		comm_add_device(&handle->KernelDevice, "dev");	// FIXME: check re-adding the same device
+		if (handle->State == USBKB_IO_NOT_MOUNTED)
+		{
+			handle->State = USBKB_IO_CLOSED;
+			comm_add_device(&handle->KernelDevice, "dev");
+		}
+		else
+		{
+			handle->State = USBKB_IO_CLOSED;
+		}
 	}
 }
 
@@ -103,8 +109,12 @@ static void _stop(HID_FUNCTION_HANDLER *handler)
 	USBKB_IO_HANDLE *handle = kb->IOHandle;
 	
 	COMM_IO_ENTRY *io = handle->Entry;
-	if (io != NULL) comm_io_close(io);
-	handle->State = USBKB_IO_NOT_MOUNTED;
+	if (io != NULL) 
+	{
+		handle->State = USBKB_IO_ERROR;
+		comm_io_close(io);
+	}
+	kb->State = USB_KEYBOARD_REMOVED;
 }
 
 static void _notify(HID_FUNCTION_HANDLER *handler, HID_REPORT_INPUT *input, unsigned char *data)
@@ -181,13 +191,13 @@ static int _set_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
 static void _close(COMM_IO_ENTRY *io)
 {
 	USBKB_IO_HANDLE *handle = &_handles[io->Port];
-	if (io == handle->Entry)
+	if (handle->Entry == io)
 	{
-		if (handle->State == USBKB_IO_READY || handle->State == USBKB_IO_ERROR)
-		{
+		if (handle->State == USBKB_IO_READY)
 			handle->State = USBKB_IO_CLOSED;
-			exos_event_reset(&io->OutputEvent);
-		}
+
+		exos_event_reset(&io->OutputEvent);
+		exos_event_set(&io->InputEvent);
 		handle->Entry = NULL;
 	}
 }
@@ -195,7 +205,7 @@ static void _close(COMM_IO_ENTRY *io)
 static int _read(COMM_IO_ENTRY *io, unsigned char *buffer, unsigned long length)
 {
 	USBKB_IO_HANDLE *handle = &_handles[io->Port];
-	if (handle->State == USBKB_IO_READY)
+	if (handle->Entry == io && handle->State == USBKB_IO_READY)
 	{
 		int done = exos_io_buffer_read(&handle->IOBuffer, buffer, length);
 		return done;
@@ -206,7 +216,7 @@ static int _read(COMM_IO_ENTRY *io, unsigned char *buffer, unsigned long length)
 static int _write(COMM_IO_ENTRY *io, const unsigned char *buffer, unsigned long length)
 {
 	USBKB_IO_HANDLE *handle = &_handles[io->Port];
-	if (handle->State == USBKB_IO_READY)
+	if (handle->Entry == io && handle->State == USBKB_IO_READY)
 	{
 		// FAKE writing
 		return length;

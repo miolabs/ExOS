@@ -251,6 +251,7 @@ static void _close(COMM_IO_ENTRY *io)
 			exos_dispatcher_add(&_dispatcher_context, &dispatcher, 0);
 	
 			exos_event_wait(&req.DoneEvent, EXOS_TIMEOUT_NEVER);
+			exos_event_set(&io->InputEvent);
 		}
 		ftdi->Entry = NULL;
 	}

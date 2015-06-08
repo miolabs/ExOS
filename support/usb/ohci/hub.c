@@ -59,13 +59,14 @@ static void _dispatch(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatc
 				
 				USB_HOST_DEVICE *child = &_devices[port];
 				ohci_device_create(child, port, speed);
-				debug_printf("usb_roothub: child %04x/%04x adding at port #%d\r\n", child->Vendor, child->Product, child->Port);
+				debug_printf("usb_roothub: child %04x/%04x added at port #%d\r\n", child->Vendor, child->Product, child->Port);
 			}
 			else 
 			{
 				USB_HOST_DEVICE *child = &_devices[port];
 				debug_printf("usb_roothub: child %04x/%04x removing at port #%d\r\n", child->Vendor, child->Product, child->Port);
 				ohci_device_destroy(child);
+				debug_printf("usb_roothub: child %04x/%04x removed\r\n", child->Vendor, child->Product);
 			}
 		}
 		if (status & OHCIR_RH_PORT_PRSC)

@@ -279,10 +279,10 @@ static void _start(USB_HOST_FUNCTION *usb_func)
 		}
 	}
 
+	_function_busy[func->InstanceIndex] = 1;
+
 	if (handler != NULL)
 	{
-		_function_busy[func->InstanceIndex] = 1;
-
 		int done = usb_host_read_if_descriptor(func->Device, func->Interface, 
 			USB_HID_DESCRIPTOR_HID, 0, func->InputBuffer, 64);
 		USB_HID_DESCRIPTOR *hid_desc = (USB_HID_DESCRIPTOR *)func->InputBuffer;
@@ -319,7 +319,7 @@ static void _stop(USB_HOST_FUNCTION *usb_func)
 
 	func->ExitFlag = 1;
 	usb_host_stop_pipe(&func->InputPipe);
-	//exos_thread_join(&_thread);
+
 	_function_busy[func->InstanceIndex] = 0;
 }
 
@@ -423,13 +423,9 @@ static void _dispatch(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatc
 		driver->Stop(handler);
 
 		exos_mutex_lock(&func->InputLock);
-		HID_REPORT_INPUT *iinput = (HID_REPORT_INPUT *)func->Inputs.Head;
-		while(iinput != (HID_REPORT_INPUT *)&func->Inputs.Tail)
+		HID_REPORT_INPUT *input;
+		while(input = (HID_REPORT_INPUT *)list_rem_head(&func->Inputs))
 		{
-			HID_REPORT_INPUT *input = iinput;
-			iinput = (HID_REPORT_INPUT *)iinput->Node.Succ;
-	
-			list_remove((EXOS_NODE *)input);
 			exos_fifo_queue(&_free_report_inputs, (EXOS_NODE *)input);
 		}
 		exos_mutex_unlock(&func->InputLock);

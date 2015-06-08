@@ -35,7 +35,8 @@ void main()
 
 				debug_print(buffer, done);
 			}
-		
+
+			debug_printf("\r\nClosed!\r\n");
 			comm_io_close(&kb_io);
 		}
 
