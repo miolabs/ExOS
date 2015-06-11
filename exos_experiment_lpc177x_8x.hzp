@@ -8,6 +8,7 @@
       arm_core_type="Cortex-M3"
       arm_instruction_set="Thumb"
       arm_library_instruction_set="Thumb"
+      arm_linker_allow_multiple_definition="Yes"
       arm_linker_heap_size="8192"
       arm_linker_process_stack_size="512"
       arm_linker_stack_size="256"
@@ -51,6 +52,7 @@
             <file file_name="kernel/machine/lpc177x_8x/time_lpc17.c" />
             <file file_name="kernel/machine/lpc177x_8x/vectors_lpc177x_8x.s" />
           </folder>
+          <file file_name="kernel/machine/aeabi.c" />
         </folder>
         <file file_name="kernel/startup.c" />
         <file file_name="kernel/list.c" />
@@ -59,7 +61,6 @@
         <file file_name="kernel/thread.c" />
         <file file_name="kernel/timer.c" />
         <folder Name="posix">
-          <folder Name="tests" />
           <file file_name="kernel/posix/pthread_cond.c" />
           <file file_name="kernel/posix/pthread_time.c" />
           <file file_name="kernel/posix/posix.c" />
@@ -73,6 +74,7 @@
           <file file_name="kernel/posix/termios.c" />
           <file file_name="kernel/posix/fcntl.c" />
           <file file_name="kernel/posix/stdlib.c" />
+          <file file_name="kernel/posix/errno.c" />
         </folder>
         <file file_name="kernel/memory.c" />
         <file file_name="kernel/mutex.c" />
