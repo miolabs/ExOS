@@ -17,7 +17,8 @@
     <ProgramSection alignment="0x100" load="No" name=".vectors_ram" start="$(RAM_START:$(SRAM_START:))"/>
     <ProgramSection alignment="4" load="No" name=".fast_run" />
     <ProgramSection alignment="4" load="No" name=".data_run" />
-	<ProgramSection alignment="4" load="No" name=".bss" />
+    <ProgramSection alignment="4" load="No" name=".bss" />
+    <ProgramSection alignment="4" load="No" name=".tbss"/>
     <ProgramSection alignment="4" load="No" name=".non_init" />
     <ProgramSection alignment="4" size="__HEAPSIZE__" load="No" name=".heap" />
     <ProgramSection alignment="4" size="__STACKSIZE__" load="No" name=".stack" />

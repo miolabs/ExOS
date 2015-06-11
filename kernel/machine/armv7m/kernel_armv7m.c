@@ -5,6 +5,8 @@
 
 #define __naked __attribute__((naked)) 
 
+extern unsigned char __tbss_start__[], __tbss_end__[];
+
 __naked void PendSV_Handler()
 {
 	register void *psp __asm__("r0");
@@ -97,6 +99,15 @@ void *__machine_init_thread_stack(void *stack_end, unsigned long arg, unsigned l
 	*--frame = 4;
 
 	return frame;
+}
+
+int __machine_init_thread_local_storage(void *stack_end)
+{
+	int size = __tbss_end__ - __tbss_start__;	// FIXME: count for tdata
+	size = (size + 7) & ~7;
+
+	__mem_set(stack_end - size, stack_end, 0);
+	return size;
 }
 
 __attribute__((naked))

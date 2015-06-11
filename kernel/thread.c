@@ -24,6 +24,7 @@ void __thread_init()
 	// initialize system thread in process stack
 	_system_thread = (EXOS_THREAD) 
 	{
+		.LocalStorage = (void *)__machine_tls_start,
 		.StackStart = (void *)__machine_process_start,
 		.Node.Priority = -128,
 #ifdef DEBUG
@@ -78,7 +79,9 @@ void exos_thread_create(EXOS_THREAD *thread, int pri, void *stack, unsigned stac
 	__mem_set(stack, stack + stack_size, 0xcc);
 #endif
 	
-	void *stack_frame = __machine_init_thread_stack(stack + stack_size,
+	void *stack_end = stack + stack_size;
+	int local_storage = __machine_init_thread_local_storage(stack_end);
+	void *stack_frame = __machine_init_thread_stack(stack_end - local_storage,
 		(unsigned long)arg, (unsigned long)entry, (unsigned long)exos_thread_exit);
 
 #ifdef DEBUG	
@@ -102,6 +105,7 @@ void exos_thread_create(EXOS_THREAD *thread, int pri, void *stack, unsigned stac
 		.SignalsReserved = EXOS_SIGF_RESERVED_MASK,
 		
 		.RecycleList = recycler,
+		.LocalStorage = local_storage != 0 ? stack_end - local_storage : NULL,
 		.ThreadContext = __running_thread != NULL ? 
 			__running_thread->ThreadContext : NULL,
 	};

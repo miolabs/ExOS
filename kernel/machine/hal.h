@@ -9,11 +9,14 @@
 #endif
 
 extern const void *__machine_process_start;
+extern const void *__machine_tls_start;
 
 void __machine_init();
 void __machine_req_switch();
 void __machine_idle();
 void *__machine_init_thread_stack(void *stack_end, unsigned long arg, unsigned long pc, unsigned long lr);
+int __machine_init_thread_local_storage(void *stack_end);
+
 int __machine_trylock(unsigned char *lock, unsigned char value);
 void __machine_unlock(unsigned char *lock);
 void __machine_reset();

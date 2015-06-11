@@ -87,7 +87,8 @@ typedef enum
 	EXDEV,
 } posix_err_t;
 
-#define errno ((posix_err_t)(__running_thread->Error))
+extern volatile int *__aeabi_errno_addr(void);
+#define errno (*__aeabi_errno_addr())
 
 #endif // __errno_h
 

@@ -23,9 +23,9 @@ typedef struct
 	volatile unsigned long SignalsReceived;
 	volatile unsigned long SignalsReserved;
 	EXOS_LIST Joining;
-	int Error;
+	void *LocalStorage;
 	EXOS_LIST *RecycleList;
-	void *ThreadContext;
+	void *ThreadContext;	// FIXME: obsolete, will use TLS EABI
 } EXOS_THREAD;
 
 extern EXOS_THREAD *__running_thread;

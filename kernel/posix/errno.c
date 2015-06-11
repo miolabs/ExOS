@@ -1,16 +1,16 @@
-//#include <errno.h>
+#include <errno.h>
 
-int __errno;
+__thread int __errno_val;
 
 #ifdef __ARM_EABI__
 
-const int __aeabi_EDOM = 1;
-const int __aeabi_EILSEQ = 2;
-const int __aeabi_ERANGE = 3;
+const int __aeabi_EDOM = 33;
+const int __aeabi_EILSEQ = 47;
+const int __aeabi_ERANGE = 34;
 
 volatile int *__aeabi_errno_addr(void)
 {
-	return &__errno;
+	return &__errno_val;
 }
 
 #endif
