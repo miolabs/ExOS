@@ -3,9 +3,8 @@
 #include <kernel/panic.h>
 #include <kernel/syscall.h>
 
-#define __naked __attribute__((naked)) 
-
 extern unsigned char __tbss_start__[], __tbss_end__[];
+extern unsigned char __tdata_start__[], __tdata_end__[], __tdata_load_start__[];
 
 __naked void PendSV_Handler()
 {
@@ -75,9 +74,9 @@ __naked int __kernel_do(EXOS_SYSTEM_FUNC entry, ...)
 #endif
 }
 
-void *__machine_init_thread_stack(void *stack_end, unsigned long arg, unsigned long pc, unsigned long lr)
+void __machine_init_thread_stack(void **pstack, unsigned long arg, unsigned long pc, unsigned long lr)
 {
-	unsigned long *frame = (unsigned long *)stack_end;
+	unsigned long *frame = (unsigned long *)*pstack;
 	*--frame = 0x21000000; // xPSR (C + T)
 	*--frame = pc;
 	*--frame = lr;
@@ -97,36 +96,36 @@ void *__machine_init_thread_stack(void *stack_end, unsigned long arg, unsigned l
 	*--frame = 6;
 	*--frame = 5;
 	*--frame = 4;
-
-	return frame;
+	
+	*pstack = frame;
 }
 
-int __machine_init_thread_local_storage(void *stack_end)
+void __machine_init_thread_local_storage(void **pstack)
 {
-	int size = __tbss_end__ - __tbss_start__;	// FIXME: count for tdata
-	size = (size + 7) & ~7;
+	int bss_size = __tbss_end__ - __tbss_start__; 
+	int data_size = __tdata_end__ - __tdata_start__;
+	if (__tbss_end__ != __tdata_start__)
+		__kernel_panic();
 
-	__mem_set(stack_end - size, stack_end, 0);
-	return size;
+	void *stack_end = *pstack;
+	__mem_set(stack_end - bss_size, stack_end, 0); 
+	stack_end -= bss_size;
+	__mem_copy(stack_end - data_size, stack_end, __tdata_load_start__);
+	stack_end -= data_size;
+
+	*pstack = (void *)((long)stack_end & ~7);
 }
 
-__attribute__((naked))
-int __machine_trylock(unsigned char *lock, unsigned char value)
+#pragma GCC optimize(2)
+
+unsigned char *__aeabi_read_tp(void)
 {
-	__asm__ volatile (
-		"ldrexb r2, [r0]\n\t"
-		"cmp r2, r1\n\t"
-		"itt ne\n\t"
-		"strexbne r2, r1, [r0]\n\t"
-		"cmpne r2, #0\n\t"
-		"ite eq\n\t"
-		"moveq r0, #1\n\t"
-		"movne r0, #0\n\t"
-		"bx lr\n\t");
+	EXOS_THREAD *thread = __running_thread;
+#ifdef DEBUG
+	if (thread->LocalStorage == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+	return thread->LocalStorage;	// NOTE: skips 8 bytes for DTV pointer (64bit)
 }
 
-void __machine_unlock(unsigned char *lock)
-{
-	*lock = 0;
-}
 

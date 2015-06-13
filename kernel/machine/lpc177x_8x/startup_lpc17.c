@@ -13,6 +13,7 @@ extern int __data2_start__, __data2_end__, __data2_load_start__;
 extern int __bss_start__, __bss_end__;
 extern int __bss2_start__, __bss2_end__;
 extern int __tbss_start__, __tbss_end__;
+extern int __tdata_start__, __tdata_end__, __tdata_load_start__;
 
 const void *__machine_process_start = &__stack_process_start__;
 const void *__machine_tls_start = &__tbss_start__;
@@ -40,6 +41,7 @@ __init __naked void Reset_Handler()
 	// initialize data sections
 	__mem_copy(&__data_start__, &__data_end__, &__data_load_start__);
 	__mem_copy(&__data2_start__, &__data2_end__, &__data2_load_start__);
+	__mem_copy(&__tdata_start__, &__tdata_end__, &__tdata_load_start__);
 	// initialize bss sections
 	__mem_set(&__bss_start__, &__bss_end__, 0);
 	__mem_set(&__bss2_start__, &__bss2_end__, 0);

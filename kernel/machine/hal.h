@@ -8,14 +8,18 @@
 #define __dma __attribute__((__section__(".dma")))
 #endif
 
+#ifndef __naked
+#define __naked __attribute__((naked)) 
+#endif
+
 extern const void *__machine_process_start;
 extern const void *__machine_tls_start;
 
 void __machine_init();
 void __machine_req_switch();
 void __machine_idle();
-void *__machine_init_thread_stack(void *stack_end, unsigned long arg, unsigned long pc, unsigned long lr);
-int __machine_init_thread_local_storage(void *stack_end);
+void __machine_init_thread_stack(void **pstack, unsigned long arg, unsigned long pc, unsigned long lr);
+void __machine_init_thread_local_storage(void **pstack);
 
 int __machine_trylock(unsigned char *lock, unsigned char value);
 void __machine_unlock(unsigned char *lock);
