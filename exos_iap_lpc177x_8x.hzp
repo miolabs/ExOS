@@ -34,6 +34,7 @@
       project_directory=""
       project_type="Executable"
       property_groups_file_path="$(TargetsDir)/LPC1000/propertyGroups177x_8x.xml"
+      target_loader_erase_all="Yes"
       target_reset_script="FLASHReset()" />
     <folder Name="Source Files">
       <configuration Name="Common" filter="c;cpp;cxx;cc;h;s;asm;inc" />

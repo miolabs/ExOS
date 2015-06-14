@@ -19,11 +19,11 @@ typedef struct
 	void *SP;
 	void *StackStart;
 	unsigned long StackSize;
+	void *TP;
 	volatile unsigned long SignalsWaiting;
 	volatile unsigned long SignalsReceived;
 	volatile unsigned long SignalsReserved;
 	EXOS_LIST Joining;
-	void *LocalStorage;
 	EXOS_LIST *RecycleList;
 	void *ThreadContext;	// FIXME: obsolete, will use TLS EABI
 } EXOS_THREAD;

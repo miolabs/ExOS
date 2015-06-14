@@ -76,7 +76,8 @@ __naked int __kernel_do(EXOS_SYSTEM_FUNC entry, ...)
 
 void __machine_init_thread_stack(void **pstack, unsigned long arg, unsigned long pc, unsigned long lr)
 {
-	unsigned long *frame = (unsigned long *)*pstack;
+	unsigned long *frame = (unsigned long *)((long)(*pstack) & ~7);
+
 	*--frame = 0x21000000; // xPSR (C + T)
 	*--frame = pc;
 	*--frame = lr;
@@ -108,12 +109,13 @@ void __machine_init_thread_local_storage(void **pstack)
 		__kernel_panic();
 
 	void *stack_end = *pstack;
-	__mem_set(stack_end - bss_size, stack_end, 0); 
-	stack_end -= bss_size;
+
 	__mem_copy(stack_end - data_size, stack_end, __tdata_load_start__);
 	stack_end -= data_size;
+	__mem_set(stack_end - bss_size, stack_end, 0); 
+	stack_end -= bss_size;
 
-	*pstack = (void *)((long)stack_end & ~7);
+	*pstack = stack_end; 
 }
 
 #pragma GCC optimize(2)
@@ -122,10 +124,10 @@ unsigned char *__aeabi_read_tp(void)
 {
 	EXOS_THREAD *thread = __running_thread;
 #ifdef DEBUG
-	if (thread->LocalStorage == NULL)
+	if (thread->TP == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
 #endif
-	return thread->LocalStorage;	// NOTE: skips 8 bytes for DTV pointer (64bit)
+	return thread->TP;
 }
 
 

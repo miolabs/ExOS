@@ -24,7 +24,7 @@ void __thread_init()
 	// initialize system thread in process stack
 	_system_thread = (EXOS_THREAD) 
 	{
-		.LocalStorage = (void *)__machine_tls_start - 8,
+		.TP = (void *)__machine_tls_start - 8,
 		.StackStart = (void *)__machine_process_start,
 		.Node.Priority = -128,
 #ifdef DEBUG
@@ -81,6 +81,7 @@ void exos_thread_create(EXOS_THREAD *thread, int pri, void *stack, unsigned stac
 	
 	void *stack_end = stack + stack_size;
 	__machine_init_thread_local_storage(&stack_end);
+	void *tp = stack_end - 8;	// NOTE: static tls skips first 8 bytes for DTV
 	__machine_init_thread_stack(&stack_end,
 		(unsigned long)arg, (unsigned long)entry, (unsigned long)exos_thread_exit);
 
@@ -99,13 +100,13 @@ void exos_thread_create(EXOS_THREAD *thread, int pri, void *stack, unsigned stac
 		.SP = stack_end,
 		.StackStart = stack,
 		.StackSize = stack_size,
+		.TP = tp,	
 
 		.SignalsReceived = 0,
 		.SignalsWaiting = 0,
 		.SignalsReserved = EXOS_SIGF_RESERVED_MASK,
 		
 		.RecycleList = recycler,
-		.LocalStorage = stack_end - 8,	// NOTE: static tls skips first 8 bytes for DTV
 		.ThreadContext = __running_thread != NULL ? 
 			__running_thread->ThreadContext : NULL,
 	};
