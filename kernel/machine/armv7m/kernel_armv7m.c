@@ -6,8 +6,6 @@
 extern unsigned char __tbss_start__[], __tbss_end__[];
 extern unsigned char __tdata_start__[], __tdata_end__[], __tdata_load_start__[];
 
-const void *__machine_tls_start = __tbss_start__;
-
 __naked void PendSV_Handler()
 {
 	register void *psp __asm__("r0");

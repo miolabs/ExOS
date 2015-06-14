@@ -24,7 +24,7 @@ void __thread_init()
 	// initialize system thread in process stack
 	_system_thread = (EXOS_THREAD) 
 	{
-		.TP = (void *)__machine_tls_start - 8,
+		.TP = NULL,	// NOTE: tls not supported in idle thread
 		.StackStart = (void *)__machine_process_start,
 		.Node.Priority = -128,
 #ifdef DEBUG
