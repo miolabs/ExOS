@@ -3,7 +3,6 @@
 #include <kernel/machine/hal.h>
 
 #define __init __attribute__((section(".init")))
-#define __naked __attribute__((naked))
 
 extern int __stack_start__, __stack_end__;
 extern int __stack_process_start__, __stack_process_end__;

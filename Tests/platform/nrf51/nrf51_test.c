@@ -19,8 +19,14 @@
 unsigned char _input_buffer[UART_BUFFER_SIZE];
 unsigned char _output_buffer[UART_BUFFER_SIZE];
 
+__thread int j;
+__thread int k = 5;
+
 void main()
 {
+	j = k;
+	k = 1;
+
 	int result;
 	
 	unsigned char buf[32];

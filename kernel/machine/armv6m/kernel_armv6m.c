@@ -3,7 +3,8 @@
 #include <kernel/panic.h>
 #include <kernel/syscall.h>
 
-#define __naked __attribute__((naked)) 
+extern unsigned char __tbss_start__[], __tbss_end__[];
+extern unsigned char __tdata_start__[], __tdata_end__[], __tdata_load_start__[];
 
 __naked void PendSV_Handler()
 {
@@ -98,9 +99,10 @@ __naked int __kernel_do(EXOS_SYSTEM_FUNC entry, ...)
 #endif
 }
 
-void *__machine_init_thread_stack(void *stack_end, unsigned long arg, unsigned long pc, unsigned long lr)
+void __machine_init_thread_stack(void **pstack, unsigned long arg, unsigned long pc, unsigned long lr)
 {
-	unsigned long *frame = (unsigned long *)stack_end;
+    unsigned long *frame = (unsigned long *)((long)(*pstack) & ~7);
+
 	*--frame = 0x21000000; // xPSR (C + T)
 	*--frame = pc;
 	*--frame = lr;
@@ -121,7 +123,34 @@ void *__machine_init_thread_stack(void *stack_end, unsigned long arg, unsigned l
 	*--frame = 5;
 	*--frame = 4;
 
-	return frame;
+	*pstack = frame;
+}
+
+void __machine_init_thread_local_storage(void **pstack)
+{
+	int bss_size = __tbss_end__ - __tbss_start__; 
+	int data_size = __tdata_end__ - __tdata_start__;
+
+	void *stack_end = *pstack;
+
+	__mem_copy(stack_end - data_size, stack_end, __tdata_load_start__);
+	stack_end -= data_size;
+	__mem_set(stack_end - bss_size, stack_end, 0); 
+	stack_end -= bss_size;
+
+	*pstack = stack_end; 
+}
+
+#pragma GCC optimize(2)
+
+unsigned char *__aeabi_read_tp(void)
+{
+	EXOS_THREAD *thread = __running_thread;
+#ifdef DEBUG
+	if (thread->TP == NULL)
+		kernel_panic(KERNEL_ERROR_NULL_POINTER);
+#endif
+	return thread->TP;
 }
 
 void __machine_idle()
@@ -132,3 +161,4 @@ void __machine_idle()
 			"wfi\n\t");	
 	}
 }
+

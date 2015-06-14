@@ -8,6 +8,7 @@
       arm_architecture="v6M"
       arm_core_type="Cortex-M0"
       arm_gcc_target="arm-unknown-eabi"
+      arm_linker_allow_multiple_definition="Yes"
       arm_linker_heap_size="0"
       arm_linker_process_stack_size="512"
       arm_linker_stack_size="2048"

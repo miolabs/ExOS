@@ -13,7 +13,6 @@
 #endif
 
 extern const void *__machine_process_start;
-extern const void *__machine_tls_start;
 
 void __machine_init();
 void __machine_req_switch();
