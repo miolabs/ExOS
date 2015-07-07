@@ -105,8 +105,6 @@ void __machine_init_thread_local_storage(void **pstack)
 {
 	int bss_size = __tbss_end__ - __tbss_start__; 
 	int data_size = __tdata_end__ - __tdata_start__;
-	if (__tbss_end__ != __tdata_start__)
-		__kernel_panic();
 
 	void *stack_end = *pstack;
 

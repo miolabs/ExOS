@@ -9,10 +9,8 @@ extern int __stack_start__, __stack_end__;
 extern int __stack_process_start__, __stack_process_end__;
 extern int __data_start__, __data_end__, __data_load_start__;
 extern int __bss_start__, __bss_end__;
-extern int __tbss_start__, __tbss_end__;
 
 const void *__machine_process_start = &__stack_process_start__;
-const void *__machine_tls_start = &__tbss_start__;
 
 __init __naked void Reset_Handler() 
 {
@@ -38,7 +36,6 @@ __init __naked void Reset_Handler()
 	__mem_copy(&__data_start__, &__data_end__, &__data_load_start__);
 	// initialize bss sections
 	__mem_set(&__bss_start__, &__bss_end__, 0);
-	__mem_set(&__tbss_start__, &__tbss_end__, 0);
 
 	SystemInit();
 	
