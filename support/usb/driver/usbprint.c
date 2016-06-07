@@ -23,8 +23,13 @@ static const COMM_DRIVER _comm_driver = {
 static COMM_DEVICE _comm_device = { .Driver = &_comm_driver, .PortCount = 1 };
 static USBPRINT_FUNCTION _func __usb; // FIXME: support multiple instances
 
-void usbprint_initialize()
-{
+static unsigned short _vendor_id = 0x1cbe;
+static unsigned short _product_id = 0x0002;
+
+void usbprint_initialize(unsigned short vendor_id, unsigned short product_id)
+{        
+        _vendor_id = vendor_id;
+        _product_id = product_id;
 	_func.State = USBPRINT_NOT_ATTACHED;
 
 	_driver_node = (USB_HOST_FUNCTION_DRIVER_NODE) { .Driver = &_driver };
@@ -47,8 +52,8 @@ static int _protocol_matches(USB_INTERFACE_DESCRIPTOR *if_desc, USBPRINT_PROTOCO
 
 static int _device_if_matches(USB_HOST_DEVICE *device, USB_INTERFACE_DESCRIPTOR *if_desc, USBPRINT_PROTOCOL *pproto)
 {
-        int val = (device->Vendor == 0x1cbe && device->Product == 0x0002);
-	return val;
+	return device->Vendor == _vendor_id
+		&& device->Product == _product_id;
 }
 
 static USB_HOST_FUNCTION *_check_interface(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTOR *conf_desc, USB_DESCRIPTOR_HEADER *fn_desc)

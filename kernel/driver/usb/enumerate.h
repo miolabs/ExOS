@@ -19,4 +19,6 @@ USB_ENDPOINT_DESCRIPTOR *usb_enumerate_find_endpoint_descriptor(USB_CONFIGURATIO
 USB_DESCRIPTOR_HEADER *usb_enumerate_find_class_descriptor(USB_CONFIGURATION_DESCRIPTOR *conf_desc, USB_INTERFACE_DESCRIPTOR *if_desc,
 	unsigned char descriptor_type, unsigned char index);
 
+void usb_enumerate_orphan_callback(USB_HOST_ENUM_DATA *data) __weak;
+
 #endif // USB_HOST_ENUMERATE_H

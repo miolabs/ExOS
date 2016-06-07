@@ -7,7 +7,8 @@ void net_apipa_set_ip_address(NET_ADAPTER *adapter)
 	adapter->NetMask = (IP_ADDR) { 255, 255, 0, 0 };
 }
 
-void net_board_set_ip_address(NET_ADAPTER *adapter, int index)
+__weak
+void net_board_set_ip_address(NET_ADAPTER *adapter, int index) 
 {
 	net_apipa_set_ip_address(adapter);
 }

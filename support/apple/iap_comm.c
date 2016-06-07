@@ -130,6 +130,8 @@ static int _open(COMM_IO_ENTRY *io)
 		iap->Entry = io;
 		iap->IOState = APPLE_IAP_IO_OPENED;
 		exos_event_set(&io->OutputEvent);
+
+		exos_event_set(&io->SyncEvent);
 		return 0;
 	}
 	return -1;

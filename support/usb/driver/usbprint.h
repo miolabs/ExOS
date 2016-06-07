@@ -35,7 +35,7 @@ typedef struct
 } USBPRINT_FUNCTION;
 
 
-void usbprint_initialize();
+void usbprint_initialize(unsigned short vendor_id, unsigned short product_id);
 
 
 #endif // USB_DRIVER_USBPRINT

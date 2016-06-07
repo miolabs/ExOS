@@ -49,7 +49,7 @@ int comm_io_open(COMM_IO_ENTRY *io)
 	if (io->Type != EXOS_IO_COMM)
 		kernel_panic(KERNEL_ERROR_IO_TYPE_MISMATCH);
 #endif
-	
+
 	COMM_DEVICE *device = io->Device;
 	const COMM_DRIVER *driver = device->Driver;
 	int done = driver->Open(io);
@@ -64,6 +64,8 @@ void comm_io_close(COMM_IO_ENTRY *io)
 	if (io->Type != EXOS_IO_COMM)
 		kernel_panic(KERNEL_ERROR_IO_TYPE_MISMATCH);
 #endif
+
+	exos_io_sync((EXOS_IO_ENTRY *)io);
 
 	COMM_DEVICE *device = io->Device;
 	const COMM_DRIVER *driver = device->Driver;

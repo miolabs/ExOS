@@ -73,7 +73,7 @@ typedef struct
 } FTDI_HANDLE_REQUEST;
 
 // prototypes
-void ftdi_initialize();
+void ftdi_initialize(unsigned short vendor_id, unsigned short product_id);
 
 #endif // EXOS_USB_FTDI_DRIVER_H
 

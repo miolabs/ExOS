@@ -46,8 +46,14 @@ static FTDI_HANDLE _handles[FTDI_MAX_INSTANCES];
 static volatile unsigned char _func_usage[FTDI_MAX_INSTANCES];
 static const char *_device_names[] = { "usbftdi0", "usbftdi1", "usbftdi2", "usbftdi3" }; 
 
-void ftdi_initialize()
+static unsigned short _vendor_id = 0x0403; // FTDI
+static unsigned short _product_id = 0x6001; // FT232
+
+void ftdi_initialize(unsigned short vendor_id, unsigned short product_id)
 {
+        _vendor_id = vendor_id;
+	_product_id = product_id;
+
 	for(int port = 0; port < FTDI_MAX_INSTANCES; port++)
 	{
 		_func_usage[port] = 0;
@@ -69,8 +75,8 @@ void ftdi_initialize()
 
 static int _device_if_matches(USB_HOST_DEVICE *device, USB_INTERFACE_DESCRIPTOR *if_desc)
 {
-	return device->Vendor == 0x0403 // FTDI
-		&& device->Product == 0x6001; // FT232
+	return device->Vendor == _vendor_id
+		&& device->Product == _product_id;
 }
 
 static USB_HOST_FUNCTION *_check_interface(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTOR *conf_desc, USB_DESCRIPTOR_HEADER *fn_desc)
@@ -316,6 +322,7 @@ static void _dispatch_open(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *di
 	ftdi->State = FTDI_HANDLE_READY;
 
     COMM_IO_ENTRY *io = ftdi->Entry;
+	exos_event_set(&io->SyncEvent);
 	exos_event_set(&io->OutputEvent);
 
    	ftdi->Dispatcher = (EXOS_DISPATCHER) { .Callback = _dispatch_io, .Event = &urb->Event, .CallbackState = ftdi };

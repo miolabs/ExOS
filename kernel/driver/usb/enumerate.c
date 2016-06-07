@@ -67,6 +67,7 @@ static int _check_interface(USB_HOST_FUNCTION_DRIVER *driver, void *arg)
 		enum_data->Function = func;
 		return 1;
 	}
+    usb_enumerate_orphan_callback(enum_data);
 	return 0;
 }
 
