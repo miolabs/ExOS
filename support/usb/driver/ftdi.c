@@ -9,7 +9,7 @@
 #endif
 
 #ifndef FTDI_BAUDRATE
-#define FTDI_BAUDRATE 9600
+#define FTDI_BAUDRATE 19200
 #endif
 
 #define THREAD_STACK 1024

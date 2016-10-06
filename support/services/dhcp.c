@@ -121,7 +121,7 @@ static void dhcp_init_header(NET_DHCP_HEADER *dhcp, NET_ADAPTER *adapter, NET_DH
 	dhcp->HopCount = 0;
 
 	dhcp->TransactionId = transaction;
-    dhcp->Seconds = HTON16(0);
+        dhcp->Seconds = HTON16(0);
 	dhcp->Flags = HTON16(0);
 
 	dhcp->ClientIP.Value = 0;

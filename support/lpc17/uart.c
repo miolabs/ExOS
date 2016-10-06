@@ -53,6 +53,7 @@ static int _initialize(unsigned module, unsigned long baudrate)
 				r = pclk - (q * b);
 			}
 		}
+
 		uart->LCR = UART_LCR_WLEN_8BIT | UART_LCR_STOP_1BIT | UART_LCR_DLAB; // no parity
 		uart->SCR = 0;
 		uart->DLL = q & 0xFF;

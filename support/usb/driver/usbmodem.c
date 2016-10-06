@@ -73,6 +73,11 @@ static int _device_if_matches(USB_HOST_DEVICE *device, USB_INTERFACE_DESCRIPTOR 
 		if (if_desc->InterfaceNumber == 0)
 			return 2;
 	}
+        if (device->Vendor == 0x0519 && device->Product == 0x1001) // CDC Star: barcode scanner
+        {
+                if (if_desc->InterfaceNumber == 0)
+                    return 2;
+        }
 
 	return 0;
 }

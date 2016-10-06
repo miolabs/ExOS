@@ -13,7 +13,7 @@ USB_ENDPOINT_DESCRIPTOR *usb_enumerate_find_endpoint_descriptor(USB_CONFIGURATIO
 		while (buffer < end)
 		{
 			USB_DESCRIPTOR_HEADER *desc = (USB_DESCRIPTOR_HEADER *)buffer;
-			if (desc->DescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE) break;
+			//if (desc->DescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE) break;
 			if (desc->DescriptorType == USB_DESCRIPTOR_TYPE_ENDPOINT)
 			{
 				ep_desc = (USB_ENDPOINT_DESCRIPTOR *)desc;
