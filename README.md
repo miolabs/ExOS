@@ -35,7 +35,7 @@ ExOS abides two different kinds of programming: dynamic programming, which is al
 
  One of the main reasons why we kept into consideration the POSIX standard is the abundant documentation existing these days. Internet is full of tutorials, documents, etc. that makes it very easy to learn how to program pretty much anything. Many operative systems meant for computers are POSIX compatible, examples of that are, Linux or OSX, therefore we already have plenty information about it and yet, the SDK that we provide will be accompanied by its corresponding tutorials as well, complete and together with wide documentation.
 
-Hardware and OS services direct access, all at once! 
+# Hardware and OS services direct access, all at once! 
 
 Though ExOS focuses on POSIX programming, we did not want to close doors to ourselves by restricting hardware access as it happens with a plain desk’s OS. Accessing can be as simply done as to go directly to the micro you want to use in order to, for example, enable or disable a pin. 
 
@@ -77,7 +77,7 @@ Most of the boards our SDK supports can serve as a link for the simulator workin
 
 Another tool the SDK includes is an assistant for the development boards configuration. This allows creating the BSP as if it was the easiest task ever, even when we lack the electronic configuration of that board in ExOS.
 
- Access to tons of libraries and services 
+# Access to tons of libraries and services 
 
 In order to make possible the transition to a prototype from an idea, and to bring forth the proper tests to check its feasibility in a flexible and quick way, we implemented huge amounts of code libraries, services, modules, frameworks and drivers to the ExOS so that you can focus on testing your idea solely. In any case, if it happens that any peripheral service or driver, despite everything, was not included, creating the missing part would be rather easy. 
 
@@ -101,7 +101,7 @@ Just a little code example:
 
 Open an iAP protocol echoing the data data from the iPhone
 Open an iAP protocol echoing the data data from the iPhone
-ExOS has been designed and programmed in C, the same way it happens with all the libraries that it includes but, currently, it supports the C, C++, OBJ-C languages as well, and we are planning to extend its development so that it becomes possible to handle even more frameworks and not just the libraries in C, but also the ones in OBJ-C like UIKit or AppKit, to be able to even design user interfaces on the Xcode itself.
+ExOS has been designed and programmed in C, the same way it happens with all the libraries that it includes but, currently, it supports the C, C++, OBJ-C and Swift languages as well, and we are planning to extend its development so that it becomes possible to handle even more frameworks and not just the libraries in C, but also the ones in OBJ-C like UIKit or AppKit, to be able to even design user interfaces on the Xcode itself.
 
-And, of course, there was no way that we could forget Windows’ programmers used to work with C# language. If we reach our objectives and we manage to obtain enough funding, we also plan on supporting the C# language and the creation of interfaces using the Visual Studio itself.
+
 
