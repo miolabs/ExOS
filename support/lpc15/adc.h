@@ -1,0 +1,137 @@
+#ifndef LPC15_ADC_H
+#define LPC15_ADC_H
+
+#include "cpu.h"
+
+typedef enum
+{
+	ADC0_TRIG_PINTRIG0 = 0,
+	ADC0_TRIG_PINTRIG1,
+	ADC0_TRIG_SCT0_OUT7,
+	ADC0_TRIG_SCT0_OUT9,
+	ADC0_TRIG_SCT1_OUT7,
+	ADC0_TRIG_SCT1_OUT9,
+	ADC0_TRIG_SCT2_OUT3,
+	ADC0_TRIG_SCT2_OUT4,
+	ADC0_TRIG_SCT3_OUT3,
+	ADC0_TRIG_SCT3_OUT4,
+	ADC0_TRIG_ACMP0,
+	ADC0_TRIG_ACMP1,
+	ADC0_TRIG_ACMP2,
+	ADC0_TRIG_ACMP3,
+	ADC0_TRIG_RES,
+	ADC0_TRIG_ARM_TXEV,
+} ADC0_TRIGGER;
+
+typedef enum
+{
+	ADC1_TRIG_PINTRIG0 = 0,
+	ADC1_TRIG_PINTRIG1,
+	ADC1_TRIG_SCT0_OUT6,
+	ADC1_TRIG_SCT0_OUT9,
+	ADC1_TRIG_SCT1_OUT8,
+	ADC1_TRIG_SCT1_OUT9,
+	ADC1_TRIG_SCT2_OUT2,
+	ADC1_TRIG_SCT2_OUT5,
+	ADC1_TRIG_SCT3_OUT2,
+	ADC1_TRIG_SCT3_OUT5,
+	ADC1_TRIG_ACMP0,
+	ADC1_TRIG_ACMP1,
+	ADC1_TRIG_ACMP2,
+	ADC1_TRIG_ACMP3,
+	ADC1_TRIG_RES,
+	ADC1_TRIG_ARM_TXEV,
+} ADC1_TRIGGER;
+
+#define ADC_CTRL_CLKDIV_BIT 0
+#define ADC_CTRL_ASYNMODE (1<<8)
+#define ADC_CTRL_MODE10BIT (1<<9)
+#define ADC_CTRL_LPWRMODE (1<<10)
+#define ADC_CTRL_CALMODE (1<<30)
+
+#define ADC_SEQCTRL_CHANNELS_BIT 0
+#define ADC_SEQCTRL_TRIGGER_BIT 12
+#define ADC_SEQCTRL_TRIGPOL (1<<18)
+#define ADC_SEQCTRL_SYNCBYPASS (1<<19)
+#define ADC_SEQCTRL_START (1<<26)
+#define ADC_SEQCTRL_BURST (1<<27)
+#define ADC_SEQCTRL_SINGLESTEP (1<<28)
+#define ADC_SEQCTRL_LOWPRIO (1<<29)
+#define ADC_SEQCTRL_MODE (1<<30)
+#define ADC_SEQCTRL_ENA (1<<31)
+
+#define ADC_INTEN_SEQA (1<<0)
+#define ADC_INTEN_SEQB (1<<1)
+#define ADC_INTEN_OVR (1<<2)
+#define ADC_INTEN_ADCMP0_BIT 3
+#define ADC_INTEN_ADCMP1_BIT 5
+#define ADC_INTEN_ADCMP2_BIT 7
+#define ADC_INTEN_ADCMP3_BIT 9
+#define ADC_INTEN_ADCMP4_BIT 11
+#define ADC_INTEN_ADCMP5_BIT 13
+#define ADC_INTEN_ADCMP6_BIT 15
+#define ADC_INTEN_ADCMP7_BIT 17
+#define ADC_INTEN_ADCMP8_BIT 19
+#define ADC_INTEN_ADCMP9_BIT 21
+#define ADC_INTEN_ADCMP10_BIT 23
+#define ADC_INTEN_ADCMP11_BIT 25
+
+#define ADC_FLAGS_SEQA_OVR (1<<24)
+#define ADC_FLAGS_SEQB_OVR (1<<25)
+#define ADC_FLAGS_SEQA_INT (1<<28)
+#define ADC_FLAGS_SEQB_INT (1<<29)
+#define ADC_FLAGS_THCMP_INT (1<<30)
+#define ADC_FLAGS_OVR_INT (1<<31)
+
+typedef enum
+{
+	ADC_INTEN_CMP_DISABLE = 0,
+	ADC_INTEN_CMP_OUTSIDE = 1,
+	ADC_INTEN_CMP_CROSSING = 1,
+} ADC_INTEN_CMP;
+
+typedef enum
+{
+	LPC_ADC_INITF_NONE = 0,
+	LPC_ADC_INITF_ASYNC = (1<<0),
+	LPC_ADC_INITF_FAST = (1<<1), // 10BIT MODE
+	LPC_ADC_INITF_LOWPOWER = (1<<2),
+} LPC_ADC_INIT_FLAGS;
+
+typedef enum
+{
+	LPC_ADC_SEQF_NONE = 0,
+	LPC_ADC_SEQF_BURST = (1<<1),
+	LPC_ADC_SEQF_SINGLESTEP = (1<<2),
+	LPC_ADC_SEQF_LOW_PRI = (1<<3),
+} LPC_ADC_SEQ_FLAGS;
+
+typedef struct
+{
+	unsigned short Channels;
+	unsigned char Trigger, Polarity;
+	LPC_ADC_SEQ_FLAGS Flags;
+} LPC_ADC_SEQ_CONFIG;
+
+typedef void (* LPC_ADC_SEQ_HANDLER)(int module, int seq); 
+
+typedef struct
+{
+	unsigned short Low, High;
+} LPC_ADC_THRESHOLD;
+
+typedef enum
+{
+	LPC_ADC_THRF_NONE = 0,
+	LPC_ADC_THRF_OUTSIDE_IRQ = (1<<0),
+	LPC_ADC_THRF_CROSSING_IRQ = (1<<1),
+} LPC_ADC_THR_FLAGS;
+
+void adc_initialize(int module, int sample_rate, LPC_ADC_INIT_FLAGS flags);
+void adc_config_seq_irqmode(int module, int seq, LPC_ADC_SEQ_CONFIG *conf, LPC_ADC_SEQ_HANDLER handler);
+void adc_config_thr(int module, int sel, unsigned int ch_mask, LPC_ADC_THRESHOLD *thr, LPC_ADC_THR_FLAGS flags);
+int adc_read(int module, int ch, unsigned short *pval);
+
+#endif // LPC15_ADC_H
+
+

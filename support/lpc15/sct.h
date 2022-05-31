@@ -1,0 +1,229 @@
+#ifndef LPC15_SCT_H
+#define LPC15_SCT_H
+
+typedef enum
+{
+	SCT0_INP_PIO0_2 = 0,
+	SCT0_INP_PIO0_3,
+	SCT0_INP_PIO0_17,
+	SCT0_INP_PIO0_30,
+	SCT0_INP_PIO1_6,
+	SCT0_INP_PIO1_7,
+	SCT0_INP_PIO1_12,
+	SCT0_INP_PIO1_13,
+	SCT0_INP_SCT1_OUT4 = 8,
+	SCT0_INP_SCT2_OUT4,
+	SCT0_INP_SCT2_OUT5,
+	SCT0_INP_ADC0_THCMP_IRQ,
+	SCT0_INP_ADC1_THCMP_IRQ,
+	SCT0_INP_ACMP0_OUT = 0xD,
+	SCT0_INP_ACMP1_OUT,
+	SCT0_INP_ACMP2_OUT,
+	SCT0_INP_ACMP3_OUT,
+	SCT0_INP_SCTIPU_ABORT = 0x11,
+	SCT0_INP_SCTIPU_SAMPLE0,
+	SCT0_INP_SCTIPU_SAMPLE1,
+	SCT0_INP_SCTIPU_SAMPLE2,
+	SCT0_INP_SCTIPU_SAMPLE3,
+	SCT0_INP_DEBUG_HALTED = 0x16,
+} SCT0_INMUX;
+
+typedef enum
+{
+	SCT1_INP_PIO0_15 = 0,
+	SCT1_INP_PIO0_16,
+	SCT1_INP_PIO0_21,
+	SCT1_INP_PIO0_31,
+	SCT1_INP_PIO1_4,
+	SCT1_INP_PIO1_5,
+	SCT1_INP_PIO1_15,
+	SCT1_INP_PIO1_16,
+	SCT1_INP_SCT0_OUT4 = 8,
+	SCT1_INP_SCT3_OUT4,
+	SCT1_INP_SCT3_OUT5,
+	SCT1_INP_ADC0_THCMP_IRQ,
+	SCT1_INP_ADC1_THCMP_IRQ,
+	SCT1_INP_ACMP0_OUT = 0xD,
+	SCT1_INP_ACMP1_OUT,
+	SCT1_INP_ACMP2_OUT,
+	SCT1_INP_ACMP3_OUT,
+	SCT1_INP_SCTIPU_ABORT = 0x11,
+	SCT1_INP_SCTIPU_SAMPLE0,
+	SCT1_INP_SCTIPU_SAMPLE1,
+	SCT1_INP_SCTIPU_SAMPLE2,
+	SCT1_INP_SCTIPU_SAMPLE3,
+	SCT1_INP_DEBUG_HALTED = 0x16,
+} SCT1_INMUX;
+
+#define SCT_CONFIG_UNIFY (1<<0)
+#define SCT_CONFIG_CLKMODE_SYS (0<<1)
+#define SCT_CONFIG_CLKMODE_PRESCALED_SYS (1<<1)
+#define SCT_CONFIG_CLKMODE_SCT_INPUT (2<<1)
+#define SCT_CONFIG_CLKMODE_PRESCALED_SCT_INPUT (3<<1)
+#define SCT_CONFIG_CKSEL_INPUT0_RISE (0x0<<3)
+#define SCT_CONFIG_CKSEL_INPUT0_FALL (0x1<<3)
+#define SCT_CONFIG_CKSEL_INPUT1_RISE (0x2<<3)
+#define SCT_CONFIG_CKSEL_INPUT1_FALL (0x3<<3)
+#define SCT_CONFIG_CKSEL_INPUT2_RISE (0x4<<3)
+#define SCT_CONFIG_CKSEL_INPUT2_FALL (0x5<<3)
+#define SCT_CONFIG_CKSEL_INPUT3_RISE (0x6<<3)
+#define SCT_CONFIG_CKSEL_INPUT3_FALL (0x7<<3)
+#define SCT_CONFIG_CKSEL_INPUT4_RISE (0x8<<3)
+#define SCT_CONFIG_CKSEL_INPUT4_FALL (0x9<<3)
+#define SCT_CONFIG_CKSEL_INPUT5_RISE (0xa<<3)
+#define SCT_CONFIG_CKSEL_INPUT5_FALL (0xb<<3)
+#define SCT_CONFIG_CKSEL_INPUT6_RISE (0xc<<3)
+#define SCT_CONFIG_CKSEL_INPUT6_FALL (0xd<<3)
+#define SCT_CONFIG_CKSEL_INPUT7_RISE (0xe<<3)
+#define SCT_CONFIG_CKSEL_INPUT7_FALL (0xf<<3)
+#define SCT_CONFIG_NORELOAD_L (1<<7)
+#define SCT_CONFIG_NORELOAD_H (1<<8)
+#define SCT_CONFIG_INSYNC_BIT (9)
+#define SCT_CONFIG_AUTOLIMIT_L (1<<17)
+#define SCT_CONFIG_AUTOLIMIT_H (1<<18)
+
+#define SCT_CTRL_DOWN_L (1<<0)
+#define SCT_CTRL_STOP_L (1<<1)
+#define SCT_CTRL_HALT_L (1<<2)
+#define SCT_CTRL_CLRCTR_L (1<<3)
+#define SCT_CTRL_BIDIR_L (1<<4)
+#define SCT_CTRL_PRE_L_BIT (5)
+#define SCT_CTRL_DOWN_H (1<<16)
+#define SCT_CTRL_STOP_H (1<<17
+#define SCT_CTRL_HALT_H (1<<18)
+#define SCT_CTRL_CLRCTR_H (1<<19)
+#define SCT_CTRL_BIDIR_H (1<<20)
+#define SCT_CTRL_PRE_H_BIT (21)
+
+#define SCT_RES_NO_CHANGE 0
+#define SCT_RES_SET 1
+#define SCT_RES_CLR 2
+#define SCT_RES_TOGGLE 3
+
+typedef enum
+{
+	SCT_EV_IO_LOW = 0,
+	SCT_EV_IO_RISE,
+	SCT_EV_IO_FALL,
+	SCT_EV_IO_HIGH,
+} SCT_EV_IO_COND;
+
+typedef enum
+{
+	SCT_EV_COMB_IO_OR_MATCH = 0,
+	SCT_EV_COMB_MATCH,
+	SCT_EV_COMB_IO,
+	SCT_EV_COMB_IO_AND_MATCH,
+} SCT_EV_COMB_MODE;
+
+typedef enum
+{
+	SCT_EV_DIR_ANY = 0,
+	SCT_EV_DIR_UP,
+	SCT_EV_DIR_DOWN,
+} SCT_EV_DIRECTION;
+
+#define SCT_EVCTRL_MATCHSEL_BIT (0)
+#define SCT_EVCTRL_HEVENT (1<<4)
+#define SCT_EVCTRL_OUTSEL (1<<5)
+#define SCT_EVCTRL_IOSEL_BIT (6)
+#define SCT_EVCTRL_IOCOND_BIT (10)
+#define SCT_EVCTRL_COMBMODE_BIT (12)
+#define SCT_EVCTRL_STATELD (1<<14)
+#define SCT_EVCTRL_STATEV_BIT (15)
+#define SCT_EVCTRL_MATCHMEM (1<<20)
+#define SCT_EVCTRL_DIRECTION_BIT (21)
+#define SCT_EVCTRL_DIRECTION_ANY (0<<21)
+#define SCT_EVCTRL_DIRECTION_UP (1<<21)
+#define SCT_EVCTRL_DIRECTION_DOWN (2<<21)
+
+#define SCT_STATEMASK_ANY (0xFFFFFFU)
+#define SCT_STATE0 (1<<0)
+#define SCT_STATE1 (1<<1)
+#define SCT_STATE2 (1<<2)
+#define SCT_STATE3 (1<<3)
+#define SCT_STATE4 (1<<4)
+#define SCT_STATE5 (1<<5)
+#define SCT_STATE6 (1<<6)
+#define SCT_STATE7 (1<<7)
+
+typedef enum
+{
+	SCT_EVF_NONE = 0,
+	SCT_EVF_STATE_ADD = 0,
+	SCT_EVF_STATE_LOAD = (1<<0),
+	SCT_EVF_INPUT = 0,
+	SCT_EVF_OUTPUT = (1<<1),
+	SCT_EVF_MATCH_MEMORY = (1<<2),
+	SCT_EVF_ONLY_COUNTING_UP = (1<<3),
+	SCT_EVF_ONLY_COUNTING_DOWN = (1<<4),
+	SCT_EVF_IRQEN = (1<<5),
+	SCT_EVF_LIMIT = (1<<8),
+	SCT_EVF_HALT = (1<<9),
+	SCT_EVF_STOP = (1<<10),
+	SCT_EVF_START = (1<<11),
+	SCT_EVF_DITHER = (1<<12),
+} SCT_EV_FLAGS;
+
+typedef struct
+{
+	unsigned Match:4;
+	unsigned IOSel:4;
+	unsigned IOCond:2;
+	unsigned CombMode:2;
+	unsigned StateVal:4;
+	SCT_EV_FLAGS Flags;
+} SCT_EV_SETUP;
+
+typedef enum
+{
+	SCT_OUTF_NONE = 0,
+	SCT_OUTF_SET = (1<<0),
+	SCT_OUTF_CLR = (1<<1),
+	SCT_OUTF_COUNTDOWN_REVERSE = (1<<2),
+	SCT_OUTF_CONFLICT_NOCHANGE = 0,
+	SCT_OUTF_CONFLICT_SET = (1<<3),
+	SCT_OUTF_CONFLICT_CLR = (1<<4),
+	SCT_OUTF_CONFLICT_TOGGLE = (SCT_OUTF_CONFLICT_SET | SCT_OUTF_CONFLICT_CLR),
+} SCT_OUT_FLAGS;
+
+typedef enum
+{
+	SCT_CTRLF_NONE = 0,
+	SCT_CTRLF_RUN = (1<<0),
+	SCT_CTRLF_STOP = (1<<1),
+	SCT_CTRLF_HALT = (1<<2),
+	SCT_CTRLF_RELOAD = (1<<3),
+} SCT_CTRL_FLAGS; 
+
+typedef enum
+{
+	SCT_MATF_NONE = 0,
+	SCT_MATF_END = (1<<0),
+} SCT_MATCH_FLAGS;
+
+typedef struct
+{
+	unsigned char Match;
+	unsigned char Flags;
+	unsigned int Value;
+} SCT_MATCH;
+
+extern const SCT_MATCH __sct_match_end;
+#define SCT_MATCH_END __sct_match_end
+
+typedef void (*SCT_HANDLER)(int module);
+
+// prototypes
+void sct_initialize(int module, unsigned int freq, unsigned int period, SCT_HANDLER handler);
+void sct_control(int module, SCT_CTRL_FLAGS flags);
+void sct_event_setup(int module, int event, SCT_EV_SETUP *setup, int state_mask);
+void sct_output_setup(int module, int output, unsigned int event_mask, SCT_OUT_FLAGS flags);
+void sct_match_set(int module, int match, unsigned int value);
+void sct_match_set_array(int module, SCT_MATCH *array);
+
+#endif // LPC15_SCT_H
+
+
+
+

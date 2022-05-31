@@ -1,0 +1,171 @@
+<!DOCTYPE CrossStudio_Project_File>
+<solution Name="exos_lpc17" target="8" version="2">
+  <project Name="exos_lpc17">
+    <configuration
+      Name="Common"
+      Target="LPC1768"
+      arm_architecture="v7M"
+      arm_core_type="Cortex-M3"
+      arm_instruction_set="Thumb"
+      arm_library_instruction_set="Thumb"
+      arm_linker_heap_size="1024"
+      arm_linker_process_stack_size="512"
+      arm_linker_stack_size="256"
+      arm_simulator_memory_simulation_filename="$(TargetsDir)/LPC1000/LPC1000SimulatorMemory.dll"
+      arm_simulator_memory_simulation_parameter="LPC17;0x80000;0x8000;0x8000"
+      arm_target_debug_interface_type="ADIv5"
+      arm_target_flash_loader_file_path="$(TargetsDir)/LPC1000/Release/Loader_rpc.elf"
+      arm_target_flash_loader_type="LIBMEM RPC Loader"
+      arm_target_loader_parameter="12000000"
+      build_intermediate_directory=".output/$(Configuration)"
+      build_output_directory=".output/$(Configuration)"
+      c_only_additional_options="-fms-extensions"
+      c_system_include_directories="$(TargetsDir)/CMSIS_3/CMSIS/Include;$(TargetsDir)/LPC1000/include"
+      c_user_include_directories="$(ProjectDir);$(ProjectDir)/include;$(ProjectDir)/kernel/driver"
+      gcc_entry_point="Reset_Handler"
+      link_IOLibraryName="none"
+      link_include_standard_libraries="No"
+      link_include_startup_code="No"
+      linker_additional_files="$(StudioDir)/lib/libc$(LibExt)$(LIB)"
+      linker_memory_map_file="$(TargetsDir)/LPC1000/LPC1768_MemoryMap.xml"
+      linker_patch_build_command="&quot;$(StudioDir)/bin/crossscript&quot; &quot;load(\&quot;$(TargetsDir)/LPC1000/LPC1000_LinkPatch.js\&quot;);patch(\&quot;$(TargetPath)\&quot;);&quot;"
+      oscillator_frequency="12MHz"
+      project_directory=""
+      project_type="Executable"
+      property_groups_file_path="$(TargetsDir)/LPC1000/propertyGroups.xml"
+      target_reset_script="FLASHReset()" />
+    <folder Name="Source Files">
+      <configuration Name="Common" filter="c;cpp;cxx;cc;h;s;asm;inc" />
+      <folder Name="kernel">
+        <folder Name="machine">
+          <folder Name="lpc17">
+            <file file_name="kernel/machine/lpc17/startup_lpc17.c" />
+            <file file_name="kernel/machine/lpc17/vectors_lpc17.s" />
+            <file file_name="kernel/machine/lpc17/machine_lpc17.c" />
+            <file file_name="kernel/machine/lpc17/time_lpc17.c" />
+            <file file_name="kernel/machine/lpc17/comm_lpc17.c" />
+          </folder>
+          <file file_name="kernel/machine/hal.c" />
+          <folder Name="armv7m">
+            <file file_name="kernel/machine/armv7m/kernel_armv7m.c" />
+          </folder>
+        </folder>
+        <file file_name="kernel/startup.c" />
+        <file file_name="kernel/list.c" />
+        <file file_name="kernel/panic.c" />
+        <file file_name="kernel/signal.c" />
+        <file file_name="kernel/thread.c" />
+        <file file_name="kernel/timer.c" />
+        <folder Name="posix">
+          <file file_name="kernel/posix/pthread_cond.c" />
+          <file file_name="kernel/posix/pthread_time.c" />
+          <file file_name="kernel/posix/posix.c" />
+          <file file_name="kernel/posix/pthread.c" />
+          <file file_name="kernel/posix/unistd.c" />
+          <file file_name="kernel/posix/string.c" />
+          <file file_name="kernel/posix/termios.c" />
+          <file file_name="kernel/posix/fcntl.c" />
+          <file file_name="kernel/posix/select.c" />
+          <file file_name="kernel/posix/printf.c" />
+          <file file_name="kernel/posix/ioctl.c" />
+        </folder>
+        <file file_name="kernel/memory.c" />
+        <file file_name="kernel/mutex.c" />
+        <file file_name="kernel/event.c" />
+        <folder Name="driver">
+          <folder Name="comm">
+            <file file_name="kernel/driver/comm/comm.c" />
+          </folder>
+        </folder>
+        <file file_name="kernel/tree.c" />
+        <file file_name="kernel/io.c" />
+        <file file_name="kernel/thread_pool.c" />
+        <file file_name="kernel/port.c" />
+        <file file_name="kernel/types.c" />
+      </folder>
+      <folder Name="support">
+        <folder Name="lpc17">
+          <file file_name="support/lpc17/pincon.c" />
+          <file file_name="support/lpc17/dma.c" />
+          <file file_name="support/lpc17/cpu.c" />
+          <file file_name="support/lpc17/uart.c" />
+          <file file_name="support/lpc17/gpio.c" />
+        </folder>
+        <folder Name="board">
+          <file file_name="support/board/nmine_lpc17.c" />
+          <file file_name="support/board/drivers_generic_lpc17.c" />
+        </folder>
+        <configuration
+          Name="Common"
+          build_intermediate_directory=".output/$(Configuration)/support"
+          build_output_directory=".output/$(Configuration)/support" />
+        <folder Name="services">
+          <file file_name="support/services/debug.c" />
+          <file file_name="support/services/init.c" />
+        </folder>
+      </folder>
+      <folder Name="tests">
+        <folder Name="posix">
+          <file file_name="tests/posix/uart_test.c" />
+        </folder>
+      </folder>
+    </folder>
+    <folder Name="System Files">
+      <file file_name="$(TargetsDir)/LPC1000/LPC1700_Target.js">
+        <configuration Name="Common" file_type="Reset Script" />
+      </file>
+    </folder>
+    <folder Name="CMSIS Files">
+      <file file_name="$(TargetsDir)/LPC1000/include/CMSIS/LPC17xx.h" />
+      <file file_name="$(TargetsDir)/LPC1000/include/CMSIS/system_LPC17xx.h" />
+      <file file_name="$(TargetsDir)/LPC1000/include/CMSIS/system_LPC17xx.c" />
+    </folder>
+  </project>
+  <configuration
+    Name="Debug"
+    build_debug_information="Yes"
+    c_preprocessor_definitions="DEBUG;__THUMB"
+    gcc_optimization_level="None"
+    hidden="Yes"
+    link_include_startup_code="No" />
+  <configuration
+    Name="Release"
+    build_debug_information="No"
+    c_additional_options="-g1"
+    c_preprocessor_definitions="NDEBUG"
+    gcc_optimization_level="Level 1"
+    hidden="Yes"
+    link_include_startup_code="No" />
+  <configuration
+    Name="Common"
+    c_preprocessor_definitions="__EXOS__;MAIN_THREAD_STACK=1024;MAIN_THREAD_PRI=0;EXOS_NO_NET"
+    linker_section_placement_file="$(ProjectDir)/support/lpc17/flash_placement_17xx.xml" />
+  <configuration Name="NANO2 Debug" inherited_configurations="Debug;NANO2" />
+  <configuration
+    Name="NANO2 Release"
+    inherited_configurations="NANO2;Release" />
+  <configuration
+    Name="NANO2"
+    c_preprocessor_definitions="BOARD_NANO10"
+    hidden="Yes" />
+  <configuration
+    Name="LandTiger"
+    c_preprocessor_definitions="BOARD_LANDTIGER"
+    hidden="Yes" />
+  <configuration
+    Name="LandTiger Debug"
+    inherited_configurations="Debug;LandTiger" />
+  <configuration
+    Name="LandTiger Release"
+    inherited_configurations="LandTiger;Release" />
+  <configuration
+    Name="LPC1766-STK"
+    c_preprocessor_definitions="BOARD_LPC1766STK"
+    hidden="Yes" />
+  <configuration
+    Name="LPC1766-STK Debug"
+    inherited_configurations="Debug;LPC1766-STK" />
+  <configuration
+    Name="LPC1766-STK Release"
+    inherited_configurations="LPC1766-STK;Release" />
+</solution>

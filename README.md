@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # ExOS
 Embedded posix operating system for microcontrollers
 
@@ -104,4 +105,8 @@ Open an iAP protocol echoing the data data from the iPhone
 ExOS has been designed and programmed in C, the same way it happens with all the libraries that it includes but, currently, it supports the C, C++, OBJ-C and Swift languages as well, and we are planning to extend its development so that it becomes possible to handle even more frameworks and not just the libraries in C, but also the ones in OBJ-C like UIKit or AppKit, to be able to even design user interfaces on the Xcode itself.
 
 
+=======
+Welcome to ExOS
+Currently testing...
+>>>>>>> master
 

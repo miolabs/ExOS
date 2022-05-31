@@ -1,0 +1,102 @@
+<!DOCTYPE CrossStudio_Project_File>
+<solution Name="exos_dm36x" target="8" version="2">
+  <project Name="exos_dm36x">
+    <configuration Name="Common" arm_architecture="v5TE" arm_core_type="ARM926EJ-S" arm_linker_jtag_pad_post_dr="1" arm_linker_jtag_pad_post_ir="4" arm_linker_jtag_pad_pre_dr="1" arm_linker_jtag_pad_pre_ir="6" arm_linker_svc_stack_size="512" arm_target_debug_interface_type="ARM9TDI" arm_target_flash_loader_type="RAM Loader" arm_target_loader_reset_after_download="No" build_intermediate_directory=".output/$(Configuration)" build_output_directory=".output/$(Configuration)" c_only_additional_options="-fms-extensions" c_user_include_directories="$(ProjectDir);$(ProjectDir)/include;$(ProjectDir)/kernel/driver" gcc_entry_point="Reset_Handler" link_IOLibraryName="none" linker_memory_map_file="$(ProjectDir)/support/dm36x/DM36x_MemoryMap.xml" project_directory="" project_type="Executable" target_TAP_reset_script="ResetTAP()" target_connect_script="Connect()" target_debug_interface_reset_script="ResetDebugInterface()"/>
+    <folder Name="Source Files" file_name="">
+      <configuration Name="Common" filter="c;cpp;cxx;cc;h;s;asm;inc"/>
+      <folder Name="support">
+        <folder Name="dm36x" file_name="">
+          <file file_name="support/dm36x/emif.c"/>
+          <file file_name="support/dm36x/gpio.c"/>
+          <file file_name="support/dm36x/intc.c"/>
+          <file file_name="support/dm36x/system.c"/>
+          <file file_name="support/dm36x/timer.c"/>
+          <file file_name="support/dm36x/emac.c"/>
+          <file file_name="support/dm36x/emac_mdio.c"/>
+          <file file_name="support/dm36x/aemif.c"/>
+          <file file_name="support/dm36x/vpbe.c"/>
+          <file file_name="support/dm36x/vpss.c"/>
+          <file file_name="support/dm36x/vpfe.c"/>
+          <file file_name="support/dm36x/i2c.c"/>
+        </folder>
+        <configuration Name="Common" build_intermediate_directory=".output/$(Configuration)/support" build_output_directory=".output/$(Configuration)/support"/>
+        <folder Name="board" file_name="">
+          <file file_name="support/board/leopardboard.c"/>
+          <file file_name="support/board/drivers_generic_dm36x.c"/>
+        </folder>
+      </folder>
+      <folder Name="kernel" file_name="">
+        <folder Name="machine">
+          <folder Name="dm36x" file_name="">
+            <file file_name="kernel/machine/dm36x/startup_dm36x.s"/>
+            <file file_name="kernel/machine/dm36x/time_dm36x.c"/>
+            <file file_name="kernel/machine/dm36x/machine_dm36x.c"/>
+            <file file_name="kernel/machine/dm36x/net_dm36x.c"/>
+          </folder>
+          <file file_name="kernel/machine/hal.c"/>
+          <folder Name="armv4">
+            <file file_name="kernel/machine/armv4/kernel_armv4.s"/>
+            <file file_name="kernel/machine/armv4/vectors_armv4.s"/>
+          </folder>
+        </folder>
+        <file file_name="kernel/event.c"/>
+        <file file_name="kernel/fifo.c"/>
+        <file file_name="kernel/io.c"/>
+        <file file_name="kernel/list.c"/>
+        <file file_name="kernel/memory.c"/>
+        <file file_name="kernel/mutex.c"/>
+        <file file_name="kernel/panic.c"/>
+        <file file_name="kernel/signal.c"/>
+        <file file_name="kernel/startup.c"/>
+        <file file_name="kernel/thread.c"/>
+        <file file_name="kernel/timer.c"/>
+        <file file_name="kernel/tree.c"/>
+        <folder Name="driver">
+          <folder Name="comm">
+            <file file_name="kernel/driver/comm/comm.c"/>
+          </folder>
+          <folder Name="net">
+            <file file_name="kernel/driver/net/adapter.c"/>
+            <file file_name="kernel/driver/net/arp.c"/>
+            <file file_name="kernel/driver/net/arp_tables.c"/>
+            <file file_name="kernel/driver/net/icmp.c"/>
+            <file file_name="kernel/driver/net/ip.c"/>
+            <file file_name="kernel/driver/net/mbuf.c"/>
+            <file file_name="kernel/driver/net/net.c"/>
+            <file file_name="kernel/driver/net/net_io.c"/>
+            <file file_name="kernel/driver/net/net_service.c"/>
+            <file file_name="kernel/driver/net/udp.c"/>
+            <folder Name="support" file_name="">
+              <file file_name="kernel/driver/net/support/apipa.c"/>
+              <file file_name="kernel/driver/net/support/phy.c"/>
+              <file file_name="support/onfi.c"/>
+            </folder>
+            <file file_name="kernel/driver/net/tcp.c"/>
+            <file file_name="kernel/driver/net/tcp_io.c"/>
+            <file file_name="kernel/driver/net/udp_io.c"/>
+            <file file_name="kernel/driver/net/tcp_service.c"/>
+          </folder>
+        </folder>
+        <file file_name="kernel/port.c"/>
+      </folder>
+      <file file_name="Tests/platform/dm36x/dm36x_test.c"/>
+    </folder>
+    <folder Name="System Files">
+      <file file_name="support/dm36x/TMS320DM3x_Target.js">
+        <configuration Name="Common" file_type="Target Script"/>
+      </file>
+    </folder>
+    <configuration Name="DDR" arm_linker_heap_size="8192000" arm_target_flash_loader_file_path="$(TargetsDir)/TMS320DM3x/loader_dm36x.elf" arm_target_flash_loader_type="LIBMEM RPC Loader" linker_section_placement_file="$(ProjectDir)/support/dm36x/sdram_placement.xml" target_reset_script="Reset()"/>
+    <configuration Name="SRAM" linker_section_placement_file="$(ProjectDir)/support/dm36x/sram_placement.xml" target_reset_script="SRAMReset()"/>
+  </project>
+  <configuration Name="Debug" c_preprocessor_definitions="DEBUG" gcc_optimization_level="None" hidden="Yes" link_include_startup_code="No"/>
+  <configuration Name="Release" build_debug_information="No" c_additional_options="-g1" c_preprocessor_definitions="NDEBUG" gcc_optimization_level="Level 1" hidden="Yes" link_include_startup_code="No"/>
+  <configuration Name="Common" c_preprocessor_definitions="OSCILLATOR_CLOCK_FREQUENCY = 24000000;MAIN_THREAD_STACK=1024;MAIN_THREAD_PRI=0"/>
+  <configuration Name="SRAM" hidden="Yes"/>
+  <configuration Name="DDR" hidden="Yes"/>
+  <configuration Name="SRAM Debug" inherited_configurations="Debug;LeopardBoard;SRAM"/>
+  <configuration Name="SRAM Release" inherited_configurations="LeopardBoard;Release;SRAM"/>
+  <configuration Name="DDR Debug" inherited_configurations="DDR;Debug;LeopardBoard"/>
+  <configuration Name="DDR Release" inherited_configurations="DDR;LeopardBoard;Release"/>
+  <configuration Name="LeopardBoard" c_preprocessor_definitions="BOARD_LEOPARDBOARD;DM36X_ENABLE_VENC" hidden="Yes"/>
+</solution>

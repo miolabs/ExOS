@@ -1,0 +1,246 @@
+<!DOCTYPE CrossStudio_Project_File>
+<solution Name="printserver2_177x" target="8" version="2">
+  <project Name="printserver2_lpc177x">
+    <configuration
+      Name="Common"
+      Target="LPC1778"
+      arm_architecture="v7M"
+      arm_core_type="Cortex-M3"
+      arm_instruction_set="Thumb"
+      arm_library_instruction_set="Thumb"
+      arm_linker_heap_size="8192"
+      arm_linker_process_stack_size="512"
+      arm_linker_stack_size="256"
+      arm_simulator_memory_simulation_filename="$(TargetsDir)/LPC1000/LPC1000SimulatorMemory.dll"
+      arm_simulator_memory_simulation_parameter="LPC177x_8x;0x80000;0x10000;0x8000"
+      arm_target_debug_interface_type="ADIv5"
+      arm_target_flash_loader_file_path="$(TargetsDir)/LPC1000/Release/Loader_rpc.elf"
+      arm_target_flash_loader_type="LIBMEM RPC Loader"
+      arm_target_loader_parameter="12000000"
+      build_intermediate_directory=".output/$(Configuration)"
+      build_output_directory=".output/$(Configuration)"
+      c_only_additional_options="-fms-extensions"
+      c_system_include_directories="$(TargetsDir)/LPC1000/include;$(TargetsDir)/CMSIS_3/CMSIS/Include"
+      c_user_include_directories="$(ProjectDir);$(ProjectDir)/include;$(ProjectDir)/kernel/driver"
+      gcc_entry_point="Reset_Handler"
+      link_IOLibraryName="none"
+      link_include_standard_libraries="No"
+      link_include_startup_code="No"
+      linker_additional_files="$(StudioDir)/lib/libc$(LibExt)$(LIB)"
+      linker_memory_map_file="$(TargetsDir)/LPC1000/LPC1778_MemoryMap.xml"
+      linker_patch_build_command="&quot;$(StudioDir)/bin/crossscript&quot; &quot;load(\&quot;$(TargetsDir)/LPC1000/LPC1000_LinkPatch.js\&quot;);patch(\&quot;$(TargetPath)\&quot;);&quot;"
+      oscillator_frequency="12MHz"
+      project_directory=""
+      project_type="Executable"
+      property_groups_file_path="$(TargetsDir)/LPC1000/propertyGroups177x_8x.xml"
+      target_reset_script="FLASHReset()" />
+    <folder Name="Source Files">
+      <configuration Name="Common" filter="c;cpp;cxx;cc;h;s;asm;inc" />
+      <folder Name="kernel">
+        <folder Name="machine">
+          <file file_name="kernel/machine/hal.c" />
+          <folder Name="armv7m">
+            <file file_name="kernel/machine/armv7m/kernel_armv7m.c" />
+          </folder>
+          <folder Name="lpc177x_8x">
+            <file file_name="kernel/machine/lpc177x_8x/comm_lpc17.c" />
+            <file file_name="kernel/machine/lpc177x_8x/machine_lpc17.c" />
+            <file file_name="kernel/machine/lpc177x_8x/net_lpc17.c" />
+            <file file_name="kernel/machine/lpc177x_8x/startup_lpc17.c" />
+            <file file_name="kernel/machine/lpc177x_8x/time_lpc17.c" />
+            <file file_name="kernel/machine/lpc177x_8x/vectors_lpc177x_8x.s" />
+          </folder>
+        </folder>
+        <file file_name="kernel/startup.c" />
+        <file file_name="kernel/list.c" />
+        <file file_name="kernel/panic.c" />
+        <file file_name="kernel/signal.c" />
+        <file file_name="kernel/thread.c" />
+        <file file_name="kernel/timer.c" />
+        <folder Name="posix">
+          <folder Name="tests" />
+          <file file_name="kernel/posix/pthread_cond.c" />
+          <file file_name="kernel/posix/pthread_time.c" />
+          <file file_name="kernel/posix/posix.c" />
+          <file file_name="kernel/posix/arpa_inet.c" />
+          <file file_name="kernel/posix/pthread.c" />
+          <file file_name="kernel/posix/socket.c" />
+          <file file_name="kernel/posix/unistd.c" />
+          <file file_name="kernel/posix/printf.c" />
+          <file file_name="kernel/posix/select.c" />
+          <file file_name="kernel/posix/string.c" />
+          <file file_name="kernel/posix/termios.c" />
+          <file file_name="kernel/posix/fcntl.c" />
+          <file file_name="kernel/posix/stdlib.c" />
+        </folder>
+        <file file_name="kernel/memory.c" />
+        <file file_name="kernel/mutex.c" />
+        <file file_name="kernel/event.c" />
+        <folder Name="driver">
+          <folder Name="net">
+            <file file_name="kernel/driver/net/arp.c" />
+            <file file_name="kernel/driver/net/arp_tables.c" />
+            <file file_name="kernel/driver/net/icmp.c" />
+            <file file_name="kernel/driver/net/ip.c" />
+            <file file_name="kernel/driver/net/mbuf.c" />
+            <file file_name="kernel/driver/net/net.c" />
+            <file file_name="kernel/driver/net/udp.c" />
+            <folder Name="tests" />
+            <file file_name="kernel/driver/net/adapter.c" />
+            <file file_name="kernel/driver/net/net_service.c" />
+            <file file_name="kernel/driver/net/net_io.c" />
+            <folder Name="support">
+              <file file_name="kernel/driver/net/support/apipa.c" />
+              <file file_name="kernel/driver/net/support/phy.c" />
+            </folder>
+            <file file_name="kernel/driver/net/tcp.c" />
+            <file file_name="kernel/driver/net/udp_io.c" />
+            <file file_name="kernel/driver/net/tcp_io.c" />
+            <file file_name="kernel/driver/net/tcp_service.c" />
+          </folder>
+          <folder Name="comm">
+            <file file_name="kernel/driver/comm/comm.c" />
+            <folder Name="tests" />
+          </folder>
+          <folder Name="usb">
+            <file file_name="kernel/driver/usb/usb.c" />
+            <file file_name="kernel/driver/usb/host.c" />
+            <file file_name="kernel/driver/usb/enumerate.c" />
+            <folder Name="classes">
+              <file file_name="kernel/driver/usb/classes/scsi.c" />
+            </folder>
+          </folder>
+        </folder>
+        <file file_name="kernel/io.c" />
+        <file file_name="kernel/fifo.c" />
+        <file file_name="kernel/tree.c" />
+        <file file_name="kernel/thread_pool.c" />
+        <file file_name="kernel/port.c" />
+        <file file_name="kernel/dispatch.c" />
+        <file file_name="kernel/datetime.c" />
+        <file file_name="kernel/types.c" />
+      </folder>
+      <folder Name="support">
+        <folder Name="lpc17">
+          <file file_name="support/lpc17/pincon.c" />
+          <file file_name="support/lpc17/dma.c" />
+          <file file_name="support/lpc17/cpu.c" />
+          <file file_name="support/lpc17/emac.c" />
+          <file file_name="support/lpc17/emac_mem.c" />
+          <file file_name="support/lpc17/uart.c" />
+          <file file_name="support/lpc17/usb_otg.c" />
+          <file file_name="support/lpc17/usb_host.c" />
+          <file file_name="support/lpc17/i2c.c" />
+          <file file_name="support/lpc17/can.c" />
+        </folder>
+        <folder Name="board">
+          <file file_name="support/board/drivers_generic_lpc17.c" />
+          <file file_name="support/board/board_mioboard_lpc1778.c" />
+        </folder>
+        <configuration
+          Name="Common"
+          build_intermediate_directory=".output/$(Configuration)/support"
+          build_output_directory=".output/$(Configuration)/support" />
+        <folder Name="usb">
+          <folder Name="ohci">
+            <file file_name="support/usb/ohci/buffers.c" />
+            <file file_name="support/usb/ohci/ohci.c" />
+            <file file_name="support/usb/ohci/hub.c" />
+            <file file_name="support/usb/ohci/pipes.c" />
+            <file file_name="support/usb/ohci/driver.c" />
+          </folder>
+          <folder Name="driver">
+            <file file_name="support/usb/driver/msc.c" />
+            <file file_name="support/usb/driver/usbprint.c" />
+            <file file_name="support/usb/driver/ftdi.c" />
+            <file file_name="support/usb/driver/hid.c" />
+          </folder>
+        </folder>
+        <folder Name="misc">
+          <file file_name="support/misc/mac_24xx02.c" />
+          <file file_name="support/misc/eeprom.c" />
+        </folder>
+        <folder Name="apple">
+          <file file_name="support/apple/cp20.c" />
+          <file file_name="support/apple/iap.c" />
+          <file file_name="support/apple/iap_comm.c" />
+          <file file_name="support/apple/iap_core.c" />
+          <file file_name="support/apple/iap_fid.c" />
+        </folder>
+        <folder Name="servs">
+          <file file_name="support/services/debug.c" />
+          <file file_name="support/services/init.c" />
+        </folder>
+      </folder>
+      <folder Name="modules">
+        <folder Name="services">
+          <file file_name="modules/services/services.c" />
+          <folder Name="bonjour">
+            <file file_name="modules/services/bonjour/bonjour.c" />
+          </folder>
+        </folder>
+      </folder>
+      <folder Name="printserver2">
+        <file file_name="printserver2/config.c" />
+        <file file_name="printserver2/discovery.c" />
+        <file file_name="printserver2/main.c" />
+        <file file_name="printserver2/server.c" />
+        <file file_name="printserver2/iap_server.c" />
+      </folder>
+    </folder>
+    <folder Name="System Files">
+      <file file_name="$(TargetsDir)/LPC1000/LPC177x_8x_Target.js">
+        <configuration Name="Common" file_type="Reset Script" />
+      </file>
+    </folder>
+    <folder Name="CMSIS Files">
+      <file file_name="$(TargetsDir)/LPC1000/include/CMSIS/LPC177x_8x.h" />
+      <file file_name="$(TargetsDir)/LPC1000/include/CMSIS/system_LPC177x_8x.h" />
+      <file file_name="$(TargetsDir)/LPC1000/include/CMSIS/system_LPC177x_8x.c" />
+    </folder>
+    <configuration
+      Name="Flash"
+      arm_target_flash_loader_file_path="$(TargetsDir)/LPC1000/Release/Loader_lpc177x_8x.elf" />
+  </project>
+  <configuration
+    Name="Debug"
+    build_debug_information="Yes"
+    c_preprocessor_definitions="DEBUG;__THUMB"
+    gcc_optimization_level="None"
+    hidden="Yes"
+    link_include_startup_code="No" />
+  <configuration
+    Name="Release"
+    build_debug_information="No"
+    c_additional_options="-g1"
+    c_preprocessor_definitions="NDEBUG"
+    gcc_optimization_level="Level 1"
+    hidden="Yes"
+    link_include_startup_code="No" />
+  <configuration
+    Name="Common"
+    arm_instruction_set="Thumb"
+    arm_library_instruction_set="Thumb"
+    c_preprocessor_definitions="MAIN_THREAD_STACK=1024;MAIN_THREAD_PRI=0;__EXOS__;__THUMB;IAP_ACCESORY_EA_PROTOCOL_NAME=&quot;com.miolabs.iap2test&quot;"
+    linker_section_placement_file="$(ProjectDir)/support/lpc17/flash_placement_17xx.xml" />
+  <configuration
+    Name="Mioboard"
+    c_preprocessor_definitions="BOARD_MIOBOARD;EEPROM_I2C_MODULE=0;EEPROM_SIZE=256;EEPROM_PAGE_SIZE=8"
+    hidden="Yes" />
+  <configuration
+    Name="Mioboard Debug"
+    inherited_configurations="Debug;Mioboard" />
+  <configuration
+    Name="Mioboard Release"
+    inherited_configurations="Mioboard;Release" />
+  <configuration
+    Name="UDP"
+    c_preprocessor_definitions="RFGATE_UDP"
+    hidden="Yes" />
+  <configuration
+    Name="Mioboard UDP Debug"
+    inherited_configurations="Debug;Mioboard;UDP" />
+  <configuration
+    Name="Mioboard UDP Release"
+    inherited_configurations="Mioboard;Release;UDP" />
+</solution>

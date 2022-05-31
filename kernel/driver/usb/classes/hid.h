@@ -1,0 +1,99 @@
+#ifndef USB_HID_H
+#define USB_HID_H
+
+#include <usb/usb.h>
+
+typedef enum
+{
+	USB_HID_SUBCLASS_NONE = 0,
+	USB_HID_SUBCLASS_BOOT = 1, // used for devices that need support at boot
+} USB_HID_SUBCLASS;
+
+typedef enum
+{
+	USB_HID_PROTOCOL_NONE = 0,
+	USB_HID_PROTOCOL_KEYBOARD = 1,
+	USB_HID_PROTOCOL_MOUSE = 2,
+} USB_HID_PROTOCOL;
+
+typedef struct __attribute__((__packed__))
+{
+	unsigned char DescriptorType;
+	USB16 DescriptorLength;
+} USB_HID_DESCRIPTOR_ENTRY;
+
+typedef struct __attribute__((__packed__))
+{
+	USB_DESCRIPTOR_HEADER Header;
+    USB16 HIDSpec;
+	unsigned char CountryCode;
+	unsigned char NumDescriptors;
+    USB_HID_DESCRIPTOR_ENTRY ClassDescriptors[1];
+} USB_HID_DESCRIPTOR;
+
+#define USB_HID_DESCRIPTOR_HID 0x21
+#define USB_HID_DESCRIPTOR_REPORT 0x22
+#define USB_HID_DESCRIPTOR_PHYSICAL 0x23
+
+typedef struct __attribute__((__packed__))
+{
+	unsigned Size:2;
+	unsigned Type:2;
+	unsigned Tag:4;
+	unsigned char DataSize;
+	unsigned char LongItemTag;
+} USB_HID_ITEM;
+
+#define USB_HID_ITEM_SIZE_0 0
+#define USB_HID_ITEM_SIZE_1 1
+#define USB_HID_ITEM_SIZE_2 2
+#define USB_HID_ITEM_SIZE_4 3
+
+#define USB_HID_ITEM_TYPE_MAIN 0
+#define USB_HID_ITEM_TYPE_GLOBAL 1
+#define USB_HID_ITEM_TYPE_LOCAL 2
+#define USB_HID_ITEM_TYPE_RESERVED 3
+
+// MAIN ITEMS
+#define USB_HID_ITEM_TAG_INPUT 0b1000
+#define USB_HID_ITEM_TAG_OUTPUT 0b1001
+#define USB_HID_ITEM_TAG_FEATURE 0b1011
+#define USB_HID_ITEM_TAG_COLLECTION 0b1010
+#define USB_HID_ITEM_TAG_END_COLLECTION 0b1100
+
+// GLOBAL ITEMS
+#define USB_HID_ITEM_TAG_USAGE_PAGE 0b0000
+#define USB_HID_ITEM_TAG_MINIMUM 0b0001
+#define USB_HID_ITEM_TAG_MAXIMUM 0b0010
+#define USB_HID_ITEM_TAG_PHY_MINIMUM 0b0011
+#define USB_HID_ITEM_TAG_PHY_MAXIMUM 0b0100
+#define USB_HID_ITEM_TAG_UNIT_EXP 0b0101
+#define USB_HID_ITEM_TAG_UNIT 0b0110
+#define USB_HID_ITEM_TAG_REPORT_SIZE 0b0111
+#define USB_HID_ITEM_TAG_REPORT_ID 0b1000
+#define USB_HID_ITEM_TAG_REPORT_COUNT 0b1001
+#define USB_HID_ITEM_TAG_PUSH 0b1010
+#define USB_HID_ITEM_TAG_POP 0b1011
+
+// LOCAL ITEMS
+#define USB_HID_ITEM_TAG_USAGE 0b0000
+
+
+#define USB_HID_INPUT_CONSTANT (1<<0)
+#define USB_HID_INPUT_VARIABLE (1<<1)
+#define USB_HID_INPUT_RELATIVE (1<<2)
+#define USB_HID_INPUT_WRAP (1<<3)
+#define USB_HID_INPUT_NONLINEAR (1<<4)
+#define USB_HID_INPUT_NONPREFERRED (1<<5)
+#define USB_HID_INPUT_NULLPOSITION (1<<6)
+#define USB_HID_INPUT_BUFFERED (1<<8)
+
+#define USB_HID_MAX_REPORT_SIZE 64
+
+#define USB_HID_REPORT_TYPE_INPUT 1
+#define USB_HID_REPORT_TYPE_OUTPUT 2
+#define USB_HID_REPORT_TYPE_FEATURE 3
+
+#endif // USB_HID_H
+
+

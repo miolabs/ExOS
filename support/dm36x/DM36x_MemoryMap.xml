@@ -1,0 +1,2644 @@
+<!DOCTYPE Board_Memory_Definition_File>
+<Root name="TMS320DM365" >
+  <MemorySegment start="0x00000000" size="0x8000" access="Read/Write" name="SRAM" />  
+  <MemorySegment start="0x00008000" size="0x4000" access="Read Only" name="IROM" />
+  <MemorySegment start="0x01C00000" size="0x400000" access="Read/Write" name="CFG Bus Peripherals">
+    <RegisterGroup start="0x01C00000" name="EDMA CC" />
+    <RegisterGroup start="0x01C10000" name="EDMA TC1" />
+    <RegisterGroup start="0x01C10400" name="EDMA TC2" />
+    <RegisterGroup start="0x01C10800" name="EDMA TC3" />
+    <RegisterGroup start="0x01C10C00" name="EDMA TC3" />
+    <RegisterGroup start="0x01C20000" name="UART0" />
+    <RegisterGroup start="0x01C20800" name="Timer3">
+      <Register start="+0x000" size="0x4" name="PID12" />
+      <Register start="+0x004" size="0x4" name="EMUMGT">
+        <BitField size="1" name="FREE" start="0" />
+        <BitField size="1" name="SOFT" start="1" />
+      </Register>
+      <Register start="+0x010" size="0x4" name="TIM12" />
+      <Register start="+0x014" size="0x4" name="TIM34" />
+      <Register start="+0x018" size="0x4" name="PRD12" />
+      <Register start="+0x01C" size="0x4" name="PRD34" />
+      <Register start="+0x020" size="0x4" name="TCR">
+        <BitField size="2" name="ENAMODE12" start="6">
+          <Enum name="DISABLED" start="0x0"/>
+          <Enum name="ONCE" start="0x1"/>
+          <Enum name="CONTINUOUS" start="0x2"/>
+          <Enum name="CONTINUOUS_RELOAD" start="0x3"/>
+        </BitField>
+        <BitField size="1" name="CLKSCR12" start="8" />
+        <BitField size="1" name="READRSTMODE12" start="10" />
+        <BitField size="1" name="CAPMODE12" start="11" />
+        <BitField size="2" name="CAPEVTMODE12" start="12">
+          <Enum name="RISING_EDGE" start="0x0"/>
+          <Enum name="FALLING_EDGE" start="0x1"/>
+          <Enum name="BOTH_EDGE" start="0x2"/>
+          <Enum name="Reserved" start="0x3"/>
+        </BitField>
+        <BitField size="2" name="ENAMODE34" start="22">
+          <Enum name="DISABLED" start="0x0"/>
+          <Enum name="ONCE" start="0x1"/>
+          <Enum name="CONTINUOUS" start="0x2"/>
+          <Enum name="CONTINUOUS_RELOAD" start="0x3"/>
+        </BitField>
+        <BitField size="1" name="CLKSCR34" start="24" />
+        <BitField size="1" name="READRSTMODE34" start="26" />
+        <BitField size="1" name="CAPMODE34" start="27" />
+        <BitField size="2" name="CAPEVTMODE34" start="28">
+          <Enum name="RISING_EDGE" start="0x0"/>
+          <Enum name="FALLING_EDGE" start="0x1"/>
+          <Enum name="BOTH_EDGE" start="0x2"/>
+          <Enum name="Reserved" start="0x3"/>
+        </BitField>
+      </Register>
+      <Register start="+0x024" size="0x4" name="TGCR">
+        <BitField size="1" name="TIM12RS" start="0" />
+        <BitField size="1" name="TIM34RS" start="1" />
+        <BitField size="2" name="TIMMODE" start="2">
+          <Enum name="64-bit GP" start="0x0"/>
+          <Enum name="dual 32-bit unchained" start="0x1"/>
+          <Enum name="64-bit watchdog" start="0x2"/>
+          <Enum name="dual 32-bit chained" start="0x3"/>
+        </BitField>        
+        <BitField size="1" name="BW_COMPATIBLE" start="4" />
+        <BitField size="4" name="PSC34" start="8" />
+        <BitField size="4" name="TDDR34" start="12" />      
+      </Register>      
+      <Register start="+0x028" size="0x4" name="WDTCR" />
+      <Register start="+0x034" size="0x4" name="REL12" />
+      <Register start="+0x038" size="0x4" name="REL34" />
+      <Register start="+0x03C" size="0x4" name="CAP12" />
+      <Register start="+0x040" size="0x4" name="CAP34" />
+      <Register start="+0x044" size="0x4" name="INTCTL_STAT">
+        <BitField size="1" name="CMP_INT_EN12" start="0" />
+        <BitField size="1" name="CMP_INT_STAT12" start="1" />
+        <BitField size="1" name="EVT_INT_EN12" start="2" />
+        <BitField size="1" name="EVT_INT_STAT12" start="3" />
+        <BitField size="1" name="EVAL12" start="14" />
+        <BitField size="1" name="SET12" start="15" />        
+        <BitField size="1" name="CMP_INT_EN23" start="16" />
+        <BitField size="1" name="CMP_INT_STAT23" start="17" />
+        <BitField size="1" name="EVT_INT_EN23" start="18" />
+        <BitField size="1" name="EVT_INT_STAT23" start="19" />
+        <BitField size="1" name="EVAL23" start="30" />
+        <BitField size="1" name="SET23" start="31" />        
+      </Register>            
+    </RegisterGroup>    
+    <RegisterGroup start="0x01C20C00" name="Real-time out" />
+    <RegisterGroup start="0x01C21000" name="I2C" />
+    <RegisterGroup start="0x01C21400" name="Timer0">
+      <Register start="+0x000" size="0x4" name="PID12" />
+      <Register start="+0x004" size="0x4" name="EMUMGT">
+        <BitField size="1" name="FREE" start="0" />
+        <BitField size="1" name="SOFT" start="1" />
+      </Register>
+      <Register start="+0x010" size="0x4" name="TIM12" />
+      <Register start="+0x014" size="0x4" name="TIM34" />
+      <Register start="+0x018" size="0x4" name="PRD12" />
+      <Register start="+0x01C" size="0x4" name="PRD34" />
+      <Register start="+0x020" size="0x4" name="TCR">
+        <BitField size="2" name="ENAMODE12" start="6">
+          <Enum name="DISABLED" start="0x0"/>
+          <Enum name="ONCE" start="0x1"/>
+          <Enum name="CONTINUOUS" start="0x2"/>
+          <Enum name="Reserved" start="0x3"/>
+        </BitField>
+        <BitField size="1" name="CLKSCR12" start="8" />
+        <BitField size="2" name="ENAMODE34" start="22">
+          <Enum name="DISABLED" start="0x0"/>
+          <Enum name="ONCE" start="0x1"/>
+          <Enum name="CONTINUOUS" start="0x2"/>
+          <Enum name="Reserved" start="0x3"/>
+        </BitField>
+        <BitField size="1" name="CLKSCR34" start="24" />
+      </Register>
+      <Register start="+0x024" size="0x4" name="TGCR">
+        <BitField size="1" name="TIM12RS" start="0" />
+        <BitField size="1" name="TIM34RS" start="1" />
+        <BitField size="2" name="TIMMODE" start="2">
+          <Enum name="64-bit GP" start="0x0"/>
+          <Enum name="dual 32-bit unchained" start="0x1"/>
+          <Enum name="64-bit watchdog" start="0x2"/>
+          <Enum name="dual 32-bit chained" start="0x3"/>
+        </BitField>        
+        <BitField size="4" name="PSC34" start="8" />
+        <BitField size="4" name="TDDR34" start="12" />      
+      </Register>      
+      <Register start="+0x028" size="0x4" name="WDTCR" />
+    </RegisterGroup>
+    <RegisterGroup start="0x01C21800" name="Timer1">
+      <Register start="+0x000" size="0x4" name="PID12" />
+      <Register start="+0x004" size="0x4" name="EMUMGT">
+        <BitField size="1" name="FREE" start="0" />
+        <BitField size="1" name="SOFT" start="1" />
+      </Register>
+      <Register start="+0x010" size="0x4" name="TIM12" />
+      <Register start="+0x014" size="0x4" name="TIM34" />
+      <Register start="+0x018" size="0x4" name="PRD12" />
+      <Register start="+0x01C" size="0x4" name="PRD34" />
+      <Register start="+0x020" size="0x4" name="TCR">
+        <BitField size="2" name="ENAMODE12" start="6">
+          <Enum name="DISABLED" start="0x0"/>
+          <Enum name="ONCE" start="0x1"/>
+          <Enum name="CONTINUOUS" start="0x2"/>
+          <Enum name="Reserved" start="0x3"/>
+        </BitField>
+        <BitField size="1" name="CLKSCR12" start="8" />
+        <BitField size="2" name="ENAMODE34" start="22">
+          <Enum name="DISABLED" start="0x0"/>
+          <Enum name="ONCE" start="0x1"/>
+          <Enum name="CONTINUOUS" start="0x2"/>
+          <Enum name="Reserved" start="0x3"/>
+        </BitField>
+        <BitField size="1" name="CLKSCR34" start="24" />
+      </Register>
+      <Register start="+0x024" size="0x4" name="TGCR">
+        <BitField size="1" name="TIM12RS" start="0" />
+        <BitField size="1" name="TIM34RS" start="1" />
+        <BitField size="2" name="TIMMODE" start="2">
+          <Enum name="64-bit GP" start="0x0"/>
+          <Enum name="dual 32-bit unchained" start="0x1"/>
+          <Enum name="64-bit watchdog" start="0x2"/>
+          <Enum name="dual 32-bit chained" start="0x3"/>
+        </BitField>        
+        <BitField size="4" name="PSC34" start="8" />
+        <BitField size="4" name="TDDR34" start="12" />      
+      </Register>      
+      <Register start="+0x028" size="0x4" name="WDTCR" />
+    </RegisterGroup>
+    <RegisterGroup start="0x01C21C00" name="Timer2/WDT" />
+    <RegisterGroup start="0x01C22000" name="PWM0" />
+    <RegisterGroup start="0x01C22400" name="PWM1" />
+    <RegisterGroup start="0x01C22800" name="PWM2" />
+    <RegisterGroup start="0x01C22C00" name="PWM3" />
+    <RegisterGroup start="0x01C23000" name="SPI4" />
+    <RegisterGroup start="0x01C23800" name="Timer4">
+      <Register start="+0x000" size="0x4" name="PID12" />
+      <Register start="+0x004" size="0x4" name="EMUMGT">
+        <BitField size="1" name="FREE" start="0" />
+        <BitField size="1" name="SOFT" start="1" />
+      </Register>
+      <Register start="+0x010" size="0x4" name="TIM12" />
+      <Register start="+0x014" size="0x4" name="TIM34" />
+      <Register start="+0x018" size="0x4" name="PRD12" />
+      <Register start="+0x01C" size="0x4" name="PRD34" />
+      <Register start="+0x020" size="0x4" name="TCR">
+        <BitField size="2" name="ENAMODE12" start="6">
+          <Enum name="DISABLED" start="0x0"/>
+          <Enum name="ONCE" start="0x1"/>
+          <Enum name="CONTINUOUS" start="0x2"/>
+          <Enum name="Reserved" start="0x3"/>
+        </BitField>
+        <BitField size="1" name="CLKSCR12" start="8" />
+        <BitField size="2" name="ENAMODE34" start="22">
+          <Enum name="DISABLED" start="0x0"/>
+          <Enum name="ONCE" start="0x1"/>
+          <Enum name="CONTINUOUS" start="0x2"/>
+          <Enum name="Reserved" start="0x3"/>
+        </BitField>
+        <BitField size="1" name="CLKSCR34" start="24" />
+      </Register>
+      <Register start="+0x024" size="0x4" name="TGCR">
+        <BitField size="1" name="TIM12RS" start="0" />
+        <BitField size="1" name="TIM34RS" start="1" />
+        <BitField size="2" name="TIMMODE" start="2">
+          <Enum name="64-bit GP" start="0x0"/>
+          <Enum name="dual 32-bit unchained" start="0x1"/>
+          <Enum name="64-bit watchdog" start="0x2"/>
+          <Enum name="dual 32-bit chained" start="0x3"/>
+        </BitField>        
+        <BitField size="4" name="PSC34" start="8" />
+        <BitField size="4" name="TDDR34" start="12" />      
+      </Register>      
+      <Register start="+0x028" size="0x4" name="WDTCR" />
+    </RegisterGroup>
+    <RegisterGroup start="0x01C23C00" name="ADC" />
+    <RegisterGroup start="0x01C40000" name="System Module">
+      <Register start="+0x000" size="0x4" name="PINMUX0" />
+      <Register start="+0x004" size="0x4" name="PINMUX1" />
+      <Register start="+0x008" size="0x4" name="PINMUX2">
+        <BitField size="2" name="EM_AR" start="0" />
+        <BitField size="2" name="EM_A3" start="2" />
+        <BitField size="2" name="EM_A7" start="4" />
+        <BitField size="1" name="EM_D15_8" start="6" />
+        <BitField size="1" name="EM_CE0" start="7" />
+        <BitField size="1" name="EM_CE1" start="8" />
+        <BitField size="1" name="EM_WE_OE" start="9" />
+        <BitField size="1" name="EM_WAIT" start="10" />
+        <BitField size="1" name="EM_ADV" start="11" />
+        <BitField size="1" name="EM_CLK" start="12" />
+      </Register>
+      <Register start="+0x00C" size="0x4" name="PINMUX3">
+        <BitField size="1" name="GIO1" start="0" />
+        <BitField size="1" name="GIO2" start="1" />
+        <BitField size="1" name="GIO3" start="2" />
+        <BitField size="1" name="GIO4" start="3" />
+        <BitField size="1" name="GIO5" start="4" />
+        <BitField size="1" name="GIO6" start="5" />
+        <BitField size="1" name="GIO7" start="6" />
+        <BitField size="1" name="GIO8" start="7" />
+        <BitField size="1" name="GIO9" start="8" />
+        <BitField size="1" name="GIO10" start="9" />
+        <BitField size="1" name="GIO11" start="10" />
+        <BitField size="1" name="GIO12" start="11" />
+        <BitField size="1" name="GIO13" start="12" />
+        <BitField size="1" name="GIO14" start="13" />
+        <BitField size="1" name="GIO15" start="14" />
+        <BitField size="2" name="GIO16" start="15" />
+        <BitField size="2" name="GIO17" start="17" />
+        <BitField size="1" name="GIO18" start="19" />
+        <BitField size="1" name="GIO19" start="20" />
+        <BitField size="2" name="GIO20" start="21" />
+        <BitField size="2" name="GIO21" start="23" />
+        <BitField size="1" name="GIO22" start="25" />
+        <BitField size="2" name="GIO23" start="26" />
+        <BitField size="1" name="GIO24" start="28" />
+        <BitField size="2" name="GIO25" start="29" />
+        <BitField size="1" name="GIO26" start="31" />
+      </Register>
+      <Register start="+0x010" size="0x4" name="PINMUX4">
+        <BitField size="2" name="GIO27" start="0" />
+        <BitField size="2" name="GIO28" start="2" />
+        <BitField size="2" name="GIO29" start="4" />
+        <BitField size="2" name="GIO30" start="6" />
+        <BitField size="2" name="GIO31" start="8" />
+        <BitField size="2" name="GIO32" start="10" />
+        <BitField size="2" name="GIO33" start="12" />
+        <BitField size="2" name="GIO34" start="14" />
+        <BitField size="2" name="GIO35" start="16" />
+        <BitField size="2" name="GIO36" start="18" />
+        <BitField size="2" name="GIO37" start="20" />
+        <BitField size="2" name="GIO38" start="22" />
+        <BitField size="2" name="GIO39" start="24" />
+        <BitField size="2" name="GIO40" start="26" />
+        <BitField size="2" name="GIO41" start="28" />
+        <BitField size="2" name="GIO42" start="30" />
+      </Register>                        
+      <Register start="+0x014" size="0x4" name="BOOTCFG" access="Read Only">
+        <BitField size="3" name="AECFG" start="0" />
+        <BitField size="2" name="OSC_SW" start="3" />
+        <BitField size="3" name="BTSEL" start="5" />
+        <BitField size="1" name="GIO0_RESET" start="8" />
+      </Register>                        
+      <Register start="+0x018" size="0x4" name="ARM_INTMUX">
+        <BitField size="1" name="INT10" start="0" />
+        <BitField size="1" name="INT13" start="1" />
+        <BitField size="1" name="INT17" start="2" />
+        <BitField size="1" name="INT18" start="3" />
+        <BitField size="1" name="INT19" start="4" />
+        <BitField size="1" name="INT20" start="5" />
+        <BitField size="1" name="INT24" start="7" />
+        <BitField size="1" name="INT26" start="8" />
+        <BitField size="1" name="INT28" start="9" />
+        <BitField size="1" name="INT29" start="10" />
+        <BitField size="1" name="INT30" start="11" />
+        <BitField size="1" name="INT38" start="12" />
+        <BitField size="1" name="INT43" start="13" />
+        <BitField size="1" name="INT52" start="14" />
+        <BitField size="1" name="INT53" start="15" />
+        <BitField size="1" name="INT54" start="16" />
+        <BitField size="1" name="INT55" start="17" />
+        <BitField size="1" name="INT56" start="18" />
+        <BitField size="1" name="INT57" start="19" />
+        <BitField size="1" name="INT58" start="20" />
+        <BitField size="1" name="INT59" start="21" />
+        <BitField size="1" name="INT61" start="22" />
+        <BitField size="1" name="INT62" start="23" />
+        <BitField size="1" name="INT8" start="24" />
+        <BitField size="1" name="INT7" start="25" />
+        <BitField size="1" name="INT0" start="31" />
+      </Register>                  
+      <Register start="+0x01C" size="0x4" name="EDMA_EVTMUX">
+        <BitField size="1" name="EVT2" start="0" />
+        <BitField size="1" name="EVT3" start="1" />
+        <BitField size="1" name="EVT12" start="2" />
+        <BitField size="1" name="EVT18" start="3" />
+        <BitField size="1" name="EVT19" start="4" />
+        <BitField size="1" name="EVT26" start="5" />
+        <BitField size="1" name="EVT40" start="6" />
+        <BitField size="1" name="EVT41" start="7" />
+        <BitField size="1" name="EVT42" start="8" />
+        <BitField size="1" name="EVT43" start="9" />
+        <BitField size="1" name="EVT53" start="12" />
+        <BitField size="1" name="EVT54" start="13" />
+        <BitField size="1" name="EVT55" start="14" />
+        <BitField size="1" name="EVT56" start="15" />
+        <BitField size="1" name="EVT57" start="16" />
+        <BitField size="1" name="EVT58" start="17" />
+        <BitField size="1" name="EVT59" start="18" />
+        <BitField size="1" name="EVT60" start="19" />
+        <BitField size="1" name="EVT61" start="20" />
+        <BitField size="1" name="EVT62" start="21" />
+        <BitField size="1" name="EVT63" start="22" />
+      </Register>                        
+      <Register start="+0x024" size="0x4" name="HPICTL">
+        <BitField size="8" name="TIMEOUT" start="0" />
+        <BitField size="1" name="ADDMODE" start="8" />
+        <BitField size="1" name="CTLMODE" start="9" />
+      </Register>                        
+      <Register start="+0x028" size="0x4" name="DEVICEID">
+        <BitField size="11" name="MFGR" start="1" />
+        <BitField size="16" name="PARTNUM" start="12" />
+        <BitField size="4" name="DEVREV" start="28" />
+      </Register>
+      <Register start="+0x02C" size="0x4" name="VDAC_CONFIG">
+        <BitField size="1" name="PWD_A" start="0" />
+        <BitField size="1" name="PWD_B" start="1" />
+        <BitField size="1" name="PWD_C" start="2" />
+        <BitField size="1" name="PWDNBUFZ" start="3" />
+        <BitField size="1" name="PWDNZ_TVDETECT" start="4" />
+        <BitField size="1" name="XDMODE" start="5" />
+        <BitField size="1" name="PDTVSHORTZ" start="19" />
+        <BitField size="1" name="TVINT" start="30" />
+        <BitField size="1" name="TVSHORT" start="31" />
+      </Register>
+      <Register start="+0x030" size="0x4" name="TIMER64_CTL">
+        <BitField size="1" name="GIO1_2" start="0" />
+        <BitField size="1" name="GIO3_4" start="1" />
+      </Register>            
+      <Register start="+0x034" size="0x4" name="USB_PHY_CTRL">
+        <BitField size="1" name="PHYPDWN" start="0" />
+        <BitField size="1" name="OTGPDWN" start="1" />
+        <BitField size="1" name="PHYPLLON" start="4" />
+        <BitField size="1" name="VBUSENS" start="5" />
+        <BitField size="1" name="VBDTCTEN" start="6" />
+        <BitField size="1" name="SESNDEN" start="7" />
+        <BitField size="1" name="PHYCLKGD" start="8" />
+        <BitField size="2" name="PHYCLKSRC" start="9">
+          <Enum name="PLLC1AUXCLK" start="0x0"/>
+          <Enum name="PLLC1SYSCLKBP" start="0x1"/>
+          <Enum name="PLLC1SYSCLK1" start="0x2"/>
+          <Enum name="PLLC2SYSCLK1" start="0x3"/>
+        </BitField>
+        <BitField size="1" name="DATAPOL" start="11" />
+        <BitField size="4" name="PHYCLKFREQ" start="12" />
+      </Register>            
+      <Register start="+0x038" size="0x4" name="MISC">
+        <BitField size="1" name="AIM_WAIST" start="0" />
+        <BitField size="1" name="TIMER2_WDT" start="4" />
+        <BitField size="1" name="CLKSTP_BYP0" start="5" />
+        <BitField size="1" name="CLKSTP_BYP1" start="6" />
+        <BitField size="1" name="EDMA_TC1_BST" start="7" />
+        <BitField size="2" name="BOOTST" start="8">
+          <Enum name="Boot failed first and latest attempt" start="0x0"/>
+          <Enum name="Boot failed first and passed latest attempt" start="0x1"/>
+          <Enum name="Invalid state" start="0x2"/>
+          <Enum name="Boot passed in the first attempt itseft" start="0x3"/>
+        </BitField>        
+        <BitField size="1" name="HDVICP_INHB" start="10" />
+        <BitField size="1" name="MMCSD0_INHB" start="11" />
+      </Register>            
+      <Register start="+0x03C" size="0x4" name="MSTPRI0">
+        <BitField size="3" name="ARM_DMAP" start="0" />
+        <BitField size="3" name="ARM_CFGP" start="4" />
+        <BitField size="3" name="MJCP" start="16" />
+        <BitField size="3" name="HDVICP" start="20" />
+      </Register>      
+      <Register start="+0x040" size="0x4" name="MSTPRI1">
+        <BitField size="3" name="PERIP" start="8" />
+      </Register>      
+      <Register start="+0x044" size="0x4" name="VPSS_CLK_CTRL">
+        <BitField size="2" name="VPSS_MUXSEL" start="0">
+          <Enum name="VENC_CLK_SRC selected clock" start="0x0"/>
+          <Enum name="VENC_CLK_SRC selected clock" start="0x1"/>
+          <Enum name="EXTCLK input" start="0x2"/>
+          <Enum name="PCLK or _PCLK" start="0x3"/>
+        </BitField>
+        <BitField size="1" name="PCLK_INV" start="2" />
+        <BitField size="1" name="VENCLKEN" start="3" />
+        <BitField size="1" name="DACCLKEN" start="4" />
+        <BitField size="2" name="VEN_CLK_SRC" start="5">
+          <Enum name="PLLC1SYSCLK6" start="0x0"/>
+          <Enum name="PLLC2SYSCLK5" start="0x1"/>
+          <Enum name="MXI oscillator" start="0x2"/>
+          <Enum name="MXI oscillator" start="0x3"/>
+        </BitField>        
+        <BitField size="1" name="VPSS_CLKMD" start="7" >
+            <Enum name="Config/DMA clk vs. VPSS clk 1:2" start="0x0"/>
+            <Enum name="Config/DMA clk vs. VPSS clk 1:1" start="0x1"/>
+        </BitField>
+      </Register>      
+      <Register start="+0x048" size="0x4" name="PERI_CLKCTL">
+        <BitField size="1" name="CLOCKOUT0EN" start="0" />
+        <BitField size="1" name="CLOCKOUT1EN" start="1" />
+        <BitField size="1" name="CLOCKOUT2EN" start="2" />
+        <BitField size="4" name="DIV1" start="3" />
+        <BitField size="9" name="DIV2" start="7" />
+        <BitField size="10" name="DIV3" start="16" />
+        <BitField size="1" name="HDVICPCLKS" start="26" />
+        <BitField size="1" name="DDRCLKS" start="27" />
+        <BitField size="1" name="KEYSCLKS" start="28" />
+        <BitField size="1" name="ARMCLKS" start="29" />
+        <BitField size="1" name="PRTCSSCLKS" start="30" />
+      </Register>
+      <Register start="+0x04C" size="0x4" name="DEEPSLEEP">
+        <BitField size="16" name="COUNTER" start="0" />
+        <BitField size="1" name="SLEEPCOMPLETE" start="30" />
+        <BitField size="1" name="SLEEPENABLE" start="31" />
+      </Register>
+      <Register start="+0x054" size="0x4" name="DEBOUNCE0" />
+      <Register start="+0x058" size="0x4" name="DEBOUNCE1" />
+      <Register start="+0x05C" size="0x4" name="DEBOUNCE2" />
+      <Register start="+0x060" size="0x4" name="DEBOUNCE3" />
+      <Register start="+0x064" size="0x4" name="DEBOUNCE4" />
+      <Register start="+0x068" size="0x4" name="DEBOUNCE5" />
+      <Register start="+0x06C" size="0x4" name="DEBOUNCE6" />
+      <Register start="+0x070" size="0x4" name="DEBOUNCE7" />
+      <Register start="+0x074" size="0x4" name="VTPIOCR">
+        <BitField size="1" name="F2" start="0" />
+        <BitField size="1" name="F1" start="1" />
+        <BitField size="1" name="F0" start="2" />
+        <BitField size="1" name="D2" start="3" />
+        <BitField size="1" name="D1" start="4" />
+        <BitField size="1" name="D0" start="5" />
+        <BitField size="1" name="PWRDN" start="6" />
+        <BitField size="1" name="LOCK" start="7" />
+        <BitField size="1" name="PWRSAVE" start="8" />
+        <BitField size="1" name="FORCEUPN" start="9" />
+        <BitField size="1" name="FORCEUPP" start="10" />
+        <BitField size="1" name="FORCEDNN" start="11" />
+        <BitField size="1" name="FORCEDNP" start="12" />
+        <BitField size="1" name="CLRZ" start="13" />
+        <BitField size="1" name="IOPWRDN" start="14" />
+        <BitField size="1" name="READY" start="15" />
+        <BitField size="2" name="VREFTAP" start="16" />
+        <BitField size="1" name="VREFEN" start="18" />
+        <BitField size="1" name="CLKRSTZ" start="19" />
+        <BitField size="1" name="DLLRSTZ" start="20" />
+      </Register>
+      <Register start="+0x078" size="0x4" name="PUPDCTL0" />
+      <Register start="+0x07C" size="0x4" name="PUPDCTL1" />
+      <Register start="+0x080" size="0x4" name="HDVICPBT">
+        <BitField size="1" name="COPHLT" start="0" />
+        <BitField size="1" name="INITRAM" start="4" />
+      </Register>      
+      <Register start="+0x084" size="0x4" name="PLLC1_CONFIG">
+        <BitField size="3" name="LOCK123" start="25" />
+      </Register>
+      <Register start="+0x088" size="0x4" name="PLLC2_CONFIG">
+        <BitField size="3" name="LOCK123" start="25" />
+      </Register>
+    </RegisterGroup>
+    <RegisterGroup start="0x01C40800" name="PLLC1">
+      <Register start="+0x000" size="0x4" name="PID" />
+      <Register start="+0x0E4" size="0x4" name="RSTYPE" />
+      <Register start="+0x100" size="0x4" name="PLLCTL">
+        <BitField size="1" name="PLLEN" start="0"/>
+        <BitField size="1" name="PLLPWRDN" start="1"/>
+        <BitField size="1" name="PLLRST" start="3"/>
+        <BitField size="1" name="PLLENSRC" start="5"/>
+      </Register>
+      <Register start="+0x104" size="0x4" name="OCSEL">
+        <BitField size="1" name="OCSRC" start="4"/>
+      </Register>
+      <Register start="+0x108" size="0x4" name="PLLSECCTL">
+        <BitField size="1" name="TINITZ" start="16"/>
+        <BitField size="1" name="TENABLE" start="17"/>
+        <BitField size="1" name="TENABLEDIV" start="18"/>
+        <BitField size="1" name="DRIFTGUARDEN" start="19"/>
+        <BitField size="1" name="SLOWCLKLOCK" start="20"/>
+        <BitField size="1" name="LOWCURRSTDBY" start="21"/>
+        <BitField size="1" name="STOPMODE" start="22"/>
+        <BitField size="1" name="LIMITRECALEN" start="23"/>
+      </Register>
+      <Register start="+0x110" size="0x4" name="PLLM">
+        <BitField size="10" name="PLLM" start="0"/>
+      </Register>
+      <Register start="+0x114" size="0x4" name="PREDIV">
+        <BitField size="5" name="RATIO" start="0"/>
+      </Register>
+      <Register start="+0x118" size="0x4" name="PLLDIV1">
+        <BitField size="5" name="RATIO" start="0"/>
+        <BitField size="1" name="DEN" start="15"/>
+      </Register>
+      <Register start="+0x11C" size="0x4" name="PLLDIV2" >
+        <BitField size="5" name="RATIO" start="0"/>
+        <BitField size="1" name="DEN" start="15"/>
+      </Register>
+      <Register start="+0x120" size="0x4" name="PLLDIV3" >
+        <BitField size="5" name="RATIO" start="0"/>
+        <BitField size="1" name="DEN" start="15"/>
+      </Register>
+      <Register start="+0x124" size="0x4" name="OSCDIV1" >
+        <BitField size="5" name="RATIO" start="0"/>
+        <BitField size="1" name="DEN" start="15"/>
+      </Register>
+      <Register start="+0x128" size="0x4" name="POSTDIV" >
+        <BitField size="5" name="RATIO" start="0"/>
+        <BitField size="1" name="DEN" start="15"/>
+      </Register>
+      <Register start="+0x12C" size="0x4" name="BPDIV" >
+        <BitField size="5" name="RATIO" start="0"/>
+        <BitField size="1" name="DEN" start="15"/>
+      </Register>
+      <Register start="+0x138" size="0x4" name="PLLCMD">
+        <BitField size="1" name="GOSET" start="0"/>
+      </Register>
+      <Register start="+0x13C" size="0x4" name="PLLSTAT">
+        <BitField size="1" name="GOSTAT" start="0"/>
+        <BitField size="1" name="LOCK" start="1"/>
+        <BitField size="1" name="STABLE" start="2"/>
+      </Register>
+      <Register start="+0x140" size="0x4" name="ALNCTL">
+        <BitField size="9" name="ALN" start="0"/>
+      </Register>
+      <Register start="+0x144" size="0x4" name="DCHANGE">
+        <BitField size="9" name="SYS" start="0"/>
+      </Register>      
+      <Register start="+0x148" size="0x4" name="CKEN">
+        <BitField size="1" name="AUXEN" start="0"/>
+        <BitField size="1" name="OBSCLK" start="1"/>
+      </Register>      
+      <Register start="+0x14C" size="0x4" name="CKSTAT">
+        <BitField size="1" name="AUXEN" start="0"/>
+        <BitField size="1" name="OBSON" start="1"/>
+        <BitField size="1" name="BPON" start="3"/>
+      </Register>  
+      <Register start="+0x150" size="0x4" name="SYSTAT">
+        <BitField size="9" name="SYS" start="0"/>
+      </Register>  
+      <Register start="+0x160" size="0x4" name="PLLDIV4" >
+        <BitField size="5" name="RATIO" start="0"/>
+        <BitField size="1" name="DEN" start="15"/>
+      </Register>
+      <Register start="+0x164" size="0x4" name="PLLDIV5" >
+        <BitField size="5" name="RATIO" start="0"/>
+        <BitField size="1" name="DEN" start="15"/>
+      </Register>
+      <Register start="+0x168" size="0x4" name="PLLDIV6" >
+        <BitField size="5" name="RATIO" start="0"/>
+        <BitField size="1" name="DEN" start="15"/>
+      </Register>
+      <Register start="+0x16C" size="0x4" name="PLLDIV7" >
+        <BitField size="5" name="RATIO" start="0"/>
+        <BitField size="1" name="DEN" start="15"/>
+      </Register>
+      <Register start="+0x170" size="0x4" name="PLLDIV8" >
+        <BitField size="5" name="RATIO" start="0"/>
+        <BitField size="1" name="DEN" start="15"/>
+      </Register>
+      <Register start="+0x174" size="0x4" name="PLLDIV9" >
+        <BitField size="5" name="RATIO" start="0"/>
+        <BitField size="1" name="DEN" start="15"/>
+      </Register>
+    </RegisterGroup>
+    <RegisterGroup start="0x01C40C00" name="PLLC2">
+      <Register start="+0x000" size="0x4" name="PID" />
+      <Register start="+0x0E4" size="0x4" name="RSTYPE" />
+      <Register start="+0x100" size="0x4" name="PLLCTL">
+        <BitField size="1" name="PLLEN" start="0"/>
+        <BitField size="1" name="PLLPWRDN" start="1"/>
+        <BitField size="1" name="PLLRST" start="3"/>
+        <BitField size="1" name="PLLENSRC" start="5"/>
+      </Register>
+      <Register start="+0x104" size="0x4" name="OCSEL">
+        <BitField size="1" name="OCSRC" start="4"/>
+      </Register>
+      <Register start="+0x108" size="0x4" name="PLLSECCTL">
+        <BitField size="1" name="TINITZ" start="16"/>
+        <BitField size="1" name="TENABLE" start="17"/>
+        <BitField size="1" name="TENABLEDIV" start="18"/>
+        <BitField size="1" name="DRIFTGUARDEN" start="19"/>
+        <BitField size="1" name="SLOWCLKLOCK" start="20"/>
+        <BitField size="1" name="LOWCURRSTDBY" start="21"/>
+        <BitField size="1" name="STOPMODE" start="22"/>
+        <BitField size="1" name="LIMITRECALEN" start="23"/>
+      </Register>
+      <Register start="+0x110" size="0x4" name="PLLM">
+        <BitField size="10" name="PLLM" start="0"/>
+      </Register>
+      <Register start="+0x114" size="0x4" name="PREDIV">
+        <BitField size="5" name="RATIO" start="0"/>
+      </Register>
+      <Register start="+0x118" size="0x4" name="PLLDIV1">
+        <BitField size="5" name="RATIO" start="0"/>
+        <BitField size="1" name="DEN" start="15"/>
+      </Register>
+      <Register start="+0x11C" size="0x4" name="PLLDIV2" >
+        <BitField size="5" name="RATIO" start="0"/>
+        <BitField size="1" name="DEN" start="15"/>
+      </Register>
+      <Register start="+0x120" size="0x4" name="PLLDIV3" >
+        <BitField size="5" name="RATIO" start="0"/>
+        <BitField size="1" name="DEN" start="15"/>
+      </Register>
+      <Register start="+0x124" size="0x4" name="OSCDIV1" >
+        <BitField size="5" name="RATIO" start="0"/>
+        <BitField size="1" name="DEN" start="15"/>
+      </Register>
+      <Register start="+0x128" size="0x4" name="POSTDIV" >
+        <BitField size="5" name="RATIO" start="0"/>
+        <BitField size="1" name="DEN" start="15"/>
+      </Register>
+      <Register start="+0x12C" size="0x4" name="BPDIV" >
+        <BitField size="5" name="RATIO" start="0"/>
+        <BitField size="1" name="DEN" start="15"/>
+      </Register>
+      <Register start="+0x138" size="0x4" name="PLLCMD">
+        <BitField size="1" name="GOSET" start="0"/>
+      </Register>
+      <Register start="+0x13C" size="0x4" name="PLLSTAT">
+        <BitField size="1" name="GOSTAT" start="0"/>
+        <BitField size="1" name="LOCK" start="1"/>
+        <BitField size="1" name="STABLE" start="2"/>
+      </Register>
+      <Register start="+0x140" size="0x4" name="ALNCTL">
+        <BitField size="5" name="ALN" start="0"/>
+      </Register>
+      <Register start="+0x144" size="0x4" name="DCHANGE">
+        <BitField size="5" name="SYS" start="0"/>
+      </Register>      
+      <Register start="+0x148" size="0x4" name="CKEN">
+        <BitField size="1" name="AUXEN" start="0"/>
+        <BitField size="1" name="OBSCLK" start="1"/>
+      </Register>      
+      <Register start="+0x14C" size="0x4" name="CKSTAT">
+        <BitField size="1" name="AUXEN" start="0"/>
+        <BitField size="1" name="OBSON" start="1"/>
+        <BitField size="1" name="BPON" start="3"/>
+      </Register>  
+      <Register start="+0x150" size="0x4" name="SYSTAT">
+        <BitField size="5" name="SYS" start="0"/>
+      </Register>  
+      <Register start="+0x160" size="0x4" name="PLLDIV4" >
+        <BitField size="5" name="RATIO" start="0"/>
+        <BitField size="1" name="DEN" start="15"/>
+      </Register>
+      <Register start="+0x164" size="0x4" name="PLLDIV5" >
+        <BitField size="5" name="RATIO" start="0"/>
+        <BitField size="1" name="DEN" start="15"/>
+      </Register>
+    </RegisterGroup>
+    <RegisterGroup start="0x01C41000" name="PSC">
+      <Register start="0x01C41000+0x000" size="0x4" name="PID" />
+      <Register start="0x01C41000+0x018" size="0x4" name="INTEVAL">
+        <BitField size="1" name="ALLEV" start="0"/>
+      </Register>      
+      <Register start="0x01C41000+0x040" size="0x4" name="MERRPR0" />
+      <Register start="0x01C41000+0x044" size="0x4" name="MERRPR1" />
+      <Register start="0x01C41000+0x050" size="0x4" name="MERRCR0" />
+      <Register start="0x01C41000+0x054" size="0x4" name="MERRCR1" />
+      <Register start="0x01C41000+0x120" size="0x4" name="PTCMD">
+        <BitField size="1" name="GO" start="0"/>
+      </Register>
+      <Register start="0x01C41000+0x128" size="0x4" name="PTSTAT">
+        <BitField size="1" name="GOSTAT" start="0"/>
+      </Register>
+      <Register start="0x01C41000+0x800" size="0x4" name="MDSTAT00" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x804" size="0x4" name="MDSTAT01" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x808" size="0x4" name="MDSTAT02" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x80C" size="0x4" name="MDSTAT03" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x810" size="0x4" name="MDSTAT04" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x814" size="0x4" name="MDSTAT05" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x818" size="0x4" name="MDSTAT06" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x81C" size="0x4" name="MDSTAT07" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x820" size="0x4" name="MDSTAT08" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x824" size="0x4" name="MDSTAT09" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x828" size="0x4" name="MDSTAT10" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x82C" size="0x4" name="MDSTAT11" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x830" size="0x4" name="MDSTAT12" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x834" size="0x4" name="MDSTAT13" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x838" size="0x4" name="MDSTAT14" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x83C" size="0x4" name="MDSTAT15" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x840" size="0x4" name="MDSTAT16" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x844" size="0x4" name="MDSTAT17" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x848" size="0x4" name="MDSTAT18" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x84C" size="0x4" name="MDSTAT19" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x850" size="0x4" name="MDSTAT20" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x854" size="0x4" name="MDSTAT21" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x858" size="0x4" name="MDSTAT22" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x85C" size="0x4" name="MDSTAT23" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x860" size="0x4" name="MDSTAT24" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x864" size="0x4" name="MDSTAT25" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x868" size="0x4" name="MDSTAT26" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x86C" size="0x4" name="MDSTAT27" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x870" size="0x4" name="MDSTAT28" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x874" size="0x4" name="MDSTAT29" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x878" size="0x4" name="MDSTAT30" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x87C" size="0x4" name="MDSTAT31" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x880" size="0x4" name="MDSTAT32" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x884" size="0x4" name="MDSTAT33" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x888" size="0x4" name="MDSTAT34" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x88C" size="0x4" name="MDSTAT35" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x890" size="0x4" name="MDSTAT36" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x894" size="0x4" name="MDSTAT37" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x898" size="0x4" name="MDSTAT38" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x89C" size="0x4" name="MDSTAT39" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x8A0" size="0x4" name="MDSTAT40" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x8A4" size="0x4" name="MDSTAT41" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x8A8" size="0x4" name="MDSTAT42" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x8AC" size="0x4" name="MDSTAT43" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x8B0" size="0x4" name="MDSTAT44" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x8B4" size="0x4" name="MDSTAT45" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x8B8" size="0x4" name="MDSTAT46" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x8BC" size="0x4" name="MDSTAT47" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x8C0" size="0x4" name="MDSTAT48" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x8C4" size="0x4" name="MDSTAT49" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x8C8" size="0x4" name="MDSTAT50" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0x8CC" size="0x4" name="MDSTAT51" access="ReadOnly">
+        <BitField size="6" name="STATE" start="0"/>
+        <BitField size="1" name="LRST" start="8"/>
+        <BitField size="1" name="LRSTDONE" start="9"/>
+        <BitField size="1" name="MRST" start="10"/>
+        <BitField size="1" name="MRSTDONE" start="11"/>
+        <BitField size="1" name="MCKOUT" start="12"/>
+        <BitField size="1" name="EMURST" start="16"/>
+        <BitField size="1" name="EMUIHB" start="17"/>
+      </Register>
+      <Register start="0x01C41000+0xA00" size="0x4" name="MDCTL00" />
+      <Register start="0x01C41000+0xA04" size="0x4" name="MDCTL01" />
+      <Register start="0x01C41000+0xA08" size="0x4" name="MDCTL02" />
+      <Register start="0x01C41000+0xA0C" size="0x4" name="MDCTL03" />
+      <Register start="0x01C41000+0xA10" size="0x4" name="MDCTL04" />
+      <Register start="0x01C41000+0xA14" size="0x4" name="MDCTL05" />
+      <Register start="0x01C41000+0xA18" size="0x4" name="MDCTL06" />
+      <Register start="0x01C41000+0xA1C" size="0x4" name="MDCTL07" />
+      <Register start="0x01C41000+0xA20" size="0x4" name="MDCTL08" />
+      <Register start="0x01C41000+0xA24" size="0x4" name="MDCTL09" />
+      <Register start="0x01C41000+0xA28" size="0x4" name="MDCTL10" />
+      <Register start="0x01C41000+0xA2C" size="0x4" name="MDCTL11" />
+      <Register start="0x01C41000+0xA30" size="0x4" name="MDCTL12" />
+      <Register start="0x01C41000+0xA34" size="0x4" name="MDCTL13" />
+      <Register start="0x01C41000+0xA38" size="0x4" name="MDCTL14" />
+      <Register start="0x01C41000+0xA3C" size="0x4" name="MDCTL15" />
+      <Register start="0x01C41000+0xA40" size="0x4" name="MDCTL16" />
+      <Register start="0x01C41000+0xA44" size="0x4" name="MDCTL17" />
+      <Register start="0x01C41000+0xA48" size="0x4" name="MDCTL18" />
+      <Register start="0x01C41000+0xA4C" size="0x4" name="MDCTL19" />
+      <Register start="0x01C41000+0xA50" size="0x4" name="MDCTL20" />
+      <Register start="0x01C41000+0xA54" size="0x4" name="MDCTL21" />
+      <Register start="0x01C41000+0xA58" size="0x4" name="MDCTL22" />
+      <Register start="0x01C41000+0xA5C" size="0x4" name="MDCTL23" />
+      <Register start="0x01C41000+0xA60" size="0x4" name="MDCTL24" />
+      <Register start="0x01C41000+0xA64" size="0x4" name="MDCTL25" />
+      <Register start="0x01C41000+0xA68" size="0x4" name="MDCTL26" />
+      <Register start="0x01C41000+0xA6C" size="0x4" name="MDCTL27" />
+      <Register start="0x01C41000+0xA70" size="0x4" name="MDCTL28" />
+      <Register start="0x01C41000+0xA74" size="0x4" name="MDCTL29" />
+      <Register start="0x01C41000+0xA78" size="0x4" name="MDCTL30" />
+      <Register start="0x01C41000+0xA7C" size="0x4" name="MDCTL31" />
+      <Register start="0x01C41000+0xA80" size="0x4" name="MDCTL32" />
+      <Register start="0x01C41000+0xA84" size="0x4" name="MDCTL33" />
+      <Register start="0x01C41000+0xA88" size="0x4" name="MDCTL34" />
+      <Register start="0x01C41000+0xA8C" size="0x4" name="MDCTL35" />
+      <Register start="0x01C41000+0xA90" size="0x4" name="MDCTL36" />
+      <Register start="0x01C41000+0xA94" size="0x4" name="MDCTL37" />
+      <Register start="0x01C41000+0xA98" size="0x4" name="MDCTL38" />
+      <Register start="0x01C41000+0xA9C" size="0x4" name="MDCTL39" />
+      <Register start="0x01C41000+0xAA0" size="0x4" name="MDCTL40" />
+      <Register start="0x01C41000+0xAA4" size="0x4" name="MDCTL41" />
+      <Register start="0x01C41000+0xAA8" size="0x4" name="MDCTL42" />
+      <Register start="0x01C41000+0xAAC" size="0x4" name="MDCTL43" />
+      <Register start="0x01C41000+0xAB0" size="0x4" name="MDCTL44" />
+      <Register start="0x01C41000+0xAB4" size="0x4" name="MDCTL45" />
+      <Register start="0x01C41000+0xAB8" size="0x4" name="MDCTL46" />
+      <Register start="0x01C41000+0xABC" size="0x4" name="MDCTL47" />
+      <Register start="0x01C41000+0xAC0" size="0x4" name="MDCTL48" />
+      <Register start="0x01C41000+0xAC4" size="0x4" name="MDCTL49" />
+      <Register start="0x01C41000+0xAC8" size="0x4" name="MDCTL50" />
+      <Register start="0x01C41000+0xACC" size="0x4" name="MDCTL51" />
+    </RegisterGroup>
+    <RegisterGroup start="0x01C48000" name="INTC">
+      <Register start="+0x000" size="0x4" name="FIQ0" />
+      <Register start="+0x004" size="0x4" name="FIQ1" />
+      <Register start="+0x008" size="0x4" name="IRQ0" />
+      <Register start="+0x00C" size="0x4" name="IRQ1" />
+      <Register start="+0x010" size="0x4" name="FIQENTRY" />
+      <Register start="+0x014" size="0x4" name="IRQENTRY" />
+      <Register start="+0x018" size="0x4" name="EINT0" />
+      <Register start="+0x01C" size="0x4" name="EINT1" />
+      <Register start="+0x020" size="0x4" name="INTCTL" />
+      <Register start="+0x024" size="0x4" name="EABASE" />
+      <Register start="+0x030" size="0x4" name="INTPRI0" />
+      <Register start="+0x034" size="0x4" name="INTPRI1" />
+      <Register start="+0x038" size="0x4" name="INTPRI2" />
+      <Register start="+0x03C" size="0x4" name="INTPRI3" />
+      <Register start="+0x040" size="0x4" name="INTPRI4" />
+      <Register start="+0x044" size="0x4" name="INTPRI5" />
+      <Register start="+0x048" size="0x4" name="INTPRI6" />
+      <Register start="+0x04C" size="0x4" name="INTPRI7" />
+    </RegisterGroup>
+    <RegisterGroup start="0x01C64000" name="USB" />
+    <RegisterGroup start="0x01C66000" name="SPI0" />
+    <RegisterGroup start="0x01C66800" name="SPI1" />
+    <RegisterGroup start="0x01C67000" name="GPIO" />
+    <RegisterGroup start="0x01C67800" name="SPI2" />
+    <RegisterGroup start="0x01C68000" name="SPI3" />
+    <RegisterGroup start="0x01C69000" name="PRTCIF" />
+    <RegisterGroup start="0x01C69400" name="KEYSCAN" />
+    <RegisterGroup start="0x01C69800" name="HPI" />
+    <RegisterGroup start="0x01C70000" name="ISP">
+      <Register start="+0x00" size="0x4" name="PID"/>
+      <Register start="+0x04" size="0x4" name="PCCR">
+        <BitField size="1" name="BL_CLK_ENABLE" start="0"/>
+        <BitField size="1" name="ISIF_CLK_ENABLE" start="1"/>
+        <BitField size="1" name="H3A_CLK_ENABLE" start="2"/>
+        <BitField size="1" name="RSZ_CLK_ENABLE" start="3"/>
+        <BitField size="1" name="IPIPE_CLK_ENABLE" start="4"/>
+        <BitField size="1" name="IPIPEIF_CLK_ENABLE" start="5"/>
+      </Register>
+      <Register start="+0x08" size="0x4" name="BCR">
+        <BitField size="1" name="SRC_SEL_IPIPE_LDC" start="0"/>
+        <BitField size="1" name="SRC_SEL_ISIF_IPIPE" start="1"/>
+        <BitField size="3" name="CPRIORITY_R" start="2"/>
+        <BitField size="3" name="CPRIORITY_W" start="5"/>
+      </Register>
+      <Register start="+0x0C" size="0x4" name="INTSTAT">
+        <BitField size="1" name="ISIF_INT0" start="0"/>
+        <BitField size="1" name="ISIF_INT1" start="1"/>
+        <BitField size="1" name="ISIF_INT2" start="2"/>
+        <BitField size="1" name="ISIF_INT3" start="3"/>
+        <BitField size="1" name="IPIPE_INT_REG" start="4"/>
+        <BitField size="1" name="IPIPE_INT_LAST_PIX" start="5"/>
+        <BitField size="1" name="IPIPE_INT_BSC" start="7"/>
+        <BitField size="1" name="IPIPE_INT_HSC" start="8"/>
+        <BitField size="1" name="IPIPEIF_INT" start="9"/>
+        <BitField size="1" name="AEW_INT" start="10"/>
+        <BitField size="1" name="AF_INT" start="11"/>
+        <BitField size="1" name="RSZ_INT_REG" start="13"/>
+        <BitField size="1" name="RSZ_INT_LAST_PIX" start="14"/>
+        <BitField size="1" name="RSZ_INT_CYC_RZA" start="16"/>
+        <BitField size="1" name="RSZ_INT_CYC_RZB" start="17"/>
+        <BitField size="1" name="OSD_INT" start="20"/>
+        <BitField size="1" name="VENC_INT" start="21"/>
+        <BitField size="1" name="RSZ_INT_EOF0" start="22"/>
+        <BitField size="1" name="RSZ_INT_EOF1" start="23"/>
+        <BitField size="1" name="H3A_INT_EOF" start="24"/>
+        <BitField size="1" name="IPIPE_INT_EOF" start="25"/>
+        <BitField size="1" name="LCD_INT_EOF" start="26"/>
+        <BitField size="1" name="IPIPE_INT_PDC_INI" start="27"/>
+        <BitField size="1" name="IPIPE_INT_PDC_RNEW0" start="28"/>
+        <BitField size="1" name="IPIPE_INT_PDC_RNEW1" start="29"/>
+      </Register>
+      <Register start="+0x10" size="0x4" name="INTSEL1">
+        <BitField size="5" name="INTSEL0" start="0">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+        <BitField size="5" name="INTSEL0" start="8">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+        <BitField size="5" name="INTSEL0" start="16">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+        <BitField size="5" name="INTSEL0" start="24">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+      </Register>
+      <Register start="+0x14" size="0x4" name="INTSEL2">
+        <BitField size="5" name="INTSEL4" start="0">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+        <BitField size="5" name="INTSEL5" start="8">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+        <BitField size="5" name="INTSEL6" start="16">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+        <BitField size="5" name="INTSEL7" start="24">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+      </Register>
+      <Register start="+0x18" size="0x4" name="INTSEL3">
+        <BitField size="5" name="INTSEL8" start="0">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+      </Register>
+      <Register start="+0x1C" size="0x4" name="EVTSEL">
+        <BitField size="5" name="EVTSEL0" start="0">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+        <BitField size="5" name="EVTSEL1" start="8">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+        <BitField size="5" name="EVTSEL2" start="16">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+        <BitField size="5" name="EVTSEL3" start="24">
+          <Enum name="ISIF_INT0" start="0x0"/>
+          <Enum name="ISIF_INT1" start="0x1"/>
+          <Enum name="ISIF_INT2" start="0x2"/>
+          <Enum name="ISIF_INT3" start="0x3"/>
+          <Enum name="IPIPE_INT_REG" start="0x4"/>
+          <Enum name="IPIPE_INT_LAST_PIX" start="0x5"/>
+          <Enum name="Reserved" start="0x6"/>
+          <Enum name="IPIPE_INT_BSC" start="0x7"/>
+          <Enum name="IPIPE_INT_HST" start="0x8"/>
+          <Enum name="IPIPEIF_INT" start="0x9"/>
+          <Enum name="AEW_INT" start="0xa"/>
+          <Enum name="AF_INT" start="0xb"/>
+          <Enum name="Reserved" start="0xc"/>
+          <Enum name="RSZ_INT_REG" start="0xd"/>
+          <Enum name="RSZ_INT_LAST_PIX" start="0xe"/>
+          <Enum name="Reserved" start="0xf"/>
+          <Enum name="RSZ_INT_CYC_RZA" start="0x10"/>
+          <Enum name="RSZ_INT_CYC_RZB" start="0x11"/>
+          <Enum name="Reserved" start="0x12"/>
+          <Enum name="Reserved" start="0x13"/>
+          <Enum name="OSD_INT" start="0x14"/>
+          <Enum name="VENC_INT" start="0x15"/>
+          <Enum name="RSZ_INT_EOF0" start="0x16"/>
+          <Enum name="RSZ_INT_EOF1" start="0x17"/>
+          <Enum name="H3A_INT_EOF" start="0x18"/>
+          <Enum name="IPIPE_INT_EOF" start="0x19"/>
+          <Enum name="LDC_INT_EOF" start="0x1a"/>
+          <Enum name="IPIPE_INT_PDC_INI" start="0x1b"/>
+          <Enum name="IPIPE_INT_PDC_RNEW0" start="0x1c"/>
+          <Enum name="IPIPE_INT_PDC_RNEW1" start="0x1d"/>
+        </BitField>
+      </Register>
+      <Register start="+0x2C" size="0x4" name="MPSR">
+        <BitField size="1" name="LIN_TB" start="1"/>
+        <BitField size="1" name="LS_TB0" start="2"/>
+        <BitField size="1" name="LS_TB1" start="3"/>
+        <BitField size="1" name="DCLAMP" start="4"/>
+        <BitField size="1" name="DPC_TB" start="5"/>
+        <BitField size="1" name="GMM_TBB" start="6"/>
+        <BitField size="1" name="GMM_TBG" start="7"/>
+        <BitField size="1" name="GMM_TBR" start="8"/>
+        <BitField size="1" name="YEE_TB" start="9"/>
+        <BitField size="1" name="GBC_TB" start="10"/>
+        <BitField size="1" name="D3L_TB0" start="11"/>
+        <BitField size="1" name="D3L_TB1" start="12"/>
+        <BitField size="1" name="D3L_TB2" start="13"/>
+        <BitField size="1" name="D3L_TB3" start="14"/>
+        <BitField size="1" name="HST_TB0" start="15"/>
+        <BitField size="1" name="HST_TB1" start="16"/>
+        <BitField size="1" name="HST_TB2" start="17"/>
+        <BitField size="1" name="HST_TB3" start="18"/>
+        <BitField size="1" name="BSC_TB0" start="19"/>
+        <BitField size="1" name="BSC_TB1" start="20"/>
+        <BitField size="1" name="RGBCOPY" start="24"/>
+      </Register>
+    </RegisterGroup>
+    <RegisterGroup start="0x01C70200" name="VPSS">
+      <Register start="+0x00" size="0x4" name="VPBE_CLK_CTL">
+        <BitField size="1" name="VPBE_CLK_ENABLE" start="0" />
+        <BitField size="1" name="CLKSEL_VENC" start="2" />
+        <BitField size="1" name="LDC_CLK_ENABLE" start="3" />
+        <BitField size="1" name="OSD_CLK_SEL" start="6" />
+        <BitField size="1" name="LDC_CLK_SEL" start="7" />
+      </Register>
+    </RegisterGroup>
+    <RegisterGroup start="0x01C71C00" name="OSD">
+      <Register start="+0x00" size="0x4" name="MODE">
+        <BitField size="8" name="CABG" start="0" />
+        <BitField size="1" name="BCLUT" start="8" />
+        <BitField size="1" name="FSINV" start="9" />
+        <BitField size="1" name="VHRSZ" start="10" />
+        <BitField size="1" name="VVRSZ" start="11" />
+        <BitField size="1" name="EF" start="12" />
+        <BitField size="1" name="OHRSZ" start="13" />
+        <BitField size="1" name="OVRSZ" start="14" />
+        <BitField size="1" name="CS" start="15" />
+      </Register>
+      <Register start="+0x04" size="0x4" name="VIDWINMD">
+        <BitField size="1" name="ACT0" start="0" />
+        <BitField size="1" name="VFF0" start="1" />
+        <BitField size="2" name="VVZ0" start="2" />
+        <BitField size="2" name="VHZ0" start="4" />
+        <BitField size="1" name="V0EFC" start="6" />
+        <BitField size="1" name="ACT1" start="8" />
+        <BitField size="1" name="VFF1" start="9" />
+        <BitField size="2" name="VVZ1" start="10" />
+        <BitField size="2" name="VHZ1" start="12" />
+        <BitField size="1" name="VFINV" start="14" />
+      </Register>        
+      <Register start="+0x08" size="0x4" name="OSDWIN0MD">
+        <BitField size="1" name="OACT0" start="0" />
+        <BitField size="1" name="OFF0" start="1">
+          <Enum name="Field mode" start="0x0"/>
+          <Enum name="Frame mode" start="0x1"/>
+        </BitField>
+        <BitField size="1" name="TE0" start="2" />
+        <BitField size="3" name="BLND0" start="3" />
+        <BitField size="2" name="BWW0" start="6">
+          <Enum name="1-bit" start="0x0"/>
+          <Enum name="2-bit" start="0x1"/>
+          <Enum name="3-bit" start="0x2"/>
+          <Enum name="4-bit" start="0x3"/>
+        </BitField>
+        <BitField size="2" name="OVZ0" start="8" />
+        <BitField size="2" name="OHZ0" start="10" />
+        <BitField size="1" name="CLUTS0" start="12">
+          <Enum name="ROM look-up table" start="0x0"/>
+          <Enum name="RAM look-up table" start="0x1"/>
+        </BitField>
+        <BitField size="2" name="BMP0MD" start="13">
+          <Enum name="Bitmap data input mode" start="0x0"/>
+          <Enum name="RGB565 input mode" start="0x1"/>
+          <Enum name="RGB888 + 8bit ext data input mode" start="0x2"/>
+          <Enum name="YCbCr Video Window dta input mode" start="0x3"/>
+        </BitField>
+        <BitField size="1" name="BMPMDE" start="15" />
+      </Register>
+      <Register start="+0x0C" size="0x4" name="OSDWIN1MD">
+        <BitField size="1" name="OACT1" start="0" />
+        <BitField size="1" name="OFF1" start="1">
+          <Enum name="Field mode" start="0x0"/>
+          <Enum name="Frame mode" start="0x1"/>
+        </BitField>
+        <BitField size="1" name="TE1" start="2" />
+        <BitField size="3" name="BLND1" start="3" />
+        <BitField size="2" name="BWW1" start="6">
+          <Enum name="1-bit" start="0x0"/>
+          <Enum name="2-bit" start="0x1"/>
+          <Enum name="3-bit" start="0x2"/>
+          <Enum name="4-bit" start="0x3"/>
+        </BitField>
+        <BitField size="2" name="OVZ1" start="8" />
+        <BitField size="2" name="OHZ1" start="10" />
+        <BitField size="1" name="CLUTS1" start="12">
+          <Enum name="ROM look-up table" start="0x0"/>
+          <Enum name="RAM look-up table" start="0x1"/>
+        </BitField>
+        <BitField size="2" name="BMP1MD" start="13">
+          <Enum name="Bitmap data input mode" start="0x0"/>
+          <Enum name="RGB565 input mode" start="0x1"/>
+          <Enum name="RGB888 + 8bit ext data input mode" start="0x2"/>
+          <Enum name="YCbCr Video Window dta input mode" start="0x3"/>
+        </BitField>
+        <BitField size="1" name="OASW" start="15" />
+      </Register>
+      <Register start="+0x0C" size="0x4" name="OSDATRMD"/>
+      <Register start="+0x10" size="0x4" name="RECTCUR"/>
+      <Register start="+0x14" size="0x4" name="RSV0"/>
+      <Register start="+0x18" size="0x4" name="VIDWIN0OFST">
+        <BitField size="9" name="LO" start="0"/>
+        <BitField size="4" name="AH" start="9"/>
+      </Register>
+      <Register start="+0x1C" size="0x4" name="VIDWIN1OFST">
+        <BitField size="9" name="LO" start="0"/>
+        <BitField size="4" name="AH" start="9"/>
+      </Register>
+      <Register start="+0x20" size="0x4" name="OSDWIN0OFST">
+        <BitField size="9" name="LO" start="0"/>
+        <BitField size="4" name="AH" start="9"/>
+      </Register>
+      <Register start="+0x24" size="0x4" name="OSDWIN1OFST">
+        <BitField size="9" name="LO" start="0"/>
+        <BitField size="4" name="AH" start="9"/>
+      </Register>
+      <Register start="+0x28" size="0x4" name="VIDWINADH"/>
+      <Register start="+0x2C" size="0x4" name="VIDWIN0ADL"/>
+      <Register start="+0x30" size="0x4" name="VIDWIN1ADL"/>
+      <Register start="+0x34" size="0x4" name="OSDWINADH"/>
+      <Register start="+0x38" size="0x4" name="OSDWIN0ADL"/>
+      <Register start="+0x3C" size="0x4" name="OSDWIN1ADL"/>
+      <Register start="+0x40" size="0x4" name="BASEPX"/>
+      <Register start="+0x44" size="0x4" name="BASEPY"/>
+      <Register start="+0x48" size="0x4" name="VIDWIN0XP"/>
+      <Register start="+0x4C" size="0x4" name="VIDWIN0YP"/>
+      <Register start="+0x50" size="0x4" name="VIDWIN0XL"/>
+      <Register start="+0x54" size="0x4" name="VIDWIN0YL"/>
+      <Register start="+0x58" size="0x4" name="VIDWIN1XP"/>
+      <Register start="+0x5C" size="0x4" name="VIDWIN1YP"/>
+      <Register start="+0x60" size="0x4" name="VIDWIN1XL"/>
+      <Register start="+0x64" size="0x4" name="VIDWIN1YL"/>
+      <Register start="+0x68" size="0x4" name="OSDWIN0XP"/>
+      <Register start="+0x6C" size="0x4" name="OSDWIN0YP"/>
+      <Register start="+0x70" size="0x4" name="OSDWIN0XL"/>
+      <Register start="+0x74" size="0x4" name="OSDWIN0YL"/>
+      <Register start="+0x78" size="0x4" name="OSDWIN1XP"/>
+      <Register start="+0x7C" size="0x4" name="OSDWIN1YP"/>
+      <Register start="+0x80" size="0x4" name="OSDWIN1XL"/>
+      <Register start="+0x84" size="0x4" name="OSDWIN1YL"/>
+      <Register start="+0x88" size="0x4" name="CURXP"/>
+      <Register start="+0x8C" size="0x4" name="CURYP"/>
+      <Register start="+0x90" size="0x4" name="CURXL"/>
+      <Register start="+0x94" size="0x4" name="CURYL"/>
+      <Register start="+0x98" size="0x4" name="RSV1"/>
+      <Register start="+0x9C" size="0x4" name="RSV2"/>
+      <Register start="+0xA0" size="0x4" name="W0BMP01"/>
+      <Register start="+0xA4" size="0x4" name="W0BMP23"/>
+      <Register start="+0xA8" size="0x4" name="W0BMP45"/>
+      <Register start="+0xAC" size="0x4" name="W0BMP67"/>
+      <Register start="+0xB0" size="0x4" name="W0BMP89"/>
+      <Register start="+0xB4" size="0x4" name="W0BMPAB"/>
+      <Register start="+0xB8" size="0x4" name="W0BMPCD"/>
+      <Register start="+0xBC" size="0x4" name="W0BMPEF"/>
+      <Register start="+0xC0" size="0x4" name="W1BMP01"/>
+      <Register start="+0xC4" size="0x4" name="W1BMP23"/>
+      <Register start="+0xC8" size="0x4" name="W1BMP45"/>
+      <Register start="+0xCC" size="0x4" name="W1BMP67"/>
+      <Register start="+0xD0" size="0x4" name="W1BMP89"/>
+      <Register start="+0xD4" size="0x4" name="W1BMPAB"/>
+      <Register start="+0xD8" size="0x4" name="W1BMPCD"/>
+      <Register start="+0xDC" size="0x4" name="W1BMPEF"/>
+      <Register start="+0xE0" size="0x4" name="VBNDRY"/>
+      <Register start="+0xE4" size="0x4" name="EXTMODE"/>
+      <Register start="+0xE8" size="0x4" name="MISCCTL"/>
+      <Register start="+0xEC" size="0x4" name="CLUTRAMYCB"/>
+      <Register start="+0xF0" size="0x4" name="CLUTRAMCR"/>
+      <Register start="+0xF4" size="0x4" name="TRANSPVALL"/>
+      <Register start="+0xF8" size="0x4" name="TRANSPVALU"/>
+      <Register start="+0xFC" size="0x4" name="TRANSPBMPIDX"/>
+    </RegisterGroup>
+    <RegisterGroup start="0x01C71E00" name="VENC">
+      <Register start="+0x000" size="0x4" name="VMOD">
+        <BitField size="1" name="VENC" start="0" />
+        <BitField size="1" name="VIE" start="1" />
+        <BitField size="1" name="BLNK" start="3" />
+        <BitField size="1" name="VMD" start="4" />
+        <BitField size="1" name="SLAVE" start="5" />
+        <BitField size="2" name="TVTYP" start="6" />
+        <BitField size="1" name="HDMD" start="8" />
+        <BitField size="1" name="NSIT" start="9" />
+        <BitField size="1" name="ITLC" start="10" />
+        <BitField size="1" name="ITLCL" start="11" />
+        <BitField size="2" name="VDMD" start="12" />
+      </Register>
+      <Register start="+0x004" size="0x4" name="VIOCTL">
+        <BitField size="1" name="YCDIR" start="0" />
+        <BitField size="1" name="YCDC" start="2" />
+        <BitField size="1" name="YCSWAP" start="3" />
+        <BitField size="2" name="DOMD" start="4" />
+        <BitField size="1" name="SYDIR" start="8" />
+        <BitField size="1" name="VCLKZ" start="12" />
+        <BitField size="1" name="VCLKE" start="13" />
+        <BitField size="1" name="VCLKP" start="14" />
+      </Register>
+      <Register start="+0x008" size="0x4" name="VDPRO">
+        <BitField size="1" name="YUPS" start="0" />
+        <BitField size="1" name="CUPS" start="1" />
+        <BitField size="1" name="ATCOM" start="4" />
+        <BitField size="1" name="ATYCC" start="5" />
+        <BitField size="1" name="ATRGB" start="6" />
+        <BitField size="1" name="DAFUL" start="7" />
+        <BitField size="1" name="CBMD" start="8" />
+        <BitField size="1" name="CBTYP" start="9" />
+        <BitField size="1" name="PFLTR" start="11" />
+        <BitField size="2" name="PFLTY" start="12">
+          <Enum name="No filter" start="0x0"/>
+          <Enum name="1+1" start="0x1"/>
+          <Enum name="1+2+1" start="0x2"/>
+        </BitField>
+        <BitField size="2" name="PFLTC" start="14">
+          <Enum name="No filter" start="0x0"/>
+          <Enum name="1+1" start="0x1"/>
+          <Enum name="1+2+1" start="0x2"/>
+        </BitField>
+      </Register>
+      <Register start="+0x00C" size="0x4" name="SYNCCTL">
+        <BitField size="1" name="SYEH" start="0" />
+        <BitField size="1" name="SYEV" start="1" />
+        <BitField size="1" name="HPL" start="2" />
+        <BitField size="1" name="VPL" start="3" />
+        <BitField size="1" name="VSYNCS" start="4" />
+        <BitField size="1" name="SYSW" start="5" />
+        <BitField size="1" name="CSE" start="6" />
+        <BitField size="1" name="CSP" start="7" />
+        <BitField size="1" name="EXHIV" start="8" />
+        <BitField size="1" name="EXVIV" start="9" />
+        <BitField size="1" name="EXSYNC" start="10" />
+        <BitField size="1" name="EXFIV" start="11" />
+        <BitField size="1" name="EXFMD" start="12" />
+        <BitField size="2" name="OVD" start="14" />
+      </Register>
+      <Register start="+0x010" size="0x4" name="HSPLS"/>
+      <Register start="+0x014" size="0x4" name="VSPLS"/>
+      <Register start="+0x018" size="0x4" name="HINTVL"/>
+      <Register start="+0x01C" size="0x4" name="HSTART"/>
+      <Register start="+0x020" size="0x4" name="HVALID"/>
+      <Register start="+0x024" size="0x4" name="VINTVL"/>
+      <Register start="+0x028" size="0x4" name="VSTART"/>
+      <Register start="+0x02C" size="0x4" name="VVALID"/>
+      <Register start="+0x030" size="0x4" name="HSDLY"/>
+      <Register start="+0x034" size="0x4" name="VSDLY"/>
+      <Register start="+0x038" size="0x4" name="YCCCTL">
+        <BitField size="1" name="R656" start="0" />
+        <BitField size="1" name="FID656" start="1" />
+        <BitField size="2" name="YCP" start="2" />
+        <BitField size="1" name="CHM" start="4" />
+      </Register>
+      <Register start="+0x03C" size="0x4" name="RGBCTL">
+        <BitField size="2" name="RGBOF" start="0" />
+        <BitField size="2" name="RGBEF" start="4" />
+        <BitField size="2" name="DFLTS" start="8" />
+        <BitField size="1" name="DFLTR" start="10" />
+        <BitField size="1" name="IRONM" start="11" />
+        <BitField size="1" name="IR9" start="12" />
+        <BitField size="1" name="IRSWP" start="13" />
+        <BitField size="1" name="RGBLAT" start="15" />
+      </Register>
+      <Register start="+0x040" size="0x4" name="RGBCLP"/>
+      <Register start="+0x044" size="0x4" name="LINECTL"/>
+      <Register start="+0x048" size="0x4" name="CULLLINE"/>
+      <Register start="+0x04C" size="0x4" name="LCDOUT"/>
+      <Register start="+0x050" size="0x4" name="BRT0"/>
+      <Register start="+0x054" size="0x4" name="BRT1"/>
+      <Register start="+0x058" size="0x4" name="ACCTL"/>
+      <Register start="+0x05C" size="0x4" name="PWM0"/>
+      <Register start="+0x060" size="0x4" name="PWM1"/>
+      <Register start="+0x064" size="0x4" name="DCLKCTL"/>
+      <Register start="+0x068" size="0x4" name="DCLKPTN0"/>
+      <Register start="+0x06C" size="0x4" name="DCLKPTN1"/>
+      <Register start="+0x070" size="0x4" name="DCLKPTN2"/>
+      <Register start="+0x074" size="0x4" name="DCLKPTN3"/>
+      <Register start="+0x078" size="0x4" name="DCLKPTN0A"/>
+      <Register start="+0x07C" size="0x4" name="DCLKPTN1A"/>
+      <Register start="+0x080" size="0x4" name="DCLKPTN2A"/>
+      <Register start="+0x084" size="0x4" name="DCLKPTN3A"/>
+      <Register start="+0x088" size="0x4" name="DCLKHSTT"/>
+      <Register start="+0x08C" size="0x4" name="DCLKHSTTA"/>
+      <Register start="+0x090" size="0x4" name="DCLKHVLD"/>
+      <Register start="+0x094" size="0x4" name="DCLKVSTT"/>
+      <Register start="+0x098" size="0x4" name="DCLKVVLD"/>
+      <Register start="+0x09C" size="0x4" name="CAPCTL"/>
+      <Register start="+0x0A0" size="0x4" name="CAPDO"/>
+      <Register start="+0x0A4" size="0x4" name="CAPDE"/>
+      <Register start="+0x0A8" size="0x4" name="ATR0"/>
+      <Register start="+0x0AC" size="0x4" name="ATR1"/>
+      <Register start="+0x0B0" size="0x4" name="ATR2"/>
+      <Register start="+0x0B4" size="0x4" name="RSV0"/>
+      <Register start="+0x0B8" size="0x4" name="VSTAT"/>
+      <Register start="+0x0BC" size="0x4" name="RAMADR"/>
+      <Register start="+0x0C0" size="0x4" name="RAMPORT"/>
+      <Register start="+0x0C4" size="0x4" name="DACTST"/>
+      <Register start="+0x0C8" size="0x4" name="YCOLVL"/>
+      <Register start="+0x0CC" size="0x4" name="SCPROG"/>
+      <Register start="+0x0D0" size="0x4" name="RSV1"/>
+      <Register start="+0x0D4" size="0x4" name="RSV2"/>
+      <Register start="+0x0D8" size="0x4" name="RSV3"/>
+      <Register start="+0x0DC" size="0x4" name="CVBS"/>
+      <Register start="+0x0E0" size="0x4" name="CMPNT"/>
+      <Register start="+0x0E4" size="0x4" name="ETMG0"/>
+      <Register start="+0x0E8" size="0x4" name="ETMG1"/>
+      <Register start="+0x0EC" size="0x4" name="ETMG2"/>
+      <Register start="+0x0F0" size="0x4" name="ETMG3"/>
+      <Register start="+0x0F4" size="0x4" name="DACSEL"/>
+      <Register start="+0x100" size="0x4" name="ARGBX0"/>
+      <Register start="+0x104" size="0x4" name="ARGBX1"/>
+      <Register start="+0x108" size="0x4" name="ARGBX2"/>
+      <Register start="+0x10C" size="0x4" name="ARGBX3"/>
+      <Register start="+0x110" size="0x4" name="ARGBX4"/>
+      <Register start="+0x114" size="0x4" name="DRGBX0"/>
+      <Register start="+0x118" size="0x4" name="DRGBX1"/>
+      <Register start="+0x11C" size="0x4" name="DRGBX2"/>
+      <Register start="+0x120" size="0x4" name="DRGBX3"/>
+      <Register start="+0x124" size="0x4" name="DRGBX4"/>
+      <Register start="+0x128" size="0x4" name="VSTARTA"/>
+      <Register start="+0x12C" size="0x4" name="OSDCLK0"/>
+      <Register start="+0x130" size="0x4" name="OSDCLK1"/>
+      <Register start="+0x134" size="0x4" name="HVLDCL0"/>
+      <Register start="+0x138" size="0x4" name="HVLDCL1"/>
+      <Register start="+0x13C" size="0x4" name="OSDHADV"/>
+      <Register start="+0x140" size="0x4" name="CLKCTL">
+        <BitField size="1" name="CLKENC" start="0" />
+        <BitField size="1" name="CLKDIG" start="4" />
+        <BitField size="1" name="CLKGAM" start="8" />
+      </Register>
+      <Register start="+0x144" size="0x4" name="GAMCTL">
+        <BitField size="1" name="GAMON" start="0"/>
+        <BitField size="1" name="GAMUQ" start="1"/>
+        <BitField size="1" name="DAFUL0" start="4"/>
+        <BitField size="1" name="DAFUL1" start="5"/>
+        <BitField size="1" name="DAFUL2" start="6"/>
+      </Register>
+      <Register start="+0x148" size="0x4" name="VVALIDA"/>
+      <Register start="+0x14C" size="0x4" name="BATR0"/>
+      <Register start="+0x150" size="0x4" name="BATR1"/>
+      <Register start="+0x154" size="0x4" name="BATR2"/>
+      <Register start="+0x158" size="0x4" name="BATR3"/>
+      <Register start="+0x15C" size="0x4" name="BATR4"/>
+      <Register start="+0x160" size="0x4" name="BATR5"/>
+      <Register start="+0x164" size="0x4" name="BATR6"/>
+      <Register start="+0x168" size="0x4" name="BATR7"/>
+      <Register start="+0x16C" size="0x4" name="BATR8"/>
+      <Register start="+0x170" size="0x4" name="DACAMP"/>
+      <Register start="+0x174" size="0x4" name="XHINTVL"/>
+    </RegisterGroup>
+    <RegisterGroup start="0x01CA0000" name="MJCP" />
+    <RegisterGroup start="0x01D00000" name="MMC/SD0" />
+    <RegisterGroup start="0x01D02000" name="McBSP" />
+    <RegisterGroup start="0x01D06000" name="UART1" />
+    <RegisterGroup start="0x01D07000" name="EMAC">
+      <Register start="+0x000" size="0x4" name="TXIDVER">
+        <BitField size="8" name="REVMIN" start="0" />
+        <BitField size="8" name="REVMAJ" start="8" />
+        <BitField size="16" name="TXIDENT" start="16" />
+      </Register>
+      <Register start="+0x004" size="0x4" name="TXCONTROL">
+        <BitField size="1" name="TXEN" start="0" />
+      </Register>
+      <Register start="+0x008" size="0x4" name="TXTEARDOWN">
+        <BitField size="3" name="TXTDNCH" start="0" />
+      </Register>
+      <Register start="+0x010" size="0x4" name="RXIDVER">
+        <BitField size="8" name="REVMIN" start="0" />
+        <BitField size="8" name="REVMAJ" start="8" />
+        <BitField size="16" name="RXIDENT" start="16" />
+      </Register>
+      <Register start="+0x014" size="0x4" name="RXCONTROL">
+        <BitField size="1" name="RXEN" start="0" />
+      </Register>
+      <Register start="+0x018" size="0x4" name="RXTEARDOWN">
+        <BitField size="3" name="RXTDNCH" start="0" />
+      </Register>
+      <Register start="+0x080" size="0x4" name="TXINTSTATRAW">
+        <BitField size="1" name="TX0PEND" start="0" />
+        <BitField size="1" name="TX1PEND" start="1" />
+        <BitField size="1" name="TX2PEND" start="2" />
+        <BitField size="1" name="TX3PEND" start="3" />
+        <BitField size="1" name="TX4PEND" start="4" />
+        <BitField size="1" name="TX5PEND" start="5" />
+        <BitField size="1" name="TX6PEND" start="6" />
+        <BitField size="1" name="TX7PEND" start="7" />
+      </Register>
+      <Register start="+0x084" size="0x4" name="TXINTSTATMASKED">
+        <BitField size="1" name="TX0PEND" start="0" />
+        <BitField size="1" name="TX1PEND" start="1" />
+        <BitField size="1" name="TX2PEND" start="2" />
+        <BitField size="1" name="TX3PEND" start="3" />
+        <BitField size="1" name="TX4PEND" start="4" />
+        <BitField size="1" name="TX5PEND" start="5" />
+        <BitField size="1" name="TX6PEND" start="6" />
+        <BitField size="1" name="TX7PEND" start="7" />
+      </Register>
+      <Register start="+0x088" size="0x4" name="TXINTMASKSET" />
+      <Register start="+0x08C" size="0x4" name="TXINTMASKCLEAR" />
+      <Register start="+0x090" size="0x4" name="MACINVECTOR">
+        <BitField size="8" name="RXPEND" start="0" />
+        <BitField size="8" name="RXTHRESHPEND" start="8" />
+        <BitField size="8" name="TXPEND" start="16" />
+        <BitField size="1" name="USERINT" start="24" />
+        <BitField size="1" name="LINKINT" start="25" />
+        <BitField size="1" name="HOSTPEND" start="26" />
+        <BitField size="1" name="STATPEND" start="27" />
+      </Register>
+      <Register start="+0x094" size="0x4" name="MACEOIVECTOR">
+        <BitField size="2" name="EOI" start="0">
+          <Enum name="RXTHRESH" start="0x0"/>
+          <Enum name="RXPULSE" start="0x1"/>
+          <Enum name="TXPULSE" start="0x2"/>
+          <Enum name="MISC" start="0x3"/>
+        </BitField>
+      </Register>      
+      <Register start="+0x0A0" size="0x4" name="RXINTSTATRAW">
+        <BitField size="1" name="RX0PEND" start="0" />
+        <BitField size="1" name="RX1PEND" start="1" />
+        <BitField size="1" name="RX2PEND" start="2" />
+        <BitField size="1" name="RX3PEND" start="3" />
+        <BitField size="1" name="RX4PEND" start="4" />
+        <BitField size="1" name="RX5PEND" start="5" />
+        <BitField size="1" name="RX6PEND" start="6" />
+        <BitField size="1" name="RX7PEND" start="7" />
+      </Register>
+      <Register start="+0x0A4" size="0x4" name="RXINTSTATMASKED">
+        <BitField size="1" name="RX0PEND" start="0" />
+        <BitField size="1" name="RX1PEND" start="1" />
+        <BitField size="1" name="RX2PEND" start="2" />
+        <BitField size="1" name="RX3PEND" start="3" />
+        <BitField size="1" name="RX4PEND" start="4" />
+        <BitField size="1" name="RX5PEND" start="5" />
+        <BitField size="1" name="RX6PEND" start="6" />
+        <BitField size="1" name="RX7PEND" start="7" />
+      </Register>
+      <Register start="+0x0A8" size="0x4" name="RXINTMASKSET" />
+      <Register start="+0x0AC" size="0x4" name="RXINTMASKCLEAR" />
+      <Register start="+0x0B0" size="0x4" name="MACINTSTATRAW">
+        <BitField size="1" name="STATPEND" start="0" />
+        <BitField size="1" name="HOSTPEND" start="1" />
+      </Register>
+      <Register start="+0x0B4" size="0x4" name="MACINTSTATMASKED">
+        <BitField size="1" name="STATPEND" start="0" />
+        <BitField size="1" name="HOSTPEND" start="1" />
+      </Register>
+      <Register start="+0x0B8" size="0x4" name="MACINTMASKSET" />
+      <Register start="+0x0BC" size="0x4" name="MACINTMASKCLEAR" />
+      <Register start="+0x100" size="0x4" name="RXMBPENABLE">
+        <BitField size="3" name="RXMULTCH" start="0" />
+        <BitField size="1" name="RXMULTEN" start="5" />
+        <BitField size="3" name="RXBROADCH" start="8" />
+        <BitField size="1" name="RXBROADEN" start="13" />
+        <BitField size="3" name="RXPROMCH" start="16" />
+        <BitField size="1" name="RXCAFEN" start="21" />
+        <BitField size="1" name="RXCEFEN" start="22" />
+        <BitField size="1" name="RXCSFEN" start="23" />
+        <BitField size="1" name="RXCMFEN" start="24" />
+        <BitField size="1" name="RXNOCHAIN" start="28" />
+        <BitField size="1" name="RXQOSEN" start="29" />
+        <BitField size="1" name="RXPASSCRC" start="30" />
+      </Register>
+      <Register start="+0x104" size="0x4" name="RXUNICASTSET" />
+      <Register start="+0x108" size="0x4" name="RXUNICASTCLEAR" />
+      <Register start="+0x10C" size="0x4" name="RXMAXLEN">
+        <BitField size="16" name="RXMAXLEN" start="0" />
+      </Register>
+      <Register start="+0x110" size="0x4" name="RXBUFFEROFFSET">
+        <BitField size="16" name="RXBUFFEROFFSET" start="0" />
+      </Register>
+      <Register start="+0x114" size="0x4" name="RXFILTERLOWTHRESH">
+        <BitField size="8" name="RXFILTERTHRESH" start="0" />
+      </Register>
+      <Register start="+0x120" size="0x4" name="RX0FLOWTHRESH">
+        <BitField size="8" name="RX0FLOWTHRESH" start="0" />
+      </Register>
+      <Register start="+0x124" size="0x4" name="RX1FLOWTHRESH">
+        <BitField size="8" name="RX1FLOWTHRESH" start="0" />
+      </Register>
+      <Register start="+0x128" size="0x4" name="RX2FLOWTHRESH">
+        <BitField size="8" name="RX2FLOWTHRESH" start="0" />
+      </Register>
+      <Register start="+0x12C" size="0x4" name="RX3FLOWTHRESH">
+        <BitField size="8" name="RX3FLOWTHRESH" start="0" />
+      </Register>
+      <Register start="+0x130" size="0x4" name="RX4FLOWTHRESH">
+        <BitField size="8" name="RX4FLOWTHRESH" start="0" />
+      </Register>
+      <Register start="+0x134" size="0x4" name="RX5FLOWTHRESH">
+        <BitField size="8" name="RX5FLOWTHRESH" start="0" />
+      </Register>
+      <Register start="+0x138" size="0x4" name="RX6FLOWTHRESH">
+        <BitField size="8" name="RX6FLOWTHRESH" start="0" />
+      </Register>
+      <Register start="+0x13C" size="0x4" name="RX7FLOWTHRESH">
+        <BitField size="8" name="RX7FLOWTHRESH" start="0" />
+      </Register>
+      <Register start="+0x140" size="0x4" name="RX0FREEBUFFER">
+        <BitField size="16" name="RX0FREEBUF" start="0" />
+      </Register>
+      <Register start="+0x144" size="0x4" name="RX1FREEBUFFER">
+        <BitField size="16" name="RX1FREEBUF" start="0" />
+      </Register>
+      <Register start="+0x148" size="0x4" name="RX2FREEBUFFER">
+        <BitField size="16" name="RX2FREEBUF" start="0" />
+      </Register>
+      <Register start="+0x14C" size="0x4" name="RX3FREEBUFFER">
+        <BitField size="16" name="RX3FREEBUF" start="0" />
+      </Register>
+      <Register start="+0x150" size="0x4" name="RX4FREEBUFFER">
+        <BitField size="16" name="RX4FREEBUF" start="0" />
+      </Register>
+      <Register start="+0x154" size="0x4" name="RX5FREEBUFFER">
+        <BitField size="16" name="RX5FREEBUF" start="0" />
+      </Register>
+      <Register start="+0x158" size="0x4" name="RX6FREEBUFFER">
+        <BitField size="16" name="RX6FREEBUF" start="0" />
+      </Register>
+      <Register start="+0x15C" size="0x4" name="RX7FREEBUFFER">
+        <BitField size="16" name="RX7FREEBUF" start="0" />
+      </Register>
+      <Register start="+0x160" size="0x4" name="MACCONTROL">
+        <BitField size="1" name="FULLDUPLEX" start="0" />
+        <BitField size="1" name="LOOPBACK" start="1" />
+        <BitField size="1" name="RXBUFFERFLOWEN" start="3" />
+        <BitField size="1" name="TXFLOWEN" start="4" />
+        <BitField size="1" name="MIIEN" start="5" />
+        <BitField size="1" name="TXPACE" start="6" />
+        <BitField size="1" name="TXPTYPE" start="9" />
+        <BitField size="1" name="CMDIDLE" start="11" />
+        <BitField size="1" name="RXFIFOFLOWEN" start="12" />
+        <BitField size="1" name="RXOWNERSHIP" start="13" />
+        <BitField size="1" name="RXOFFLENBLOCK" start="14" />
+      </Register>
+      <Register start="+0x164" size="0x4" name="MACSTATUS">
+        <BitField size="1" name="TXFLOWACT" start="0" />
+        <BitField size="1" name="RXFLOWACT" start="1" />
+        <BitField size="1" name="RXQOSACT" start="2" />
+        <BitField size="3" name="RXERRCH" start="8" />
+        <BitField size="4" name="RXERRCODE" start="12" />
+        <BitField size="3" name="TXERRCH" start="16" />
+        <BitField size="4" name="TXERRCODE" start="20" />
+        <BitField size="1" name="IDLE" start="31" />
+      </Register>
+      <Register start="+0x168" size="0x4" name="EMCONTROL">
+        <BitField size="1" name="FREE" start="0" />
+        <BitField size="1" name="SOFT" start="1" />
+      </Register>
+      <Register start="+0x16C" size="0x4" name="FIFOCONTROL">
+        <BitField size="5" name="TXCELLTHRESH" start="0" />
+        <BitField size="7" name="RXFIFOFLOWTHRESH" start="16" />
+      </Register>
+      <Register start="+0x170" size="0x4" name="MACCONFIG">
+        <BitField size="8" name="MACCFIG" start="0" />
+        <BitField size="8" name="ADDRESSTYPE" start="8" />
+        <BitField size="8" name="RXCELLDEPTH" start="16" />
+        <BitField size="8" name="TXCELLDEPTH" start="24" />
+      </Register>
+      <Register start="+0x174" size="0x4" name="SOFTRESET">
+         <BitField size="1" name="SOFTRESET" start="0" />
+      </Register>
+      <Register start="+0x1D0" size="0x4" name="MACSRCADDRLO">
+        <BitField size="8" name="MACSRCADDR0" start="8" />
+        <BitField size="8" name="MACSRCADDR1" start="0" />
+      </Register>
+      <Register start="+0x1D4" size="0x4" name="MACSRCADDRHI">
+        <BitField size="8" name="MACSRCADDR2" start="24" />
+        <BitField size="8" name="MACSRCADDR3" start="16" />
+        <BitField size="8" name="MACSRCADDR4" start="8" />
+        <BitField size="8" name="MACSRCADDR5" start="0" />
+      </Register>
+      <Register start="+0x1D8" size="0x4" name="MACHASH1" />
+      <Register start="+0x1DC" size="0x4" name="MACHASH2" />
+      <Register start="+0x1E0" size="0x4" name="BOFFTEST">
+        <BitField size="10" name="TXBACKOFF" start="0" />
+        <BitField size="4" name="COLLCOUNT" start="12" />
+        <BitField size="10" name="RNDNUM" start="16" />
+      </Register>
+      <Register start="+0x1E4" size="0x4" name="TPACETEST">
+        <BitField size="5" name="PACEVAL" start="0" />
+      </Register>
+      <Register start="+0x1E8" size="0x4" name="RXPAUSE">
+        <BitField size="16" name="PAUSETIMER" start="0" />
+      </Register>
+      <Register start="+0x1EC" size="0x4" name="TXPAUSE">
+        <BitField size="16" name="PAUSETIMER" start="0" />
+      </Register>
+      <Register start="+0x500" size="0x4" name="MACADDRLO">
+        <BitField size="8" name="MACADDR0" start="8" />
+        <BitField size="8" name="MACADDR1" start="0" />
+        <BitField size="3" name="CHANNEL" start="16" />
+        <BitField size="1" name="MATCHFILTER" start="19" />
+        <BitField size="20" name="VALID" start="20" />
+      </Register>
+      <Register start="+0x504" size="0x4" name="MACADDRHI">
+        <BitField size="8" name="MACADDR2" start="24" />
+        <BitField size="8" name="MACADDR3" start="16" />
+        <BitField size="8" name="MACADDR4" start="8" />
+        <BitField size="8" name="MACADDR5" start="0" />
+      </Register>
+      <Register start="+0x508" size="0x4" name="MACINDEX">
+        <BitField size="3" name="MACINDEX" start="0" />
+      </Register>
+      <Register start="+0x600" size="0x4" name="TX0HDP" />
+      <Register start="+0x604" size="0x4" name="TX1HDP" />
+      <Register start="+0x608" size="0x4" name="TX2HDP" />
+      <Register start="+0x60C" size="0x4" name="TX3HDP" />
+      <Register start="+0x610" size="0x4" name="TX4HDP" />
+      <Register start="+0x614" size="0x4" name="TX5HDP" />
+      <Register start="+0x618" size="0x4" name="TX6HDP" />
+      <Register start="+0x61C" size="0x4" name="TX7HDP" />
+      <Register start="+0x620" size="0x4" name="RX0HDP" />
+      <Register start="+0x624" size="0x4" name="RX1HDP" />
+      <Register start="+0x628" size="0x4" name="RX2HDP" />
+      <Register start="+0x62C" size="0x4" name="RX3HDP" />
+      <Register start="+0x630" size="0x4" name="RX4HDP" />
+      <Register start="+0x634" size="0x4" name="RX5HDP" />
+      <Register start="+0x638" size="0x4" name="RX6HDP" />
+      <Register start="+0x63C" size="0x4" name="RX7HDP" />
+      <Register start="+0x640" size="0x4" name="TX0CP" />
+      <Register start="+0x644" size="0x4" name="TX1CP" />
+      <Register start="+0x648" size="0x4" name="TX2CP" />
+      <Register start="+0x64C" size="0x4" name="TX3CP" />
+      <Register start="+0x650" size="0x4" name="TX4CP" />
+      <Register start="+0x654" size="0x4" name="TX5CP" />
+      <Register start="+0x658" size="0x4" name="TX6CP" />
+      <Register start="+0x65C" size="0x4" name="TX7CP" />
+      <Register start="+0x660" size="0x4" name="RX0CP" />
+      <Register start="+0x664" size="0x4" name="RX1CP" />
+      <Register start="+0x668" size="0x4" name="RX2CP" />
+      <Register start="+0x66C" size="0x4" name="RX3CP" />
+      <Register start="+0x670" size="0x4" name="RX4CP" />
+      <Register start="+0x674" size="0x4" name="RX5CP" />
+      <Register start="+0x678" size="0x4" name="RX6CP" />
+      <Register start="+0x67C" size="0x4" name="RX7CP" />
+    </RegisterGroup>
+    <RegisterGroup start="0x01D07000" name="EMAC Stats">
+      <Register start="+0x200" size="0x4" name="RXGOODFRAMES" />
+      <Register start="+0x204" size="0x4" name="RXBCASTFRAMES" />
+      <Register start="+0x208" size="0x4" name="RXMCASTFRAMES" />
+      <Register start="+0x20C" size="0x4" name="RXPAUSEFRAMES" />
+      <Register start="+0x210" size="0x4" name="RXCRCERRORS" />
+      <Register start="+0x214" size="0x4" name="RXALIGNCODEERRORS" />
+      <Register start="+0x218" size="0x4" name="RXOVERSIZED" />
+      <Register start="+0x21C" size="0x4" name="RXJABBER" />
+      <Register start="+0x220" size="0x4" name="RXUNDERSIZED" />
+      <Register start="+0x224" size="0x4" name="RXFRAGMENTS" />
+      <Register start="+0x228" size="0x4" name="RXFILTERED" />
+      <Register start="+0x22C" size="0x4" name="RXQOSFILTERED" />
+      <Register start="+0x230" size="0x4" name="RXOCTETS" />
+      <Register start="+0x234" size="0x4" name="TXGOODFRAMES" />
+      <Register start="+0x238" size="0x4" name="TXBCASTFRAMES" />
+      <Register start="+0x23C" size="0x4" name="TXMCASTFRAMES" />
+      <Register start="+0x240" size="0x4" name="TXPAUSEFRAMES" />
+      <Register start="+0x244" size="0x4" name="TXDEFERRED" />
+      <Register start="+0x248" size="0x4" name="TXCOLLISION" />
+      <Register start="+0x24C" size="0x4" name="TXSINGLECOLL" />
+      <Register start="+0x250" size="0x4" name="TXMULTICOLL" />
+      <Register start="+0x254" size="0x4" name="TXEXCESSIVECOLL" />
+      <Register start="+0x258" size="0x4" name="TXLATECOLL" />
+      <Register start="+0x25C" size="0x4" name="TXUNDERRUN" />
+      <Register start="+0x260" size="0x4" name="TXCARRIERSENSE" />
+      <Register start="+0x264" size="0x4" name="TXOCTETS" />
+      <Register start="+0x268" size="0x4" name="FRAME64" />
+      <Register start="+0x26C" size="0x4" name="FRAME65T127" />
+      <Register start="+0x270" size="0x4" name="FRAME128T255" />
+      <Register start="+0x274" size="0x4" name="FRAME256T511" />
+      <Register start="+0x278" size="0x4" name="FRAME512T1023" />
+      <Register start="+0x27C" size="0x4" name="FRAME1024TUP" />
+      <Register start="+0x280" size="0x4" name="NETOCTETS" />
+      <Register start="+0x284" size="0x4" name="RXSOFOVERRUNS" />
+      <Register start="+0x288" size="0x4" name="RXMOFOVERRUNS" />
+      <Register start="+0x28C" size="0x4" name="RXDMAOVERRUNS" />
+    </RegisterGroup>
+    <RegisterGroup start="0x01D0A000" name="EMAC Control">
+      <Register start="+0x00" size="0x4" name="CMIDVER">
+        <BitField size="8" name="EWMINORVER" start="0" />
+        <BitField size="3" name="EWMAJORVER" start="8" />
+        <BitField size="5" name="EWMINORVER" start="11" />
+        <BitField size="16" name="EWIDENT" start="16" />
+      </Register>
+      <Register start="+0x04" size="0x4" name="SOFTRESET">
+        <BitField size="1" name="SOFTRESET" start="0" />
+      </Register>
+      <Register start="+0x08" size="0x4" name="CMEMCONTROL">
+        <BitField size="1" name="FREE" start="0" />
+        <BitField size="1" name="SOFT" start="1" />
+      </Register>
+      <Register start="+0x0C" size="0x4" name="CMINTCTRL">
+        <BitField size="12" name="INTPRESCALE" start="0" />
+        <BitField size="1" name="INTPACERX" start="16" />
+        <BitField size="1" name="INTPACETX" start="17" />
+        <BitField size="1" name="Reserved" start="31" />
+      </Register>    
+      <Register start="+0x10" size="0x4" name="CMRXTHRESHINTEN">
+        <BitField size="8" name="RXTHRESHEN" start="0" />
+      </Register>    
+      <Register start="+0x14" size="0x4" name="CMRXINTEN">
+        <BitField size="8" name="RXPULSEEN" start="0" />      
+      </Register>
+      <Register start="+0x18" size="0x4" name="CMTXINTEN">
+        <BitField size="8" name="TXPULSEEN" start="0" />      
+      </Register>
+      <Register start="+0x1C" size="0x4" name="CMMISCINTEN">
+        <BitField size="1" name="USERINTEN" start="0" />
+        <BitField size="1" name="LINKINTEN" start="1" />
+        <BitField size="1" name="HOSTPENDINTEN" start="2" />
+        <BitField size="1" name="STATPENDINTEN" start="3" />
+      </Register>
+      <Register start="+0x40" size="0x4" name="CMRXTHRESHINTSTAT">
+        <BitField size="8" name="RXTHRESHINTSTAT" start="0" />
+      </Register>
+      <Register start="+0x44" size="0x4" name="CMRXINTSTAT">
+        <BitField size="8" name="RXPULSEINTSTAT" start="0" />
+      </Register>    
+      <Register start="+0x48" size="0x4" name="CMTXINTSTAT">
+        <BitField size="8" name="TXPULSEINTSTAT" start="0" />      
+      </Register>    
+      <Register start="+0x4C" size="0x4" name="CMMISCINTSTAT">
+        <BitField size="1" name="USERINTSTAT" start="0" />
+        <BitField size="1" name="LINKINTSTAT" start="1" />
+        <BitField size="1" name="HOSTPENDINTSTAT" start="2" />
+        <BitField size="1" name="STATPENDINTSTAT" start="3" />
+      </Register>
+      <Register start="+0x70" size="0x4" name="CMRXINTMAX">
+        <BitField size="6" name="RXIMAX" start="0" />
+      </Register>
+      <Register start="+0x74" size="0x4" name="CMTXINTMAX">
+        <BitField size="6" name="TXIMAX" start="0" />
+      </Register>
+    </RegisterGroup>
+    <RegisterGroup start="0x01D0B000" name="EMAC MDIO">
+      <Register start="+0x00" size="0x4" name="CMIDVER">
+        <BitField size="8" name="REVMIN" start="0" />
+        <BitField size="8" name="REVMAJ" start="8" />
+        <BitField size="16" name="MODID" start="16" />
+      </Register>
+      <Register start="+0x04" size="0x4" name="CONTROL">
+        <BitField size="16" name="CLKDIV" start="0" />
+        <BitField size="1" name="FAULTENB" start="18" />
+        <BitField size="1" name="FAULT" start="19" />
+        <BitField size="1" name="PREAMBLE" start="20" />
+        <BitField size="5" name="HIGHEST_USER_CHANNEL" start="24" access="ReadOnly" />
+        <BitField size="1" name="ENABLE" start="30" />
+        <BitField size="1" name="IDLE" start="31" access="ReadOnly" />
+      </Register>
+      <Register start="+0x08" size="0x4" name="ALIVE" />
+      <Register start="+0x0C" size="0x4" name="LINK" access="ReadOnly" />
+      <Register start="+0x10" size="0x4" name="LINKINTRAW">
+        <BitField size="1" name="USERPHYSEL0" start="0" />
+        <BitField size="1" name="USERPHYSEL1" start="1" />
+      </Register>
+      <Register start="+0x14" size="0x4" name="LINKINTMASKED">
+        <BitField size="1" name="USERPHYSEL0" start="0" />
+        <BitField size="1" name="USERPHYSEL1" start="1" />
+      </Register>
+      <Register start="+0x20" size="0x4" name="USERINTRAW">
+        <BitField size="1" name="USERACCESS0" start="0" />
+        <BitField size="1" name="USERACCESS1" start="1" />
+      </Register>
+      <Register start="+0x24" size="0x4" name="USERINTMASKED">
+        <BitField size="1" name="USERACCESS0" start="0" />
+        <BitField size="1" name="USERACCESS1" start="1" />
+      </Register>
+      <Register start="+0x28" size="0x4" name="USERINTMASKSET">
+        <BitField size="1" name="USERACCESS0" start="0" />
+        <BitField size="1" name="USERACCESS1" start="1" />
+      </Register>
+      <Register start="+0x2C" size="0x4" name="USERINTMASKCLEAR">
+        <BitField size="1" name="USERACCESS0" start="0" />
+        <BitField size="1" name="USERACCESS1" start="1" />
+      </Register>
+      <Register start="+0x80" size="0x4" name="USERACCESS0">
+        <BitField size="16" name="DATA" start="0" />
+        <BitField size="5" name="PHYADR" start="16" />
+        <BitField size="5" name="REGADR" start="21" />
+        <BitField size="1" name="ACK" start="29" />
+        <BitField size="1" name="WRITE" start="30" />
+        <BitField size="1" name="GO" start="31" />
+      </Register>
+      <Register start="+0x84" size="0x4" name="USERPHYSEL0">
+        <BitField size="5" name="PHYADRMON" start="0" />
+        <BitField size="1" name="LINKINTENB" start="6" />
+        <BitField size="1" name="LINKSEL" start="7" />      
+      </Register>
+      <Register start="+0x88" size="0x4" name="USERACCESS1">
+        <BitField size="16" name="DATA" start="0" />
+        <BitField size="5" name="PHYADR" start="16" />
+        <BitField size="5" name="REGADR" start="21" />
+        <BitField size="1" name="ACK" start="29" />
+        <BitField size="1" name="WRITE" start="30" />
+        <BitField size="1" name="GO" start="31" />
+      </Register>
+      <Register start="+0x8C" size="0x4" name="USERPHYSEL1">
+        <BitField size="5" name="PHYADRMON" start="0" />
+        <BitField size="1" name="LINKINTENB" start="6" />
+        <BitField size="1" name="LINKSEL" start="7" />      
+      </Register>
+    </RegisterGroup>
+    <RegisterGroup start="0x01D0C000" name="VoiceCodec" />
+    <RegisterGroup start="0x01D10000" name="ASYNC EMIF" />
+    <RegisterGroup start="0x01D11000" name="MMC/SD0" />
+    <RegisterGroup start="0x01E00000" name="HDVICP" />
+  </MemorySegment>
+  <MemorySegment start="0x01D08000" size="0x2000" access="Read/Write" name="EMAC RAM" />
+  <MemorySegment start="0x20000000" size="0x8000" access="Read/Write" name="DDR2 EMIF Control">
+    <RegisterGroup start="0x20000000" name="DDR2 EMIF Control">
+      <Register start="+0x04" size="0x4" name="SDRSTAT">
+        <BitField size="1" name="PHYRDY" start="2"/>
+      </Register>
+      <Register start="+0x08" size="0x4" name="SDCR">
+        <BitField size="3" name="PAGESIZE" start="0"/>
+        <BitField size="3" name="IBANK" start="4"/>
+        <BitField size="3" name="CL" start="9"/>
+        <BitField size="1" name="NM" start="14"/>
+        <BitField size="1" name="TIMUNLOCK" start="15"/>
+        <BitField size="1" name="SDRAMEN" start="16"/>
+        <BitField size="1" name="DDREN" start="17"/>
+        <BitField size="1" name="DDRDRIVE0" start="18"/>
+        <BitField size="1" name="DDR2EN" start="20"/>
+        <BitField size="1" name="DDR_DDQS" start="22"/>
+        <BitField size="1" name="BOOTUNLOCK" start="23"/>
+        <BitField size="1" name="DDRDRIVE1" start="24"/>
+        <BitField size="1" name="MSDRAMEN" start="25"/>
+        <BitField size="1" name="IBANKPOS" start="26"/>
+      </Register>
+      <Register start="+0x0C" size="0x4" name="SDRCR">
+        <BitField size="16" name="RR" start="0"/>
+        <BitField size="1" name="SR_PD" start="23"/>
+        <BitField size="1" name="MCLKSTOPEN" start="30"/>
+        <BitField size="1" name="LPMODEN" start="31"/>
+      </Register>      
+      <Register start="+0x10" size="0x4" name="SDTIMR">
+        <BitField size="2" name="T_WTR" start="0"/>
+        <BitField size="3" name="T_RRD" start="3"/>
+        <BitField size="5" name="T_RC" start="6"/>
+        <BitField size="5" name="T_RAS" start="11"/>
+        <BitField size="3" name="T_WR" start="16"/>
+        <BitField size="3" name="T_RCD" start="19"/>
+        <BitField size="3" name="T_RP" start="22"/>
+        <BitField size="7" name="T_RFC" start="25"/>        
+      </Register>      
+      <Register start="+0x14" size="0x4" name="SDTIMR2">
+        <BitField size="5" name="T_CKE" start="0"/>
+        <BitField size="3" name="T_RTP" start="5"/>
+        <BitField size="8" name="T_XSRD" start="8"/>
+        <BitField size="7" name="T_XSNR" start="16"/>
+        <BitField size="2" name="T_XP" start="25"/>
+        <BitField size="4" name="T_RASMAX" start="27"/>
+      </Register>      
+      <Register start="+0x1C" size="0x4" name="SDCR2">
+        <BitField size="3" name="ROWSIZE" start="0"/>
+        <BitField size="3" name="PASR" start="16"/>
+      </Register>      
+      <Register start="+0x20" size="0x4" name="PBBPR">
+        <BitField size="8" name="PR_OLD_COUNT" start="0"/>
+      </Register>      
+      <Register start="+0xC0" size="0x4" name="IRR">
+        <BitField size="1" name="LT" start="2"/>
+      </Register>      
+      <Register start="+0xC4" size="0x4" name="IMR">
+        <BitField size="1" name="LTM" start="2"/>
+      </Register>      
+      <Register start="+0xC8" size="0x4" name="IMSR">
+        <BitField size="1" name="LTMSET" start="2"/>
+      </Register>      
+      <Register start="+0xCC" size="0x4" name="IMCR">
+        <BitField size="1" name="LTMCLR" start="2"/>
+      </Register>      
+      <Register start="+0xE4" size="0x4" name="DDRPHYCR1">
+        <BitField size="3" name="READ_LATENCY" start="0"/>
+        <BitField size="1" name="CONFIG_PWR_DNEN" start="6"/>
+        <BitField size="1" name="CONFIG_EXT_STRBEN" start="7"/>
+      </Register>  
+    </RegisterGroup>
+  </MemorySegment>
+  <MemorySegment start="0x80000000" size="0x10000000" access="Read/Write" name="SDRAM" />
+</Root>
