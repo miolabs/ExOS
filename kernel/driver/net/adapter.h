@@ -35,8 +35,8 @@ typedef struct
 {
 	node_t Node;
 	const NET_DRIVER *Driver;
-	EXOS_MUTEX InputLock;
-	EXOS_MUTEX OutputLock;
+	mutex_t InputLock;
+	mutex_t OutputLock;
 	HW_ADDR MAC;
 	unsigned short Speed;
 	IP_ADDR IP;

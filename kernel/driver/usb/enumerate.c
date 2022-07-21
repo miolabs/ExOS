@@ -1,23 +1,24 @@
 #include "enumerate.h"
+#include <kernel/verbose.h>
 
-
-USB_ENDPOINT_DESCRIPTOR *usb_enumerate_find_endpoint_descriptor(USB_CONFIGURATION_DESCRIPTOR *conf_desc, USB_INTERFACE_DESCRIPTOR *if_desc, 
-	USB_TRANSFERTYPE ep_type, USB_DIRECTION ep_dir, int index)
+usb_endpoint_descriptor_t *usb_enumerate_find_endpoint_descriptor(usb_configuration_descriptor_t *conf_desc, usb_interface_descriptor_t *if_desc, 
+	usb_transfer_type_t ep_type, usb_direction_t ep_dir, int index)
 {
 	void *buffer = (void *)if_desc + if_desc->Header.Length;
 	void *end = (void *)conf_desc + USB16TOH(conf_desc->TotalLength);
 	
-	USB_ENDPOINT_DESCRIPTOR *ep_desc = NULL;
+	usb_endpoint_descriptor_t *ep_desc = nullptr;
 	if (buffer > (void *)conf_desc)
 	{
 		while (buffer < end)
 		{
-			USB_DESCRIPTOR_HEADER *desc = (USB_DESCRIPTOR_HEADER *)buffer;
-			//if (desc->DescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE) break;
+			usb_descriptor_header_t *desc = (usb_descriptor_header_t *)buffer;
+			if (desc->DescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE) 
+				break;
 			if (desc->DescriptorType == USB_DESCRIPTOR_TYPE_ENDPOINT)
 			{
-				ep_desc = (USB_ENDPOINT_DESCRIPTOR *)desc;
-				USB_DIRECTION dir = ep_desc->AddressBits.Input ?
+				ep_desc = (usb_endpoint_descriptor_t *)desc;
+				usb_direction_t dir = ep_desc->AddressBits.Input ?
 					USB_DEVICE_TO_HOST : USB_HOST_TO_DEVICE;
 				if (ep_desc->AttributesBits.TransferType == ep_type &&
 					dir == ep_dir)
@@ -29,22 +30,23 @@ USB_ENDPOINT_DESCRIPTOR *usb_enumerate_find_endpoint_descriptor(USB_CONFIGURATIO
 			buffer += desc->Length;
 		}
 	}
-	return NULL;
+	return nullptr;
 }
 
-USB_DESCRIPTOR_HEADER *usb_enumerate_find_class_descriptor(USB_CONFIGURATION_DESCRIPTOR *conf_desc, USB_INTERFACE_DESCRIPTOR *if_desc,
+usb_descriptor_header_t *usb_enumerate_find_class_descriptor(usb_configuration_descriptor_t *conf_desc, usb_interface_descriptor_t *if_desc,
 	unsigned char descriptor_type, unsigned char index)
 {
 	void *buffer = (void *)if_desc + if_desc->Header.Length;
 	void *end = (void *)conf_desc + USB16TOH(conf_desc->TotalLength);
 	
-	USB_ENDPOINT_DESCRIPTOR *ep_desc = NULL;
+	usb_endpoint_descriptor_t *ep_desc = nullptr;
 	if (buffer > (void *)conf_desc)
 	{
 		while (buffer < end)
 		{
-			USB_DESCRIPTOR_HEADER *desc = (USB_DESCRIPTOR_HEADER *)buffer;
-			if (desc->DescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE) break;
+			usb_descriptor_header_t *desc = (usb_descriptor_header_t *)buffer;
+			if (desc->DescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE) 
+				break;
 			if (desc->DescriptorType == descriptor_type)
 			{
 				if (index != 0) index--;	// skip coincidence
@@ -53,53 +55,56 @@ USB_DESCRIPTOR_HEADER *usb_enumerate_find_class_descriptor(USB_CONFIGURATION_DES
 			buffer += desc->Length;
 		}
 	}
-	return NULL;
+	return nullptr;
 }
 
-static int _check_interface(USB_HOST_FUNCTION_DRIVER *driver, void *arg)
+static bool _check_interface(usb_host_function_driver_t *driver, void *arg)
 {
-	USB_HOST_ENUM_DATA *enum_data = (USB_HOST_ENUM_DATA *)arg;
-	USB_HOST_DEVICE *device = enum_data->Device;
+	usb_host_enum_data_t *enum_data = (usb_host_enum_data_t *)arg;
+	usb_host_device_t *device = enum_data->Device;
 
-	USB_HOST_FUNCTION *func = driver->CheckInterface(device, enum_data->ConfDesc, enum_data->FnDesc);
-	if (func != NULL) 
+	usb_host_function_t *func = driver->CheckInterface(device, enum_data->ConfDesc, enum_data->FnDesc);
+	if (func != nullptr) 
 	{
 		enum_data->Function = func;
-		return 1;
+		return true;
 	}
-    usb_enumerate_orphan_callback(enum_data);
-	return 0;
+	return false;
 }
 
-static int _set_configuration(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTOR *conf_desc)
+static bool _set_configuration(usb_host_device_t *device, usb_configuration_descriptor_t *conf_desc)
 {
-	USB_REQUEST req = (USB_REQUEST) {
+	usb_request_t req = (usb_request_t) {
 		.RequestType = USB_REQTYPE_HOST_TO_DEVICE | USB_REQTYPE_RECIPIENT_DEVICE,
 		.RequestCode = USB_REQUEST_SET_CONFIGURATION,
 		.Value = conf_desc->ConfigurationValue, .Index = 0, .Length = 0 };
-	return usb_host_ctrl_setup(device, &req, NULL, 0);
+	return usb_host_ctrl_setup(device, &req, nullptr, 0);
 }
 
-static int _enum_interfaces(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTOR *conf_desc)
+static unsigned _enum_interfaces(usb_host_device_t *device, usb_configuration_descriptor_t *conf_desc)
 {
 	void *buffer = (void *)conf_desc;
-	int offset = conf_desc->Header.Length;	// skip itself conf. descriptor
-	int done = 0;
+	unsigned offset = conf_desc->Header.Length;	// NOTE: skip configuration descriptor
+	unsigned done = 0;
 	while (offset < USB16TOH(conf_desc->TotalLength))
 	{
-		USB_DESCRIPTOR_HEADER *fn_desc = (USB_DESCRIPTOR_HEADER *)(buffer + offset);
-		USB_HOST_ENUM_DATA enum_data = (USB_HOST_ENUM_DATA) {
-			.Device = (USB_HOST_DEVICE *)device, .ConfDesc = conf_desc, .FnDesc = fn_desc };
+		usb_descriptor_header_t *fn_desc = (usb_descriptor_header_t *)(buffer + offset);
+		usb_host_enum_data_t enum_data = (usb_host_enum_data_t) {
+			.Device = device, .ConfDesc = conf_desc, .FnDesc = fn_desc };
 	
-		int found_driver = 0;
+		bool found_driver = false;
 		if (fn_desc->DescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE)
 		{
-			USB_INTERFACE_DESCRIPTOR *if_desc = (USB_INTERFACE_DESCRIPTOR *)fn_desc;
+			usb_interface_descriptor_t *if_desc = (usb_interface_descriptor_t *)fn_desc;
+			verbose(VERBOSE_DEBUG, "usbh-enum", "checking conf #%d, interface #%d...", 
+				conf_desc->ConfigurationIndex, if_desc->InterfaceNumber);
 			found_driver = usb_host_driver_enumerate(_check_interface, &enum_data);
 		}
 		else if (fn_desc->DescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE_ASSOCIATION)
 		{
-			USB_INTERFACE_ASSOCIATION_DESCRIPTOR *iad_desc = (USB_INTERFACE_ASSOCIATION_DESCRIPTOR *)fn_desc;
+			usb_if_association_descriptor_t *iad_desc = (usb_if_association_descriptor_t *)fn_desc;
+			verbose(VERBOSE_DEBUG, "usbh-enum", "checking conf #%d, if asoc #%d(%d)...", 
+				conf_desc->ConfigurationIndex, iad_desc->FirstInterface, iad_desc->InterfaceCount);
 			found_driver = usb_host_driver_enumerate(_check_interface, &enum_data);
 		}
 
@@ -108,12 +113,16 @@ static int _enum_interfaces(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTO
 			if (done == 0)
 			{
 				if (!_set_configuration(device, conf_desc))
+				{
+					verbose(VERBOSE_DEBUG, "usbh-enum", "set configuration #%d failed!", conf_desc->ConfigurationIndex);
 					break;
+				}
 			}
-			USB_HOST_FUNCTION *func = enum_data.Function;
-			const USB_HOST_FUNCTION_DRIVER *driver = func->Driver;
+
+			usb_host_function_t *func = enum_data.Function;
+			const usb_host_function_driver_t *driver = func->Driver;
 			driver->Start(func);
-			list_add_tail(&device->Functions, (EXOS_NODE *)func); 
+			list_add_tail(&device->Functions, &func->Node); 
 			done++;
 		}
 
@@ -125,41 +134,45 @@ static int _enum_interfaces(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTO
 #define USB_ENUM_BUFFER_SIZE 2048
 static unsigned char _buffer[USB_ENUM_BUFFER_SIZE] __usb;
 
-static int _parse_configuration(USB_HOST_DEVICE *device, int conf_index)
+static bool _parse_configuration(usb_host_device_t *device, unsigned char conf_index)
 {
-	int done = usb_host_read_device_descriptor(device, USB_DESCRIPTOR_TYPE_CONFIGURATION, conf_index,
-		_buffer, sizeof(USB_CONFIGURATION_DESCRIPTOR));
+	bool done = usb_host_read_device_descriptor(device, USB_DESCRIPTOR_TYPE_CONFIGURATION, conf_index,
+		_buffer, sizeof(usb_configuration_descriptor_t));
 	if (done)
 	{
-		USB_CONFIGURATION_DESCRIPTOR *conf_desc = (USB_CONFIGURATION_DESCRIPTOR *)_buffer;
+		usb_configuration_descriptor_t *conf_desc = (usb_configuration_descriptor_t *)_buffer;
 		
-		int total_length = USB16TOH(conf_desc->TotalLength);
+		unsigned total_length = USB16TOH(conf_desc->TotalLength);
 		if (total_length <= USB_ENUM_BUFFER_SIZE) 
 		{
 			done = usb_host_read_device_descriptor(device, USB_DESCRIPTOR_TYPE_CONFIGURATION, conf_index,
 				_buffer, total_length);
 			if (done)
 			{
-				done = _enum_interfaces(device, conf_desc);
+				done = (_enum_interfaces(device, conf_desc) != 0);
 			}
+			else verbose(VERBOSE_DEBUG, "usbh-enum", "cannot read conf #%d descriptor (full)", conf_index); 
 		}
+		else verbose(VERBOSE_DEBUG, "usbh-enum", "conf #%d descriptor is too big!", conf_index);
 	}
+	else verbose(VERBOSE_DEBUG, "usbh-enum", "cannot read conf #%d descriptor (short)", conf_index);
+	
 	return done;
 }
 
-int usb_host_enumerate(USB_HOST_DEVICE *device, USB_DEVICE_DESCRIPTOR *dev_desc)
+bool usb_host_enumerate(usb_host_device_t *device, usb_device_descriptor_t *dev_desc)
 {
 	// extract device data
 	device->Vendor = USB16TOH(dev_desc->VendorId);
 	device->Product = USB16TOH(dev_desc->ProductId);
 
-	int done = 0;
-	int num_configs = dev_desc->NumConfigurations;
-	for (int conf = 0; conf < num_configs; conf++)
+	bool done = false;
+	unsigned char num_configs = dev_desc->NumConfigurations;
+	for (unsigned char conf = 0; conf < num_configs; conf++)
 	{
 		if (_parse_configuration(device, conf))
 		{
-			done = 1;
+			done = true;
 			break;
 		}
 	}

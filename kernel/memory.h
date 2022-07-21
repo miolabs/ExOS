@@ -19,7 +19,7 @@ typedef struct
 	EXOS_MEM_FLAGS Flags;
 	void *StartAddress;
 	unsigned long Size;
-	EXOS_MUTEX FreeListMutex;
+	mutex_t FreeListMutex;
 	list_t FreeList;
 } EXOS_MEM_REGION;
 

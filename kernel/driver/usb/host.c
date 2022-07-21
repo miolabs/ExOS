@@ -1,41 +1,60 @@
 #include "host.h"
-#include <support/usb/host_hal.h>
 #include <kernel/mutex.h>
+#include <support/services/init.h>
 #include <kernel/panic.h>
 
-static EXOS_LIST _drivers;
-static EXOS_MUTEX _drivers_lock;
+static void _register();
+EXOS_INITIALIZER(_init, EXOS_INIT_HW_DRIVER, _register);
 
-int usb_host_initialize()
-{	
+static list_t _drivers;
+static mutex_t _drivers_lock;
+
+static void _register()
+{
 	list_initialize(&_drivers);
 	exos_mutex_create(&_drivers_lock);
-	usb_host_add_drivers();
-
-	hal_usb_host_initialize();
-	return 1;
 }
 
-void usb_host_driver_register(USB_HOST_FUNCTION_DRIVER_NODE *driver_node)
+void usb_host_controller_create(usb_host_controller_t *hc, const usb_host_controller_driver_t *driver, usb_host_device_t *devices, unsigned port_count)
 {
+	ASSERT(hc != nullptr && driver != nullptr, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(devices != nullptr, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(port_count != 0, KERNEL_ERROR_KERNEL_PANIC);
+	*hc = (usb_host_controller_t) {
+		.Driver = driver,
+		.RootHubPorts = port_count,
+		.Devices = devices };
+	exos_event_create(&hc->SOF);
+	exos_event_create(&hc->RootHubEvent);
+}
+
+void usb_host_wait_sof(usb_host_controller_t *hc)
+{
+	ASSERT(hc != nullptr, KERNEL_ERROR_NULL_POINTER);
+	exos_event_wait(&hc->SOF, EXOS_TIMEOUT_NEVER);
+}
+
+void usb_host_driver_register(usb_host_function_driver_node_t *driver_node)
+{
+	ASSERT(driver_node != nullptr, KERNEL_ERROR_NULL_POINTER);
 	exos_mutex_lock(&_drivers_lock);
 
-	if (driver_node == NULL || driver_node->Driver == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-	if (list_find_node(&_drivers, (EXOS_NODE *)driver_node))
+	ASSERT(driver_node != nullptr && driver_node->Driver != nullptr, KERNEL_ERROR_NULL_POINTER);
+	if (list_find_node(&_drivers, &driver_node->Node))
 		kernel_panic(KERNEL_ERROR_LIST_ALREADY_CONTAINS_NODE);
 
-	list_add_tail(&_drivers, (EXOS_NODE *)driver_node);
+	list_add_tail(&_drivers, &driver_node->Node);
 	exos_mutex_unlock(&_drivers_lock);
 }
 
-int usb_host_driver_enumerate(USB_HOST_DRIVER_ENUMERATE_CALLBACK callback, void *arg)
+bool usb_host_driver_enumerate(usb_host_driver_enumerate_callback_t callback, void *arg)
 {
+	ASSERT(callback != nullptr, KERNEL_ERROR_NULL_POINTER);
 	exos_mutex_lock(&_drivers_lock);
-	int done = 0;
+	bool done = 0;
 	FOREACH(node, &_drivers)
 	{
-		USB_HOST_FUNCTION_DRIVER_NODE *driver_node = (USB_HOST_FUNCTION_DRIVER_NODE *)node;
+		usb_host_function_driver_node_t *driver_node = (usb_host_function_driver_node_t *)node;
 		done = callback(driver_node->Driver, arg);
 		if (done) break;
 	}
@@ -43,9 +62,10 @@ int usb_host_driver_enumerate(USB_HOST_DRIVER_ENUMERATE_CALLBACK callback, void 
 	return done;
 }
 
-void usb_host_create_device(USB_HOST_DEVICE *device, USB_HOST_CONTROLLER_DRIVER *hcd, int port, USB_HOST_DEVICE_SPEED speed)
+static void _create_device(usb_host_device_t *device, usb_host_controller_t *hc, unsigned port, usb_host_device_speed_t speed)
 {
-	device->Controller = hcd;
+	ASSERT(device != nullptr && hc != nullptr, KERNEL_ERROR_NULL_POINTER);
+	device->Controller = hc;
 	list_initialize(&device->Functions);
 	exos_mutex_create(&device->ControlMutex);
 
@@ -57,41 +77,80 @@ void usb_host_create_device(USB_HOST_DEVICE *device, USB_HOST_CONTROLLER_DRIVER 
 	device->State = USB_HOST_DEVICE_CREATED;
 
 	// setup control pipe with initial 8 byte max transfer size
-	USB_HOST_PIPE *pipe = &device->ControlPipe;
-	*pipe = (USB_HOST_PIPE) { .Device = device, .EndpointType = USB_TT_CONTROL, .MaxPacketSize = 8 }; 
+	usb_host_pipe_t *pipe = &device->ControlPipe;
+	*pipe = (usb_host_pipe_t) { .Device = device, .EndpointType = USB_TT_CONTROL, .MaxPacketSize = 8 };
 }
 
-void usb_host_destroy_device(USB_HOST_DEVICE *device)
+usb_host_device_t *usb_host_create_root_device(usb_host_controller_t *hc, unsigned port, usb_host_device_speed_t speed)
 {
-#ifdef DEBUG
-	if (device == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
+	ASSERT(port < hc->RootHubPorts, KERNEL_ERROR_KERNEL_PANIC);
+	ASSERT(hc->Devices != nullptr, KERNEL_ERROR_NULL_POINTER);
+	usb_host_device_t *device = &hc->Devices[port];
+	_create_device(device, hc, port, speed);
+
+	const usb_host_controller_driver_t *hcd = hc->Driver;
+	ASSERT(hcd != nullptr && hcd->CreateDevice != nullptr, KERNEL_ERROR_NULL_POINTER);
+	bool done = hcd->CreateDevice(hc, device, port, speed);
+	return done ? device: nullptr;
+}
+
+bool usb_host_create_child_device(usb_host_device_t *hub, usb_host_device_t *child, unsigned port, usb_host_device_speed_t speed)
+{
+	ASSERT(hub != nullptr && child != nullptr, KERNEL_ERROR_NULL_POINTER);
+	usb_host_controller_t *hc = hub->Controller;
+	ASSERT(hc != nullptr, KERNEL_ERROR_NULL_POINTER);
+	_create_device(child, hc, port, speed);
+
+	const usb_host_controller_driver_t *hcd = hc->Driver;
+	ASSERT(hcd != nullptr && hcd->CreateDevice != nullptr, KERNEL_ERROR_NULL_POINTER);
+	bool done = hcd->CreateDevice(hc, child, port, speed);
+	return done;
+}
+
+static void _destroy_device(usb_host_device_t *device)
+{
+	ASSERT(device != nullptr, KERNEL_ERROR_NULL_POINTER);
 	FOREACH(node, &device->Functions)
 	{
-		USB_HOST_FUNCTION *func = (USB_HOST_FUNCTION *)node;
+		usb_host_function_t *func = (usb_host_function_t *)node;
 		usb_host_destroy_function(func);
 	}
 }
 
-void usb_host_create_function(USB_HOST_FUNCTION *func, USB_HOST_DEVICE *device, const USB_HOST_FUNCTION_DRIVER *driver)
+void usb_host_destroy_device(usb_host_device_t *device)
 {
-	*func = (USB_HOST_FUNCTION) {
-#ifdef DEBUG
-		.Node = (EXOS_NODE) { .Type = EXOS_NODE_UNKNOWN },
-#endif
+	ASSERT(device != nullptr, KERNEL_ERROR_NULL_POINTER);
+	usb_host_controller_t *hc = device->Controller;
+	ASSERT(hc != nullptr, KERNEL_ERROR_NULL_POINTER);
+
+	if (device->State != USB_HOST_DEVICE_CREATED)
+	{
+		const usb_host_controller_driver_t *hcd = hc->Driver;
+		ASSERT(hcd != nullptr && hcd->DestroyDevice != nullptr, KERNEL_ERROR_NULL_POINTER);
+		hcd->DestroyDevice(hc, device);
+
+		_destroy_device(device);
+	}
+}
+
+void usb_host_create_function(usb_host_function_t *func, usb_host_device_t *device, const usb_host_function_driver_t *driver)
+{
+	ASSERT(func != nullptr && device != nullptr && driver != nullptr, KERNEL_ERROR_NULL_POINTER);
+	*func = (usb_host_function_t) {
 		.Device = device, .Driver = driver };
 }
 
-void usb_host_destroy_function(USB_HOST_FUNCTION *func)
+void usb_host_destroy_function(usb_host_function_t *func)
 {
-	const USB_HOST_FUNCTION_DRIVER *driver = func->Driver;
+	ASSERT(func != nullptr, KERNEL_ERROR_NULL_POINTER);
+	const usb_host_function_driver_t *driver = func->Driver;
     driver->Stop(func);
 }
 
-void usb_host_init_pipe_from_descriptor(USB_HOST_DEVICE *device, USB_HOST_PIPE *pipe, USB_ENDPOINT_DESCRIPTOR *ep_desc)
+void usb_host_init_pipe_from_descriptor(usb_host_device_t *device, usb_host_pipe_t *pipe, usb_endpoint_descriptor_t *ep_desc)
 {
-	*pipe = (USB_HOST_PIPE) {
+	ASSERT(device != nullptr && pipe != nullptr && ep_desc != nullptr, KERNEL_ERROR_NULL_POINTER);
+	*pipe = (usb_host_pipe_t) {
 		.Device = device,
 		.EndpointType = ep_desc->AttributesBits.TransferType,
 		.Direction = ep_desc->AddressBits.Input ? USB_DEVICE_TO_HOST : USB_HOST_TO_DEVICE,
@@ -100,160 +159,155 @@ void usb_host_init_pipe_from_descriptor(USB_HOST_DEVICE *device, USB_HOST_PIPE *
 		.InterruptInterval = ep_desc->Interval };
 }
 
-int usb_host_start_pipe(USB_HOST_PIPE *pipe)
+bool usb_host_start_pipe(usb_host_pipe_t *pipe)
 {
-	USB_HOST_DEVICE *device = pipe->Device;
+	ASSERT(pipe != nullptr, KERNEL_ERROR_NULL_POINTER);
+	usb_host_device_t *device = pipe->Device;
+	ASSERT(device != nullptr, KERNEL_ERROR_NULL_POINTER);
 	exos_mutex_lock(&device->ControlMutex);
-	const USB_HOST_CONTROLLER_DRIVER *hcd = device->Controller;
-	int done = hcd->StartPipe(pipe);
+	usb_host_controller_t *hc = device->Controller;
+	ASSERT(hc != nullptr, KERNEL_ERROR_NULL_POINTER);
+	const usb_host_controller_driver_t *hcd = hc->Driver;
+	ASSERT(hcd != nullptr, KERNEL_ERROR_NULL_POINTER);
+	bool done = hcd->StartPipe(hc, pipe);
 	exos_mutex_unlock(&device->ControlMutex);
 	return done;
 }
 
-int usb_host_stop_pipe(USB_HOST_PIPE *pipe)
+bool usb_host_stop_pipe(usb_host_pipe_t *pipe)
 {
-	USB_HOST_DEVICE *device = pipe->Device;
+	ASSERT(pipe != nullptr, KERNEL_ERROR_NULL_POINTER);
+	usb_host_device_t *device = pipe->Device;
+	ASSERT(device != nullptr, KERNEL_ERROR_NULL_POINTER);
 	exos_mutex_lock(&device->ControlMutex);
-	const USB_HOST_CONTROLLER_DRIVER *hcd = device->Controller;
-	int done = hcd->StopPipe(pipe);
+	usb_host_controller_t *hc = device->Controller;
+	ASSERT(hc != nullptr, KERNEL_ERROR_NULL_POINTER);
+	const usb_host_controller_driver_t *hcd = hc->Driver;
+	ASSERT(hcd != nullptr, KERNEL_ERROR_NULL_POINTER);
+	bool done = hcd->StopPipe(hc, pipe);
 	exos_mutex_unlock(&device->ControlMutex);
 	return done;	
 }
 
-int usb_host_bulk_transfer(USB_HOST_PIPE *pipe, void *data, int length, unsigned long timeout)
+int usb_host_do_transfer(usb_host_pipe_t *pipe, void *data, unsigned length, unsigned timeout)
 {
-	USB_HOST_DEVICE *device = pipe->Device;
-	const USB_HOST_CONTROLLER_DRIVER *hcd = device->Controller;
+	ASSERT(pipe != nullptr, KERNEL_ERROR_NULL_POINTER);
+	usb_host_device_t *device = pipe->Device;
+	ASSERT(device != nullptr, KERNEL_ERROR_NULL_POINTER);
+	usb_host_controller_t *hc = device->Controller;
+	ASSERT(hc != nullptr, KERNEL_ERROR_NULL_POINTER);
+	const usb_host_controller_driver_t *hcd = hc->Driver;
 
 	int done = 0;
-	USB_REQUEST_BUFFER urb;
+	usb_request_buffer_t urb;
 	usb_host_urb_create(&urb, pipe);
-	if (hcd->BeginBulkTransfer(&urb, data, length))
+	if (hcd->BeginTransfer(hc, &urb, data, length))
 	{
-		done = hcd->EndBulkTransfer(&urb, timeout);
+		done = hcd->EndTransfer(hc, &urb, timeout);
 	}
 	return done;
 }
 
-int usb_host_begin_bulk_transfer(USB_REQUEST_BUFFER *urb, void *data, int length)
+bool usb_host_begin_transfer(usb_request_buffer_t *urb, void *data, unsigned length)
 {
-	if (urb == NULL || urb->Pipe == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-	
-	USB_HOST_DEVICE *device = urb->Pipe->Device;
-	const USB_HOST_CONTROLLER_DRIVER *hcd = device->Controller;
-	int done = hcd->BeginBulkTransfer(urb, data, length);
+	ASSERT(urb != nullptr && urb->Pipe != nullptr, KERNEL_ERROR_NULL_POINTER);
+	usb_host_device_t *device = urb->Pipe->Device;
+	ASSERT(device != nullptr, KERNEL_ERROR_NULL_POINTER);
+	usb_host_controller_t *hc = device->Controller;
+	ASSERT(hc != nullptr, KERNEL_ERROR_NULL_POINTER);
+	const usb_host_controller_driver_t *hcd = hc->Driver;
+
+	bool done = hcd->BeginTransfer(hc, urb, data, length);
 	return done;
 }
 
-int usb_host_end_bulk_transfer(USB_REQUEST_BUFFER *urb, unsigned long timeout)
+int usb_host_end_transfer(usb_request_buffer_t *urb, unsigned timeout)
 {
-	if (urb == NULL || urb->Pipe == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-	
-	USB_HOST_DEVICE *device = urb->Pipe->Device;
-	const USB_HOST_CONTROLLER_DRIVER *hcd = device->Controller;
-	int done = hcd->EndBulkTransfer(urb, timeout);
+	ASSERT(urb != nullptr && urb->Pipe != nullptr, KERNEL_ERROR_NULL_POINTER);
+	usb_host_device_t *device = urb->Pipe->Device;
+	ASSERT(device != nullptr, KERNEL_ERROR_NULL_POINTER);
+	usb_host_controller_t *hc = device->Controller;
+	ASSERT(hc != nullptr, KERNEL_ERROR_NULL_POINTER);
+	const usb_host_controller_driver_t *hcd = hc->Driver;
+
+	int done = hcd->EndTransfer(hc, urb, timeout);
 	return done;
 }
 
-int usb_host_ctrl_setup(USB_HOST_DEVICE *device, const USB_REQUEST *request, void *data, int length)
+bool usb_host_ctrl_setup(usb_host_device_t *device, const usb_request_t *request, void *data, unsigned length)
 {
-	if (device == NULL || device->State != USB_HOST_DEVICE_ATTACHED) 
-		return 0;
+	ASSERT(request != nullptr, KERNEL_ERROR_NULL_POINTER);
+	if (device == nullptr || device->State != USB_HOST_DEVICE_ATTACHED) 
+		return false;
 
 	exos_mutex_lock(&device->ControlMutex);
-	const USB_HOST_CONTROLLER_DRIVER *hcd = device->Controller;
+	usb_host_controller_t *hc = device->Controller;
+	ASSERT(hc != nullptr, KERNEL_ERROR_NULL_POINTER);
+	const usb_host_controller_driver_t *hcd = hc->Driver;
+
 	device->ControlBuffer = *request;
-	int done = (length != 0 &&
+	bool done = (length != 0 &&
 		(request->RequestType & USB_REQTYPE_DIRECTION_MASK) == USB_REQTYPE_DEVICE_TO_HOST) ?
-		hcd->CtrlSetupRead(device, &device->ControlBuffer, sizeof(USB_REQUEST), data, length) :
-		hcd->CtrlSetupWrite(device, &device->ControlBuffer, sizeof(USB_REQUEST), data, length);
+		hcd->CtrlSetupRead(device, &device->ControlBuffer, sizeof(usb_request_t), data, length) :
+		hcd->CtrlSetupWrite(device, &device->ControlBuffer, sizeof(usb_request_t), data, length);
 	exos_mutex_unlock(&device->ControlMutex);
     return done;
 }
 
-int usb_host_read_device_descriptor(USB_HOST_DEVICE *device, int desc_type, int desc_index, void *data, int length)
+bool usb_host_read_device_descriptor(usb_host_device_t *device, unsigned char desc_type, unsigned char desc_index, void *data, unsigned short length)
 {
-	USB_REQUEST req = (USB_REQUEST) {
+	usb_request_t req = (usb_request_t) {
 		.RequestType = USB_REQTYPE_DEVICE_TO_HOST | USB_REQTYPE_RECIPIENT_DEVICE,
 		.RequestCode = USB_REQUEST_GET_DESCRIPTOR,
 		.Value = (desc_type << 8) | desc_index, .Index = 0, .Length = length };
 	return usb_host_ctrl_setup(device, &req, data, length);
 }
 
-int usb_host_read_string_descriptor(USB_HOST_DEVICE *device, int lang_id, int str_index, void *data, int length)
+bool usb_host_read_string_descriptor(usb_host_device_t *device, unsigned short lang_id, unsigned char str_index, void *data, unsigned short length)
 {
-	USB_REQUEST req = (USB_REQUEST) {
+	usb_request_t req = (usb_request_t) {
 		.RequestType = USB_REQTYPE_DEVICE_TO_HOST | USB_REQTYPE_RECIPIENT_DEVICE,
 		.RequestCode = USB_REQUEST_GET_DESCRIPTOR,
 		.Value = (USB_DESCRIPTOR_TYPE_STRING << 8) | str_index, .Index = lang_id, .Length = length };
 	return usb_host_ctrl_setup(device, &req, data, length);
 }
 
-int usb_host_read_if_descriptor(USB_HOST_DEVICE *device, int interface, int desc_type, int desc_index, void *data, int length)
+bool usb_host_read_if_descriptor(usb_host_device_t *device, unsigned short interface, unsigned char desc_type, unsigned char desc_index, void *data, unsigned short length)
 {
-	USB_REQUEST req = (USB_REQUEST) {
+	usb_request_t req = (usb_request_t) {
 		.RequestType = USB_REQTYPE_DEVICE_TO_HOST | USB_REQTYPE_RECIPIENT_INTERFACE,
 		.RequestCode = USB_REQUEST_GET_DESCRIPTOR,
 		.Value = (desc_type << 8) | desc_index, .Index = interface, .Length = length };
 	return usb_host_ctrl_setup(device, &req, data, length);
 }
 
-int usb_host_set_address(USB_HOST_DEVICE *device, int addr)
+bool usb_host_set_address(usb_host_device_t *device, unsigned char addr)
 {
-	USB_REQUEST req = (USB_REQUEST) {
+	usb_request_t req = (usb_request_t) {
 		.RequestType = USB_REQTYPE_HOST_TO_DEVICE | USB_REQTYPE_RECIPIENT_DEVICE,
 		.RequestCode = USB_REQUEST_SET_ADDRESS,
 		.Value = addr, .Index = 0, .Length = 0 };
-	return usb_host_ctrl_setup(device, &req, NULL, 0);
+	return usb_host_ctrl_setup(device, &req, nullptr, 0);
 }
 
-int usb_host_set_interface(USB_HOST_DEVICE *device, int interface, int alternate_setting)
+bool usb_host_set_interface(usb_host_device_t *device, unsigned short interface, unsigned short alternate_setting)
 {
-	USB_REQUEST req = (USB_REQUEST) {
+	usb_request_t req = (usb_request_t) {
 		.RequestType = USB_REQTYPE_HOST_TO_DEVICE | USB_REQTYPE_RECIPIENT_INTERFACE,
 		.RequestCode = USB_REQUEST_SET_INTERFACE,
 		.Value = alternate_setting, .Index = interface, .Length = 0 };
-	return usb_host_ctrl_setup(device, &req, NULL, 0);
+	return usb_host_ctrl_setup(device, &req, nullptr, 0);
 }
 
-void usb_host_urb_create(USB_REQUEST_BUFFER *urb, USB_HOST_PIPE *pipe)
+void usb_host_urb_create(usb_request_buffer_t *urb, usb_host_pipe_t *pipe)
 {
+	ASSERT(urb != nullptr && pipe != nullptr, KERNEL_ERROR_NULL_POINTER);
 	urb->Pipe = pipe;
 	exos_event_create(&urb->Event);
 	urb->Status = URB_STATUS_EMPTY;
 }
 
 
-int usb_host_create_child_device(USB_HOST_DEVICE *hub, USB_HOST_DEVICE *child, int port, USB_HOST_DEVICE_SPEED speed)
-{
-#ifdef DEBUG
-	if (hub == NULL || child == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
-	const USB_HOST_CONTROLLER_DRIVER *hcd = hub->Controller;
-#ifdef DEBUG
-	if (hcd == NULL || hcd->CreateDevice == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
-	int done = hcd->CreateDevice(child, port, speed);
-	return done;
-}
-
-void usb_host_destroy_child_device(USB_HOST_DEVICE *child)
-{
-#ifdef DEBUG
-	if (child == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
-	const USB_HOST_CONTROLLER_DRIVER *hcd = child->Controller;
-#ifdef DEBUG
-	if (hcd == NULL || hcd->DestroyDevice == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
-	hcd->DestroyDevice(child);
-}
 
 
 

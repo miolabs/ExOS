@@ -12,7 +12,7 @@
 struct __stdio_FILE
 {
 	io_entry_t io;
-	EXOS_MUTEX mutex;
+	mutex_t mutex;
 };
 
 static bool _open(FILE *stream, const char *path, io_flags_t flags);

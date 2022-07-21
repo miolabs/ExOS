@@ -1,18 +1,18 @@
 #include "usb.h"
 
-static USB_DESCRIPTOR_HEADER *_next_descriptor(USB_DESCRIPTOR_HEADER *desc)
+static usb_descriptor_header_t *_next_descriptor(usb_descriptor_header_t *desc)
 {
-	desc = (USB_DESCRIPTOR_HEADER *)((void *)desc + desc->Length);
+	desc = (usb_descriptor_header_t *)((void *)desc + desc->Length);
 	return desc;
 }
 
-int usb_parse_conf(USB_CONFIGURATION_DESCRIPTOR *conf_desc, USB_DESCRIPTOR_TYPE desc_type, USB_DESCRIPTOR_HEADER **current)
+int usb_parse_conf(usb_configuration_descriptor_t *conf_desc, usb_descriptor_type_t desc_type, usb_descriptor_header_t **current)
 {
-	USB_DESCRIPTOR_HEADER *desc = *current;
-	while(desc != NULL)
+	usb_descriptor_header_t *desc = *current;
+	while(desc != nullptr)
 	{
 		desc = _next_descriptor(desc);
-		if (desc >= (USB_DESCRIPTOR_HEADER *)((void *)conf_desc + USB16TOH(conf_desc->TotalLength))) break;
+		if (desc >= (usb_descriptor_header_t *)((void *)conf_desc + USB16TOH(conf_desc->TotalLength))) break;
 
 		if (desc->DescriptorType == desc_type
 			|| desc_type == USB_DESCRIPTOR_TYPE_ANY)
@@ -24,7 +24,7 @@ int usb_parse_conf(USB_CONFIGURATION_DESCRIPTOR *conf_desc, USB_DESCRIPTOR_TYPE 
 	return 0;
 }
 
-int usb_desc2str(USB_DESCRIPTOR_HEADER *str_desc, unsigned char *dest, int max_length)
+int usb_desc2str(usb_descriptor_header_t *str_desc, unsigned char *dest, int max_length)
 {
 	int done = 0;
 	if (str_desc->DescriptorType == USB_DESCRIPTOR_TYPE_STRING)

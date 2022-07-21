@@ -20,7 +20,7 @@ struct __EXOS_DISPATCHER
 
 struct __EXOS_DISPATCHER_CONTEXT
 {
-	EXOS_MUTEX Lock;
+	mutex_t Lock;
 	list_t Dispatchers;
 	event_t WakeEvent;
 	int Count;

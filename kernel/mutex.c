@@ -2,7 +2,7 @@
 #include "syscall.h"
 #include "panic.h"
 
-void exos_mutex_create(EXOS_MUTEX *mutex)
+void exos_mutex_create(mutex_t *mutex)
 {
 	list_initialize(&mutex->Handles);
 	mutex->Owner = NULL;
@@ -11,7 +11,7 @@ void exos_mutex_create(EXOS_MUTEX *mutex)
 
 static int _try_lock(unsigned long *args)
 {
-	EXOS_MUTEX *mutex = (EXOS_MUTEX *)args[0];
+	mutex_t *mutex = (mutex_t *)args[0];
 	EXOS_WAIT_HANDLE *handle = (EXOS_WAIT_HANDLE *)args[1];
 
 	if (mutex->Owner == __running_thread)
@@ -39,7 +39,7 @@ static int _try_lock(unsigned long *args)
 	return 0;
 }
 
-void exos_mutex_lock(EXOS_MUTEX *mutex)
+void exos_mutex_lock(mutex_t *mutex)
 {
 #ifdef DEBUG
 	if (mutex == NULL)
@@ -52,7 +52,7 @@ void exos_mutex_lock(EXOS_MUTEX *mutex)
 
 static int _unlock(unsigned long *args)
 {
-	EXOS_MUTEX *mutex = (EXOS_MUTEX *)args[0];
+	mutex_t *mutex = (mutex_t *)args[0];
 
 	if (mutex->Owner != __running_thread)
 		kernel_panic(KERNEL_ERROR_CROSS_THREAD_OPERATION);
@@ -69,7 +69,7 @@ static int _unlock(unsigned long *args)
 	}
 }
 
-void exos_mutex_unlock(EXOS_MUTEX *mutex)
+void exos_mutex_unlock(mutex_t *mutex)
 {
 #ifdef DEBUG
 	if (mutex == NULL)

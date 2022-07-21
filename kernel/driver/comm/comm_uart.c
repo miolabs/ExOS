@@ -35,7 +35,7 @@ static const io_driver_t _comm_driver = {
 static io_tree_device_t _devices[UART_MODULE_COUNT];
 static uart_control_block_t _cb[UART_MODULE_COUNT];
 static uart_device_name_t _dev_name[UART_MODULE_COUNT];
-static EXOS_MUTEX _lock;
+static mutex_t _lock;
 
 static void _register()
 {

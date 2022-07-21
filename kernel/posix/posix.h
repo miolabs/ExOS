@@ -13,7 +13,7 @@
 
 typedef struct
 {
-	EXOS_MUTEX Mutex;
+	mutex_t Mutex;
 	io_entry_t *Descriptors[POSIX_MAX_FILE_DESCRIPTORS];
 } EXOS_POSIX_CONTEXT;
 

@@ -48,7 +48,7 @@ typedef struct
 		};
 	};
 
-	EXOS_MUTEX Mutex;
+	mutex_t Mutex;
 	unsigned short ServiceWait;
 	unsigned short ServiceRetry;
 	unsigned long ServiceTime;

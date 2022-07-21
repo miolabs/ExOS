@@ -16,15 +16,12 @@ typedef enum
 	USB_DESCRIPTOR_TYPE_ENDPOINT = 5,
 	USB_DESCRIPTOR_TYPE_DEVICE_QUALIFIER = 6,	
 	USB_DESCRIPTOR_TYPE_INTERFACE_ASSOCIATION = 11,
-} USB_DESCRIPTOR_TYPE;
+} usb_descriptor_type_t;
 
 // Control RequestType
-typedef enum
-{
-	USB_REQTYPE_DEVICE_TO_HOST = 0x80,
-	USB_REQTYPE_HOST_TO_DEVICE = 0x00,
-	USB_REQTYPE_DIRECTION_MASK = 0x80,
-} USB_REQTYPE_DIRECTION;
+#define	USB_REQTYPE_DIRECTION_MASK 0x80
+#define USB_REQTYPE_HOST_TO_DEVICE 0
+#define USB_REQTYPE_DEVICE_TO_HOST USB_REQTYPE_DIRECTION_MASK
 
 typedef enum
 {
@@ -33,7 +30,7 @@ typedef enum
 	USB_REQTYPE_VENDOR = 0x40,
 	USB_REQTYPE_RESERVED = 0x60,
 	USB_REQTYPE_MASK = 0x60,
-} USB_REQTYPE;
+} usb_reqtype_t;
 
 typedef enum
 {
@@ -42,7 +39,7 @@ typedef enum
 	USB_REQTYPE_RECIPIENT_ENDPOINT = 0x02,
 	USB_REQTYPE_RECIPIENT_OTHER = 0x03,
 	USB_REQTYPE_RECIPIENT_MASK = 0x1F,
-} USB_REQUEST_RECIPIENT;
+} usb_recipient_t;
 
 // USB Standard Requests
 typedef enum
@@ -56,7 +53,7 @@ typedef enum
 	USB_REQUEST_SET_CONFIGURATION = 9,
 	USB_REQUEST_GET_INTERFACE = 10,
 	USB_REQUEST_SET_INTERFACE = 11,
-} USB_REQUEST_CODE;
+} usb_request_code_t;
 
 // USB_Features
 typedef enum
@@ -64,16 +61,16 @@ typedef enum
 	USB_FEATURE_ENDPOINT_HALT = 0,	
 	USB_FEATURE_DEVICE_REMOTE_WAKEUP = 1,
 	USB_FEATURE_DEVICE_TEST_MODE = 2,
-} USB_FEATURE;
+} usb_feature_t;
 
-typedef struct _USB_REQUEST_BUF
+typedef struct
 {
 	unsigned char RequestType;
 	unsigned char RequestCode;
 	unsigned short Value;
 	unsigned short Index;
 	unsigned short Length;
-} USB_REQUEST;
+} usb_request_t;
 
 #define USB_REQ_INDEX_EP_INPUT 0x80
 
@@ -84,43 +81,43 @@ typedef struct _USB_REQUEST_BUF
 typedef struct __attribute__((__packed__))
 {
 	unsigned char Bytes[2];
-} USB16;
+} usb16_t;
 
 typedef struct __attribute__((__packed__))
 {
 	unsigned char Bytes[4];
-} USB32;
+} usb32_t;
 
 #define USB16TOH(u) (((u).Bytes[1] << 8) | ((u).Bytes[0]))
-#define HTOUSB16(h) (USB16){ (unsigned char)((h) & 0xFF), (unsigned char)((h) >> 8) }
+#define HTOUSB16(h) (usb16_t){ (unsigned char)((h) & 0xFF), (unsigned char)((h) >> 8) }
 
 typedef struct __attribute__((__packed__))
 {
 	unsigned char Length;
 	unsigned char DescriptorType;
-} USB_DESCRIPTOR_HEADER;
+} usb_descriptor_header_t;
 
 typedef struct __attribute__((__packed__))
 {
-	USB_DESCRIPTOR_HEADER Header;
-	USB16 USBVersion;
+	usb_descriptor_header_t Header;
+	usb16_t USBVersion;
 	unsigned char DeviceClass;
 	unsigned char DeviceSubClass;
 	unsigned char DeviceProtocol;
 	unsigned char MaxPacketSize;	// for endpoint 0
-	USB16 VendorId;
-	USB16 ProductId;
-	USB16 DeviceVersion;
+	usb16_t VendorId;
+	usb16_t ProductId;
+	usb16_t DeviceVersion;
 	unsigned char ManufacturerIndex;
 	unsigned char ProductIndex;
 	unsigned char SerialNumberIndex;
 	unsigned char NumConfigurations;
-} USB_DEVICE_DESCRIPTOR;
+} usb_device_descriptor_t;
 
 typedef struct __attribute__((__packed__))
 {
-	USB_DESCRIPTOR_HEADER Header;
-	USB16 TotalLength;
+	usb_descriptor_header_t Header;
+	usb16_t TotalLength;
 	unsigned char NumInterfaces;
 	unsigned char ConfigurationValue;
 	unsigned char ConfigurationIndex;
@@ -136,11 +133,11 @@ typedef struct __attribute__((__packed__))
 		} AttributesBits;
 	};
 	unsigned char MaxPower;	// In 2mA units
-} USB_CONFIGURATION_DESCRIPTOR;
+} usb_configuration_descriptor_t;
 
 typedef struct __attribute__((__packed__))
 {
-	USB_DESCRIPTOR_HEADER Header;
+	usb_descriptor_header_t Header;
 	unsigned char InterfaceNumber;
 	unsigned char AlternateSetting;
 	unsigned char NumEndpoints;
@@ -148,7 +145,7 @@ typedef struct __attribute__((__packed__))
 	unsigned char InterfaceSubClass;
 	unsigned char Protocol;
 	unsigned char InterfaceNameIndex;	
-} USB_INTERFACE_DESCRIPTOR;
+} usb_interface_descriptor_t;
 
 typedef enum
 {
@@ -156,17 +153,17 @@ typedef enum
 	USB_TT_ISO = 1,
 	USB_TT_BULK = 2,
 	USB_TT_INTERRUPT = 3,
-} USB_TRANSFERTYPE;
+} usb_transfer_type_t;
 
 typedef enum
 {
 	USB_HOST_TO_DEVICE = 0,
 	USB_DEVICE_TO_HOST = 1,
-} USB_DIRECTION;
+} usb_direction_t;
 
 typedef struct __attribute__((__packed__))
 {
-	USB_DESCRIPTOR_HEADER Header;
+	usb_descriptor_header_t Header;
 	union __attribute__((__packed__))
 	{
 		unsigned char Address;
@@ -188,33 +185,33 @@ typedef struct __attribute__((__packed__))
 			unsigned :2;
 		} AttributesBits;
 	};
-	USB16 MaxPacketSize;
+	usb16_t MaxPacketSize;
 	unsigned char Interval;
-} USB_ENDPOINT_DESCRIPTOR;
+} usb_endpoint_descriptor_t;
 
 typedef struct __attribute__((__packed__))
 {
-	USB_DESCRIPTOR_HEADER Header;
-	USB16 String[0];
-} USB_STRING_DESCRIPTOR;
+	usb_descriptor_header_t Header;
+	usb16_t String[0];
+} usb_string_descriptor_t;
 
 typedef struct __attribute__((__packed__))
 {
-	USB_DESCRIPTOR_HEADER Header;
+	usb_descriptor_header_t Header;
 	unsigned char FirstInterface;
 	unsigned char InterfaceCount;
 	unsigned char FunctionClass;
 	unsigned char FunctionSubClass;
 	unsigned char FunctionProtocol;
 	unsigned char FunctionIndex;
-} USB_INTERFACE_ASSOCIATION_DESCRIPTOR;
+} usb_if_association_descriptor_t;
 
 typedef enum 
 {
 	USB_USB_1_0 = 0x0100,
 	USB_USB_1_1 = 0x0110,
 	USB_USB_2_0 = 0x0200,
-} USB_USB_SPEC;
+} usb_spec_t;
 
 typedef enum
 {
@@ -230,17 +227,17 @@ typedef enum
 	USB_CLASS_VIDEO = 14,
 	USB_CLASS_MISC = 0xEF, // used, i.e., in devices of classes using Interface Association
 	USB_CLASS_CUSTOM = 0xFF,
-} USB_CLASS_CODE;
+} usb_class_t;
 
 typedef enum
 {
 	USB_DEVICE_SUBCLASS_COMMON = 2,	// used with USB_CLASS_MISC for Interface Association
-} USB_SUBCLASS_CODE;
+} usb_subclass_t;
 
 typedef enum
 {
 	USB_DEVICE_PROTOCOL_IAD = 1, // Interface Association Descriptor
-} USB_PROTOCOL_CODE;
+} usb_protocol_t;
 
 // bmAttributes in Configuration Descriptors
 #define USB_CONFIG_POWERED_MASK                0xC0
@@ -252,10 +249,10 @@ typedef enum
 {
 	USB_STATUS_SELF_POWERED = 0x01,
 	USB_STATUS_REMOTE_WAKEUP  = 0x02,
-} USB_STATUS;
+} usb_status_t;
 
 // prototypes
-int usb_parse_conf(USB_CONFIGURATION_DESCRIPTOR *conf_desc, USB_DESCRIPTOR_TYPE desc_type, USB_DESCRIPTOR_HEADER **current);
-int usb_desc2str(USB_DESCRIPTOR_HEADER *str_desc, unsigned char *dest, int max_length);
+int usb_parse_conf(usb_configuration_descriptor_t *conf_desc, usb_descriptor_type_t desc_type, usb_descriptor_header_t **current);
+int usb_desc2str(usb_descriptor_header_t *str_desc, unsigned char *dest, int max_length);
 
-#endif // OHCI_USB_H
+#endif // USB_H

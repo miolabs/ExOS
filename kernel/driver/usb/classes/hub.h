@@ -5,12 +5,12 @@
 
 typedef struct __attribute__((__packed__))
 {
-	USB_DESCRIPTOR_HEADER Header;
+	usb_descriptor_header_t Header;
 	unsigned char NbrPorts;
-	USB16 HubCharacteristics;
+	usb16_t HubCharacteristics;
 	unsigned char PwrOn2PwrGood;
 	unsigned char DeviceRemovable;
-} USB_HUB_DESCRIPTOR;
+} usb_hub_descriptor_t;
 
 #define USB_HUB_DESCRIPTOR_HUB 0x29
 
@@ -32,7 +32,7 @@ typedef enum
 	USB_HUB_FEATURE_C_PORT_RESET,
 	USB_HUB_FEATURE_PORT_TEST,
 	USB_HUB_FEATURE_PORT_INDICATOR,
-} USB_HUB_FEATURE;
+} usb_hub_feature_t;
 
 #define USB_HUBF_PORT_CONNECTION (1<<0)
 #define USB_HUBF_PORT_ENABLE (1<<1)

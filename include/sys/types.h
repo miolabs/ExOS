@@ -33,7 +33,7 @@ typedef struct
 
 typedef struct
 {
-	EXOS_MUTEX native_mutex;
+	mutex_t native_mutex;
 } pthread_mutex_t;
 
 extern const pthread_mutex_t __mutex_initializer;

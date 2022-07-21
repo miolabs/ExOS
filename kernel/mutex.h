@@ -8,11 +8,15 @@ typedef struct
 	list_t Handles;
 	EXOS_THREAD *Owner;
 	unsigned long Count;
-} EXOS_MUTEX;
+} mutex_t;
 
-void exos_mutex_create(EXOS_MUTEX *mutex);
-int exos_mutex_try(EXOS_MUTEX *mutex);
-void exos_mutex_lock(EXOS_MUTEX *mutex);
-void exos_mutex_unlock(EXOS_MUTEX *mutex);
+#ifdef EXOS_OLD
+#define EXOS_MUTEX mutex_t
+#endif
+
+void exos_mutex_create(mutex_t *mutex);
+int exos_mutex_try(mutex_t *mutex);
+void exos_mutex_lock(mutex_t *mutex);
+void exos_mutex_unlock(mutex_t *mutex);
 
 #endif // EXOS_MUTEX_H

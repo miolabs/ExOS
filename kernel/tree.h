@@ -25,7 +25,7 @@ struct _TREE_GROUP
 {
 	EXOS_TREE_NODE;
 	list_t Children;
-	EXOS_MUTEX Mutex;
+	mutex_t Mutex;
 };
 
 void __tree_initialize();

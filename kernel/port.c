@@ -5,7 +5,7 @@
 #include <kernel/machine/hal.h>
 
 static list_t _port_list;
-static EXOS_MUTEX _port_mutex;
+static mutex_t _port_mutex;
 
 static EXOS_PORT *_find_port(const char *name);
 

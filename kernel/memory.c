@@ -8,7 +8,7 @@
 extern unsigned char __heap_start__, __heap_end__;
 
 static list_t _mem_list;
-static EXOS_MUTEX _mem_lock;
+static mutex_t _mem_lock;
 static EXOS_MEM_REGION _heap_region;
 
 void __mem_init()
