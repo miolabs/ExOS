@@ -9,11 +9,13 @@ char *strerror(int errnum)
 void *memset(void *s, int c, size_t n)
 {
 	__mem_set(s, s + n, c);
+	return s;
 }
 
 void *memcpy(void *restrict s1, const void *restrict s2, size_t n)
 {
 	__mem_copy(s1, s1 + n, s2);
+	return s1;
 }
 
 int strcmp(const char *s1, const char *s2)
@@ -29,5 +31,10 @@ size_t strlen(const char * str)
 	return i;
 }
 
+char *strcpy(char *dest, const char *src)
+{
+	__str_copy(dest, src, -1);
+	return dest;
+}
 
 
