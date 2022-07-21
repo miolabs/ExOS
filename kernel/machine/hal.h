@@ -18,6 +18,7 @@ void __machine_init();
 void __board_init();
 void __machine_req_switch();
 void __machine_idle();
+void __machine_dsb();
 void __machine_init_thread_stack(void **pstack, unsigned long arg, unsigned long pc, unsigned long lr);
 void __machine_init_thread_local_storage(void **pstack);
 

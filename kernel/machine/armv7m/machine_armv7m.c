@@ -19,3 +19,7 @@ void __machine_unlock(unsigned char *lock)
 	*lock = 0;
 }
 
+__always_inline inline void __machine_dsb(void)
+{
+  __asm__ volatile ("dsb 0xF":::"memory");
+}

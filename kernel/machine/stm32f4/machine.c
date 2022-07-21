@@ -124,9 +124,6 @@ void __machine_idle(void *args)
 #endif
 }
 
-void __machine_dsb()
-{
-	__DSB();
-}
+
 
 

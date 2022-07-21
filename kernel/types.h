@@ -9,7 +9,7 @@
 #define __deprecated __attribute((__deprecated__))
 #define __packed __attribute__((packed))
 #define __aligned(x) __attribute__((aligned(x)))
-
+#define __always_inline __attribute__((always_inline)) 
 #define nullptr ((void *)0)
 #endif
 
