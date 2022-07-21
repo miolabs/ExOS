@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include <kernel/memory.h>
+#include <kernel/panic.h>
 #include <net/udp_io.h>
 #include <net/tcp_io.h>
 
@@ -13,20 +14,20 @@ int socket(int domain, int type, int protocol)
 	if (domain != AF_INET)
 		return posix_set_error(EAFNOSUPPORT);
 
-	EXOS_IO_ENTRY *entry = NULL;
+	io_entry_t *entry = NULL;
 	switch (type)
 	{
 		case SOCK_DGRAM:
 			if (protocol != 0) return posix_set_error(EPROTONOSUPPORT);
-			entry = (EXOS_IO_ENTRY *)exos_mem_alloc(sizeof(UDP_IO_ENTRY), EXOS_MEMF_CLEAR);
+			entry = (io_entry_t *)exos_mem_alloc(sizeof(UDP_IO_ENTRY), EXOS_MEMF_CLEAR);
 			if (entry == NULL) return posix_set_error(ENOMEM);
-			net_udp_io_create((UDP_IO_ENTRY *)entry, EXOS_IOF_WAIT);
+			net_udp_io_create((UDP_IO_ENTRY *)entry/*, EXOS_IOF_WAIT*/);
 			break;
 		case SOCK_STREAM:
 			if (protocol != 0) return posix_set_error(EPROTONOSUPPORT);
-			entry = (EXOS_IO_ENTRY *)exos_mem_alloc(sizeof(TCP_IO_ENTRY), EXOS_MEMF_CLEAR);
+			entry = (io_entry_t *)exos_mem_alloc(sizeof(TCP_IO_ENTRY), EXOS_MEMF_CLEAR);
 			if (entry == NULL) return posix_set_error(ENOMEM);
-			net_tcp_io_create((TCP_IO_ENTRY *)entry, EXOS_IOF_WAIT);
+			net_tcp_io_create((TCP_IO_ENTRY *)entry/*, EXOS_IOF_WAIT*/);
 			break;
 		default:
 			return posix_set_error(EPROTOTYPE);
@@ -43,9 +44,9 @@ int socket(int domain, int type, int protocol)
 
 int connect(int socket, const struct sockaddr *address, socklen_t address_len)
 {
-	EXOS_IO_ENTRY *io = posix_get_file_descriptor(socket);
+	io_entry_t *io = posix_get_file_descriptor(socket);
 	if (io == NULL) return posix_set_error(EBADF);
-	if (io->Type != EXOS_IO_SOCKET) return posix_set_error(ENOTSOCK);
+//	if (io->Type != EXOS_IO_SOCKET) return posix_set_error(ENOTSOCK);
 
 	if (address->sa_family != AF_INET ||
 		address_len != sizeof(struct sockaddr_in))
@@ -56,29 +57,31 @@ int connect(int socket, const struct sockaddr *address, socklen_t address_len)
 	{
 		unsigned buffer_size = socket_io->BufferSize != 0 ? 
 			socket_io->BufferSize : EXOS_POSIX_DEFAULT_SOCKET_STREAM_SIZE;
-	
-		void *buffer = exos_mem_alloc(buffer_size * 2, EXOS_MEMF_CLEAR);
-		if (buffer != NULL)
-		{
-			EXOS_IO_STREAM_BUFFERS desc = (EXOS_IO_STREAM_BUFFERS) {
-				.RcvBuffer = buffer, .RcvBufferSize = buffer_size,
-				.SndBuffer = buffer + buffer_size, .SndBufferSize = buffer_size };
-	
-			struct sockaddr_in *ip_addr = (struct sockaddr_in *)address;
-			IP_PORT_ADDR ipp = (IP_PORT_ADDR) { 
-				.Address = (IP_ADDR)ip_addr->sin_addr.s_addr,
-				.Port = ntohs(ip_addr->sin_port) };
-			int error = net_io_connect(socket_io, &ipp, &desc);
-			if (error == 0)
-			{
-				// TODO: translate error codes
-				return 0;
-			}
-	
-			exos_mem_free(buffer);
-			posix_set_error(EAGAIN);
-		}
-		else posix_set_error(ENOMEM);	// could not allocate buffer for new socket
+
+		kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+
+//		void *buffer = exos_mem_alloc(buffer_size * 2, EXOS_MEMF_CLEAR);
+//		if (buffer != NULL)
+//		{
+//			EXOS_IO_STREAM_BUFFERS desc = (EXOS_IO_STREAM_BUFFERS) {
+//				.RcvBuffer = buffer, .RcvBufferSize = buffer_size,
+//				.SndBuffer = buffer + buffer_size, .SndBufferSize = buffer_size };
+//	
+//			struct sockaddr_in *ip_addr = (struct sockaddr_in *)address;
+//			IP_PORT_ADDR ipp = (IP_PORT_ADDR) { 
+//				.Address = (IP_ADDR)ip_addr->sin_addr.s_addr,
+//				.Port = ntohs(ip_addr->sin_port) };
+//			int error = net_io_connect(socket_io, &ipp, &desc);
+//			if (error == 0)
+//			{
+//				// TODO: translate error codes
+//				return 0;
+//			}
+//	
+//			exos_mem_free(buffer);
+//			posix_set_error(EAGAIN);
+//		}
+//		else posix_set_error(ENOMEM);	// could not allocate buffer for new socket
 		
 		return -1;
 	}
@@ -87,9 +90,9 @@ int connect(int socket, const struct sockaddr *address, socklen_t address_len)
 
 int bind(int socket, const struct sockaddr *address, socklen_t address_len)
 {
-	EXOS_IO_ENTRY *io = posix_get_file_descriptor(socket);
+	io_entry_t *io = posix_get_file_descriptor(socket);
 	if (io == NULL) return posix_set_error(EBADF);
-	if (io->Type != EXOS_IO_SOCKET) return posix_set_error(ENOTSOCK);
+//	if (io->Type != EXOS_IO_SOCKET) return posix_set_error(ENOTSOCK);
 
 	if (address->sa_family != AF_INET ||
 		address_len != sizeof(struct sockaddr_in))
@@ -112,9 +115,9 @@ ssize_t recv(int socket, void *buffer, size_t length, int flags)
 
 ssize_t recvfrom(int socket, void *buffer, size_t length, int flags, struct sockaddr *address, socklen_t *address_len)
 {
-	EXOS_IO_ENTRY *io = posix_get_file_descriptor(socket);
+	io_entry_t *io = posix_get_file_descriptor(socket);
 	if (io == NULL) return posix_set_error(EBADF);
-	if (io->Type != EXOS_IO_SOCKET) return posix_set_error(ENOTSOCK);
+//	if (io->Type != EXOS_IO_SOCKET) return posix_set_error(ENOTSOCK);
 
 	struct sockaddr_in *ip_addr = (struct sockaddr_in *)address;
 	IP_PORT_ADDR ipp;
@@ -148,9 +151,9 @@ ssize_t send(int socket, const void *buffer, size_t length, int flags)
 
 ssize_t sendto(int socket, const void *buffer, size_t length, int flags, const struct sockaddr *dest_addr, socklen_t dest_len)
 {
-	EXOS_IO_ENTRY *io = posix_get_file_descriptor(socket);
+	io_entry_t *io = posix_get_file_descriptor(socket);
 	if (io == NULL) return posix_set_error(EBADF);
-	if (io->Type != EXOS_IO_SOCKET) return posix_set_error(ENOTSOCK);
+//	if (io->Type != EXOS_IO_SOCKET) return posix_set_error(ENOTSOCK);
 
 	if (dest_addr->sa_family != AF_INET ||
 		dest_len != sizeof(struct sockaddr_in))
@@ -174,9 +177,9 @@ ssize_t sendto(int socket, const void *buffer, size_t length, int flags, const s
 
 int listen(int socket, int backlog)
 {
-	EXOS_IO_ENTRY *io = posix_get_file_descriptor(socket);
+	io_entry_t *io = posix_get_file_descriptor(socket);
 	if (io == NULL) return posix_set_error(EBADF);
-	if (io->Type != EXOS_IO_SOCKET) return posix_set_error(ENOTSOCK);
+//	if (io->Type != EXOS_IO_SOCKET) return posix_set_error(ENOTSOCK);
 
 	int error = net_io_listen((NET_IO_ENTRY *)io);
 	return error;	// TODO: translate error codes
@@ -184,9 +187,9 @@ int listen(int socket, int backlog)
 
 int accept(int sock_fd, struct sockaddr *address, socklen_t *address_len)
 {
-	EXOS_IO_ENTRY *io = posix_get_file_descriptor(sock_fd);
+	io_entry_t *io = posix_get_file_descriptor(sock_fd);
 	if (io == NULL) return posix_set_error(EBADF);
-	if (io->Type != EXOS_IO_SOCKET) return posix_set_error(ENOTSOCK);
+//	if (io->Type != EXOS_IO_SOCKET) return posix_set_error(ENOTSOCK);
 
 	NET_IO_ENTRY *socket_io = (NET_IO_ENTRY *)io;
 	if (socket_io->ProtocolType == NET_IO_STREAM)
@@ -197,25 +200,27 @@ int accept(int sock_fd, struct sockaddr *address, socklen_t *address_len)
 			unsigned buffer_size = socket_io->BufferSize != 0 ? 
 				socket_io->BufferSize : EXOS_POSIX_DEFAULT_SOCKET_STREAM_SIZE;
 
-			void *buffer = exos_mem_alloc(buffer_size * 2, EXOS_MEMF_CLEAR);
-			if (buffer != NULL)
-			{
-				EXOS_IO_STREAM_BUFFERS desc = (EXOS_IO_STREAM_BUFFERS) {
-					.RcvBuffer = buffer, .RcvBufferSize = buffer_size,
-					.SndBuffer = buffer + buffer_size, .SndBufferSize = buffer_size };
+			kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 
-				NET_IO_ENTRY *conn_socket_io = (NET_IO_ENTRY *)posix_get_file_descriptor(conn_fd);
-				int error = net_io_accept(socket_io, conn_socket_io, &desc);
-				if (error == 0)
-				{
-					// TODO: translate error codes
-					return conn_fd;
-				}
-
-				exos_mem_free(buffer);
-				posix_set_error(EAGAIN);
-			}
-			else posix_set_error(ENOMEM);	// could not allocate buffer for new socket
+//			void *buffer = exos_mem_alloc(buffer_size * 2, EXOS_MEMF_CLEAR);
+//			if (buffer != NULL)
+//			{
+//				EXOS_IO_STREAM_BUFFERS desc = (EXOS_IO_STREAM_BUFFERS) {
+//					.RcvBuffer = buffer, .RcvBufferSize = buffer_size,
+//					.SndBuffer = buffer + buffer_size, .SndBufferSize = buffer_size };
+//
+//				NET_IO_ENTRY *conn_socket_io = (NET_IO_ENTRY *)posix_get_file_descriptor(conn_fd);
+//				int error = net_io_accept(socket_io, conn_socket_io, &desc);
+//				if (error == 0)
+//				{
+//					// TODO: translate error codes
+//					return conn_fd;
+//				}
+//
+//				exos_mem_free(buffer);
+//				posix_set_error(EAGAIN);
+//			}
+//			else posix_set_error(ENOMEM);	// could not allocate buffer for new socket
 
 			close(conn_fd);
 		}
@@ -226,21 +231,23 @@ int accept(int sock_fd, struct sockaddr *address, socklen_t *address_len)
 
 int shutdown(int socket, int how)
 {
-	EXOS_IO_ENTRY *io = posix_get_file_descriptor(socket);
+	io_entry_t *io = posix_get_file_descriptor(socket);
 	if (io == NULL) return posix_set_error(EBADF);
-	if (io->Type != EXOS_IO_SOCKET) return posix_set_error(ENOTSOCK);
+//	if (io->Type != EXOS_IO_SOCKET) return posix_set_error(ENOTSOCK);
 
-	EXOS_IO_STREAM_BUFFERS desc;
-	NET_IO_ENTRY *socket_io = (NET_IO_ENTRY *)io;
-	int error = net_io_close(socket_io, &desc);
-	if (error == -1) return posix_set_error(ENOTCONN);
+	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 
-	if (socket_io->ProtocolType == NET_IO_STREAM &&
-		desc.RcvBuffer != NULL)
-	{
-		// NOTE: free both buffers at once, see accept()
-		exos_mem_free(desc.RcvBuffer);
-	}
+//	EXOS_IO_STREAM_BUFFERS desc;
+//	NET_IO_ENTRY *socket_io = (NET_IO_ENTRY *)io;
+//	int error = net_io_close(socket_io, &desc);
+//	if (error == -1) return posix_set_error(ENOTCONN);
+//
+//	if (socket_io->ProtocolType == NET_IO_STREAM &&
+//		desc.RcvBuffer != NULL)
+//	{
+//		// NOTE: free both buffers at once, see accept()
+//		exos_mem_free(desc.RcvBuffer);
+//	}
 
 	return 0;
 }

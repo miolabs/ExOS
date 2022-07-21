@@ -34,19 +34,18 @@ void __tree_initialize()
 
 void exos_tree_add_child(EXOS_TREE_GROUP *group, EXOS_TREE_NODE *child)
 {
-	if (group == NULL || child == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-	if (group->Type != EXOS_TREE_NODE_GROUP)
-		kernel_panic(KERNEL_ERROR_WRONG_NODE);
+	ASSERT(group != NULL && child != NULL, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(group->Type == EXOS_TREE_NODE_GROUP, KERNEL_ERROR_WRONG_NODE);
+	ASSERT(child->Name != NULL, KERNEL_ERROR_NULL_POINTER);
 
 	exos_mutex_lock(&group->Mutex);
 #ifdef DEBUG
-	if (list_find_node(&group->Children, (EXOS_NODE *)child))
+	if (list_find_node(&group->Children, (node_t *)child))
 		kernel_panic(KERNEL_ERROR_LIST_ALREADY_CONTAINS_NODE);
 
 	child->Node.Type = EXOS_NODE_TREE_NODE;
 #endif
-	list_add_tail(&group->Children, (EXOS_NODE *)child);
+	list_add_tail(&group->Children, (node_t *)child);
 	exos_mutex_unlock(&group->Mutex);
 	child->Parent = group;
 }
@@ -72,14 +71,27 @@ static int _name_eq(const char **ppath, const char *name)
 	return 0;
 }
 
-EXOS_TREE_NODE *exos_tree_find_path(EXOS_TREE_NODE *parent, const char *path)
+EXOS_TREE_NODE *exos_tree_find_group(EXOS_TREE_NODE *parent, const char *path)
 {
 	if (path != NULL)
 	{
 		EXOS_TREE_NODE *node = exos_tree_parse_path(parent, &path);
-		return (*path == '\0') ? node : NULL; 
+		return (node != NULL && node->Type == EXOS_TREE_NODE_GROUP) ? node : NULL; 
 	}
 	return parent;
+}
+
+EXOS_TREE_NODE *exos_tree_find_path(EXOS_TREE_NODE *parent, const char **ppath)
+{
+	ASSERT(ppath != NULL, KERNEL_ERROR_NULL_POINTER);
+	const char *path = *ppath;
+	EXOS_TREE_NODE *node = exos_tree_parse_path(parent, ppath);
+	if (node != NULL && node->Type != EXOS_TREE_NODE_GROUP)
+	{
+		*ppath = path;
+		return node;
+	}
+	return NULL; 
 }
 
 EXOS_TREE_NODE *exos_tree_parse_path(EXOS_TREE_NODE *parent, const char **psubpath)
@@ -138,7 +150,7 @@ EXOS_TREE_NODE *exos_tree_parse_path(EXOS_TREE_NODE *parent, const char **psubpa
 
 int exos_tree_add_child_path(EXOS_TREE_NODE *child, const char *parent_path)
 {
-	EXOS_TREE_NODE *parent = exos_tree_find_path(NULL, parent_path);
+	EXOS_TREE_NODE *parent = exos_tree_find_group(NULL, parent_path);
 	if (parent != NULL &&
 		parent->Type == EXOS_TREE_NODE_GROUP)
 	{

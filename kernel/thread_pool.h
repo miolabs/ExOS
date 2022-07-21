@@ -5,7 +5,7 @@
 
 typedef struct
 {
-	EXOS_LIST Threads;
+	list_t Threads;
 } EXOS_THREAD_POOL;
 
 int exos_thread_pool_create(EXOS_THREAD_POOL *pool);

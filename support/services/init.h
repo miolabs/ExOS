@@ -10,6 +10,7 @@ typedef enum
 	EXOS_INIT_IO_DRIVER = 30,
 	EXOS_INIT_NET_DRIVER = 25,
 	EXOS_INIT_FS_DRIVER = 20,
+	EXOS_INIT_POSIX = 15,
 	EXOS_INIT_SW_DRIVER = 10,
 	EXOS_INIT_SERVICE = 0,
 	EXOS_INIT_LOWEST_PRI = -128
@@ -19,7 +20,7 @@ typedef void *EXOS_CTOR;
 
 typedef struct
 {
-	EXOS_NODE;
+	node_t;
 	void (*Func)();
 } EXOS_INIT_NODE;
 

@@ -4,7 +4,7 @@
 #include "panic.h"
 #include <kernel/machine/time_hal.h>
 
-static EXOS_LIST _timers;
+static list_t _timers;
 
 void __timer_init()
 {
@@ -15,18 +15,14 @@ void __timer_init()
 
 void __timer_create_timer(EXOS_TIMER *timer, EXOS_SIGNAL signal)
 {
-#ifdef DEBUG
-	if (NULL != list_find_node(&_timers, (EXOS_NODE *)timer))
-		kernel_panic(KERNEL_ERROR_TIMER_ALREADY_IN_USE);
-
-	timer->Node = (EXOS_NODE) { .Type = EXOS_NODE_TIMER };
-#endif
+	ASSERT(NULL == list_find_node(&_timers, &timer->Node), KERNEL_ERROR_TIMER_ALREADY_IN_USE);
+	timer->Node = (node_t) { .Type = EXOS_NODE_TIMER };
 
 	timer->Owner = __running_thread;
 	timer->Signal = signal;
 	timer->State = EXOS_TIMER_READY;
 
-	list_add_tail(&_timers, (EXOS_NODE *)timer);
+	list_add_tail(&_timers, &timer->Node);
 }
 
 static int _add_timer(unsigned long *args)
@@ -49,10 +45,7 @@ static int _add_timer(unsigned long *args)
 
 int exos_timer_create(EXOS_TIMER *timer, unsigned long time, unsigned long period, EXOS_SIGNAL signal)
 {
-#ifdef DEBUG
-	if (timer == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
+	ASSERT(timer != NULL, KERNEL_ERROR_NULL_POINTER);
 	timer->Time = time;
 	timer->Period = period;
 	return __kernel_do(_add_timer, timer, signal);
@@ -61,14 +54,12 @@ int exos_timer_create(EXOS_TIMER *timer, unsigned long time, unsigned long perio
 
 void __timer_destroy_timer(EXOS_TIMER *timer)
 {
-#ifdef DEBUG
-	if (timer == NULL || timer->Owner == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
+	ASSERT(timer != NULL && timer->Owner != NULL, KERNEL_ERROR_NULL_POINTER);
+
 	if (!((1 << timer->Signal) & EXOS_SIGF_RESERVED_MASK))
 		__signal_free(timer->Owner, timer->Signal);
 
-	list_remove((EXOS_NODE *)timer);
+	list_remove(&timer->Node);
 }
 
 static int _rem_timer(unsigned long *args)
@@ -78,7 +69,7 @@ static int _rem_timer(unsigned long *args)
 	if (timer->State == EXOS_TIMER_READY)
 	{
 #ifdef DEBUG
-		if (NULL == list_find_node(&_timers, (EXOS_NODE *)timer))
+		if (NULL == list_find_node(&_timers, &timer->Node))
 			kernel_panic(KERNEL_ERROR_TIMER_NOT_FOUND);
 #endif
 
@@ -90,14 +81,10 @@ static int _rem_timer(unsigned long *args)
 
 void exos_timer_abort(EXOS_TIMER *timer)
 {
-#ifdef DEBUG
-	if (timer == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-	if (timer->Node.Type != EXOS_NODE_TIMER)
-		kernel_panic(KERNEL_ERROR_WRONG_NODE);
+	ASSERT(timer != NULL, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(timer->Node.Type == EXOS_NODE_TIMER, KERNEL_ERROR_WRONG_NODE);
 	if (timer->Owner != __running_thread)
 		kernel_panic(KERNEL_ERROR_CROSS_THREAD_OPERATION);
-#endif
 
 	__kernel_do(_rem_timer, timer);
 }
@@ -105,14 +92,10 @@ void exos_timer_abort(EXOS_TIMER *timer)
 
 void exos_timer_wait(EXOS_TIMER *timer)
 {
-#ifdef DEBUG
-	if (timer == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-	if (timer->Node.Type != EXOS_NODE_TIMER)
-		kernel_panic(KERNEL_ERROR_TIMER_NOT_FOUND);
+	ASSERT(timer != NULL, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(timer->Node.Type == EXOS_NODE_TIMER, KERNEL_ERROR_TIMER_NOT_FOUND);
 	if (timer->Owner != __running_thread)
 		kernel_panic(KERNEL_ERROR_CROSS_THREAD_OPERATION);
-#endif
 
 	exos_signal_wait(1 << timer->Signal, EXOS_TIMEOUT_NEVER);
 }
@@ -123,7 +106,7 @@ static unsigned long _subtime = 0;
 
 static int _tick(unsigned long *args)
 {
-	EXOS_NODE *node = LIST_HEAD(&_timers)->Succ;
+	node_t *node = LIST_HEAD(&_timers)->Succ;
 	while (node != LIST_TAIL(&_timers))
 	{
 		EXOS_TIMER *timer = (EXOS_TIMER *)node;

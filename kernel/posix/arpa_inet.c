@@ -31,19 +31,19 @@ in_addr_t inet_addr(const char *s)
 	int done;
 	unsigned int value;
 	unsigned char a, b, c, d;
-	done = __decl_uint32((char *)s, &value);
+	done = __decl_uint((char *)s, &value);
 	if (done && value < 256 && s[done] == '.')
 	{
 		a = value; s += done + 1;
-		done = __decl_uint32((char *)s, &value);
+		done = __decl_uint((char *)s, &value);
 		if (done && value < 256 && s[done] == '.')
 		{
 			b = value; s += done + 1;
-			done = __decl_uint32((char *)s, &value);
+			done = __decl_uint((char *)s, &value);
 			if (done && value < 256 && s[done] == '.')
 			{
 				c = value; s += done + 1;
-				done = __decl_uint32((char *)s, &value);
+				done = __decl_uint((char *)s, &value);
 				if (done && value < 256 && s[done] == '\0')
 				{
 					d = value;

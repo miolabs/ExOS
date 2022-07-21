@@ -17,7 +17,7 @@ static int _wait(int nfds,
 		unsigned long fd_mask = (1 << fd);
 		if (used & fd_mask)
 		{
-			EXOS_IO_ENTRY *io = posix_get_file_descriptor(fd);
+			io_entry_t *io = posix_get_file_descriptor(fd);
 			if (io == NULL) return posix_set_error(EBADF);
 
 			if (readfds && (readfds->mask & fd_mask))
@@ -37,7 +37,7 @@ static int _wait(int nfds,
 		unsigned long fd_mask = (1 << fd);
 		if (used & fd_mask)
 		{
-			EXOS_IO_ENTRY *io = posix_get_file_descriptor(fd);
+			io_entry_t *io = posix_get_file_descriptor(fd);
 			
 			if (readfds && (readfds->mask & fd_mask))
 			{

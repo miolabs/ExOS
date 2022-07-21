@@ -1,12 +1,20 @@
 #ifndef EXOS_TYPES_H
 #define EXOS_TYPES_H
 
-#ifndef __weak
-#define __weak __attribute__((__weak__))
+#if defined __GNUC__
+#define __init __attribute__((section(".init")))
+#define __naked __attribute__((naked))
+#define __weak __attribute__((weak))
+#define __noreturn __attribute__((noreturn))
+#define __deprecated __attribute((__deprecated__))
+#define __packed __attribute__((packed))
+#define __aligned(x) __attribute__((aligned(x)))
+
+#define nullptr ((void *)0)
 #endif
 
 #ifndef NULL
-#define NULL ((void *)0)
+#define NULL (nullptr)
 #endif
 
 #define __ABS(V)     ((V<0) ? -(V) : (V))  
@@ -14,6 +22,7 @@
 #define __MAX(A,B)   ((A>B) ? (A) : (B)))  
 #define __LIMIT(A,MIN,MAX)  (((A)<(MIN)) ? (MIN) : (((A)>(MAX)) ? (MAX) : (A)))
 #define __SWAP(TYPE,A,B)    { TYPE tmp = (B); B = (A); A = tmp; }
+#define __STR(M) #M
 
 #define MAXINT (0x7FFFFFFFL)
 

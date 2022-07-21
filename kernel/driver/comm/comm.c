@@ -1,145 +1,96 @@
 #include "comm.h"
 #include <kernel/panic.h>
 
-static int _read(EXOS_IO_ENTRY *io, void *buffer, unsigned long length);
-static int _write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length);
-static int _sync(EXOS_IO_ENTRY *io);
+static int _read(io_entry_t *io, unsigned char *buffer, unsigned length);
+static int _write(io_entry_t *io, const unsigned char *buffer, unsigned length);
+static int _sync(io_entry_t *io);
 
-static const EXOS_IO_DRIVER _comm_driver = {
+static const io_driver_t _comm_driver = {
 	.Read = _read, .Write = _write, .Sync = _sync };
 
-void comm_initialize()
-{
-}
+//void comm_initialize()
+//{
+//}
 
-void comm_add_device(EXOS_TREE_DEVICE *device, const char *parent_path)
-{
-    device->Type = EXOS_TREE_NODE_DEVICE;
-    exos_tree_add_child_path((EXOS_TREE_NODE *)device, parent_path);
-}
+//void comm_io_create(COMM_IO_ENTRY *io, COMM_DEVICE *device, unsigned port/*, EXOS_IO_FLAGS flags*/)
+//{
+//	ASSERT(io != NULL && device != NULL, KERNEL_ERROR_NULL_POINTER);
+//
+//	exos_io_create((io_entry_t *)io, /*EXOS_IO_COMM,*/ &_comm_driver/*, flags*/);
+//	exos_event_create(&io->SyncEvent);
+//	io->Device = device;
+//	io->Port = port;
+//}
 
-void comm_io_create(COMM_IO_ENTRY *io, COMM_DEVICE *device, unsigned port, EXOS_IO_FLAGS flags)
+bool comm_io_create_from_path(COMM_IO_ENTRY *io, const char *path, io_flags_t flags)
 {
-	if (io == NULL || device == NULL) 
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-
-	exos_io_create((EXOS_IO_ENTRY *)io, EXOS_IO_COMM, &_comm_driver, flags);
-	exos_event_create(&io->SyncEvent);
-	io->Device = device;
-	io->Port = port;
-}
-
-int comm_io_create_from_path(COMM_IO_ENTRY *io, const char *path, EXOS_IO_FLAGS flags)
-{
-	EXOS_TREE_NODE *node = exos_tree_find_path(NULL, path);
-	if (node != NULL && node->Type == EXOS_TREE_NODE_DEVICE)
+	// FIXME: use tree call that seeks path string and returns remaining path
+	EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_path(NULL, path);
+	if (dev_node != NULL && 
+		dev_node->TreeNode.Type == EXOS_TREE_NODE_DEVICE)
 	{
-		EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)node;
-		comm_io_create(io, dev_node->Device, dev_node->Unit, EXOS_IOF_WAIT);
-		return 1;
+		io_tree_device_t *dev = (io_tree_device_t *)dev_node;
+		exos_io_create(io, dev->Driver, dev->DriverContext, dev->Port);
+		// FIXME: flags is ignored
+		return true;
 	}
-	return 0;
+	return false;
 }
 
 int comm_io_open(COMM_IO_ENTRY *io)
 {
-#ifdef DEBUG
-	if (io == NULL) 
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-	if (io->Type != EXOS_IO_COMM)
-		kernel_panic(KERNEL_ERROR_IO_TYPE_MISMATCH);
-#endif
-
-	COMM_DEVICE *device = io->Device;
-	const COMM_DRIVER *driver = device->Driver;
-	int done = driver->Open(io);
-	return done;
+	ASSERT(io != NULL, KERNEL_ERROR_NULL_POINTER);
+	const io_driver_t *driver = io->Driver;
+	ASSERT(driver != NULL && driver->Open != NULL, KERNEL_ERROR_NULL_POINTER);
+	io_error_t res = driver->Open(io, NULL, IOF_NONE);	// FIXME: flags?
+	return (res == IO_OK) ? 0 : -1;
 }
 
 void comm_io_close(COMM_IO_ENTRY *io)
 {
-#ifdef DEBUG
-	if (io == NULL) 
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-	if (io->Type != EXOS_IO_COMM)
-		kernel_panic(KERNEL_ERROR_IO_TYPE_MISMATCH);
-#endif
+	ASSERT(io != NULL, KERNEL_ERROR_NULL_POINTER);
 
-	exos_io_sync((EXOS_IO_ENTRY *)io);
-
-	COMM_DEVICE *device = io->Device;
-	const COMM_DRIVER *driver = device->Driver;
+	exos_io_sync(io);
+	const io_driver_t *driver = io->Driver;
+	ASSERT(driver != NULL && driver->Close != NULL, KERNEL_ERROR_NULL_POINTER);
 	driver->Close(io);
 }
 
-int comm_io_get_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
+bool comm_io_get_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *pvalue)
 {
-#ifdef DEBUG
-	if (io == NULL || value == NULL) 
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-	if (io->Type != EXOS_IO_COMM)
-		kernel_panic(KERNEL_ERROR_IO_TYPE_MISMATCH);
-#endif
+	ASSERT(io != NULL, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(pvalue != NULL, KERNEL_ERROR_NULL_POINTER);
 
-	COMM_DEVICE *device = io->Device;
-	const COMM_DRIVER *driver = device->Driver;
-	int done = driver->GetAttr(io, attr, value);
+	const io_driver_t *driver = io->Driver;
+	ASSERT(driver != NULL, KERNEL_ERROR_NULL_POINTER);
+	bool done = false;
+//	if (driver->GetAttr != NULL)
+//		done = driver->GetAttr(io, attr, pvalue);
 	return done;
 }
 
-int comm_io_set_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
+bool comm_io_set_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *pvalue)
 {
-#ifdef DEBUG
-	if (io == NULL || value == NULL) 
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-	if (io->Type != EXOS_IO_COMM)
-		kernel_panic(KERNEL_ERROR_IO_TYPE_MISMATCH);
-#endif
+	ASSERT(io != NULL, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(pvalue != NULL, KERNEL_ERROR_NULL_POINTER);
 
-	COMM_DEVICE *device = io->Device;
-	const COMM_DRIVER *driver = device->Driver;
-	int done = driver->SetAttr(io, attr, value);
+	const io_driver_t *driver = io->Driver;
+	ASSERT(driver != NULL, KERNEL_ERROR_NULL_POINTER);
+	bool done = false;
+//	if (driver->SetAttr != NULL)
+//		done = driver->SetAttr(io, attr, pvalue);
 	return done;
 }
 
-
-static int _read(EXOS_IO_ENTRY *io, void *buffer, unsigned long length)
-{
-#ifdef DEBUG
-	if (io->Type != EXOS_IO_COMM)
-		kernel_panic(KERNEL_ERROR_IO_TYPE_MISMATCH);
-#endif
-	COMM_IO_ENTRY *comm = (COMM_IO_ENTRY *)io;
-	COMM_DEVICE *device = comm->Device;
-
-	const COMM_DRIVER *driver = device->Driver;
-	int done = driver->Read(comm, buffer, length);
-	return done;
-}
-
-static int _write(EXOS_IO_ENTRY *io, const void *buffer, unsigned long length)
-{
-#ifdef DEBUG
-	if (io->Type != EXOS_IO_COMM)
-		kernel_panic(KERNEL_ERROR_IO_TYPE_MISMATCH);
-#endif
-	COMM_IO_ENTRY *comm = (COMM_IO_ENTRY *)io;
-	COMM_DEVICE *device = comm->Device;
-
-	const COMM_DRIVER *driver = device->Driver;
-	return driver->Write(comm, buffer, length);
-}
-
-static int _sync(EXOS_IO_ENTRY *io)
-{
-#ifdef DEBUG
-	if (io->Type != EXOS_IO_COMM)
-		kernel_panic(KERNEL_ERROR_IO_TYPE_MISMATCH);
-#endif
-	COMM_IO_ENTRY *comm = (COMM_IO_ENTRY *)io;
-	int res = exos_event_wait(&comm->SyncEvent, io->Timeout);	// NOTE: timeout 0 will never timeout
-	return res;
-}
+//static int _sync(io_entry_t *io)
+//{
+//	ASSERT(io != NULL, KERNEL_ERROR_NULL_POINTER);
+////	ASSERT(io->Type == EXOS_IO_COMM, KERNEL_ERROR_IO_TYPE_MISMATCH);
+//
+//	COMM_IO_ENTRY *comm = (COMM_IO_ENTRY *)io;
+//	int res = exos_event_wait(&comm->SyncEvent, io->Timeout);	// NOTE: timeout 0 will never timeout
+//	return res;
+//}
 
 
 

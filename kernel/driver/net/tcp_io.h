@@ -4,6 +4,7 @@
 #include "tcp.h"
 #include "net_io.h"
 #include <kernel/fifo.h>
+#include <kernel/iobuffer.h>
 
 typedef enum
 {
@@ -33,12 +34,12 @@ typedef struct
 		struct
 		{
 			unsigned long RcvNext;
-			EXOS_IO_BUFFER RcvBuffer;
+			io_buffer_t RcvBuffer;
 
 			unsigned long SndSeq;
 //			unsigned long SndAck;
 //			unsigned long SndNext; 
-			EXOS_IO_BUFFER SndBuffer;
+			io_buffer_t SndBuffer;
 			TCP_FLAGS SndFlags;
 		};
 		struct	// for LISTENING STATE
@@ -51,12 +52,12 @@ typedef struct
 	unsigned short ServiceWait;
 	unsigned short ServiceRetry;
 	unsigned long ServiceTime;
-	EXOS_EVENT CloseEvent;
+	event_t CloseEvent;
 } TCP_IO_ENTRY;
 
 typedef struct
 {
-	EXOS_NODE Node;
+	node_t Node;
 	NET_ADAPTER *Adapter;
 	IP_ENDPOINT RemoteEP;
 	unsigned short RemotePort;
@@ -66,6 +67,6 @@ typedef struct
 
 void __tcp_io_initialize();
 
-void net_tcp_io_create(TCP_IO_ENTRY *io, EXOS_IO_FLAGS flags);
+void net_tcp_io_create(TCP_IO_ENTRY *io/*, EXOS_IO_FLAGS flags*/);
 
 #endif // NET_TCP_IO_H

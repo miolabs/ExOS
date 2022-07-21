@@ -7,7 +7,7 @@
 
 extern unsigned char __heap_start__, __heap_end__;
 
-static EXOS_LIST _mem_list;
+static list_t _mem_list;
 static EXOS_MUTEX _mem_lock;
 static EXOS_MEM_REGION _heap_region;
 
@@ -32,7 +32,7 @@ static EXOS_MEM_HEADER *_init_block(EXOS_MEM_REGION *region, void *start, void *
 		.Region = region,
 		.Size = size - (sizeof(EXOS_MEM_HEADER) + sizeof(EXOS_MEM_FOOTER)) };
 #ifdef DEBUG
-	*(EXOS_NODE *)header->Contents = (EXOS_NODE) { .Type = EXOS_NODE_MEM_NODE };
+	*(node_t *)header->Contents = (node_t) { .Type = EXOS_NODE_MEM_NODE };
 #endif
 	EXOS_MEM_FOOTER *footer = (EXOS_MEM_FOOTER *)(end - sizeof(EXOS_MEM_FOOTER));
 	*footer = (EXOS_MEM_FOOTER) { .FreeSize = header->Size };
@@ -54,7 +54,7 @@ int exos_mem_add_region(EXOS_MEM_REGION *region, void *start, void *end, int pri
 		EXOS_MEM_HEADER *free = _init_block(region, start + sizeof(EXOS_MEM_FOOTER), tail);
 
 		*region = (EXOS_MEM_REGION) {
-			.Node = (EXOS_NODE) { 
+			.Node = (node_t) { 
 #ifdef DEBUG
 				.Type = EXOS_NODE_MEM_REGION,
 #endif
@@ -63,11 +63,11 @@ int exos_mem_add_region(EXOS_MEM_REGION *region, void *start, void *end, int pri
 			.StartAddress = start,
 			.Size = size };
 		list_initialize(&region->FreeList);
-		list_add_tail(&region->FreeList, (EXOS_NODE *)free->Contents);
+		list_add_tail(&region->FreeList, (node_t *)free->Contents);
 		exos_mutex_create(&region->FreeListMutex);
 
 		exos_mutex_lock(&_mem_lock);
-		list_enqueue(&_mem_list, (EXOS_NODE *)region);
+		list_enqueue(&_mem_list, (node_t *)region);
 		exos_mutex_unlock(&_mem_lock);
 		return 1;
 	}
@@ -117,7 +117,7 @@ void *exos_mem_alloc(unsigned long size, EXOS_MEM_FLAGS flags)
 			EXOS_MEM_HEADER *header = _find_room(region, size);
 			if (header != NULL) 
 			{
-				if ((header->Size - size) >= (sizeof(EXOS_MEM_HEADER) + sizeof(EXOS_NODE) + sizeof(EXOS_MEM_FOOTER)))
+				if ((header->Size - size) >= (sizeof(EXOS_MEM_HEADER) + sizeof(node_t) + sizeof(EXOS_MEM_FOOTER)))
 				{
 					void *end = (void *)header + (sizeof(EXOS_MEM_HEADER) + header->Size + sizeof(EXOS_MEM_FOOTER));
 					void *split = (void*)header + (sizeof(EXOS_MEM_HEADER) + size + sizeof(EXOS_MEM_FOOTER));
@@ -128,14 +128,14 @@ void *exos_mem_alloc(unsigned long size, EXOS_MEM_FLAGS flags)
 					
 					// init unused part as new free block
 					EXOS_MEM_HEADER *free = _init_block(region, split, end); 
-                    list_insert((EXOS_NODE *)header->Contents, (EXOS_NODE *)free->Contents);
+                    list_insert((node_t *)header->Contents, (node_t *)free->Contents);
 				}
 				else
 				{
 					EXOS_MEM_FOOTER *footer = (EXOS_MEM_FOOTER *)(header->Contents + header->Size);
 					*footer = (EXOS_MEM_FOOTER) { .FreeSize = 0 };
 				}
-				list_remove((EXOS_NODE *)header->Contents);
+				list_remove((node_t *)header->Contents);
 
 				if (flags & EXOS_MEMF_CLEAR) __mem_set(header->Contents, header->Contents + size, 0);
 				segment = header->Contents;
@@ -158,13 +158,13 @@ void exos_mem_free(void *addr)
 		kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
 #endif
 
-	if (header->Size < sizeof(EXOS_NODE))
+	if (header->Size < sizeof(node_t))
 		kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
 	EXOS_MEM_FOOTER *footer = (EXOS_MEM_FOOTER *)(header->Contents + header->Size);
 	if (footer->FreeSize != 0) 
 		kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
 
-	EXOS_NODE *pred_node = NULL;
+	node_t *pred_node = NULL;
 
 #ifdef MEMORY_PARANOID
 	 __mem_set(header->Contents, header->Contents + header->Size, 0xdd);
@@ -184,11 +184,11 @@ void exos_mem_free(void *addr)
 		if (next_footer->FreeSize == next_header->Size)
 		{
 #ifdef DEBUG
-			if (((EXOS_NODE *)next_header->Contents)->Type != EXOS_NODE_MEM_NODE)
+			if (((node_t *)next_header->Contents)->Type != EXOS_NODE_MEM_NODE)
 				kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
 #endif
-			pred_node = ((EXOS_NODE *)next_header->Contents)->Pred;
-			list_remove((EXOS_NODE *)next_header->Contents);
+			pred_node = ((node_t *)next_header->Contents)->Pred;
+			list_remove((node_t *)next_header->Contents);
 			
 			footer = next_footer;
 		}
@@ -201,12 +201,12 @@ void exos_mem_free(void *addr)
 		EXOS_MEM_HEADER *prev_header = (EXOS_MEM_HEADER *)((void *)prev_footer - (prev_footer->FreeSize + sizeof(EXOS_MEM_HEADER)));
 #ifdef DEBUG
 		if (prev_header->Region != region  ||
-			((EXOS_NODE *)prev_header->Contents)->Type != EXOS_NODE_MEM_NODE || 
+			((node_t *)prev_header->Contents)->Type != EXOS_NODE_MEM_NODE || 
 			prev_header->Size != prev_footer->FreeSize)
 			kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
 #endif
-		pred_node = ((EXOS_NODE *)prev_header->Contents)->Pred;
-		list_remove((EXOS_NODE *)prev_header->Contents);
+		pred_node = ((node_t *)prev_header->Contents)->Pred;
+		list_remove((node_t *)prev_header->Contents);
 		
 		header = prev_header;
 	}
@@ -215,11 +215,11 @@ void exos_mem_free(void *addr)
 
 	if (pred_node != NULL)
 	{
-		list_insert(pred_node, (EXOS_NODE *)header->Contents);
+		list_insert(pred_node, (node_t *)header->Contents);
 	}
 	else
 	{
-		list_add_head(&region->FreeList, (EXOS_NODE *)header->Contents);
+		list_add_head(&region->FreeList, (node_t *)header->Contents);
 	}
 	exos_mutex_unlock(&region->FreeListMutex);
 }

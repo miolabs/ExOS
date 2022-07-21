@@ -69,7 +69,7 @@ static inline void _reverse_str(char* str, int len)
 	}
 }
 
-unsigned int __uint32_hexlz(char *dst, unsigned int value, int tz, char tc)
+unsigned int __uint_hexlz(char *dst, unsigned int value, int tz, char tc)
 {
 	unsigned int length = 0;
 	do
@@ -86,12 +86,12 @@ unsigned int __uint32_hexlz(char *dst, unsigned int value, int tz, char tc)
 	return length;
 }
 
-unsigned int __uint32_hexl(char *dst, unsigned int value)
+unsigned int __uint_hexl(char *dst, unsigned int value)
 {
-	return __uint32_hexlz(dst, value, 0, '\0');
+	return __uint_hexlz(dst, value, 0, '\0');
 }
 
-unsigned int __int32_declz(char *dst, int value, int tz, char tc) 
+unsigned int __int_declz(char *dst, int value, int tz, char tc) 
 {
 	unsigned int length = 0;
 	if (value < 0)
@@ -113,12 +113,46 @@ unsigned int __int32_declz(char *dst, int value, int tz, char tc)
 	return length;
 }
 
-unsigned int __int32_decl(char *dst, int value) 
+unsigned int __int_decl(char *dst, int value) 
 {
-	return __int32_declz(dst, value, 0, '\0');
+	return __int_declz(dst, value, 0, '\0');
 }
 
-unsigned int __decl_uint32(const char *src, unsigned int *pvalue)
+unsigned int __uint_declz(char *dst, unsigned int value, int tz, char tc) 
+{
+	unsigned int length = 0;
+	do
+	{
+		unsigned int digit = value % 10U;
+		value /= 10U;
+		dst[length++] = digit + '0';
+	} while(value != 0);
+
+	while(length < tz)
+		dst[length++] = tc; 
+
+	_reverse_str(dst, length);
+	return length;
+}
+
+unsigned int __uint_decl(char *dst, unsigned int value) 
+{
+	return __uint_declz(dst, value, 0, '\0');
+}
+
+
+#if __SIZEOF_INT__ == __SIZEOF_LONG__
+#pragma weak __long_decl = __int_decl
+#pragma weak __ulong_decl = __uint_decl
+#pragma weak __ulong_hexl = __uint_hexl
+#pragma weak __long_declz = __int_declz
+#pragma weak __ulong_declz = __uint_declz
+#pragma weak __ulong_hexlz = __uint_hexlz
+#else
+#error "Not implemented"
+#endif
+
+unsigned int __decl_uint(const char *src, unsigned int *pvalue)
 {
 	unsigned int done = 0;
 	unsigned int value = 0;

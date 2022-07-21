@@ -14,7 +14,7 @@ typedef enum
 
 typedef struct
 {
-	EXOS_NODE Node;
+	node_t Node;
 	EXOS_THREAD_STATE State;
 	void *SP;
 	void *StackStart;
@@ -23,8 +23,8 @@ typedef struct
 	volatile unsigned long SignalsWaiting;
 	volatile unsigned long SignalsReceived;
 	volatile unsigned long SignalsReserved;
-	EXOS_LIST Joining;
-	EXOS_LIST *RecycleList;
+	list_t Joining;
+	list_t *RecycleList;
 	void *ThreadContext;	// FIXME: obsolete, will use TLS EABI
 } EXOS_THREAD;
 
@@ -36,7 +36,7 @@ void __thread_block();
 void __thread_unblock(EXOS_THREAD *thread);
 void __thread_vacate();
 
-void exos_thread_create(EXOS_THREAD *thread, int pri, void *stack, unsigned stack_size, EXOS_LIST *recycler, EXOS_THREAD_FUNC entry, void *arg);
+void exos_thread_create(EXOS_THREAD *thread, int pri, void *stack, unsigned stack_size, list_t *recycler, EXOS_THREAD_FUNC entry, void *arg);
 void exos_thread_exit(void *result);
 void *exos_thread_join(EXOS_THREAD *thread);
 

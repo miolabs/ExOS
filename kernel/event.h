@@ -7,18 +7,22 @@
 
 typedef struct
 {
-	EXOS_LIST Handles;
+	list_t Handles;
 	unsigned State;
-} EXOS_EVENT;
+} event_t;
 
-void __set_event(EXOS_EVENT *event, int state);
+#ifdef EXOS_OLD
+#define EXOS_EVENT event_t
+#endif
 
-void exos_event_create(EXOS_EVENT *event);
-int exos_event_check(EXOS_EVENT *event, EXOS_WAIT_HANDLE *handle, unsigned long *pmask);
-void exos_event_set(EXOS_EVENT *event);
-void exos_event_reset(EXOS_EVENT *event);
-int exos_event_wait(EXOS_EVENT *event, unsigned long timeout);
-int exos_event_wait_multiple(EXOS_EVENT **events, int count, unsigned long timeout);
-unsigned long exos_event_wait_signals(EXOS_EVENT *event, unsigned long mask, unsigned long timeout);
+void __set_event(event_t *event, int state);
+
+void exos_event_create(event_t *event);
+int exos_event_check(event_t *event, EXOS_WAIT_HANDLE *handle, unsigned long *pmask);
+void exos_event_set(event_t *event);
+void exos_event_reset(event_t *event);
+int exos_event_wait(event_t *event, unsigned long timeout);
+int exos_event_wait_multiple(event_t **events, int count, unsigned long timeout);
+unsigned long exos_event_wait_signals(event_t *event, unsigned long mask, unsigned long timeout);
 
 #endif // EXOS_EVENT_H

@@ -4,7 +4,7 @@
 
 extern int __ctors_start__, __ctors_end__;
 
-static EXOS_LIST _init_list;
+static list_t _init_list;
 
 static void _init_func();
 
@@ -20,7 +20,7 @@ void __services_init()
 		if (init->Type != EXOS_NODE_INITIALIZER)
 			kernel_panic(KERNEL_ERROR_WRONG_NODE);
 #endif
-		list_enqueue(&_init_list, (EXOS_NODE *)init);
+		list_enqueue(&_init_list, (node_t *)init);
 		ctor++;
 	}
 

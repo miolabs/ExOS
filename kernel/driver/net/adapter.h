@@ -33,7 +33,7 @@ typedef struct _NET_DRIVER NET_DRIVER;
 
 typedef struct
 {
-	EXOS_NODE Node;
+	node_t Node;
 	const NET_DRIVER *Driver;
 	EXOS_MUTEX InputLock;
 	EXOS_MUTEX OutputLock;
@@ -50,7 +50,7 @@ typedef struct
 
 typedef struct
 {
-	EXOS_NODE Node;
+	node_t Node;
 	NET_ADAPTER *Adapter;
 	void *Buffer;
 	unsigned short Offset;
@@ -59,7 +59,7 @@ typedef struct
 
 typedef struct
 {
-	EXOS_EVENT *CompletedEvent;
+	event_t *CompletedEvent;
 	NET_MBUF Buffer;
 } NET_OUTPUT_BUFFER;
 

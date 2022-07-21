@@ -4,7 +4,7 @@
 #include <kernel/timer.h>
 #include <kernel/memory.h>
 #include <kernel/panic.h>
-#include <comm/comm.h>
+#include <kernel/io.h>
 #ifndef EXOS_NO_NET
 #include <sys/socket.h>
 #include <net/net_io.h>
@@ -12,25 +12,27 @@
 
 int close(int fd)
 {
-	EXOS_IO_ENTRY *io = posix_get_file_descriptor(fd);
+	io_entry_t *io = posix_get_file_descriptor(fd);
 	if (io == NULL) return posix_set_error(EBADF);
 	
-	switch(io->Type)
-	{
-		case EXOS_IO_COMM:
-			comm_io_close((COMM_IO_ENTRY *)io);
-			break;
-#ifndef EXOS_NO_NET
-		case EXOS_IO_SOCKET:
-			shutdown(fd, SHUT_RDWR);
-			break;
-#endif
-		default:
+	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+
+//	switch(io->Type)
+//	{
+//		case EXOS_IO_COMM:
+//			comm_io_close((COMM_IO_ENTRY *)io);
+//			break;
+//#ifndef EXOS_NO_NET
+//		case EXOS_IO_SOCKET:
+//			shutdown(fd, SHUT_RDWR);
+//			break;
+//#endif
+//		default:
 			return posix_set_error(EBADF);
-	}
+//	}
 
 #ifdef DEBUG
-	EXOS_IO_ENTRY *io_old = posix_remove_file_descriptor(fd);
+	io_entry_t *io_old = posix_remove_file_descriptor(fd);
 	if (io_old != io) kernel_panic(KERNEL_ERROR_LIST_CORRUPTED);
 #else
 	posix_remove_file_descriptor(fd);
@@ -47,7 +49,7 @@ ssize_t pread(int fd, void *buf, size_t nbyte, off_t offset)
 
 ssize_t read(int fd, void *buf, size_t nbyte)
 {
-	EXOS_IO_ENTRY *io = posix_get_file_descriptor(fd);
+	io_entry_t *io = posix_get_file_descriptor(fd);
 	if (io == NULL) return posix_set_error(EBADF);
 	return exos_io_read(io, buf, nbyte);
 }
@@ -60,14 +62,14 @@ ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 
 ssize_t write(int fd, const void *buf, size_t nbyte)
 {
-	EXOS_IO_ENTRY *io = posix_get_file_descriptor(fd);
+	io_entry_t *io = posix_get_file_descriptor(fd);
 	if (io == NULL) return posix_set_error(EBADF);
 	return exos_io_write(io, buf, nbyte);
 }
 
 int fsync(int fd)
 {
-	EXOS_IO_ENTRY *io = posix_get_file_descriptor(fd);
+	io_entry_t *io = posix_get_file_descriptor(fd);
 	if (io == NULL) return posix_set_error(EBADF);
 	return exos_io_sync(io);
 }

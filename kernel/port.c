@@ -4,7 +4,7 @@
 #include <kernel/panic.h>
 #include <kernel/machine/hal.h>
 
-static EXOS_LIST _port_list;
+static list_t _port_list;
 static EXOS_MUTEX _port_mutex;
 
 static EXOS_PORT *_find_port(const char *name);
@@ -17,11 +17,7 @@ void __port_init()
 
 int exos_port_create(EXOS_PORT *port, const char *name)
 {
-	port->Node = (EXOS_NODE) {
-#ifdef DEBUG
-		.Type = EXOS_NODE_PORT,
-#endif
-		};
+	port->Node = (node_t) {	.Type = EXOS_NODE_PORT };
 
 	exos_event_create(&port->Event);
 	exos_fifo_create(&port->Fifo, &port->Event);
@@ -33,7 +29,7 @@ int exos_port_create(EXOS_PORT *port, const char *name)
 		exos_mutex_lock(&_port_mutex);
 		if (NULL == _find_port(name))
 		{
-			list_add_tail(&_port_list, (EXOS_NODE *)port);
+			list_add_tail(&_port_list, (node_t *)port);
 		}
 		else done = 0;
 		exos_mutex_unlock(&_port_mutex);
@@ -53,7 +49,7 @@ static EXOS_PORT *_find_port(const char *name)
 
 EXOS_PORT *exos_port_find(const char *name)
 {
-	if (name == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
+	ASSERT(name != NULL, KERNEL_ERROR_NULL_POINTER);
 
 	exos_mutex_lock(&_port_mutex);
 	EXOS_PORT *port = _find_port(name);
@@ -62,22 +58,20 @@ EXOS_PORT *exos_port_find(const char *name)
 
 void exos_port_remove(const char *name)
 {
-	if (name == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
+	ASSERT(name != NULL, KERNEL_ERROR_NULL_POINTER);
 
 	exos_mutex_lock(&_port_mutex);
 	EXOS_PORT *port = _find_port(name);
-	if (port != NULL) list_remove((EXOS_NODE *)port);
+	if (port != NULL) list_remove(&port->Node);
 	exos_mutex_unlock(&_port_mutex);
 }
 
 EXOS_MESSAGE *exos_port_get_message(EXOS_PORT *port)
 {
-	EXOS_NODE *node = exos_fifo_dequeue(&port->Fifo);
+	node_t *node = exos_fifo_dequeue(&port->Fifo);
 	if (node != NULL)
 	{
-#ifdef DEBUG
-		if (node->Type != EXOS_NODE_MESSAGE) kernel_panic(KERNEL_ERROR_WRONG_NODE);
-#endif
+		ASSERT(node->Type == EXOS_NODE_MESSAGE, KERNEL_ERROR_WRONG_NODE);
 		return (EXOS_MESSAGE *)node;
 	}
 	return NULL;
@@ -85,12 +79,10 @@ EXOS_MESSAGE *exos_port_get_message(EXOS_PORT *port)
 
 EXOS_MESSAGE *exos_port_wait_message(EXOS_PORT *port, int timeout)
 {
-	EXOS_NODE *node = exos_fifo_wait(&port->Fifo, timeout);
+	node_t *node = exos_fifo_wait(&port->Fifo, timeout);
 	if (node != NULL)
 	{
-#ifdef DEBUG
-		if (node->Type != EXOS_NODE_MESSAGE) kernel_panic(KERNEL_ERROR_WRONG_NODE);
-#endif
+		ASSERT(node->Type == EXOS_NODE_MESSAGE, KERNEL_ERROR_WRONG_NODE);
 		return (EXOS_MESSAGE *)node;
 	}
 	return NULL;
@@ -98,20 +90,16 @@ EXOS_MESSAGE *exos_port_wait_message(EXOS_PORT *port, int timeout)
 
 void exos_port_send_message(EXOS_PORT *port, EXOS_MESSAGE *msg)
 {
-	if (port == NULL || msg == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#ifdef DEBUG
-	if (port->Node.Type != EXOS_NODE_PORT) kernel_panic(KERNEL_ERROR_WRONG_NODE);
+	ASSERT(port != NULL && msg == NULL, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(port->Node.Type == EXOS_NODE_PORT, KERNEL_ERROR_WRONG_NODE);
 	msg->Node.Type = EXOS_NODE_MESSAGE;
-#endif
-	exos_fifo_queue(&port->Fifo, (EXOS_NODE *)msg);
+	exos_fifo_queue(&port->Fifo, (node_t *)msg);
 }
 
 void exos_port_reply_message(EXOS_MESSAGE *msg)
 {
-	if (msg == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#ifdef DEBUG
-	if (msg->Node.Type != EXOS_NODE_MESSAGE) kernel_panic(KERNEL_ERROR_WRONG_NODE);
-#endif
+	ASSERT(msg != NULL, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(msg->Node.Type == EXOS_NODE_MESSAGE, KERNEL_ERROR_WRONG_NODE);
 	exos_port_send_message(msg->ReplyPort, msg);
 }
 

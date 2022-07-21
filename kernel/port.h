@@ -5,15 +5,15 @@
 
 typedef struct
 {
-	EXOS_NODE Node;
+	node_t Node;
 	EXOS_FIFO Fifo;
-	EXOS_EVENT Event;
+	event_t Event;
 	const char *Name;
 } EXOS_PORT;
 
 typedef struct
 {
-	EXOS_NODE Node;
+	node_t Node;
 	EXOS_PORT *ReplyPort;
 } EXOS_MESSAGE;
 

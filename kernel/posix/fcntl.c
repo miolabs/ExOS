@@ -1,9 +1,8 @@
 #include <fcntl.h>
 #include "posix.h"
 
-#include <kernel/tree.h>
 #include <kernel/memory.h> 
-#include <comm/comm.h>
+#include <kernel/io.h>
 #include <stdarg.h>
 
 int creat(const char *path, mode_t mode)
@@ -11,17 +10,18 @@ int creat(const char *path, mode_t mode)
 	return -1;
 }
 
-static int _set_fl(EXOS_IO_ENTRY *io, int oflag)
+static int _set_fl(io_entry_t *io, int oflag)
 {
-	EXOS_IO_FLAGS flags = oflag & O_NONBLOCK ? EXOS_IOF_NONE : EXOS_IOF_WAIT;
-	exos_io_set_flags(io, flags);
+	// FIXME
+//	EXOS_IO_FLAGS flags = oflag & O_NONBLOCK ? EXOS_IOF_NONE : EXOS_IOF_WAIT;
+//	exos_io_set_flags(io, flags);
 	return 0;
 }
 
 int fcntl(int fd, int cmd, ...)
 {
 	va_list args;
-	EXOS_IO_ENTRY *io = posix_get_file_descriptor(fd);
+	io_entry_t *io = posix_get_file_descriptor(fd);
 	if (io == NULL) return EBADF;	
 	
 	va_start(args, cmd);
@@ -36,29 +36,19 @@ int fcntl(int fd, int cmd, ...)
 int open(const char *path, int oflag, ...)
 {
 	// NOT: varargs are currently ignored
-
-	const char *dev_path = path;
-	if (*dev_path == '/') dev_path++;
-	EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_path(NULL, dev_path);
-	if (dev_node == NULL || 
-		dev_node->Type != EXOS_TREE_NODE_DEVICE)
-		return posix_set_error(ENODEV);
-
-	COMM_IO_ENTRY *io = (COMM_IO_ENTRY *)exos_mem_alloc(sizeof(COMM_IO_ENTRY), EXOS_MEMF_CLEAR);
+	io_entry_t *io = (io_entry_t *)exos_mem_alloc(sizeof(io_entry_t), EXOS_MEMF_CLEAR);
 	if (io == NULL) 
 		return posix_set_error(ENOMEM);
 	
-	EXOS_IO_FLAGS flags = oflag & O_NONBLOCK ? EXOS_IOF_NONE : EXOS_IOF_WAIT;
-	comm_io_create(io, dev_node->Device, dev_node->Unit, flags);
-
-	int error = comm_io_open(io);
-	if (error == 0)
+	//EXOS_IO_FLAGS flags = oflag & O_NONBLOCK ? EXOS_IOF_NONE : EXOS_IOF_WAIT;
+	io_error_t res = exos_io_open(io, path, IOF_NONE);	// TODO: parse flags
+	if (res == IO_OK)
 	{
-		int fd = posix_add_file_descriptor((EXOS_IO_ENTRY *)io);
+		int fd = posix_add_file_descriptor((io_entry_t *)io);
 		if (fd >= 0)
 			return fd;
 		
-		comm_io_close(io);
+		exos_io_close(io);
 	}
 	exos_mem_free(io);
 	return -1;

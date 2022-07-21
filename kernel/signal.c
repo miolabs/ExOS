@@ -135,16 +135,16 @@ void exos_signal_free(EXOS_SIGNAL signal)
 
 
 
-void __cond_add_wait_handle(EXOS_LIST *list, EXOS_WAIT_HANDLE *handle)
+void __cond_add_wait_handle(list_t *list, EXOS_WAIT_HANDLE *handle)
 {
 #ifdef DEBUG
-	handle->Node = (EXOS_NODE) { .Type = EXOS_NODE_WAIT_HANDLE };
+	handle->Node = (node_t) { .Type = EXOS_NODE_WAIT_HANDLE };
 #endif
 
 	handle->Owner = __running_thread;
 	handle->Signal = __signal_alloc();
 
-	list_add_tail(list, (EXOS_NODE *)handle);
+	list_add_tail(list, (node_t *)handle);
 	handle->State = EXOS_WAIT_PENDING;
 }
 
@@ -161,15 +161,15 @@ void __cond_rem_wait_handle(EXOS_WAIT_HANDLE *handle, EXOS_WAIT_STATE state)
 	if (handle->State == EXOS_WAIT_PENDING)
 	{
 		handle->State = state;
-		list_remove((EXOS_NODE *)handle);
+		list_remove((node_t *)handle);
 		__signal_free(handle->Owner, handle->Signal);
 	}
 }
 
-int __cond_signal_all(EXOS_LIST *list, void *result)
+int __cond_signal_all(list_t *list, void *result)
 {
 	int done = 0;
-	EXOS_NODE *node = LIST_HEAD(list)->Succ;
+	node_t *node = LIST_HEAD(list)->Succ;
 	while (node != LIST_TAIL(list))
 	{
 		EXOS_WAIT_HANDLE *handle = (EXOS_WAIT_HANDLE *)node;

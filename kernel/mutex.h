@@ -5,7 +5,7 @@
 
 typedef struct
 {
-	EXOS_LIST Handles;
+	list_t Handles;
 	EXOS_THREAD *Owner;
 	unsigned long Count;
 } EXOS_MUTEX;

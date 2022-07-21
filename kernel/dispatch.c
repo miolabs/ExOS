@@ -2,7 +2,7 @@
 #include <kernel/panic.h>
 #include <kernel/timer.h>
 
-void exos_dispatcher_context_create(EXOS_DISPATCHER_CONTEXT *context)
+void exos_dispatcher_context_create(dispatcher_context_t *context)
 {
 	exos_mutex_create(&context->Lock);
 	list_initialize(&context->Dispatchers);
@@ -10,12 +10,12 @@ void exos_dispatcher_context_create(EXOS_DISPATCHER_CONTEXT *context)
 	exos_event_create(&context->WakeEvent);
 }
 
-void exos_dispatcher_create(EXOS_DISPATCHER *dispatcher, EXOS_EVENT *event, EXOS_DISPATCHER_CALLBACK callback, void *state)
+void exos_dispatcher_create(dispatcher_t *dispatcher, event_t *event, EXOS_DISPATCHER_CALLBACK callback, void *state)
 {
-	*dispatcher = (EXOS_DISPATCHER) { .Event = event, .Callback = callback, .CallbackState = state };
+	*dispatcher = (dispatcher_t) { .Event = event, .Callback = callback, .CallbackState = state };
 }
 
-void exos_dispatcher_add(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher, unsigned long timeout)
+void exos_dispatcher_add(dispatcher_context_t *context, dispatcher_t *dispatcher, unsigned long timeout)
 {
 #ifdef DEBUG
 	if (context == NULL || dispatcher == NULL)
@@ -24,25 +24,25 @@ void exos_dispatcher_add(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *disp
 
 	exos_mutex_lock(&context->Lock);
 #ifdef DEBUG
-	if (list_find_node(&context->Dispatchers, (EXOS_NODE *)dispatcher))
+	if (list_find_node(&context->Dispatchers, (node_t *)dispatcher))
 		kernel_panic(KERNEL_ERROR_LIST_ALREADY_CONTAINS_NODE);
 #endif
 	dispatcher->Issued = exos_timer_time();
 	dispatcher->Timeout = timeout;
-	list_add_tail(&context->Dispatchers, (EXOS_NODE *)dispatcher);
+	list_add_tail(&context->Dispatchers, (node_t *)dispatcher);
 	context->Count++;
 	exos_mutex_unlock(&context->Lock);
 
 	exos_event_reset(&context->WakeEvent);
 }
 
-static int _remove(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher)
+static int _remove(dispatcher_context_t *context, dispatcher_t *dispatcher)
 {
 	int done = 0;
 	exos_mutex_lock(&context->Lock);
-	if (list_find_node(&context->Dispatchers, (EXOS_NODE *)dispatcher))
+	if (list_find_node(&context->Dispatchers, (node_t *)dispatcher))
 	{
-		list_remove((EXOS_NODE *)dispatcher);
+		list_remove((node_t *)dispatcher);
         context->Count--;
 		done = 1;
 	}
@@ -50,12 +50,12 @@ static int _remove(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher
 	return done;
 }
 
-int exos_dispatcher_remove(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher)
+int exos_dispatcher_remove(dispatcher_context_t *context, dispatcher_t *dispatcher)
 {
 	return _remove(context, dispatcher);
 }
 
-static void _call(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher)
+static void _call(dispatcher_context_t *context, dispatcher_t *dispatcher)
 {
 	if (_remove(context, dispatcher) &&
 		dispatcher->Callback != NULL)
@@ -63,21 +63,21 @@ static void _call(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher)
 	// NOTE: It is safe to reuse dispatcher struct or re-queue in the callback function
 }
 
-void exos_dispatch(EXOS_DISPATCHER_CONTEXT *context, unsigned long timeout)
+void exos_dispatch(dispatcher_context_t *context, unsigned long timeout)
 {
 	exos_mutex_lock(&context->Lock);
 	
-	EXOS_EVENT *array[context->Count + 1];
+	event_t *array[context->Count + 1];
 	int count = 0;
 	array[count++] = &context->WakeEvent;
 
-	EXOS_DISPATCHER *coming = NULL;
+	dispatcher_t *coming = NULL;
 	int wait = timeout != EXOS_TIMEOUT_NEVER ? timeout : MAXINT;
 	unsigned long time = exos_timer_time();
 	FOREACH(node, &context->Dispatchers)
 	{
-		EXOS_DISPATCHER *dispatcher = (EXOS_DISPATCHER *)node;
-		EXOS_EVENT *event = dispatcher->Event;
+		dispatcher_t *dispatcher = (dispatcher_t *)node;
+		event_t *event = dispatcher->Event;
 		if (event != NULL)
 			array[count++] = event;
 
@@ -117,7 +117,7 @@ void exos_dispatch(EXOS_DISPATCHER_CONTEXT *context, unsigned long timeout)
 	exos_mutex_lock(&context->Lock);
 	FOREACH(node, &context->Dispatchers)
 	{
-		EXOS_DISPATCHER *dispatcher = (EXOS_DISPATCHER *)node;
+		dispatcher_t *dispatcher = (dispatcher_t *)node;
 		if (dispatcher->Event->State)
 		{
 			coming = dispatcher;

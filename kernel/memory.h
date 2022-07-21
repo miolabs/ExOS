@@ -15,12 +15,12 @@ typedef enum
 
 typedef struct
 {
-	EXOS_NODE Node;
+	node_t Node;
 	EXOS_MEM_FLAGS Flags;
 	void *StartAddress;
 	unsigned long Size;
 	EXOS_MUTEX FreeListMutex;
-	EXOS_LIST FreeList;
+	list_t FreeList;
 } EXOS_MEM_REGION;
 
 typedef struct __MEM_HEADER

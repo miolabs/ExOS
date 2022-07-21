@@ -10,8 +10,8 @@
 // global running thread
 EXOS_THREAD *__running_thread;
 
-static EXOS_LIST _ready;
-static EXOS_LIST _wait;
+static list_t _ready;
+static list_t _wait;
 static EXOS_THREAD _system_thread;
 
 static int _add_thread(unsigned long *args);
@@ -44,7 +44,7 @@ static int _add_thread(unsigned long *args)
 	if (thread == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
 
 	thread->State = EXOS_THREAD_READY;
-	list_enqueue(&_ready, (EXOS_NODE *)thread);
+	list_enqueue(&_ready, (node_t *)thread);
 	
 	__machine_req_switch();
 	return 0;
@@ -71,7 +71,7 @@ EXOS_THREAD *__kernel_schedule()
 	return first;
 }
 
-void exos_thread_create(EXOS_THREAD *thread, int pri, void *stack, unsigned stack_size, EXOS_LIST *recycler, EXOS_THREAD_FUNC entry, void *arg)
+void exos_thread_create(EXOS_THREAD *thread, int pri, void *stack, unsigned stack_size, list_t *recycler, EXOS_THREAD_FUNC entry, void *arg)
 {
 	stack_size = stack_size & ~7;	// align stack size
 
@@ -117,16 +117,16 @@ void exos_thread_create(EXOS_THREAD *thread, int pri, void *stack, unsigned stac
 
 static int _exit(unsigned long *args)
 {
-	EXOS_THREAD *thread = (EXOS_THREAD *)list_find_node(&_ready, (EXOS_NODE *)__running_thread);
+	EXOS_THREAD *thread = (EXOS_THREAD *)list_find_node(&_ready, (node_t *)__running_thread);
 	if (thread == NULL) kernel_panic(KERNEL_ERROR_THREAD_NOT_READY);
 
 	__cond_signal_all(&thread->Joining, (void *)args[0]);
 
 	thread->State = EXOS_THREAD_FINISHED;
-	list_remove((EXOS_NODE *)thread);
+	list_remove((node_t *)thread);
 
 	if (thread->RecycleList != NULL)
-		list_add_tail(thread->RecycleList, (EXOS_NODE *)thread);
+		list_add_tail(thread->RecycleList, (node_t *)thread);
 
 	__machine_req_switch();
 	return 0;
@@ -169,8 +169,8 @@ static int _set_pri(unsigned long *args)
 	thread->Node.Priority = priority;
 	if (thread->State == EXOS_THREAD_READY)
 	{
-		list_remove((EXOS_NODE *)thread);
-		list_enqueue(&_ready, (EXOS_NODE *)thread);
+		list_remove((node_t *)thread);
+		list_enqueue(&_ready, (node_t *)thread);
 	
 		__machine_req_switch();
 	}
@@ -195,14 +195,14 @@ void __thread_block()
 	if (thread->State == EXOS_THREAD_READY)
 	{
 #ifdef DEBUG
-		if (NULL == list_find_node(&_ready, (EXOS_NODE *)thread))
+		if (NULL == list_find_node(&_ready, (node_t *)thread))
 			kernel_panic(KERNEL_ERROR_THREAD_NOT_READY);
 #endif
-		list_remove((EXOS_NODE *)thread);
+		list_remove((node_t *)thread);
 
 		thread->State = EXOS_THREAD_WAIT;
 
-		list_enqueue(&_wait, (EXOS_NODE *)thread);
+		list_enqueue(&_wait, (node_t *)thread);
 
 		__machine_req_switch();
 	}
@@ -217,14 +217,14 @@ void __thread_unblock(EXOS_THREAD *thread)
 	if (thread->State == EXOS_THREAD_WAIT)
 	{
 #ifdef DEBUG
-		if (NULL == list_find_node(&_wait, (EXOS_NODE *)thread))
+		if (NULL == list_find_node(&_wait, (node_t *)thread))
 			kernel_panic(KERNEL_ERROR_THREAD_NOT_WAITING);
 #endif
-		list_remove((EXOS_NODE *)thread);
+		list_remove((node_t *)thread);
 
 		thread->State = EXOS_THREAD_READY;
 
-		list_enqueue(&_ready, (EXOS_NODE *)thread);
+		list_enqueue(&_ready, (node_t *)thread);
 	
 		__machine_req_switch();
 	}
@@ -236,11 +236,11 @@ void __thread_vacate()
 	if (thread->State == EXOS_THREAD_READY)
 	{
 #ifdef DEBUG
-		if (NULL == list_find_node(&_ready, (EXOS_NODE *)thread))
+		if (NULL == list_find_node(&_ready, (node_t *)thread))
 			kernel_panic(KERNEL_ERROR_THREAD_NOT_READY);
 #endif
-		list_remove((EXOS_NODE *)thread);
-		list_enqueue(&_ready, (EXOS_NODE *)thread);
+		list_remove((node_t *)thread);
+		list_enqueue(&_ready, (node_t *)thread);
 
 		__machine_req_switch();
 	}

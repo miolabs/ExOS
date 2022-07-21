@@ -22,7 +22,7 @@ typedef enum
 
 typedef struct
 {
-	EXOS_NODE Node;
+	node_t Node;
 	EXOS_THREAD *Owner;
 	EXOS_SIGNAL Signal;
 	EXOS_TIMER_STATE State;

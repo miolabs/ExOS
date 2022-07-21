@@ -3,7 +3,7 @@
 #include "signal.h"
 #include "panic.h"
 
-void exos_fifo_create(EXOS_FIFO *fifo, EXOS_EVENT *event)
+void exos_fifo_create(EXOS_FIFO *fifo, event_t *event)
 {
 #ifdef DEBUG
 	fifo->Count = 0;
@@ -15,7 +15,7 @@ void exos_fifo_create(EXOS_FIFO *fifo, EXOS_EVENT *event)
 static int _dequeue(unsigned long *args)
 {
 	EXOS_FIFO *fifo = (EXOS_FIFO *)args[0];
-	EXOS_NODE **pnode = (EXOS_NODE **)args[1];
+	node_t **pnode = (node_t **)args[1];
 	
 	*pnode = list_rem_head(&fifo->Items);
 #ifdef DEBUG
@@ -34,14 +34,14 @@ static int _dequeue(unsigned long *args)
 	return (*pnode != NULL);
 }
 
-EXOS_NODE *exos_fifo_dequeue(EXOS_FIFO *fifo)
+node_t *exos_fifo_dequeue(EXOS_FIFO *fifo)
 {
-	EXOS_NODE *node;
+	node_t *node;
 	__kernel_do(_dequeue, fifo, &node);
 	return node;
 }
 
-EXOS_NODE *exos_fifo_wait(EXOS_FIFO *fifo, unsigned long timeout)
+node_t *exos_fifo_wait(EXOS_FIFO *fifo, unsigned long timeout)
 {
 #ifdef DEBUG
 	if (fifo == NULL)
@@ -52,7 +52,7 @@ EXOS_NODE *exos_fifo_wait(EXOS_FIFO *fifo, unsigned long timeout)
 		exos_event_wait(fifo->Event, timeout) < 0)
 		return NULL;
 
-	EXOS_NODE *node;
+	node_t *node;
 	__kernel_do(_dequeue, fifo, &node);
 #ifdef DEBUG
 	if (node == NULL) kernel_panic(KERNEL_ERROR_UNKNOWN);
@@ -63,7 +63,7 @@ EXOS_NODE *exos_fifo_wait(EXOS_FIFO *fifo, unsigned long timeout)
 static int _queue(unsigned long *args)
 {
 	EXOS_FIFO *fifo = (EXOS_FIFO *)args[0];
-	EXOS_NODE *node = (EXOS_NODE *)args[1];
+	node_t *node = (node_t *)args[1];
 
 #ifdef DEBUG
 	if (list_find_node(&fifo->Items, node))
@@ -77,7 +77,7 @@ static int _queue(unsigned long *args)
 	return 0;
 }
 
-void exos_fifo_queue(EXOS_FIFO *fifo, EXOS_NODE *node)
+void exos_fifo_queue(EXOS_FIFO *fifo, node_t *node)
 {
 	__kernel_do(_queue, fifo, node);
 }

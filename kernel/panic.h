@@ -28,7 +28,17 @@ typedef enum
 	KERNEL_ERROR_THREAD_POOL_CORRUPTED,
 	KERNEL_ERROR_ALREADY_IN_USE,
 	KERNEL_ERROR_NO_HARDWARE_RESOURCES,
+	KERNEL_ERROR_KERNEL_PANIC,
+	KERNEL_ERROR_NOT_IMPLEMENTED,
 } KERNEL_ERROR;
+
+
+#ifdef DEBUG
+#define ASSERT(cond, msg) { if (!(cond)) kernel_panic(msg); }
+#else
+#define ASSERT(cond, msg) {	/* nothing */ }
+#endif
+
 
 void kernel_panic(KERNEL_ERROR error);
 void __kernel_panic();

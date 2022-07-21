@@ -2,4 +2,5 @@
 *.o
 *.bak
 *.hzs
+.vscode
 .output

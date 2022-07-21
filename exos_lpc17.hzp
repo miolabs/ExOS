@@ -35,7 +35,6 @@
       property_groups_file_path="$(TargetsDir)/LPC1000/propertyGroups.xml"
       target_reset_script="FLASHReset()" />
     <folder Name="Source Files">
-      <configuration Name="Common" filter="c;cpp;cxx;cc;h;s;asm;inc" />
       <folder Name="kernel">
         <folder Name="machine">
           <folder Name="lpc17">

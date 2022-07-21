@@ -4,7 +4,7 @@
 #include "syscall.h"
 #include "panic.h"
 
-void exos_event_create(EXOS_EVENT *event)
+void exos_event_create(event_t *event)
 {
 	list_initialize(&event->Handles);
 	event->State = 0;
@@ -12,7 +12,7 @@ void exos_event_create(EXOS_EVENT *event)
 
 static int _check_event(unsigned long *args)
 {
-	EXOS_EVENT *event = (EXOS_EVENT *)args[0];
+	event_t *event = (event_t *)args[0];
 	EXOS_WAIT_HANDLE *handle = (EXOS_WAIT_HANDLE *)args[1];
 	
 	if (!event->State)
@@ -23,7 +23,7 @@ static int _check_event(unsigned long *args)
 	return 0;
 }
 
-int exos_event_check(EXOS_EVENT *event, EXOS_WAIT_HANDLE *handle, unsigned long *pmask)
+int exos_event_check(event_t *event, EXOS_WAIT_HANDLE *handle, unsigned long *pmask)
 {
 #ifdef DEBUG
 	if (event == NULL || handle == NULL)
@@ -39,7 +39,7 @@ int exos_event_check(EXOS_EVENT *event, EXOS_WAIT_HANDLE *handle, unsigned long 
 	return 0;
 }
 
-int exos_event_wait(EXOS_EVENT *event, unsigned long timeout)
+int exos_event_wait(event_t *event, unsigned long timeout)
 {
 #ifdef DEBUG
 	if (event == NULL)
@@ -61,7 +61,7 @@ int exos_event_wait(EXOS_EVENT *event, unsigned long timeout)
 }
 
 
-void __set_event(EXOS_EVENT *event, int state)
+void __set_event(event_t *event, int state)
 {
 	__cond_signal_all(&event->Handles, NULL);
 	event->State = state;
@@ -69,11 +69,11 @@ void __set_event(EXOS_EVENT *event, int state)
 
 static int _set_event(unsigned long *args)
 {
-	__set_event((EXOS_EVENT *)args[0], (int)args[1]);
+	__set_event((event_t *)args[0], (int)args[1]);
 	return 0;
 }
 
-void exos_event_set(EXOS_EVENT *event)
+void exos_event_set(event_t *event)
 {
 #ifdef DEBUG
 	if (event == NULL || event->Handles.Tail != NULL)
@@ -83,7 +83,7 @@ void exos_event_set(EXOS_EVENT *event)
 	__kernel_do(_set_event, event, 1);
 }
 
-void exos_event_reset(EXOS_EVENT *event)
+void exos_event_reset(event_t *event)
 {
 #ifdef DEBUG
 	if (event == NULL || event->Handles.Tail != NULL)
@@ -93,7 +93,7 @@ void exos_event_reset(EXOS_EVENT *event)
 	__kernel_do(_set_event, event, 0);
 }
 
-int exos_event_wait_multiple(EXOS_EVENT **events, int count, unsigned long timeout)
+int exos_event_wait_multiple(event_t **events, int count, unsigned long timeout)
 {
 	EXOS_WAIT_HANDLE handles[count];
 	int done = 0;
@@ -115,7 +115,7 @@ int exos_event_wait_multiple(EXOS_EVENT **events, int count, unsigned long timeo
 	return mask == EXOS_SIGF_ABORT ? -1 : 0;
 }
 
-unsigned long exos_event_wait_signals(EXOS_EVENT *event, unsigned long mask, unsigned long timeout)
+unsigned long exos_event_wait_signals(event_t *event, unsigned long mask, unsigned long timeout)
 {
 #ifdef DEBUG
 	if (event == NULL)

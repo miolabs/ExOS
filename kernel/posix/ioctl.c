@@ -9,10 +9,11 @@ int ioctl(int fd, int cmd, ...)
 	va_start(args, cmd);
 	int done = 0;
 
-	EXOS_IO_ENTRY *io = posix_get_file_descriptor(fd);
+	io_entry_t *io = posix_get_file_descriptor(fd);
 	if (io == NULL) return posix_set_error(EBADF);
 
-	if (io->Type != EXOS_IO_COMM) return posix_set_error(ENOTTY);
+	// FIXME: let driver to return error if not a TTY
+//	if (io->Type != EXOS_IO_COMM) return posix_set_error(ENOTTY);
 
 /*
 	switch(cmd)

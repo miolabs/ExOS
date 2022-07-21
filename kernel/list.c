@@ -1,14 +1,14 @@
 #include "list.h"
 #include "panic.h"
 
-void list_initialize(EXOS_LIST *list)
+void list_initialize(list_t *list)
 {
 	LIST_HEAD(list)->Succ = LIST_TAIL(list);
 	LIST_TAIL(list)->Pred = LIST_HEAD(list);
 	list->Tail = NULL;
 }
 
-void list_insert(EXOS_NODE *pred, EXOS_NODE *node)
+void list_insert(node_t *pred, node_t *node)
 {
 	node->Pred = pred;
 	node->Succ = pred->Succ;
@@ -16,19 +16,19 @@ void list_insert(EXOS_NODE *pred, EXOS_NODE *node)
 	node->Pred->Succ = node;
 }
 
-void list_add_head(EXOS_LIST *list, EXOS_NODE *node)
+void list_add_head(list_t *list, node_t *node)
 {
 	list_insert(LIST_HEAD(list), node);
 }
 
-void list_add_tail(EXOS_LIST *list, EXOS_NODE *node)
+void list_add_tail(list_t *list, node_t *node)
 {
 	list_insert(LIST_TAIL(list)->Pred, node);
 }
 
-void list_enqueue(EXOS_LIST *list, EXOS_NODE *node)
+void list_enqueue(list_t *list, node_t *node)
 {
-	EXOS_NODE *pred = LIST_TAIL(list)->Pred;
+	node_t *pred = LIST_TAIL(list)->Pred;
 	FOREACH(node_i, list)
 	{
 		if (node_i->Priority < node->Priority) 
@@ -40,11 +40,9 @@ void list_enqueue(EXOS_LIST *list, EXOS_NODE *node)
 	list_insert(pred, node);
 }
 
-void list_remove(EXOS_NODE *node)
+void list_remove(node_t *node)
 {
-#ifdef DEBUG
-	if (node == NULL || node->Pred == NULL || node->Succ == NULL) kernel_panic(KERNEL_ERROR_LIST_CORRUPTED);
-#endif
+	ASSERT(node != NULL && node->Pred != NULL && node->Succ != NULL, KERNEL_ERROR_LIST_CORRUPTED);
 	node->Pred->Succ = node->Succ;
 	node->Succ->Pred = node->Pred;
 #ifdef DEBUG
@@ -52,9 +50,9 @@ void list_remove(EXOS_NODE *node)
 #endif
 }
 
-EXOS_NODE *list_find_node(EXOS_LIST *list, EXOS_NODE *node)
+node_t *list_find_node(list_t *list, node_t *node)
 {
-	EXOS_NODE *found = NULL;
+	node_t *found = NULL;
 	FOREACH(node_i, list)
 	{
 		if (node_i == node)
@@ -66,16 +64,16 @@ EXOS_NODE *list_find_node(EXOS_LIST *list, EXOS_NODE *node)
 	return found;
 }
 
-int list_get_count(EXOS_LIST *list)
+int list_get_count(list_t *list)
 {
 	int count = 0;
 	FOREACH(node_i, list) count++;
 	return count;
 }
 
-EXOS_NODE *list_rem_head(EXOS_LIST *list)
+node_t *list_rem_head(list_t *list)
 {
-	EXOS_NODE *node;
+	node_t *node;
 	if (LIST_ISEMPTY(list))
 	{
 		node = NULL;
