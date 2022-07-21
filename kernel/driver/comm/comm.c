@@ -1,13 +1,6 @@
 #include "comm.h"
 #include <kernel/panic.h>
 
-static int _read(io_entry_t *io, unsigned char *buffer, unsigned length);
-static int _write(io_entry_t *io, const unsigned char *buffer, unsigned length);
-static int _sync(io_entry_t *io);
-
-static const io_driver_t _comm_driver = {
-	.Read = _read, .Write = _write, .Sync = _sync };
-
 //void comm_initialize()
 //{
 //}
@@ -24,8 +17,7 @@ static const io_driver_t _comm_driver = {
 
 bool comm_io_create_from_path(COMM_IO_ENTRY *io, const char *path, io_flags_t flags)
 {
-	// FIXME: use tree call that seeks path string and returns remaining path
-	EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_path(NULL, path);
+	EXOS_TREE_DEVICE *dev_node = (EXOS_TREE_DEVICE *)exos_tree_find_path(NULL, &path);
 	if (dev_node != NULL && 
 		dev_node->TreeNode.Type == EXOS_TREE_NODE_DEVICE)
 	{
@@ -42,7 +34,7 @@ int comm_io_open(COMM_IO_ENTRY *io)
 	ASSERT(io != NULL, KERNEL_ERROR_NULL_POINTER);
 	const io_driver_t *driver = io->Driver;
 	ASSERT(driver != NULL && driver->Open != NULL, KERNEL_ERROR_NULL_POINTER);
-	io_error_t res = driver->Open(io, NULL, IOF_NONE);	// FIXME: flags?
+	io_error_t res = driver->Open(io, NULL, IOF_NONE);	// FIXME: name? flags?
 	return (res == IO_OK) ? 0 : -1;
 }
 
