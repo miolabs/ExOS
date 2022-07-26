@@ -3,29 +3,28 @@
 #include <kernel/panic.h>
 #include <kernel/syscall.h>
 
-int exos_thread_pool_create(EXOS_THREAD_POOL *pool)
+void exos_thread_pool_create(exos_thread_pool_t *pool)
 {
 	list_initialize(&pool->Threads);
-	return 0;
 }
 
 static int _get_thread(unsigned long *args)
 {
-	EXOS_THREAD_POOL *pool = (EXOS_THREAD_POOL *)args[0];
-	EXOS_THREAD **pthread = (EXOS_THREAD **)args[1];
+	exos_thread_pool_t *pool = (exos_thread_pool_t *)args[0];
+	exos_thread_t **pthread = (exos_thread_t **)args[1];
 
-	*pthread = (EXOS_THREAD *)list_rem_head(&pool->Threads);
+	*pthread = (exos_thread_t *)list_rem_head(&pool->Threads);
 	return 0;
 }
 
-EXOS_THREAD *exos_thread_pool_thread_create(EXOS_THREAD_POOL *pool, int pri, unsigned long stack_size, EXOS_THREAD_FUNC entry, void *arg)
+exos_thread_t *exos_thread_pool_thread_create(exos_thread_pool_t *pool, int pri, unsigned long stack_size, exos_thread_func_t entry, void *arg)
 {
 #ifdef DEBUG
 	if (pool == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
 #endif
 
-	EXOS_THREAD *thread;
+	exos_thread_t *thread;
 	__kernel_do(_get_thread, pool, &thread);
 
 #ifdef DEBUG
@@ -39,25 +38,25 @@ EXOS_THREAD *exos_thread_pool_thread_create(EXOS_THREAD_POOL *pool, int pri, uns
 		if (thread != NULL)
 			exos_mem_free(thread);
 
-		thread = (EXOS_THREAD *)exos_mem_alloc(sizeof(EXOS_THREAD) + stack_size, EXOS_MEMF_CLEAR);
+		thread = (exos_thread_t *)exos_mem_alloc(sizeof(exos_thread_t) + stack_size, EXOS_MEMF_CLEAR);
 		if (thread == NULL) return NULL;
 
-		stack = (void *)thread + sizeof(EXOS_THREAD);
+		stack = (void *)thread + sizeof(exos_thread_t);
 	}
 	else
 	{
 		stack = thread->StackStart;
 #ifdef DEBUG
-		if (stack != ((void *)thread + sizeof(EXOS_THREAD)))
+		if (stack != ((void *)thread + sizeof(exos_thread_t)))
 			kernel_panic(KERNEL_ERROR_THREAD_POOL_CORRUPTED);
 #endif
 	}
 
-	exos_thread_create(thread, pri, stack, stack_size, &pool->Threads, entry, arg);
+	exos_thread_create(thread, pri, stack, stack_size, /*&pool->Threads,*/ entry, arg);
 	return thread;
 }
 
-int exos_thread_pool_cleanup(EXOS_THREAD_POOL *pool)
+void exos_thread_pool_cleanup(exos_thread_pool_t *pool)
 {
 #ifdef DEBUG
 	if (pool == NULL)
@@ -66,13 +65,12 @@ int exos_thread_pool_cleanup(EXOS_THREAD_POOL *pool)
 
 	while(1)
 	{
-		EXOS_THREAD *thread;
+		exos_thread_t *thread;
 		__kernel_do(_get_thread, pool, &thread);
 		if (thread == NULL) 
 			break;
 		
 		exos_mem_free(thread);
 	}
-	return 0;
 }
 

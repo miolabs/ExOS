@@ -6,7 +6,7 @@
 
 static const pthread_attr_t _default_pthread_attrs = { 256, NULL };
 
-extern EXOS_THREAD_POOL __posix_thread_pool;
+extern exos_thread_pool_t __posix_thread_pool;
 
 int pthread_create(pthread_t *thread, const pthread_attr_t *attrs, void *(* func)(void*), void *arg)
 {

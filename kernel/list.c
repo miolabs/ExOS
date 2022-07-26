@@ -45,9 +45,6 @@ void list_remove(node_t *node)
 	ASSERT(node != NULL && node->Pred != NULL && node->Succ != NULL, KERNEL_ERROR_LIST_CORRUPTED);
 	node->Pred->Succ = node->Succ;
 	node->Succ->Pred = node->Pred;
-#ifdef DEBUG
-	node->Pred = node->Succ = NULL;
-#endif
 }
 
 node_t *list_find_node(list_t *list, node_t *node)

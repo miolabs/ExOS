@@ -124,6 +124,10 @@ static bool _create_device(usb_host_controller_t *hc, usb_host_device_t *device,
 				control_pipe->MaxPacketSize = dev_desc->MaxPacketSize;
 				usb_otg_host_update_control_pipe(control_pipe);
 			}
+			else
+			{
+				verbose(VERBOSE_COMMENT, "usb_otg_host_drv", "device is LOW_SPEED");
+			}
 
 			// set address
 			unsigned char addr = ++_last_device;	// FIXME: search lowest unused

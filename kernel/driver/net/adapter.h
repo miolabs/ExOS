@@ -44,7 +44,7 @@ typedef struct
 	IP_ADDR Gateway;
 
 	unsigned long InputSignal;
-	EXOS_THREAD Thread;
+	exos_thread_t Thread;
 	unsigned char Stack[NET_ADAPTER_THREAD_STACK];
 } NET_ADAPTER;
 

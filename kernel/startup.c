@@ -7,32 +7,26 @@
 #include "machine/hal.h"
 #include <modules/services/services.h>
 
-#ifndef MAIN_THREAD_PRI
-#define MAIN_THREAD_PRI 0
+#ifdef MAIN_THREAD_STACK
+#warning "MAIN_THREAD_STACK is no longer used; use linker (process) stack definition for initial thread"
 #endif
 
-void main();
-
-EXOS_THREAD _main_thread;
-static unsigned char _main_stack[MAIN_THREAD_STACK] __attribute__((aligned(16)));
+extern int main();
 
 void __kernel_start()
 {
 	__machine_init();
+	__thread_init();
 	__mem_init();
 	__port_init();
-	__thread_init();
 	__timer_init();
 	__io_initialize();
 	__posix_init();
 	__services_init();
 
-	// create the main thread
-	exos_thread_create(&_main_thread, MAIN_THREAD_PRI, 
-		_main_stack, MAIN_THREAD_STACK, NULL, 
-		(EXOS_THREAD_FUNC)main, NULL);
+	main();
 
-	__machine_idle();
+	__machine_reset();
 }
 
 __weak void __machine_init()

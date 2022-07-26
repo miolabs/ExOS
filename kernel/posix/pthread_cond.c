@@ -1,7 +1,6 @@
 #include <pthread.h>
 #include <errno.h>
 #include "posix.h"
-#include <kernel/signal.h>
 #include <kernel/mutex.h>
 #include <kernel/panic.h>
 

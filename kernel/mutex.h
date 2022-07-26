@@ -1,12 +1,12 @@
 #ifndef EXOS_MUTEX_H
 #define EXOS_MUTEX_H
 
-#include <kernel/signal.h>
+#include <kernel/thread.h>
 
 typedef struct
 {
 	list_t Handles;
-	EXOS_THREAD *Owner;
+	exos_thread_t *Owner;
 	unsigned long Count;
 } mutex_t;
 

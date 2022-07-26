@@ -3,8 +3,12 @@
 #include <kernel/panic.h>
 #include <kernel/syscall.h>
 
-extern unsigned char __tbss_start__[], __tbss_end__[];
-extern unsigned char __tdata_start__[], __tdata_end__[], __tdata_load_start__[];
+extern int __stack_process_start__, __stack_process_end__;
+extern int __tbss_start__, __tbss_end__;
+extern int __tdata_start__, __tdata_end__, __tdata_load_start__;
+
+void * const __machine_stack_start = &__stack_process_start__;
+void * const __machine_tbss_start = &__tbss_start__;
 
 __naked void PendSV_Handler()
 {
@@ -58,20 +62,19 @@ __naked void SVC_Handler()
 
 __naked int __kernel_do(EXOS_SYSTEM_FUNC entry, ...)
 {
-#ifdef DEBUG
 	__asm__ volatile (
 		"push {r4, lr}\n\t"
 		"mrs r4, ipsr\n\t"
 		"cmp r4, #11\n\t"
-		"beq __kernel_panic\n\t"
+		"beq 1f\n\t"
 		"svc #0\n\t"
-		"pop {r4, pc}");
-#else
-	__asm__ volatile (
-		"push {lr}\n\t"
-		"svc #0\n\t"
-		"pop {pc}");
-#endif
+		"pop {r4, pc}\n\t"
+		"1:push {r1-r3}\n\t"
+		"mov r4, r0\n\t"
+		"mov r0, sp\n\t"
+		"blx r4\n\t"
+		"pop {r1-r3}\n\t"
+		"pop {r4, pc}\n\t");
 }
 
 void __machine_init_thread_stack(void **pstack, unsigned long arg, unsigned long pc, unsigned long lr)
@@ -103,12 +106,12 @@ void __machine_init_thread_stack(void **pstack, unsigned long arg, unsigned long
 
 void __machine_init_thread_local_storage(void **pstack)
 {
-	int bss_size = __tbss_end__ - __tbss_start__; 
-	int data_size = __tdata_end__ - __tdata_start__;
+	int bss_size = &__tbss_end__ - &__tbss_start__; 
+	int data_size = &__tdata_end__ - &__tdata_start__;
 
 	void *stack_end = *pstack;
 
-	__mem_copy(stack_end - data_size, stack_end, __tdata_load_start__);
+	__mem_copy(stack_end - data_size, stack_end, &__tdata_load_start__);
 	stack_end -= data_size;
 	__mem_set(stack_end - bss_size, stack_end, 0); 
 	stack_end -= bss_size;
@@ -120,7 +123,7 @@ void __machine_init_thread_local_storage(void **pstack)
 
 unsigned char *__aeabi_read_tp(void)
 {
-	EXOS_THREAD *thread = __running_thread;
+	exos_thread_t *thread = __running_thread;
 #ifdef DEBUG
 	if (thread->TP == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);

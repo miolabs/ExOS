@@ -61,8 +61,8 @@ void exos_io_create(io_entry_t *io, const io_driver_t *driver, void *driver_cont
 #endif
 		.Driver = driver, .DriverContext = driver_context, .Port = port };
 
-	exos_event_create(&io->InputEvent);
-	exos_event_create(&io->OutputEvent);
+	exos_event_create(&io->InputEvent, EXOS_EVENTF_AUTORESET);
+	exos_event_create(&io->OutputEvent, EXOS_EVENTF_AUTORESET);
 }
 
 
@@ -79,48 +79,54 @@ void exos_io_set_timeout(io_entry_t *io, unsigned long timeout)
 
 int exos_io_read(io_entry_t *io, void *buffer, unsigned long length)
 {
-#ifdef DEBUG
-	if (io == NULL || io->Driver == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
-
-//	if (io->Flags & EXOS_IOF_WAIT)
-		exos_event_wait(&io->InputEvent, io->Timeout);
-
+	ASSERT(io != nullptr, KERNEL_ERROR_NULL_POINTER);
 	const io_driver_t *driver = io->Driver;
-	return driver->Read(io, buffer, length);
+	ASSERT(driver != nullptr && driver->Read != nullptr, KERNEL_ERROR_NULL_POINTER);
+
+	unsigned timeout = io->Timeout;
+	int done = driver->Read(io, buffer, length);
+	if (done >= 0 && timeout != 0)
+	{
+		while(done < length)
+		{		
+			if (!exos_event_wait(&io->InputEvent, timeout))
+				break;
+
+			int res = driver->Read(io, buffer + done, length - done);
+			if (res < 0) 
+			{
+				done = res;
+				break;
+			}
+			done += res;
+		}
+	}
+	return done;
 }
 
 int exos_io_write(io_entry_t *io, const void *buffer, unsigned long length)
 {
-#ifdef DEBUG
-	if (io == NULL || io->Driver == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
-
+	ASSERT(io != nullptr, KERNEL_ERROR_NULL_POINTER);
 	const io_driver_t *driver = io->Driver;
-   	int done = 0;
-	if (length > 0)
+	ASSERT(driver != nullptr && driver->Write != nullptr, KERNEL_ERROR_NULL_POINTER);
+
+	unsigned timeout = io->Timeout;
+	int done = driver->Write(io, buffer, length);
+	if (done >= 0 && timeout != 0)
 	{
-//		if (io->Flags & EXOS_IOF_WAIT)
+		while(done < length)
 		{
-			while(length > 0)
+			if (!exos_event_wait(&io->OutputEvent, timeout))
+				break;
+		
+			int res = driver->Write(io, buffer + done, length - done);
+			if (res < 0) 
 			{
-				exos_event_wait(&io->OutputEvent, io->Timeout);
-
-				int done2 = driver->Write(io, buffer + done, length);
-				if (done2 < 0) return -1;
-				if (done2 == 0)
-					break;
-
-				done += done2;
-				length -= done2;
+				done = res;
+				break;
 			}
+			done += res;
 		}
-//		else
-//		{
-//			done = driver->Write(io, buffer, length);
-//		}
 	}
 	return done;
 }

@@ -4,51 +4,52 @@
 
 void exos_mutex_create(mutex_t *mutex)
 {
+	ASSERT(mutex != NULL, KERNEL_ERROR_NULL_POINTER);
 	list_initialize(&mutex->Handles);
 	mutex->Owner = NULL;
 	mutex->Count = 0;
 }
 
-static int _try_lock(unsigned long *args)
+static list_t *___mutex_cond(void *state)
 {
-	mutex_t *mutex = (mutex_t *)args[0];
-	EXOS_WAIT_HANDLE *handle = (EXOS_WAIT_HANDLE *)args[1];
+	mutex_t *mutex = (mutex_t *)state;
+	ASSERT(mutex != NULL, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(__running_thread != NULL, KERNEL_ERROR_KERNEL_PANIC);
 
-	if (mutex->Owner == __running_thread)
+	if (mutex->Owner == NULL)
 	{
-		mutex->Count++;
-	}
-	else if (mutex->Owner == NULL)
-	{
+		ASSERT(mutex->Count == 0, KERNEL_ERROR_KERNEL_PANIC);
+		mutex->Count = 1;
 		mutex->Owner = __running_thread;
-		mutex->Count = 0;
+		return NULL;
 	}
-	else
+	else if (mutex->Owner == __running_thread)
 	{
-		if (mutex->Handles.Tail != NULL)	// NOTE: complete static initialization
-			list_initialize(&mutex->Handles);
-
-		if (mutex->Owner->Node.Priority < __running_thread->Node.Priority)
-		{
-			// TODO: implement priority inheritance
-		}
-		__cond_add_wait_handle(&mutex->Handles, handle);
-		__signal_wait(1 << handle->Signal);
-		return -1;
+		ASSERT(mutex->Count != 0, KERNEL_ERROR_KERNEL_PANIC);
+		mutex->Count++;
+		return NULL;
 	}
-	return 0;
+	return &mutex->Handles;
 }
 
 void exos_mutex_lock(mutex_t *mutex)
 {
-#ifdef DEBUG
-	if (mutex == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
-	EXOS_WAIT_HANDLE handle;
-	while(__kernel_do(_try_lock, mutex, &handle) != 0);
-}
+	ASSERT(mutex != NULL, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(__running_thread != NULL, KERNEL_ERROR_KERNEL_PANIC);
 
+	exos_wait_handle_t handle;
+	exos_thread_create_wait_handle(&handle);
+	do 
+	{
+		exos_wait_mask_t mask = exos_thread_add_wait_handle(&handle, ___mutex_cond, mutex);
+		if (mask != 0)
+		{
+			exos_thread_wait(mask);
+			ASSERT(handle.State == WAIT_HANDLE_DONE, KERNEL_ERROR_KERNEL_PANIC);
+			exos_thread_dispose_wait_handle(&handle);
+		}
+	} while (mutex->Owner != __running_thread);
+}
 
 static int _unlock(unsigned long *args)
 {
@@ -56,25 +57,20 @@ static int _unlock(unsigned long *args)
 
 	if (mutex->Owner != __running_thread)
 		kernel_panic(KERNEL_ERROR_CROSS_THREAD_OPERATION);
+	ASSERT(mutex->Count != 0, KERNEL_ERROR_KERNEL_PANIC);
+	mutex->Count--;
 
 	if (mutex->Count == 0)
 	{
-		if (__cond_signal_all(&mutex->Handles, NULL) != 0)
-			__thread_vacate(); // NOTE: force our thread to leave if there are others of the same priority to allow them to get the lock immediately 
 		mutex->Owner = NULL;
-	}
-	else
-	{
-		mutex->Count--;
+		exos_thread_resume_all(&mutex->Handles);
 	}
 }
 
 void exos_mutex_unlock(mutex_t *mutex)
 {
-#ifdef DEBUG
-	if (mutex == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
+	ASSERT(mutex != NULL, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(mutex->Owner == __running_thread, KERNEL_ERROR_CROSS_THREAD_OPERATION);
 	__kernel_do(_unlock, mutex);
 }
 

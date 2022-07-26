@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 EXOS_POSIX_CONTEXT __main_context;
-EXOS_THREAD_POOL __posix_thread_pool;
+exos_thread_pool_t __posix_thread_pool;
 
 FILE *stdin = nullptr;
 FILE *stdout = nullptr;
@@ -18,13 +18,21 @@ void __posix_init()
 
 	//TODO: fill default descriptors and other context data
 
-	EXOS_THREAD *thread = __running_thread;
-	thread->ThreadContext = &__main_context;
+	exos_thread_t *thread = __running_thread;
+//	thread->ThreadContext = &__main_context;
+//	TODO: implement using TLS EABI
+}
+
+static EXOS_POSIX_CONTEXT *_get_posix_context()
+{
+//	TODO: implement using TLS EABI
+	EXOS_POSIX_CONTEXT *context = NULL; //(EXOS_POSIX_CONTEXT *)__running_thread->ThreadContext;
+	return context;
 }
 
 int posix_add_file_descriptor(io_entry_t *io)
 {
-	EXOS_POSIX_CONTEXT *context = (EXOS_POSIX_CONTEXT *)__running_thread->ThreadContext;
+	EXOS_POSIX_CONTEXT *context = _get_posix_context();
 	if (context == NULL) return ENOTSUP;
 
 	exos_mutex_lock(&context->Mutex);
@@ -44,7 +52,7 @@ int posix_add_file_descriptor(io_entry_t *io)
 
 io_entry_t *posix_get_file_descriptor(int fd)
 {
-	EXOS_POSIX_CONTEXT *context = (EXOS_POSIX_CONTEXT *)__running_thread->ThreadContext;
+	EXOS_POSIX_CONTEXT *context = _get_posix_context();
 	if (context == NULL) return NULL;
 
 	return (fd < POSIX_MAX_FILE_DESCRIPTORS) ? 
@@ -53,7 +61,7 @@ io_entry_t *posix_get_file_descriptor(int fd)
 
 io_entry_t *posix_remove_file_descriptor(int fd)
 {
-	EXOS_POSIX_CONTEXT *context = (EXOS_POSIX_CONTEXT *)__running_thread->ThreadContext;
+	EXOS_POSIX_CONTEXT *context = _get_posix_context();
 	if (context == NULL) return NULL;
 
 	exos_mutex_lock(&context->Mutex);

@@ -6,11 +6,11 @@
 typedef struct
 {
 	list_t Threads;
-} EXOS_THREAD_POOL;
+} exos_thread_pool_t;
 
-int exos_thread_pool_create(EXOS_THREAD_POOL *pool);
-EXOS_THREAD *exos_thread_pool_thread_create(EXOS_THREAD_POOL *pool, int pri, unsigned long stack_size, EXOS_THREAD_FUNC entry, void *arg);
-int exos_thread_pool_cleanup(EXOS_THREAD_POOL *pool);
+void exos_thread_pool_create(exos_thread_pool_t *pool);
+exos_thread_t *exos_thread_pool_thread_create(exos_thread_pool_t *pool, int pri, unsigned long stack_size, exos_thread_func_t entry, void *arg);
+void exos_thread_pool_cleanup(exos_thread_pool_t *pool);
 
 #endif // EXOS_THREAD_POOL_H
 

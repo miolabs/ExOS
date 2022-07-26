@@ -1,8 +1,9 @@
 #ifndef EXOS_TIMER_H
 #define EXOS_TIMER_H
 
+
 #include <kernel/thread.h>
-#include <kernel/signal.h>
+#include <kernel/event.h>
 
 #ifndef EXOS_TICK_FREQ
 #define EXOS_TICK_FREQ 1000	// 1ms / tick
@@ -14,31 +15,25 @@
 
 typedef enum
 {
-	EXOS_TIMER_UNKNOWN = 0,
-	EXOS_TIMER_READY,
-	EXOS_TIMER_ABORTED,
+	EXOS_TIMER_DETACHED = 0,
+	EXOS_TIMER_RUNNING,
 	EXOS_TIMER_FINISHED,
-} EXOS_TIMER_STATE;
+} exos_timer_state_t;
 
 typedef struct
 {
 	node_t Node;
-	EXOS_THREAD *Owner;
-	EXOS_SIGNAL Signal;
-	EXOS_TIMER_STATE State;
-	unsigned long Time;
-	unsigned long Period;
-} EXOS_TIMER;
+	exos_timer_state_t State;
+	unsigned Period;
+	unsigned Time;
+	event_t Event;
+} exos_timer_t;
 
 void __timer_init();
-void __timer_create_timer(EXOS_TIMER *timer, EXOS_SIGNAL signal);
-void __timer_destroy_timer(EXOS_TIMER *timer);
 
-int exos_timer_create(EXOS_TIMER *timer, unsigned long time, unsigned long period, EXOS_SIGNAL signal);
-void exos_timer_wait(EXOS_TIMER *timer);
-void exos_timer_abort(EXOS_TIMER *timer);
-
-void __timer_second_tick() __weak;
+void exos_timer_create(exos_timer_t *timer, unsigned time, unsigned period);
+void exos_timer_wait(exos_timer_t *timer) __deprecated;
+void exos_timer_dispose(exos_timer_t *timer);
 
 unsigned long exos_timer_time();
 unsigned long exos_timer_elapsed(unsigned long time);

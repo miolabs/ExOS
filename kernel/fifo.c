@@ -30,7 +30,10 @@ static int _dequeue(unsigned long *args)
 	}
 #endif
 	if (fifo->Event != NULL)
-		__set_event(fifo->Event, !LIST_ISEMPTY(&fifo->Items));
+	{
+		kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+//		__set_event(fifo->Event, !LIST_ISEMPTY(&fifo->Items));
+	}
 	return (*pnode != NULL);
 }
 
@@ -72,8 +75,10 @@ static int _queue(unsigned long *args)
 #endif
 	list_add_tail(&fifo->Items, node);
    	if (fifo->Event != NULL)
-		__set_event(fifo->Event, 1);
-
+	{
+		kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+//		__set_event(fifo->Event, 1);
+	}
 	return 0;
 }
 

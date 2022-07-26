@@ -44,7 +44,7 @@ extern const pthread_mutex_t __mutex_initializer;
 //pthread_rwlockattr_t
 //pthread_spinlock_t
 
-typedef EXOS_THREAD pthread_info_t;
+typedef exos_thread_t pthread_info_t;
 
 typedef struct
 {

@@ -764,12 +764,12 @@ void __usb_otg_host_irq_handler()
 		if (hprt & USB_OTG_HPRT_PCDET)
 		{
 			otg_host->HPRT = hprt_const | USB_OTG_HPRT_PCDET;	 // clear interrupt
-			exos_event_reset(&_hc->RootHubEvent);
+			exos_event_set(&_hc->RootHubEvent);
 		}
 		else if (hprt & USB_OTG_HPRT_PENCHNG)
 		{
 			otg_host->HPRT = hprt_const | USB_OTG_HPRT_PENCHNG;	 // clear interrupt
-			exos_event_reset(&_hc->RootHubEvent);
+			exos_event_set(&_hc->RootHubEvent);
 		}
 	}
 }

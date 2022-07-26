@@ -12,7 +12,8 @@
 #define __naked __attribute__((naked)) 
 #endif
 
-extern const void *__machine_process_start;
+extern void * const __machine_stack_start;
+extern void * const __machine_tbss_start;
 
 void __machine_init();
 void __board_init();

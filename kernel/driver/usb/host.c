@@ -24,8 +24,8 @@ void usb_host_controller_create(usb_host_controller_t *hc, const usb_host_contro
 		.Driver = driver,
 		.RootHubPorts = port_count,
 		.Devices = devices };
-	exos_event_create(&hc->SOF);
-	exos_event_create(&hc->RootHubEvent);
+	exos_event_create(&hc->SOF, EXOS_EVENTF_AUTORESET);
+	exos_event_create(&hc->RootHubEvent, EXOS_EVENTF_AUTORESET);
 }
 
 void usb_host_wait_sof(usb_host_controller_t *hc)
@@ -303,7 +303,7 @@ void usb_host_urb_create(usb_request_buffer_t *urb, usb_host_pipe_t *pipe)
 {
 	ASSERT(urb != nullptr && pipe != nullptr, KERNEL_ERROR_NULL_POINTER);
 	urb->Pipe = pipe;
-	exos_event_create(&urb->Event);
+	exos_event_create(&urb->Event, EXOS_EVENTF_AUTORESET);
 	urb->Status = URB_STATUS_EMPTY;
 }
 
