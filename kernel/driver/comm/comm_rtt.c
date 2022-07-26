@@ -95,8 +95,27 @@ void rtt_buffer_create(rtt_buffer_t *rtt, const char *name, void *buf, unsigned 
 
 int rtt_read(rtt_buffer_t *rtt, void *buf, unsigned int length)
 {
-	// TODO
-	return -1;
+	ASSERT(rtt != nullptr && buf != nullptr, KERNEL_ERROR_NULL_POINTER);
+	int avail = (rtt->WriteOffset - rtt->ReadOffset);
+	if (avail < 0) avail += rtt->BufSize;
+	ASSERT(avail >= 0 && avail < rtt->BufSize, KERNEL_ERROR_KERNEL_PANIC);
+	if (avail == 0)
+		return 0;
+
+	if (length > avail)
+		length = avail;
+
+	unsigned offset = rtt->ReadOffset;
+	for (unsigned i = 0; i < length; i++)
+	{
+		((char *)buf)[i] = rtt->BufStart[offset++];
+		if (offset == rtt->BufSize)
+			offset = 0;
+	}
+	__machine_dsb();
+	rtt->ReadOffset = offset;
+	__machine_dsb();
+	return length;
 }
 
 int rtt_write(rtt_buffer_t *rtt, const void *buf, unsigned int length)
