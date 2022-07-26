@@ -2,18 +2,13 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
+#include "posix.h"
 #include <kernel/mutex.h>
 #include <kernel/io.h>
 #include <kernel/memory.h>
 #include <kernel/machine/hal.h>
 #include <kernel/panic.h>
 #include <support/services/init.h>
-
-struct __stdio_FILE
-{
-	io_entry_t io;
-	mutex_t mutex;
-};
 
 static bool _open(FILE *stream, const char *path, io_flags_t flags);
 static int _vformat(unsigned (*vputs)(void *state, const char *s, unsigned length), const char *format, va_list args, void *state);
