@@ -4,83 +4,110 @@
 #include <usb/classes/hid.h>
 #include <usb/host.h>
 #include <kernel/dispatch.h>
+#include <stdbool.h>
 
-typedef struct __HID_FUNCTION_HANDLER HID_FUNCTION_HANDLER;
+typedef struct __hid_function_handler hid_function_handler_t;
 
 typedef struct
 {
-	USB_HOST_FUNCTION;
-	USB_HOST_PIPE InputPipe;
+	usb_host_function_t;
+	usb_host_pipe_t InputPipe;
 	unsigned char InterfaceSubClass;
 	unsigned char Protocol;
    	unsigned char Interface;
-	unsigned char MaxReportId;
 
-	HID_FUNCTION_HANDLER *Handler;
-	EXOS_MUTEX InputLock;
-	EXOS_LIST Inputs;
+	hid_function_handler_t *Handler;
 
 	unsigned char InputBuffer[64];
 	unsigned char OutputBuffer[64];
 	
-	unsigned char ExitFlag;
-	unsigned char StartedFlag;
+	bool ExitFlag;
 	unsigned char InstanceIndex;
 
-	USB_REQUEST_BUFFER Urb;
-	EXOS_DISPATCHER Dispatcher;
-} HID_FUNCTION;
+	usb_request_buffer_t Request;
+	dispatcher_t Dispatcher;
+} hid_function_t;
+
+typedef enum
+{
+	HID_PARSE_FOUND_END,
+	HID_PARSE_FOUND_LOCAL,
+	HID_PARSE_FOUND_INPUT,
+	HID_PARSE_FOUND_OUTPUT,
+} hid_parse_found_t;
 
 typedef struct
 {
-	EXOS_NODE Node;
-	//HID_FUNCTION_HANDLER *Handler;
-	unsigned char ReportId;
-	unsigned char Offset;
+	unsigned char InputOffset, NextInputOffset;
+	unsigned char OutputOffset, NextOutputOffset;
+	// global data
 	unsigned char UsagePage;
-	unsigned char Usage;
-	unsigned char Size;
-	unsigned char Count;
+	unsigned char ReportId;
+	unsigned char ReportSize;
+	unsigned char ReportCount;
 	unsigned char Min;
 	unsigned char Max;
 	unsigned long InputFlags;
-} HID_REPORT_INPUT;
-
-typedef struct 
-{
-	HID_FUNCTION_HANDLER *(*MatchDevice)(HID_FUNCTION *func);
-	int (*MatchInputHandler)(HID_FUNCTION_HANDLER *handler, HID_REPORT_INPUT *input);
-	void (*Start)(HID_FUNCTION_HANDLER *handler);
-	void (*Stop)(HID_FUNCTION_HANDLER *handler);
-	void (*Notify)(HID_FUNCTION_HANDLER *handler, HID_REPORT_INPUT *input, unsigned char *data);
-} HID_DRIVER;
+} hid_report_parser_global_state_t;
 
 typedef struct
 {
-	EXOS_NODE Node;
-	const HID_DRIVER *Driver;
-} HID_DRIVER_NODE;
+	unsigned char *Ptr;
+	unsigned short Offset;
+	unsigned short Length;
+	hid_report_parser_global_state_t *Global;
+} hid_report_parser_t;
 
-struct __HID_FUNCTION_HANDLER
+typedef struct
 {
-	EXOS_NODE Node;
-	HID_DRIVER_NODE *DriverNode;
-	HID_FUNCTION *Function;
+	unsigned char Type;
+	unsigned char Tag;
+	unsigned char Length;
+	union 
+	{
+		unsigned Value;
+		unsigned char *Data;
+	};
+} hid_report_parser_item_t;
+
+typedef struct 
+{
+	hid_function_handler_t *(*MatchDevice)(usb_host_device_t *device, usb_configuration_descriptor_t *conf_desc, usb_interface_descriptor_t *if_desc, 
+		hid_report_parser_t *parser);
+	void (*Start)(hid_function_handler_t *handler);
+	void (*Stop)(hid_function_handler_t *handler);
+	void (*Notify)(hid_function_handler_t *handler, unsigned char report_id, unsigned char *data, unsigned length);
+} hid_driver_t;
+
+typedef struct
+{
+	node_t Node;
+	const hid_driver_t *Driver;
+} hid_driver_node_t;
+
+struct __hid_function_handler
+{
+	node_t Node;
+	hid_driver_node_t *DriverNode;
+	hid_function_t *Function;
+	unsigned char MaxReportId;
 };
 
-//struct _HID_REPORT_HANDLER
-//{
-//	EXOS_NODE Node;
-//	
-//	HID_FUNCTION *Function;
-//	HID_REPORT_INPUT *Input;
-//};
+typedef struct
+{
+	unsigned char Size;
+	unsigned char Offset;
+} hid_report_field_t;
 
-#define HID_REQUEST_SET_REPORT 0x09
 
-void usbd_hid_initialize();
-int usbd_hid_add_driver(HID_DRIVER_NODE *node); 
-int usbd_hid_set_report(HID_FUNCTION *func, unsigned char report_type, unsigned char report_id, void *data, int length);
+void usb_hid_initialize(dispatcher_context_t *context);
+void usb_hid_add_driver(hid_driver_node_t *node);
+bool usb_hid_parse_report_descriptor(hid_report_parser_t *parser, hid_report_parser_item_t *item, hid_parse_found_t *pfound);
+bool usb_hid_parse_find_collection(hid_report_parser_t *parser, unsigned char collection_type);
+void usb_hid_parse_local_item(const hid_report_parser_item_t *item, usb_hid_desktop_usage_t *pusage, usb_hid_desktop_usage_t *pusage_min, usb_hid_desktop_usage_t *pusage_max);
+bool usb_hid_set_idle(hid_function_t *func, unsigned char report_id, unsigned char idle);
+bool usb_hid_set_report(hid_function_t *func, unsigned char report_type, unsigned char report_id, void *data, int length);
+unsigned usb_hid_read_field(unsigned bit_offset, unsigned bit_length, const unsigned char *report, unsigned char *data);
 
 #endif // USB_DRIVER_HID_H
 

@@ -2,381 +2,384 @@
 #include <usb/enumerate.h>
 #include <kernel/fifo.h>
 #include <kernel/dispatch.h>
+#include <kernel/verbose.h>
 #include <kernel/panic.h>
 #include <kernel/machine/hal.h>
+#include <string.h>
 
 #ifndef HID_MAX_INSTANCES
 #define HID_MAX_INSTANCES 1
 #endif
 
-static USB_HOST_FUNCTION *_check_interface(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTOR *conf_desc, USB_DESCRIPTOR_HEADER *fn_desc);
-static void _start(USB_HOST_FUNCTION *func);
-static void _stop(USB_HOST_FUNCTION *func);
-
-static const USB_HOST_FUNCTION_DRIVER _driver = { _check_interface, _start, _stop };
-static USB_HOST_FUNCTION_DRIVER_NODE _driver_node;
-static HID_FUNCTION _function[HID_MAX_INSTANCES] __usb;
+static hid_function_t _function[HID_MAX_INSTANCES] __usb;
 static unsigned char _function_busy[HID_MAX_INSTANCES];
 
-#define THREAD_STACK 1024
-static EXOS_THREAD _thread;
-static unsigned char _stack[THREAD_STACK] __attribute__((aligned(16)));
-static void *_service(void *arg);
-static EXOS_DISPATCHER_CONTEXT _service_context;
-static void _dispatch(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher);
+static usb_host_function_t *_check_interface(usb_host_device_t *device, usb_configuration_descriptor_t *conf_desc, usb_descriptor_header_t *fn_desc);
+static void _start(usb_host_function_t *func);
+static void _stop(usb_host_function_t *func);
+static const usb_host_function_driver_t _driver = { 
+	.CheckInterface = _check_interface, 
+	.Start =_start, .Stop = _stop };
+static usb_host_function_driver_node_t _driver_node;
+
+static void _dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher);
 
 #ifndef HID_MAX_REPORT_DESCRIPTOR_SIZE
 #define HID_MAX_REPORT_DESCRIPTOR_SIZE 128
 #endif
 
-#ifndef HID_MAX_REPORT_INPUT_COUNT
-#define HID_MAX_REPORT_INPUT_COUNT 32
-#endif
+static mutex_t _manager_lock;
+static list_t _manager_list;
+static dispatcher_context_t *_context;
 
-static HID_REPORT_INPUT _report_array[HID_MAX_REPORT_INPUT_COUNT];
-static EXOS_FIFO _free_report_inputs;
-static EXOS_MUTEX _manager_lock;
-static EXOS_LIST _manager_list;
-
-void usbd_hid_initialize()
+void usb_hid_initialize(dispatcher_context_t *context)
 {
-	exos_fifo_create(&_free_report_inputs, NULL);
-	for(int i = 0; i < HID_MAX_REPORT_INPUT_COUNT; i++)
-		exos_fifo_queue(&_free_report_inputs, (EXOS_NODE *)&_report_array[i]);
-
-	exos_dispatcher_context_create(&_service_context);
-	exos_thread_create(&_thread, 5, _stack, THREAD_STACK, NULL, _service, &_service_context);
+	_context = context;
+	for(unsigned i = 0; i < HID_MAX_INSTANCES; i++)
+		_function[i] = (hid_function_t) { .Handler = nullptr };
 
 	exos_mutex_create(&_manager_lock);
 	list_initialize(&_manager_list);
-	_driver_node = (USB_HOST_FUNCTION_DRIVER_NODE) { .Driver = &_driver };
+	_driver_node = (usb_host_function_driver_node_t) { .Driver = &_driver };
 	usb_host_driver_register(&_driver_node);
-
 }
 
-static USB_HOST_FUNCTION *_check_interface(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTOR *conf_desc, USB_DESCRIPTOR_HEADER *fn_desc)
+void usb_hid_add_driver(hid_driver_node_t *node)
 {
-	if (fn_desc->DescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE)
-	{
-		USB_INTERFACE_DESCRIPTOR *if_desc = (USB_INTERFACE_DESCRIPTOR *)fn_desc;
-
-		if (if_desc->InterfaceClass == USB_CLASS_HID)
-		{
-			HID_FUNCTION *func = NULL;
-			for(int i = 0; i < HID_MAX_INSTANCES; i++)
-			{
-				if (_function_busy[i] == 0)
-				{
-					func = &_function[i];
-					func->InstanceIndex = i;
-					break;
-				}
-			}
-
-			if (func != NULL)
-			{
-				usb_host_create_function((USB_HOST_FUNCTION *)func, device, &_driver);
-				func->Interface = if_desc->InterfaceNumber;
-				func->InterfaceSubClass = if_desc->InterfaceSubClass;
-				func->Protocol = if_desc->Protocol;
-
-				USB_ENDPOINT_DESCRIPTOR *ep_desc;			
-				ep_desc = usb_enumerate_find_endpoint_descriptor(conf_desc, if_desc, USB_TT_INTERRUPT, USB_DEVICE_TO_HOST, 0);
-				if (!ep_desc) return NULL;
-				usb_host_init_pipe_from_descriptor(device, &func->InputPipe, ep_desc);
-
-				USB_HID_DESCRIPTOR *hid_desc = (USB_HID_DESCRIPTOR *)usb_enumerate_find_class_descriptor(conf_desc, if_desc,
-					USB_HID_DESCRIPTOR_HID, 0);
-
-				func->MaxReportId = 0;
-                exos_mutex_create(&func->InputLock);
-				list_initialize(&func->Inputs);
-				func->ExitFlag = 0;
-
-				return (USB_HOST_FUNCTION *)func;
-			}
-		}
-	}
-	return NULL;
+	ASSERT(node != nullptr, KERNEL_ERROR_NULL_POINTER);
+	exos_mutex_lock(&_manager_lock);
+	list_add_tail(&_manager_list, &node->Node);
+	exos_mutex_unlock(&_manager_lock);
 }
+
 
 static unsigned char _report_buffer[HID_MAX_REPORT_DESCRIPTOR_SIZE] __usb;
 
 static const unsigned char _short_item_length[4] = { 0, 1, 2, 4 };
 
-typedef struct
+static void _parse_item_global(hid_report_parser_global_state_t *state, unsigned char tag, unsigned long value)
 {
-	unsigned long Offset;
+	ASSERT(state != nullptr, KERNEL_ERROR_NULL_POINTER);
 
-	unsigned char ReportId;
-	unsigned char UsagePage;
-	unsigned char Usage;
-	unsigned char ReportCount;
-	
-	unsigned char ReportSize;
-	unsigned long Min;
-	unsigned long Max;
-} USB_HID_ITEM_PARSE_STATE;
-
-static int _match_handler(HID_FUNCTION_HANDLER *handler, HID_REPORT_INPUT *input)
-{
-#ifdef DEBUG
-	if (handler->DriverNode == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
-	const HID_DRIVER *driver = handler->DriverNode->Driver;
-#ifdef DEBUG
-	if (driver == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
-	if (driver->MatchInputHandler == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
-	return driver->MatchInputHandler(handler, input);
-}
-
-static void _parse_item_global(USB_HID_ITEM_PARSE_STATE *state, unsigned char tag, unsigned long value)
-{
 	switch(tag)
 	{
 		case USB_HID_ITEM_TAG_USAGE_PAGE: state->UsagePage = value; break;
 		case USB_HID_ITEM_TAG_REPORT_SIZE: state->ReportSize = value;	break;
-		case USB_HID_ITEM_TAG_REPORT_ID: state->ReportId = value;	state->Offset = 0; break;
+		case USB_HID_ITEM_TAG_REPORT_ID: 
+			state->ReportId = value;	
+			state->NextInputOffset = state->NextOutputOffset = 0; 
+			break;
         case USB_HID_ITEM_TAG_REPORT_COUNT: state->ReportCount = value; break;
 		case USB_HID_ITEM_TAG_MINIMUM: state->Min = value; break;
 		case USB_HID_ITEM_TAG_MAXIMUM: state->Max = value; break;
 	}
 }
 
-static void _parse_item_local(USB_HID_ITEM_PARSE_STATE *state, unsigned char tag, unsigned long value)
+static bool _parse_item(hid_report_parser_t *parser, hid_report_parser_item_t *item)
 {
-	switch(tag)
+	if (parser->Offset >= parser->Length)
+		return false;
+
+	usb_hid_item_t *item_hdr = (usb_hid_item_t *)(parser->Ptr + parser->Offset);
+	item->Type = item_hdr->Type;
+
+	unsigned char *data;
+	if (item_hdr->Tag != 0b1111)
 	{
-		case USB_HID_ITEM_TAG_USAGE: state->Usage = value; break;
+		item->Length = _short_item_length[item_hdr->Size];
+		item->Tag = item_hdr->Tag;
+		data = parser->Ptr + parser->Offset + 1;
+		parser->Offset += 1 + item->Length;
 	}
+	else
+	{
+		item->Length = item_hdr->DataSize;
+		item->Tag = item_hdr->LongItemTag;
+		data = parser->Ptr + parser->Offset + 3;
+		parser->Offset += 3 + item->Length;
+	}
+
+	switch(item->Length)
+	{
+		case 1:	item->Value = data[0]; break;
+		case 2:	item->Value = data[0] | (data[1] << 8); break;
+		case 3:	item->Value = data[0] | (data[1] << 8) | (data[2] << 16); break;
+		case 4:	item->Value = data[0] | (data[1] << 8) | (data[2] << 16) | (data[3] << 24); break;
+		default:	item->Data = data;	break;
+	}
+	return true;
 }
 
-static void _parse_items(HID_FUNCTION_HANDLER *handler, unsigned char *ptr, int length)
+bool usb_hid_parse_report_descriptor(hid_report_parser_t *parser, hid_report_parser_item_t *item, hid_parse_found_t *pfound)
 {
-	HID_FUNCTION *func = handler->Function;
-#ifdef DEBUG
-	if (func == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
-	unsigned long offset = 0;
-	unsigned long value;
-	unsigned char *data;
-	USB_HID_ITEM_PARSE_STATE state = (USB_HID_ITEM_PARSE_STATE){ .ReportId = 0, .Offset = 0 };
+	hid_report_parser_global_state_t *state = parser->Global;
+	ASSERT(state != nullptr, KERNEL_ERROR_NULL_POINTER);
 
-	while(offset < length)
+	bool found = false;
+	while(_parse_item(parser, item))
 	{
-		USB_HID_ITEM *item = (USB_HID_ITEM *)(ptr + offset);
-		unsigned char length, tag;
-		if (item->Tag != 0b1111)
-		{
-			length = _short_item_length[item->Size];
-			tag = item->Tag;
-			data = ptr + offset + 1;
-			offset += 1 + length;
-		}
-		else
-		{
-			length = item->DataSize;
-			tag = item->LongItemTag;
-			data = ptr + offset + 3;
-			offset += 3 + length;
-		}
-
-		switch(length)
-		{
-			case 1:	value = data[0]; break;
-			case 2:	value = data[0] | (data[1] << 8); break;
-			case 3:	value = data[0] | (data[1] << 8) | (data[2] << 16); break;
-			case 4:	value = data[0] | (data[1] << 8) | (data[2] << 16) | (data[3] << 24); break;
-			default:	value = 0;	break;
-		}
-
 		switch(item->Type)
 		{
 			case USB_HID_ITEM_TYPE_GLOBAL:
-				_parse_item_global(&state, tag, value);
+				_parse_item_global(parser->Global, item->Tag, item->Value);
 				break;
 			case USB_HID_ITEM_TYPE_LOCAL:
-				_parse_item_local(&state, tag, value);
+				*pfound = HID_PARSE_FOUND_LOCAL;
+				found = true;
 				break;
 			case USB_HID_ITEM_TYPE_MAIN:
-				switch(tag)
+				switch(item->Tag)
 				{
 					case USB_HID_ITEM_TAG_INPUT:
-						if (state.ReportSize == 0) break;
-						int count = (state.ReportCount == 0) ? 1 : state.ReportCount;
-						if (!(value & USB_HID_INPUT_CONSTANT))
+						if (state->ReportSize != 0) 
 						{
-							HID_REPORT_INPUT *input = (HID_REPORT_INPUT *)exos_fifo_dequeue(&_free_report_inputs);
-							
-							if (input != NULL)
+							state->InputOffset = state->NextInputOffset;
+							state->NextInputOffset += state->ReportSize * state->ReportCount;
+							if (!(item->Value & USB_HID_INPUT_CONSTANT))
 							{
-								input->ReportId = state.ReportId;
-								input->UsagePage = state.UsagePage;
-								input->Usage = state.Usage;
-								input->Offset = state.Offset;
-								input->Size = state.ReportSize;
-								input->Count = count;
-								input->Min = state.Min;
-								input->Max = state.Max;
-								input->InputFlags = value;
+								verbose(VERBOSE_DEBUG, "usb-hid", "input report #%d (offset %d, %dx%d bit) page 0x%02x", 
+									state->ReportId, state->InputOffset, state->ReportCount, state->ReportSize, state->UsagePage);
 
-								if (_match_handler(handler, input))
-								{
-									//input->Handler = handler;
-									list_add_tail(&func->Inputs, (EXOS_NODE *)input);
-								}
-								else
-								{
-									exos_fifo_queue(&_free_report_inputs, (EXOS_NODE *)input);
-								}
+								*pfound = HID_PARSE_FOUND_INPUT;
+								found = true;
 							}
-#ifdef DEBUG
-							else
-							{
-								// TODO: issue runtime warning for allocation failure
-							}
-#endif
 						}
-						state.Offset += state.ReportSize * count;
+						break;
+					case USB_HID_ITEM_TAG_OUTPUT:
+						if (state->ReportSize != 0) 
+						{
+							state->OutputOffset = state->NextOutputOffset;
+							state->NextOutputOffset += state->ReportSize * state->ReportCount;
+							verbose(VERBOSE_DEBUG, "usb-hid", "output report #%d (offset %d, %dx%d bit) page 0x%02x", 
+								state->ReportId, state->OutputOffset, state->ReportCount, state->ReportSize, state->UsagePage);
 
-						if (state.ReportId > func->MaxReportId) func->MaxReportId = state.ReportId;
+							*pfound = HID_PARSE_FOUND_OUTPUT;
+							found = true;
+						}
+						break;
+					case USB_HID_ITEM_TAG_END_COLLECTION:
+						*pfound = HID_PARSE_FOUND_END;
+						found = true;
 						break;
 				}
 				break;
 		}
+		if (found)
+			break;
+	}
+	return found;
+}
+
+bool usb_hid_parse_find_collection(hid_report_parser_t *parser, unsigned char collection_type)
+{
+	hid_report_parser_t copy = *parser;
+	hid_report_parser_item_t item;
+	while(_parse_item(&copy, &item))
+	{
+		if (item.Type == USB_HID_ITEM_TYPE_MAIN &&
+			item.Tag == USB_HID_ITEM_TAG_COLLECTION && 
+			item.Value == collection_type)
+		{
+			*parser = copy;
+			return true;
+		}
+	}
+	return false;
+}
+
+void usb_hid_parse_local_item(const hid_report_parser_item_t *item, usb_hid_desktop_usage_t *pusage, usb_hid_desktop_usage_t *pusage_min, usb_hid_desktop_usage_t *pusage_max)
+{
+	ASSERT(item != nullptr, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(item->Type == USB_HID_ITEM_TYPE_LOCAL, KERNEL_ERROR_KERNEL_PANIC);
+	switch(item->Tag)
+	{
+		case USB_HID_ITEM_TAG_USAGE:		*pusage = item->Value;	break;
+		case USB_HID_ITEM_TAG_USAGE_MIN:	*pusage_min = item->Value;	break;
+		case USB_HID_ITEM_TAG_USAGE_MAX:	*pusage_max = item->Value;	break;
 	}
 }
 
-static void _start(USB_HOST_FUNCTION *usb_func)
+static hid_function_handler_t *_check_hid_descriptor_report(usb_host_device_t *device, usb_configuration_descriptor_t *conf_desc, usb_interface_descriptor_t *if_desc, 
+	unsigned char *report_desc, unsigned desc_length)
 {
-	HID_FUNCTION *func = (HID_FUNCTION *)usb_func;
-#ifdef DEBUG
-	if (_function_busy[func->InstanceIndex] != 0)
-		kernel_panic(KERNEL_ERROR_ALREADY_IN_USE);
-#endif
-	HID_FUNCTION_HANDLER *handler = NULL;
-	const HID_DRIVER *driver;
-	exos_mutex_lock(&_manager_lock);
-	
+	hid_function_handler_t *handler = nullptr;
+
+	exos_mutex_lock(&_manager_lock);	
 	FOREACH(node, &_manager_list)
 	{
-		HID_DRIVER_NODE *driver_node = (HID_DRIVER_NODE *)node;
-		driver = driver_node->Driver;
-#ifdef DEBUG
-		if (driver == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
-		if (driver->MatchDevice != NULL)
+		hid_report_parser_global_state_t state = (hid_report_parser_global_state_t) { 
+			.ReportId = 0 };	// FIXME
+		hid_report_parser_t parser = (hid_report_parser_t) {
+			.Ptr = report_desc, .Length = desc_length, .Global = &state };
+
+		hid_driver_node_t *driver_node = (hid_driver_node_t *)node;
+		const hid_driver_t *driver = driver_node->Driver;
+		ASSERT(driver != nullptr, KERNEL_ERROR_NULL_POINTER);
+		ASSERT(driver->MatchDevice != nullptr, KERNEL_ERROR_NULL_POINTER);
+
+		handler = driver->MatchDevice(device, conf_desc, if_desc, &parser);
+		if (handler != nullptr)
 		{
-			handler = driver->MatchDevice(func);
-			if (handler != NULL)
-			{
-				handler->DriverNode = driver_node;
-				handler->Function = func;
-				func->Handler = handler;
-				break;
-			}
+   			verbose(VERBOSE_COMMENT, "usb-hid", "handler found; max report id = %d", handler->MaxReportId); 
+			handler->DriverNode = driver_node;
+			break;
 		}
 	}
-
-	_function_busy[func->InstanceIndex] = 1;
-
-	if (handler != NULL)
-	{
-		int done = usb_host_read_if_descriptor(func->Device, func->Interface, 
-			USB_HID_DESCRIPTOR_HID, 0, func->InputBuffer, 64);
-		USB_HID_DESCRIPTOR *hid_desc = (USB_HID_DESCRIPTOR *)func->InputBuffer;
-	
-		if (done && hid_desc->NumDescriptors >= 1 &&
-			hid_desc->ClassDescriptors[0].DescriptorType == USB_HID_DESCRIPTOR_REPORT)
-		{
-			unsigned short length = USB16TOH(hid_desc->ClassDescriptors[0].DescriptorLength);
-			if (length <= HID_MAX_REPORT_DESCRIPTOR_SIZE &&
-				usb_host_read_if_descriptor(func->Device, func->Interface, 
-					USB_HID_DESCRIPTOR_REPORT, 0, _report_buffer, length))
-			{
-				_parse_items(handler, _report_buffer, length);
-			}
-		}
-	}
-
 	exos_mutex_unlock(&_manager_lock);
-
-	usb_host_start_pipe(&func->InputPipe);
-
-	if (handler != NULL)
-	{
-   		driver->Start(handler);
-		func->StartedFlag = func->ExitFlag = 0;
-		func->Dispatcher = (EXOS_DISPATCHER) { .Callback = _dispatch, .CallbackState = func };
-		exos_dispatcher_add(&_service_context, &func->Dispatcher, 0);
-	}
+	return handler;
 }
 
-static void _stop(USB_HOST_FUNCTION *usb_func)
+static usb_host_function_t *_check_interface(usb_host_device_t *device, usb_configuration_descriptor_t *conf_desc, usb_descriptor_header_t *fn_desc)
 {
-	HID_FUNCTION *func = (HID_FUNCTION *)usb_func;
+	hid_function_t *func = nullptr;
 
-	func->ExitFlag = 1;
+	if (fn_desc->DescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE)
+	{
+		usb_interface_descriptor_t *if_desc = (usb_interface_descriptor_t *)fn_desc;
+
+		if (if_desc->InterfaceClass == USB_CLASS_HID)
+		{
+			usb_hid_descriptor_t *hid_desc = (usb_hid_descriptor_t *)usb_enumerate_find_class_descriptor(
+				conf_desc, if_desc,
+				USB_HID_DESCRIPTOR_HID, 0);
+			
+			if (hid_desc != nullptr && hid_desc->NumDescriptors >= 1 &&
+				hid_desc->ReportDescriptors[0].DescriptorType == USB_HID_DESCRIPTOR_REPORT)
+			{
+				unsigned short desc_length = USB16TOH(hid_desc->ReportDescriptors[0].DescriptorLength);
+				if (desc_length <= HID_MAX_REPORT_DESCRIPTOR_SIZE &&
+					usb_host_read_if_descriptor(device, if_desc->InterfaceNumber, 
+						USB_HID_DESCRIPTOR_REPORT, 0, _report_buffer, desc_length))
+				{
+					hid_function_handler_t *handler = _check_hid_descriptor_report(device, conf_desc, if_desc, _report_buffer, desc_length);
+					
+					if (handler != nullptr)
+					{
+						for(int i = 0; i < HID_MAX_INSTANCES; i++)
+						{
+							if (_function[i].Handler == nullptr)
+							{
+								func = &_function[i];
+								func->InstanceIndex = i;
+								break;
+							}
+						}
+
+						if (func != nullptr)
+						{
+							usb_host_create_function((usb_host_function_t *)func, device, &_driver);
+							func->Interface = if_desc->InterfaceNumber;
+							func->InterfaceSubClass = if_desc->InterfaceSubClass;
+							func->Protocol = if_desc->Protocol;
+
+							usb_endpoint_descriptor_t *ep_desc;			
+							ep_desc = usb_enumerate_find_endpoint_descriptor(conf_desc, if_desc, USB_TT_INTERRUPT, USB_DEVICE_TO_HOST, 0);
+							if (ep_desc != nullptr)
+							{
+								usb_host_init_pipe_from_descriptor(device, &func->InputPipe, ep_desc);
+
+								handler->Function = func;
+								func->Handler = handler;
+								func->ExitFlag = 0;
+
+								verbose(VERBOSE_DEBUG, "usb-hid", "created new instance for interface #%d (port #%d)", 
+									if_desc->InterfaceNumber, device->Port);
+
+								return (usb_host_function_t *)func;
+							}
+							else verbose(VERBOSE_ERROR, "usb-hid", "cannot start interrupt IN ep for interface #%d (port #%d)", 
+									if_desc->InterfaceNumber, device->Port);
+						}
+						else verbose(VERBOSE_ERROR, "usb-hid", "cannot allocate a new instance for interface #%d (port #%d)", 
+								if_desc->InterfaceNumber, device->Port);
+					}
+					else verbose(VERBOSE_DEBUG, "usb-hid", "no handler matches interface #%d (port #%d)", 
+							if_desc->InterfaceNumber, device->Port);
+				}
+				else
+				{
+					if (desc_length > HID_MAX_REPORT_DESCRIPTOR_SIZE)
+					{
+						verbose(VERBOSE_ERROR, "usb-hid", "desc_length (%d) > HID_MAX_REPORT_DESCRIPTOR_SIZE", desc_length);			
+					}
+					verbose(VERBOSE_ERROR, "usb-hid", "cannot read report descriptor for interface #%d (port #%d)", 
+						if_desc->InterfaceNumber, device->Port);			
+				}
+			}
+			else verbose(VERBOSE_ERROR, "usb-hid", "cannot find report descriptor for interface #%d (port #%d)", 
+					if_desc->InterfaceNumber, device->Port);			
+		}
+	}
+	return nullptr;
+}
+
+static void _start(usb_host_function_t *usb_func)
+{
+	hid_function_t *func = (hid_function_t *)usb_func;
+	hid_function_handler_t *handler = func->Handler;
+	ASSERT(handler != nullptr, KERNEL_ERROR_KERNEL_PANIC);
+	ASSERT(handler->Function == func, KERNEL_ERROR_KERNEL_PANIC);
+	
+	ASSERT(func->InstanceIndex < HID_MAX_INSTANCES, KERNEL_ERROR_KERNEL_PANIC);
+	ASSERT(_function_busy[func->InstanceIndex] == 0, KERNEL_ERROR_KERNEL_PANIC);
+	_function_busy[func->InstanceIndex] = 1;
+
+	bool done = usb_host_start_pipe(&func->InputPipe);
+	ASSERT(done, KERNEL_ERROR_KERNEL_PANIC);
+
+	verbose(VERBOSE_ERROR, "usb-hid", "start instance %d", func->InstanceIndex);
+
+	hid_driver_node_t *driver_node = handler->DriverNode;
+	ASSERT(driver_node != nullptr, KERNEL_ERROR_NULL_POINTER);
+	const hid_driver_t *driver = driver_node->Driver;
+	ASSERT(driver != nullptr && driver->Start != nullptr, KERNEL_ERROR_NULL_POINTER);
+	driver->Start(handler);
+
+	usb_host_urb_create(&func->Request, &func->InputPipe);
+	exos_dispatcher_create(&func->Dispatcher, nullptr, _dispatch, func);
+	exos_dispatcher_add(_context, &func->Dispatcher, 0);
+}
+
+static void _stop(usb_host_function_t *usb_func)
+{
+	hid_function_t *func = (hid_function_t *)usb_func;
+
+	func->ExitFlag = true;
 	usb_host_stop_pipe(&func->InputPipe);
 
 	_function_busy[func->InstanceIndex] = 0;
+	_function->Handler = nullptr;
+
+    verbose(VERBOSE_DEBUG, "usb-hid", "stopped instance %d", func->InstanceIndex);
 }
 
-static int _read_field(HID_REPORT_INPUT *input, unsigned char *report, unsigned char *data)
+static void _dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 {
-	int length = input->Size * input->Count;
-	int done = 0;
-	if (length != 0)
+	hid_function_t *func = (hid_function_t *)dispatcher->CallbackState;
+	ASSERT(func != nullptr, KERNEL_ERROR_NULL_POINTER);
+	hid_function_handler_t *handler = func->Handler;
+	ASSERT(handler != nullptr && handler->DriverNode, KERNEL_ERROR_NULL_POINTER);
+	const hid_driver_t *driver = handler->DriverNode->Driver;
+	ASSERT(driver != nullptr, KERNEL_ERROR_NULL_POINTER);
+
+	if (dispatcher->State == DISPATCHER_TIMEOUT)
 	{
-		unsigned offset = input->Offset >> 3;
-		unsigned shift = (8 - (input->Offset + length)) & 0x7;
-		unsigned skip = input->Offset & 0x7;
-		unsigned acc = report[offset++] & (0xFF >> skip);
-		length -= 8 - (shift + skip);
-		while(length > 0)
-		{
-			acc = (acc << 8) | report[offset++];
-			data[done++] = acc >> (8 + shift);
-			length -= 8;
-		}
-		data[done++] = acc >> shift;
+		verbose(VERBOSE_ERROR, "usb-hid", "TIMEOUT (%d)", func->InstanceIndex);
+		exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);
+		return;
 	}
-	return done;
-}
 
-static void *_service(void *arg)
-{
-	EXOS_DISPATCHER_CONTEXT *context = (EXOS_DISPATCHER_CONTEXT *)arg;
-	while(1)
+	unsigned report_bytes = func->InputPipe.MaxPacketSize;
+	usb_request_buffer_t *urb = &func->Request;
+	if (urb->Status != URB_STATUS_EMPTY)
 	{
-		exos_dispatch(&_service_context, EXOS_TIMEOUT_NEVER);
-	}
-}
-
-static void _debug()
-{
-}
-
-static void _dispatch(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher)
-{
-	HID_FUNCTION *func = (HID_FUNCTION *)dispatcher->CallbackState;
-	HID_FUNCTION_HANDLER *handler = func->Handler;
-	const HID_DRIVER *driver = handler->DriverNode->Driver;
-#ifdef DEBUG
-	if (func == NULL || handler == NULL || handler->DriverNode == NULL || driver == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
-	int report_bytes = func->InputPipe.MaxPacketSize;
-
-	if (func->StartedFlag)
-	{
-		int done = usb_host_end_bulk_transfer(&func->Urb, EXOS_TIMEOUT_NEVER);
+		int done = usb_host_end_transfer(&func->Request, EXOS_TIMEOUT_NEVER);
 		if (done >= 0)
 		{
 			unsigned char buffer[64];
 			unsigned char *data;
 			unsigned char report_id;
-			if (func->MaxReportId != 0)
+			if (handler->MaxReportId != 0)
 			{
 				report_id = func->InputBuffer[0];
 				data = &func->InputBuffer[1];
@@ -387,20 +390,11 @@ static void _dispatch(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatc
 				data = func->InputBuffer;
 			}
 
-			exos_mutex_lock(&func->InputLock);
-			FOREACH(node, &func->Inputs)
-			{
-				HID_REPORT_INPUT *input = (HID_REPORT_INPUT *)node;
-				if (input->ReportId != report_id)
-					continue;
-	
-				_read_field(input, data, buffer);
-				driver->Notify(handler, input, buffer);
-			}
-			exos_mutex_unlock(&func->InputLock);
+			driver->Notify(handler, report_id, data, done);
 		}
 		else 
 		{
+			verbose(VERBOSE_ERROR, "usb-hid", "report input failed");
 			// TODO: recover from failure state
 			func->ExitFlag = 2;
 		}
@@ -408,50 +402,74 @@ static void _dispatch(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatc
 
 	if (!func->ExitFlag)
 	{
-		usb_host_urb_create(&func->Urb, &func->InputPipe);
-		if (usb_host_begin_bulk_transfer(&func->Urb, func->InputBuffer, report_bytes))
+		usb_host_urb_create(urb, &func->InputPipe);
+		if (usb_host_begin_transfer(urb, func->InputBuffer, report_bytes))
 		{
-			func->StartedFlag = 1;
-			dispatcher->Event = &func->Urb.Event;
-            exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);
+			dispatcher->Event = &urb->Event;
+#ifdef HID_TIMEOUT
+			exos_dispatcher_add(context, dispatcher, HID_TIMEOUT);
+#else
+			exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);
+#endif
 		}
-        else func->ExitFlag = 3;
+		else func->ExitFlag = 3;
 	}
 
 	if (func->ExitFlag)
 	{
-		driver->Stop(handler);
+		verbose(VERBOSE_DEBUG, "usb-hid", "stopping handler (%d)", func->InstanceIndex);
 
-		exos_mutex_lock(&func->InputLock);
-		HID_REPORT_INPUT *input;
-		while(input = (HID_REPORT_INPUT *)list_rem_head(&func->Inputs))
-		{
-			exos_fifo_queue(&_free_report_inputs, (EXOS_NODE *)input);
-		}
-		exos_mutex_unlock(&func->InputLock);
+		driver->Stop(handler);
 	}
 }
 
-int usbd_hid_add_driver(HID_DRIVER_NODE *node)
+bool usb_hid_set_idle(hid_function_t *func, unsigned char report_id, unsigned char idle)
 {
-	exos_mutex_lock(&_manager_lock);
-	list_add_tail(&_manager_list, (EXOS_NODE *)node);
-	exos_mutex_unlock(&_manager_lock);
-	return 1;
-}
-
-int usbd_hid_set_report(HID_FUNCTION *func, unsigned char report_type, unsigned char report_id, void *data, int length)
-{
-	USB_REQUEST req = (USB_REQUEST) {
+	ASSERT(func != nullptr, KERNEL_ERROR_NULL_POINTER);
+	usb_request_t req = (usb_request_t) {
 		.RequestType = USB_REQTYPE_HOST_TO_DEVICE | USB_REQTYPE_CLASS | USB_REQTYPE_RECIPIENT_INTERFACE,
-		.RequestCode = HID_REQUEST_SET_REPORT,
-		.Value = (report_type << 8) | report_id, .Index = func->Interface, .Length = length };
-	__mem_copy(func->OutputBuffer, func->OutputBuffer + length, data);
-	int done = usb_host_ctrl_setup(func->Device, &req, func->OutputBuffer, length);
+		.RequestCode = USB_HID_REQUEST_SET_IDLE,
+		.Value = (idle << 8) | report_id, .Index = func->Interface, .Length = 0 };
+	bool done = usb_host_ctrl_setup(func->Device, &req, nullptr, 0);
 	return done;
 }
 
+bool usb_hid_set_report(hid_function_t *func, unsigned char report_type, unsigned char report_id, void *data, int length)
+{
+	ASSERT(func != nullptr, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(data != nullptr || length == 0, KERNEL_ERROR_KERNEL_PANIC);
 
+	usb_request_t req = (usb_request_t) {
+		.RequestType = USB_REQTYPE_HOST_TO_DEVICE | USB_REQTYPE_CLASS | USB_REQTYPE_RECIPIENT_INTERFACE,
+		.RequestCode = USB_HID_REQUEST_SET_REPORT,
+		.Value = (report_type << 8) | report_id, .Index = func->Interface, .Length = length };
+	memcpy(func->OutputBuffer, data, length);
+	bool done = usb_host_ctrl_setup(func->Device, &req, func->OutputBuffer, length);
+	return done;
+}
+
+unsigned usb_hid_read_field(unsigned bit_offset, unsigned bit_length, const unsigned char *report, unsigned char *data)
+{
+	unsigned done = 0;
+	if (bit_length != 0)
+	{
+		unsigned offset = bit_offset >> 3;
+		unsigned skip = bit_offset & 0x7;
+		unsigned acc = report[offset++];
+		while(bit_length > (8 - skip))
+		{
+			acc |= (report[offset++] << 8);
+			data[done++] = acc >> skip;
+			if (bit_length < 8)
+				break;
+			acc >>= 8;
+			bit_length -= 8;
+		}
+		if (bit_length != 0)
+			data[done++] = (acc >> skip) & ((1 << bit_length) - 1);
+	}
+	return done;
+}
 
 
 
