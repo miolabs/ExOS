@@ -1,7 +1,7 @@
 #include "hal.h"
 #include <kernel/panic.h>
 
-#pragma GCC optimize(2)
+#pragma GCC optimize(1)
 
 __weak void __mem_copy(void *start, void *stop, const void *source)
  {
