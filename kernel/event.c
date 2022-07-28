@@ -33,7 +33,8 @@ static int ___event_set(unsigned long *args)
 {
 	event_t *event = (event_t *)args[0];
 	unsigned count = exos_thread_resume_all(&event->Handles);
-	event->State = (count == 0); 
+	event->State = (count == 0);
+	return 0;
 }
 
 void exos_event_set(event_t *event)

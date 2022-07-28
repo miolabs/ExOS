@@ -19,11 +19,13 @@ __weak void __mem_set(void *start, void *stop, unsigned char stuff)
 __weak void *memset(void *s, int c, unsigned long n)
 {
 	__mem_set(s, s + n, c);
+	return s;
 }
 
 __weak void *memcpy(void *restrict s1, const void *restrict s2, unsigned long n)
 {
 	__mem_copy(s1, s1 + n, s2);
+	return s1;
 }
 
 __weak unsigned int __str_copy(char *dst, const char *src, unsigned int max_length)

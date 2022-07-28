@@ -20,7 +20,7 @@ void __machine_init()
 
 #ifdef HSE_VALUE
 	RCC->CR |= RCC_CR_HSEON;
-	while(!(RCC->CR & RCC_CR_HSERDY));
+	while(!(RCC->CR & RCC_CR_HSERDY)) {};
 
 #ifdef PLLM_VALUE
 	ASSERT(PLLM_VALUE >= 2 && PLLM_VALUE <= 63, KERNEL_ERROR_KERNEL_PANIC);

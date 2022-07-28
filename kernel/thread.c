@@ -54,6 +54,7 @@ static int ___add_thread(unsigned long *args)
 	list_enqueue(&_ready, &thread->Node);
 	thread->State = EXOS_THREAD_READY;
 	__machine_req_switch();
+	return 0;
 }
 
 exos_thread_t *__kernel_schedule()
@@ -92,6 +93,7 @@ static int ___rem_thread(unsigned long *args)
 //	list_enqueue(&_ready, (node_t *)thread);
 	
 	__machine_req_switch();
+	return 0;
 }
 
 static void _exit()
@@ -218,6 +220,7 @@ static int ___add_handle(unsigned long *args)
 		handle->Owner = __running_thread;
 		list_add_tail(list, &handle->Node);
 	}
+	return 0;
 }
 
 exos_wait_mask_t exos_thread_add_wait_handle(exos_wait_handle_t *handle, exos_wait_cond_t cond, void *state)
@@ -252,6 +255,7 @@ static int ___dispose_handle(unsigned long *args)
 	}
 	handle->Owner = NULL;
 	handle->Mask = 0;
+	return 0;
 }
 
 void exos_thread_dispose_wait_handle(exos_wait_handle_t *handle)
@@ -296,6 +300,7 @@ static int ___resume(unsigned long *args)
 {
 	exos_wait_handle_t *handle = (exos_wait_handle_t *)args[0];
 	_resume(handle);
+	return 0;
 }
 
 void exos_thread_resume(exos_wait_handle_t *handle)
@@ -316,9 +321,10 @@ static int ___resume_all(unsigned long *args)
 		_resume(handle);
 		count++;
 	}
-	*pcount = count;
+	*pcount = count;	// FIXME: use retuen value
 
 	ASSERT(LIST_ISEMPTY(list), KERNEL_ERROR_KERNEL_PANIC);
+	return 0;
 }
 
 unsigned exos_thread_resume_all(list_t *wait_handles)
@@ -358,6 +364,7 @@ static int ___wait(unsigned long *args)
 #endif
 		__machine_req_switch();
 	}
+	return 0;
 }
 
 void exos_thread_wait(exos_wait_mask_t mask)

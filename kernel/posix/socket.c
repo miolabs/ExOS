@@ -137,7 +137,7 @@ ssize_t recvfrom(int socket, void *buffer, size_t length, int flags, struct sock
 			.sin_family = AF_INET,
 			.sin_addr.s_addr = ipp.Address.Value,
 			.sin_port = htons(ipp.Port) };
-		if (address_len != NULL) *address_len == sizeof(struct sockaddr_in);
+		if (address_len != NULL) *address_len = sizeof(struct sockaddr_in);
 	}
 	else return posix_set_error(EWOULDBLOCK);
 

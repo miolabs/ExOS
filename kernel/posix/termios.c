@@ -73,16 +73,19 @@ speed_t cfgetospeed(const struct termios *termios_p)
 int cfsetispeed(struct termios *termios_p, speed_t speed)
 {
 	termios_p->__baudrate = speed;
+	return 0;
 }
 
 int cfsetospeed(struct termios *termios_p, speed_t speed)
 {
 	termios_p->__baudrate = speed;
+	return 0;
 }
 
 int cfsetspeed(struct termios *termios_p, speed_t speed)
 {
 	termios_p->__baudrate = speed;
+	return 0;
 }
 
 

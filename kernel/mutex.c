@@ -65,6 +65,7 @@ static int _unlock(unsigned long *args)
 		mutex->Owner = NULL;
 		exos_thread_resume_all(&mutex->Handles);
 	}
+	return 0;
 }
 
 void exos_mutex_unlock(mutex_t *mutex)

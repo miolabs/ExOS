@@ -10,36 +10,32 @@ extern int __tdata_start__, __tdata_end__, __tdata_load_start__;
 void * const __machine_stack_start = &__stack_process_start__;
 void * const __machine_tbss_start = &__tbss_start__;
 
-__naked void PendSV_Handler()
+void *__switch(void *psp)
 {
-	register void *psp __asm__("r0");
-
-	// save high registers in process stack
-	__asm__ volatile (
-		"push {lr}\n\t"
-		"mrs %0, psp\n\t"
-		"stmdb %0!, {r4-r11}\n\t"
-		: "=r" (psp));
-
-	if (__running_thread == NULL)
-		__kernel_panic();
-	
+	ASSERT(__running_thread != NULL, KERNEL_ERROR_NULL_POINTER);
 	__running_thread->SP = psp;
 
+	// check stack limit
+	ASSERT(__running_thread->SP > __running_thread->SP, KERNEL_ERROR_STACK_OVERFLOW);
+	ASSERT(*((unsigned long *)__running_thread->SP) == 0xcccccccc, KERNEL_ERROR_STACK_OVERFLOW);
+	
 	__running_thread = __kernel_schedule();
 
-#ifdef DEBUG
-	if (__running_thread == NULL)
-		__kernel_panic();
-#endif
+	ASSERT(__running_thread != NULL, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(__running_thread->Node.Type == EXOS_NODE_THREAD, KERNEL_ERROR_KERNEL_PANIC);
+	return __running_thread->SP;
+}
 
-	psp = __running_thread->SP;
-	// restore high registers from process stack
+__naked void PendSV_Handler()
+{
 	__asm__ volatile (
-		"ldmia %0!, {r4-r11}\n\t"
-		"msr psp, %0\n\t"
-		"pop {pc}\n\t"
-		: : "r" (psp));
+		"push {lr}\n\t"
+		"mrs r0, psp\n\t"
+		"stmdb r0!, {r4-r11}\n\t"
+		"bl __switch\n\t"
+		"ldmia r0!, {r4-r11}\n\t"
+		"msr psp, r0\n\t"
+		"pop {pc}\n\t");
 }
 
 __naked void SVC_Handler()

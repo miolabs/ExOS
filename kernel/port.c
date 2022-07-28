@@ -54,6 +54,7 @@ EXOS_PORT *exos_port_find(const char *name)
 	exos_mutex_lock(&_port_mutex);
 	EXOS_PORT *port = _find_port(name);
 	exos_mutex_unlock(&_port_mutex);
+	return 0;
 }
 
 void exos_port_remove(const char *name)
