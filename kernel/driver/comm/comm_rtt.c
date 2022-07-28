@@ -27,7 +27,8 @@ static struct _rtt_context
 	rtt_control_block_t cb;
 	rtt_buffer_t up;
 	rtt_buffer_t down;
-} _control_block;
+} _SEGGER_RTT;
+
 static unsigned char _up_buffer[RTT_BUFFER_SIZE] __aligned(8);
 static unsigned char _down_buffer[RTT_BUFFER_SIZE] __aligned(8);
 
@@ -35,11 +36,12 @@ static void _register()
 {
 	static io_tree_device_t _device;
 
-	strcpy((char *)_control_block.cb.Id, "SEGGER RTT");
-	_control_block.cb.MaxDownBuffers = 1;
-	_control_block.cb.MaxUpBuffers = 1;
-	rtt_buffer_create(&_control_block.down, "rtt_down", _down_buffer, sizeof(_down_buffer));
-	rtt_buffer_create(&_control_block.up, "rtt_up", _up_buffer, sizeof(_up_buffer));
+	struct _rtt_context *context = &_SEGGER_RTT;
+	strcpy((char *)context->cb.Id, "SEGGER RTT");
+	context->cb.MaxDownBuffers = 1;
+	context->cb.MaxUpBuffers = 1;
+	rtt_buffer_create(&context->down, "rtt_down", _down_buffer, sizeof(_down_buffer));
+	rtt_buffer_create(&context->up, "rtt_up", _up_buffer, sizeof(_up_buffer));
 
 	exos_io_add_device(&_device, "rtt", &_rtt_driver, NULL);
 }
@@ -50,7 +52,7 @@ static io_error_t _open(io_entry_t *io, const char *path, io_flags_t flags)
 		return IO_ERROR_ALREADY_LOCKED;
 	
 	exos_event_set(&io->OutputEvent);
-	io->DriverContext = &_control_block;
+	io->DriverContext = &_SEGGER_RTT;
 	return IO_OK;
 }
 
@@ -58,7 +60,7 @@ static void _close(io_entry_t *io)
 {
 	struct _rtt_context *rtt = (struct _rtt_context *)io->DriverContext;
 	ASSERT(rtt != NULL, KERNEL_ERROR_NULL_POINTER);
-	ASSERT(rtt == &_control_block, KERNEL_ERROR_KERNEL_PANIC);
+	ASSERT(rtt == &_SEGGER_RTT, KERNEL_ERROR_KERNEL_PANIC);
 	io->DriverContext = nullptr;
 }
 

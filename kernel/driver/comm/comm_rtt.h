@@ -17,7 +17,6 @@ typedef struct
 	unsigned MaxUpBuffers, MaxDownBuffers;
 } rtt_control_block_t;
 
-
 void rtt_buffer_create(rtt_buffer_t *rtt, const char *name, void *buf, unsigned size);
 int rtt_read(rtt_buffer_t *rtt, void *buf, unsigned int length);
 int rtt_write(rtt_buffer_t *rtt, const void *buf, unsigned int length);
