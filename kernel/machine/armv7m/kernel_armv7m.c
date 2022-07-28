@@ -16,8 +16,8 @@ void *__switch(void *psp)
 	__running_thread->SP = psp;
 
 	// check stack limit
-	ASSERT(__running_thread->SP > __running_thread->SP, KERNEL_ERROR_STACK_OVERFLOW);
-	ASSERT(*((unsigned long *)__running_thread->SP) == 0xcccccccc, KERNEL_ERROR_STACK_OVERFLOW);
+	ASSERT(__running_thread->SP > __running_thread->StackStart, KERNEL_ERROR_STACK_OVERFLOW);
+	ASSERT(*((unsigned long *)__running_thread->StackStart) == 0xcccccccc, KERNEL_ERROR_STACK_OVERFLOW);
 	
 	__running_thread = __kernel_schedule();
 
