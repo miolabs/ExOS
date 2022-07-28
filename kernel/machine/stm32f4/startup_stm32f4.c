@@ -110,7 +110,7 @@ void __weak TIM8_UP_TIM13_IRQHandler();
 void __weak TIM8_TRG_COM_TIM14_IRQHandler();
 void __weak TIM8_CC_IRQHandler();
 void __weak DMA1_Stream7_IRQHandler();
-void __weak FMC_IRQHandler();
+void __weak FSMC_IRQHandler();
 void __weak SDIO_IRQHandler();
 void __weak TIM5_IRQHandler();
 void __weak SPI3_IRQHandler();
@@ -214,7 +214,7 @@ void __weak DSI_IRQHandler();
 #pragma weak TIM8_TRG_COM_TIM14_IRQHandler = Default_Handler
 #pragma weak TIM8_CC_IRQHandler = Default_Handler
 #pragma weak DMA1_Stream7_IRQHandler = Default_Handler
-#pragma weak FMC_IRQHandler = Default_Handler
+#pragma weak FSMC_IRQHandler = Default_Handler
 #pragma weak SDIO_IRQHandler = Default_Handler
 #pragma weak TIM5_IRQHandler = Default_Handler
 #pragma weak SPI3_IRQHandler = Default_Handler

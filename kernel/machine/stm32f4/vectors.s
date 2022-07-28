@@ -66,7 +66,7 @@ _vectors:
 	.word TIM8_TRG_COM_TIM14_IRQHandler
 	.word TIM8_CC_IRQHandler
 	.word DMA1_Stream7_IRQHandler
-	.word FMC_IRQHandler
+	.word FSMC_IRQHandler
 	.word SDIO_IRQHandler
 	.word TIM5_IRQHandler
 	.word SPI3_IRQHandler
