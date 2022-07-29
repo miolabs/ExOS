@@ -2,5 +2,6 @@
 *.o
 *.bak
 *.hzs
+*.emSession
 .vscode
 .output
