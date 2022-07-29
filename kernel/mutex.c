@@ -5,7 +5,6 @@
 void exos_mutex_create(mutex_t *mutex)
 {
 	ASSERT(mutex != NULL, KERNEL_ERROR_NULL_POINTER);
-	list_initialize(&mutex->Handles);
 	mutex->Owner = NULL;
 	mutex->Count = 0;
 }
@@ -19,6 +18,7 @@ static list_t *___mutex_cond(void *state)
 	if (mutex->Owner == NULL)
 	{
 		ASSERT(mutex->Count == 0, KERNEL_ERROR_KERNEL_PANIC);
+		list_initialize(&mutex->Handles);
 		mutex->Count = 1;
 		mutex->Owner = __running_thread;
 		return NULL;

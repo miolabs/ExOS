@@ -13,6 +13,7 @@
 #endif
 
 extern void * const __machine_stack_start;
+extern void * const __machine_stack_end;
 extern void * const __machine_tbss_start;
 
 void __machine_init();
@@ -21,11 +22,11 @@ void __machine_idle();
 void __machine_dsb();
 void __machine_init_thread_stack(void **pstack, unsigned long arg, unsigned long pc, unsigned long lr);
 void __machine_init_thread_local_storage(void **pstack);
-void __machine_halt();
+void __machine_halt() __noreturn;
 
 int __machine_trylock(unsigned char *lock, unsigned char value);
 void __machine_unlock(unsigned char *lock);
-void __machine_reset();
+void __machine_reset() __noreturn;
 
 void __board_init();
 void __weak __board_add_memory();

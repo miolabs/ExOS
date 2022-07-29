@@ -34,10 +34,9 @@ void __thread_init()
 	__main_thread.Node = (node_t) { .Priority = MAIN_THREAD_PRI, .Type = EXOS_NODE_THREAD };
 	__main_thread.State = EXOS_THREAD_DETACHED;
 	__main_thread.StackStart = __machine_stack_start;
-	__main_thread.StackSize = 0;	// FIXME
+	__main_thread.StackSize = __machine_stack_end - __machine_stack_start;
 	__main_thread.SP = nullptr;
 	__main_thread.TP = __machine_tbss_start;
-	list_initialize(&__main_thread.Pending);
 
 	__running_thread = &__main_thread;
 	__kernel_do(___add_thread, &__main_thread);
@@ -45,16 +44,6 @@ void __thread_init()
 	// create idle thread with minimum priority
 	exos_thread_create(&_idle_thread, -128, _idle_thread_stack, IDLE_THREAD_STACK, 
 		(exos_thread_func_t)__machine_idle, nullptr);
-}
-
-static int ___add_thread(unsigned long *args)
-{
-	exos_thread_t *thread = (exos_thread_t *)args[0];
-	ASSERT(thread->State == EXOS_THREAD_DETACHED, KERNEL_ERROR_KERNEL_PANIC);
-	list_enqueue(&_ready, &thread->Node);
-	thread->State = EXOS_THREAD_READY;
-	__machine_req_switch();
-	return 0;
 }
 
 exos_thread_t *__kernel_schedule()
@@ -72,25 +61,7 @@ static int ___rem_thread(unsigned long *args)
 	list_remove(&thread->Node);
 	thread->State = EXOS_THREAD_DETACHED;
 
-	while(true)
-	{
-		exos_wait_handle_t *pending = nullptr;
-		FOREACH(n, &thread->Pending)
-		{
-			exos_wait_handle_t *handle = (exos_wait_handle_t *)n;
-			if (handle->Owner != thread)
-			{
-				pending = handle;
-				_resume(pending);
-				break;
-			}
-		}
-		if (pending == nullptr)
-			break;
-	}
-
-//	thread->State = EXOS_THREAD_READY;
-//	list_enqueue(&_ready, (node_t *)thread);
+	exos_thread_resume_all(&thread->Joining);
 	
 	__machine_req_switch();
 	return 0;
@@ -103,6 +74,18 @@ static void _exit()
 	__kernel_panic();	// NOTE: should not get here
 }
 
+static int ___add_thread(unsigned long *args)
+{
+	exos_thread_t *thread = (exos_thread_t *)args[0];
+	ASSERT(thread->State == EXOS_THREAD_DETACHED, KERNEL_ERROR_KERNEL_PANIC);
+	list_enqueue(&_ready, &thread->Node);
+	thread->State = EXOS_THREAD_READY;
+	list_initialize(&thread->Pending);
+	list_initialize(&thread->Joining);
+
+	__machine_req_switch();
+	return 0;
+}
 
 void exos_thread_create(exos_thread_t *thread, int pri, void *stack, unsigned stack_size, exos_thread_func_t entry, void *arg)
 {
@@ -138,7 +121,6 @@ void exos_thread_create(exos_thread_t *thread, int pri, void *stack, unsigned st
 		.Debugger = nullptr,
 #endif
 	};
-	list_initialize(&thread->Pending);
 
 	__kernel_do(___add_thread, thread);
 }
@@ -148,13 +130,14 @@ static list_t *___join_cond(void *state)
 	exos_thread_t *thread = (exos_thread_t *)state;
 	ASSERT(thread != NULL, KERNEL_ERROR_NULL_POINTER);
 	return (thread->State == EXOS_THREAD_READY || thread->State == EXOS_THREAD_WAIT) ? 
-		&thread->Pending : NULL;
+		&thread->Joining : NULL;
 }
 
 void *exos_thread_join(exos_thread_t *thread)
 {
 	ASSERT(thread != NULL, KERNEL_ERROR_NULL_POINTER);
 	ASSERT(thread->Node.Type == EXOS_NODE_THREAD, KERNEL_ERROR_KERNEL_PANIC);
+	ASSERT(thread != __running_thread, KERNEL_ERROR_KERNEL_PANIC);
 
 	exos_wait_handle_t handle;
 	exos_thread_create_wait_handle(&handle);

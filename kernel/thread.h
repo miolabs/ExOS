@@ -25,6 +25,7 @@ typedef struct
 	list_t Pending;
 	exos_wait_mask_t MaskUsed;
 	exos_wait_mask_t MaskWait;
+	list_t Joining;
 #ifdef THREAD_DEBUG
 	void (*Debugger)(struct __thread_struct *thread);
 #endif

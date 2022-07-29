@@ -8,6 +8,7 @@ extern int __tbss_start__, __tbss_end__;
 extern int __tdata_start__, __tdata_end__, __tdata_load_start__;
 
 void * const __machine_stack_start = &__stack_process_start__;
+void * const __machine_stack_end = &__stack_process_end__;
 void * const __machine_tbss_start = &__tbss_start__;
 
 void *__switch(void *psp)

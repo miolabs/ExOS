@@ -3,6 +3,7 @@
 #include "posix.h"
 #include <kernel/thread_pool.h>
 #include <kernel/memory.h>
+#include <kernel/panic.h>
 
 static const pthread_attr_t _default_pthread_attrs = { 256, NULL };
 
@@ -13,6 +14,7 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attrs, void *(* func
 	size_t stack_size = attrs != NULL && attrs->stack_size != 0 ? 
 		attrs->stack_size : (size_t)__running_thread->StackSize;
 	stack_size = (stack_size + 15) & ~15;
+	ASSERT(stack_size != 0, KERNEL_ERROR_KERNEL_PANIC);
 
 	int pri = attrs != NULL ? attrs->pri : __running_thread->Node.Priority;
 

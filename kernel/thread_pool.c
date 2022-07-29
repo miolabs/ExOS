@@ -19,10 +19,7 @@ static int _get_thread(unsigned long *args)
 
 exos_thread_t *exos_thread_pool_thread_create(exos_thread_pool_t *pool, int pri, unsigned long stack_size, exos_thread_func_t entry, void *arg)
 {
-#ifdef DEBUG
-	if (pool == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
+	ASSERT(pool != NULL, KERNEL_ERROR_NULL_POINTER);
 
 	exos_thread_t *thread;
 	__kernel_do(_get_thread, pool, &thread);
@@ -58,10 +55,7 @@ exos_thread_t *exos_thread_pool_thread_create(exos_thread_pool_t *pool, int pri,
 
 void exos_thread_pool_cleanup(exos_thread_pool_t *pool)
 {
-#ifdef DEBUG
-	if (pool == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
+	ASSERT(pool != NULL, KERNEL_ERROR_NULL_POINTER);
 
 	while(1)
 	{
