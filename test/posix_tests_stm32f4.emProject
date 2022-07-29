@@ -1,0 +1,199 @@
+<!DOCTYPE CrossStudio_Project_File>
+<solution Name="exos_stm32f4" target="8" version="2">
+  <project Name="posix_tests_stm32f4">
+    <configuration
+      Family="STM32"
+      Name="Common"
+      Placement="Flash"
+      Target="STM32F405RG"
+      arm_architecture="v7EM"
+      arm_core_type="Cortex-M4"
+      arm_fpu_type="FPv4-SP-D16"
+      arm_gcc_target="arm-unknown-eabi"
+      arm_linker_heap_size="16384"
+      arm_linker_jtag_pad_pre_dr="1"
+      arm_linker_jtag_pad_pre_ir="5"
+      arm_linker_process_stack_size="4096"
+      arm_linker_stack_size="512"
+      arm_simulator_memory_simulation_parameter="STM32F405RG;0x100000;0x20000"
+      arm_target_connect_with_reset="No"
+      arm_target_debug_interface_type="ADIv5"
+      arm_target_device_name="STM32F405RG"
+      arm_target_interface_type="SWD"
+      arm_target_loader_applicable_loaders="Flash"
+      arm_target_loader_default_loader="Flash"
+      arm_target_restrict_memory_accesses="Yes"
+      arm_use_builtins="No"
+      arm_use_gcc_libraries="No"
+      build_intermediate_directory="$(HomeDir)/Temp/$(ProjectName)/$(Configuration)"
+      build_output_directory="$(HomeDir)/Temp/$(ProjectName)/$(Configuration)"
+      c_only_additional_options="-fno-builtin;-fms-extensions"
+      c_preprocessor_definitions="STM32F405xx"
+      c_system_include_directories="$(PackagesDir)/CMSIS_5/CMSIS/Core/Include;$(TargetDir)/CMSIS/Device/Include"
+      c_user_include_directories="$(ExosDir)/include;$(ExosDir);$(ExosDir)/kernel/driver"
+      debug_register_definition_file="$(PackagesDir)/STM32F4xx/XML/STM32F40x_Registers.xml"
+      debug_start_from_entry_point_symbol="Yes"
+      debug_target_connection="J-Link"
+      gcc_entry_point="Reset_Handler"
+      link_include_standard_libraries="No"
+      linker_memory_map_file="$(PackagesDir)/STM32F4xx/XML//STM32F405RG_MemoryMap.xml"
+      linker_section_placement_file="$(ExosDir)/support/stm32f4/flash_placement.xml"
+      linker_section_placement_macros="FLASH_NAME=FLASH1;RAM_NAME=RAM1"
+      macros="ExosDir=..;TargetDir=$(PackagesDir)/STM32F4xx"
+      project_type="Executable"
+      property_groups_file_path="$(PackagesDir)/STM32F4xx/XML/propertyGroups.xml"
+      target_get_partname_script="GetPartName()"
+      target_match_partname_script="MatchPartName(&quot;$(Target)&quot;)"
+      target_script_file="$(PackagesDir)/STM32F4xx/Scripts/STM32F4xx_Target.js" />
+    <configuration Name="RAM" target_reset_script="Reset()" />
+    <configuration
+      Name="Flash"
+      arm_target_flash_loader_file_path="$(LOADER:$(TargetsDir)/STM32/Release/STM32F2xx_Loader_rpc.elf)"
+      arm_target_loader_can_erase_all="Yes"
+      arm_target_loader_can_lock_all="No"
+      arm_target_loader_can_lock_range="No"
+      arm_target_loader_can_unlock_all="No"
+      arm_target_loader_can_unlock_range="No"
+      target_reset_script="FLASHReset()" />
+    <folder Name="System">
+      <folder Name="CMSIS Files">
+        <file file_name="$(TargetDir)/CMSIS/Device/Source/system_stm32f4xx.c" />
+        <file file_name="$(TargetDir)/CMSIS/Device/Source/system_stm32f4xx.h" />
+      </folder>
+      <folder Name="kernel">
+        <file file_name="$(ExosDir)/kernel/datetime.c" />
+        <file file_name="$(ExosDir)/kernel/dispatch.c" />
+        <file file_name="$(ExosDir)/kernel/event.c" />
+        <file file_name="$(ExosDir)/kernel/fifo.c" />
+        <file file_name="$(ExosDir)/kernel/io.c" />
+        <file file_name="$(ExosDir)/kernel/list.c" />
+        <file file_name="$(ExosDir)/kernel/memory.c" />
+        <file file_name="$(ExosDir)/kernel/mutex.c" />
+        <file file_name="$(ExosDir)/kernel/panic.c" />
+        <file file_name="$(ExosDir)/kernel/port.c" />
+        <file file_name="$(ExosDir)/kernel/startup.c" />
+        <file file_name="$(ExosDir)/kernel/thread.c" />
+        <file file_name="$(ExosDir)/kernel/thread_pool.c" />
+        <file file_name="$(ExosDir)/kernel/timer.c" />
+        <file file_name="$(ExosDir)/kernel/tree.c" />
+        <file file_name="$(ExosDir)/kernel/types.c" />
+        <folder Name="machine">
+          <file file_name="$(ExosDir)/kernel/machine/hal.c" />
+          <folder Name="stm32f4">
+            <file file_name="$(ExosDir)/kernel/machine/stm32f4/machine.c" />
+            <file file_name="$(ExosDir)/kernel/machine/stm32f4/vectors.s" />
+            <file file_name="$(ExosDir)/kernel/machine/stm32f4/startup_stm32f4.c" />
+          </folder>
+          <folder Name="armv7m">
+            <file file_name="$(ExosDir)/kernel/machine/armv7m/kernel_armv7m.c" />
+            <file file_name="$(ExosDir)/kernel/machine/armv7m/machine_armv7m.c" />
+            <file file_name="$(ExosDir)/kernel/machine/armv7m/systick.c" />
+          </folder>
+        </folder>
+        <folder Name="driver">
+          <folder Name="comm">
+            <file file_name="$(ExosDir)/kernel/driver/comm/comm.c" />
+            <file file_name="$(ExosDir)/kernel/driver/comm/comm_uart.c" />
+            <file file_name="$(ExosDir)/kernel/driver/comm/comm_rtt.c" />
+          </folder>
+          <folder Name="usb">
+            <file file_name="$(ExosDir)/kernel/driver/usb/enumerate.c" />
+            <file file_name="$(ExosDir)/kernel/driver/usb/host.c" />
+            <file file_name="$(ExosDir)/kernel/driver/usb/usb.c" />
+          </folder>
+        </folder>
+        <folder Name="posix">
+          <file file_name="$(ExosDir)/kernel/posix/arpa_inet.c" />
+          <file file_name="$(ExosDir)/kernel/posix/errno.c" />
+          <file file_name="$(ExosDir)/kernel/posix/fcntl.c" />
+          <file file_name="$(ExosDir)/kernel/posix/ioctl.c" />
+          <file file_name="$(ExosDir)/kernel/posix/posix.c" />
+          <file file_name="$(ExosDir)/kernel/posix/pthread.c" />
+          <file file_name="$(ExosDir)/kernel/posix/pthread_cond.c" />
+          <file file_name="$(ExosDir)/kernel/posix/pthread_time.c" />
+          <file file_name="$(ExosDir)/kernel/posix/select.c" />
+          <file file_name="$(ExosDir)/kernel/posix/socket.c" />
+          <file file_name="$(ExosDir)/kernel/posix/stdlib.c" />
+          <file file_name="$(ExosDir)/kernel/posix/string.c" />
+          <file file_name="$(ExosDir)/kernel/posix/termios.c" />
+          <file file_name="$(ExosDir)/kernel/posix/unistd.c" />
+          <file file_name="$(ExosDir)/kernel/posix/stdio.c" />
+        </folder>
+        <file file_name="$(ExosDir)/kernel/iobuffer.c" />
+        <file file_name="$(ExosDir)/kernel/verbose.c" />
+      </folder>
+      <folder Name="support">
+        <folder Name="stm32f4">
+          <file file_name="$(ExosDir)/support/stm32f4/gpio.c" />
+          <file file_name="$(ExosDir)/support/stm32f4/usart.c" />
+          <file file_name="$(ExosDir)/support/stm32f4/cpu.c" />
+          <file file_name="$(ExosDir)/support/stm32f4/usb_otg_fs.c" />
+          <file file_name="$(ExosDir)/support/stm32f4/usb_otg_host_core.c" />
+          <file file_name="$(ExosDir)/support/stm32f4/usb_otg_host_drv.c" />
+        </folder>
+        <folder Name="services">
+          <file file_name="$(ExosDir)/support/services/init.c" />
+        </folder>
+        <folder Name="misc">
+          <file file_name="$(ExosDir)/support/misc/pools.c" />
+        </folder>
+        <folder Name="usb">
+          <folder Name="driver">
+            <file file_name="$(ExosDir)/support/usb/driver/hid.c" />
+          </folder>
+        </folder>
+      </folder>
+    </folder>
+    <folder Name="Source">
+      <file file_name="posix/basic_pthread_tests.c" />
+      <file file_name="board/board_stm32f4.c" />
+    </folder>
+    <configuration
+      Name="Clang"
+      arm_compiler_variant="clang"
+      c_only_additional_options="-Wno-microsoft-anon-tag" />
+  </project>
+  <configuration
+    Name="Hamster Debug"
+    inherited_configurations="THUMB;Debug;Hamster" />
+  <configuration
+    Name="Debug"
+    c_preprocessor_definitions="DEBUG;STDOUT_STREAM=&quot;/dev/rtt&quot;;RTT_BUFFER_SIZE=1024;TERMINAL_POLL_TIME=10"
+    gcc_debugging_level="Level 3"
+    gcc_optimization_level="None"
+    hidden="Yes" />
+  <configuration
+    Name="Hamster Release"
+    inherited_configurations="THUMB;Release;Hamster" />
+  <configuration
+    Name="Release"
+    c_preprocessor_definitions="NDEBUG"
+    gcc_debugging_level="Level 1"
+    gcc_optimization_level="Level 1"
+    hidden="Yes" />
+  <configuration
+    Name="Common"
+    arm_instruction_set="Thumb"
+    arm_library_instruction_set="Thumb"
+    c_preprocessor_definitions="EXOS_NO_NET;EXOS_OLD_TICK_API"
+    debug_start_from_entry_point_symbol="No" />
+  <configuration
+    Name="Hamster"
+    c_preprocessor_definitions="BOARD_HAMSTER;PARANOID_RESET;HSE_VALUE=8000000UL;PLLN_VALUE=336;PLLM_VALUE=8;PLLP_VALUE=2;PLLQ_VALUE=7"
+    hidden="Yes" />
+  <configuration
+    Name="iHub"
+    c_preprocessor_definitions="BOARD_HUB=1;HSE_VALUE=12000000UL;PLLN_VALUE=224;_HSE_VALUE=8000000UL;_PLLN_VALUE=336;PLLM_VALUE=8;PLLP_VALUE=2;PLLQ_VALUE=7"
+    hidden="Yes" />
+  <configuration Name="iHub Debug" inherited_configurations="Debug;iHub" />
+  <configuration
+    Name="iHub Release"
+    inherited_configurations="Release;iHub" />
+  <configuration Name="Clang" hidden="Yes" />
+  <configuration
+    Name="Hamster Clang Debug"
+    inherited_configurations="Clang;Debug;Hamster" />
+  <configuration
+    Name="Hanster Clang Release"
+    inherited_configurations="Clang;Hamster;Release" />
+</solution>
