@@ -37,7 +37,7 @@ typedef struct
 } pthread_mutex_t;
 
 extern const pthread_mutex_t __mutex_initializer;
-#define PTHREAD_MUTEX_INITIALIZER { { { NULL, (EXOS_NODE *)-1, NULL }, NULL, 0 } }
+#define PTHREAD_MUTEX_INITIALIZER { { { NULL, (node_t *)-1, NULL }, NULL, 0 } }
 
 //pthread_once_t
 //pthread_rwlock_t
