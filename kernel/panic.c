@@ -1,4 +1,5 @@
 #include "panic.h"
+#include <kernel/machine/hal.h>
 
 static KERNEL_ERROR __kernel_last_error;
 
@@ -16,5 +17,5 @@ void kernel_panic(KERNEL_ERROR error)
 
 void __weak __kernel_panic()
 {
-	while(1);
+	__machine_halt();
 }
