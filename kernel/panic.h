@@ -40,7 +40,7 @@ typedef enum
 #endif
 
 
-void kernel_panic(KERNEL_ERROR error);
+void kernel_panic(KERNEL_ERROR error) __noreturn;
 void __kernel_panic() __noreturn;
 
 #endif // EXOS_PANIC_H

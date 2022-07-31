@@ -3,5 +3,6 @@
 *.bak
 *.hzs
 *.emSession
+*.jlink
 .vscode
 .output

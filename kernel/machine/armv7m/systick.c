@@ -14,6 +14,10 @@ void hal_time_initialize(int period_us)
 
 void SysTick_Handler()
 {
+#ifdef EXOS_OLD_TICK_API
 	__kernel_tick();
+#else
+#error "ULP API not implemented"
+#endif
 }
 

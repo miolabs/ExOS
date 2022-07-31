@@ -26,7 +26,7 @@
     <ProgramSection alignment="4" size="__STACKSIZE__" load="No" name=".stack" />
     <ProgramSection alignment="4" size="__STACKSIZE_PROCESS__" load="No" name=".stack_process" />
   </MemorySegment>
-  <MemorySegment name="AHBSRAM" >
+  <MemorySegment name="$(RAM2_NAME:AHBSRAM)" >
     <ProgramSection alignment="4" load="No" name=".usb"/>
     <ProgramSection alignment="4" load="No" name=".dma"/>
     <ProgramSection alignment="4" load="No" name=".data2_run" />

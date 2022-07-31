@@ -1,5 +1,4 @@
-#include <CMSIS/system_LPC177x_8x.h>
-#include <CMSIS/LPC177x_8x.h>
+#include <LPC177x_8x.h>
 #include <kernel/startup.h>
 #include <kernel/machine/hal.h>
 

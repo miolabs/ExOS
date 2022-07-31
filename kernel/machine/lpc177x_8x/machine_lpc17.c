@@ -1,14 +1,12 @@
 #include <kernel/machine/hal.h>
-#include <CMSIS/LPC177x_8x.h>
-#include <support/board_hal.h>
+#include <LPC177x_8x.h>
+#include <board/board.h>
 
 void __machine_init()
 {
 	LPC_SC->PCLKSEL = LPC_SC->CCLKSEL & 0x1F;	// PCLK = CCLK
 	//NOTE: CMSIS PeripheralClock value is outdated and may be incorrect
 	// use legacy lpc17 family cpu_pclk() function
-
-	hal_board_initialize();
 
 	// set lowest priority for PendSV
 	NVIC_SetPriority(PendSV_IRQn, 0xFF);	
@@ -18,6 +16,12 @@ void __machine_init()
 		// set lowest priority for IRQ
 		NVIC_SetPriority((IRQn_Type)i, 0xFF);
 	}
+
+	NVIC_SetPriority(SysTick_IRQn, 0xFF);	// set Priority for Systick Interrupt
+	SysTick->LOAD = (SystemCoreClock / 1000) - 1;
+	SysTick->CTRL = 0;
+
+	__board_init();
 }
 
 void __machine_req_switch()

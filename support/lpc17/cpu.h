@@ -8,9 +8,9 @@
 #define LPC1788 1788
 
 #if (__TARGET_PROCESSOR == LPC1768 || __TARGET_PROCESSOR == LPC1769 || __TARGET_PROCESSOR == LPC1758 )
-#include <CMSIS/LPC17xx.h>
+#include <LPC17xx.h>
 #elif (__TARGET_PROCESSOR == LPC1778 || __TARGET_PROCESSOR == LPC1788)
-#include <CMSIS/LPC177x_8x.h>
+#include <LPC177x_8x.h>
 #define LPC177X_8X
 #else
 #error "Target processor not listed"

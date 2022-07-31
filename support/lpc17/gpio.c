@@ -1,31 +1,48 @@
-#include <support/gpio_hal.h>
+#include "gpio.h"
 #include "cpu.h"
+#include <kernel/panic.h>
 
 static LPC_GPIO_TypeDef *_gpio[] = { LPC_GPIO0, LPC_GPIO1, LPC_GPIO2, LPC_GPIO3, LPC_GPIO4 };
 
-void hal_gpio_write(int port, unsigned int mask, unsigned int state)
+static const unsigned _port_count = (sizeof(_gpio) / sizeof(LPC_GPIO_TypeDef *));
+
+//void hal_gpio_write(int port, unsigned int mask, unsigned int state)
+//{
+//	_gpio[port]->FIOSET = mask & state;
+//	_gpio[port]->FIOCLR = mask & ~state;
+//}
+
+//unsigned int hal_gpio_read(int port, unsigned int mask)
+//{
+//	return _gpio[port]->FIOPIN & mask;
+//}
+
+void hal_gpio_pin_set(unsigned pin, bool state)
 {
-	_gpio[port]->FIOSET = mask & state;
-	_gpio[port]->FIOCLR = mask & ~state;
+	unsigned port = (pin >> 5);
+	ASSERT(port < _port_count, KERNEL_ERROR_KERNEL_PANIC);
+
+	unsigned mask = 1 << (pin & 31);
+	if (state) _gpio[port]->SET = mask;
+	else _gpio[port]->CLR = mask;
 }
 
-unsigned int hal_gpio_read(int port, unsigned int mask)
+bool hal_gpio_pin(unsigned pin)
 {
-	return _gpio[port]->FIOPIN & mask;
+	unsigned port = (pin >> 5);
+	ASSERT(port < _port_count, KERNEL_ERROR_KERNEL_PANIC);
+
+	unsigned mask = 1 << (pin & 31);
+	return (_gpio[port]->PIN & mask) != 0;
 }
 
-void hal_gpio_pin_set(int port, int pin, int state)
+void hal_gpio_pin_config(unsigned pin, hal_gpio_flags_t flags)
 {
-	if (state) _gpio[port]->FIOSET = 1<<pin;
-	else _gpio[port]->FIOCLR = 1<<pin;
-}
+	unsigned port = (pin >> 5);
+	ASSERT(port < _port_count, KERNEL_ERROR_KERNEL_PANIC);
 
-int hal_gpio_pin(int port, int pin)
-{
-	return hal_gpio_read(port, 1<<pin);
-}
+	unsigned mask = 1 << (pin & 31);
+	_gpio[port]->DIR = (_gpio[port]->DIR & ~mask) | ((flags & GPIOF_OUTPUT) ? mask : 0);
 
-void hal_gpio_config(int port, unsigned int mask, unsigned int output)
-{
-	_gpio[port]->FIODIR = (_gpio[port]->FIODIR & ~mask) | (output & mask);
+	// TODO
 }
