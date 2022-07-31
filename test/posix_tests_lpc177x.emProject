@@ -49,8 +49,8 @@
       </file>
     </folder>
     <folder Name="Source Files">
-      <file file_name="board/board_lpc177x_8x.c" />
       <file file_name="posix/basic_pthread_tests.c" />
+      <file file_name="board/board_lpc17.c" />
     </folder>
     <folder Name="System Files">
       <folder Name="kernel">

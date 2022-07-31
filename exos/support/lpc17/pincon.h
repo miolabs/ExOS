@@ -39,6 +39,6 @@ typedef struct
 #endif
 
 // prototypes
-void pincon_setfunc(int port, int pin, int func, int mode);
+void pincon_setfunc(unsigned pin, int func, int mode);
 
 #endif // LPC17_PINCON_H

@@ -30,8 +30,11 @@ static volatile unsigned long *const _pinmode[] = {
 	&LPC_PINCON->PINMODE8,
 	&LPC_PINCON->PINMODE9 };
 
-void pincon_setfunc(int port, int pin, int func, int mode)
+void pincon_setfunc(unsigned pin, int func, int mode)
 {
+	unsigned port = pin >> 5;
+	pin &= 31;
+
 	volatile unsigned long *pinsel = _pinsel[(port << 1) | (pin >> 4)];
 	int shift = (pin & 0xF) << 1;
 	unsigned long mask = 3 << shift;
@@ -51,8 +54,11 @@ static _IOCONbits *const _iocon[] = {
 	(_IOCONbits *)&LPC_IOCON->P4_0,
 	(_IOCONbits *)&LPC_IOCON->P5_0 };
 
-void pincon_setfunc(int port, int pin, int func, int mode)
+void pincon_setfunc(unsigned pin, int func, int mode)
 {
+	unsigned port = pin >> 5;
+	pin &= 31;
+
 	_IOCONbits *iocon = _iocon[port] + pin;
 	*(unsigned long *)iocon = func |
 		((mode & 3) << 3) |

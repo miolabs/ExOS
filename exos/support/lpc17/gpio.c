@@ -23,8 +23,13 @@ void hal_gpio_pin_set(unsigned pin, bool state)
 	ASSERT(port < _port_count, KERNEL_ERROR_KERNEL_PANIC);
 
 	unsigned mask = 1 << (pin & 31);
+#ifdef LPC177X_8X
 	if (state) _gpio[port]->SET = mask;
 	else _gpio[port]->CLR = mask;
+#else
+	if (state) _gpio[port]->FIOSET = mask;
+	else _gpio[port]->FIOCLR = mask;
+#endif
 }
 
 bool hal_gpio_pin(unsigned pin)
@@ -33,7 +38,11 @@ bool hal_gpio_pin(unsigned pin)
 	ASSERT(port < _port_count, KERNEL_ERROR_KERNEL_PANIC);
 
 	unsigned mask = 1 << (pin & 31);
+#ifdef LPC177X_8X
 	return (_gpio[port]->PIN & mask) != 0;
+#else
+	return (_gpio[port]->FIOPIN & mask) != 0;
+#endif
 }
 
 void hal_gpio_pin_config(unsigned pin, hal_gpio_flags_t flags)
@@ -42,7 +51,10 @@ void hal_gpio_pin_config(unsigned pin, hal_gpio_flags_t flags)
 	ASSERT(port < _port_count, KERNEL_ERROR_KERNEL_PANIC);
 
 	unsigned mask = 1 << (pin & 31);
+#ifdef LPC177X_8X
 	_gpio[port]->DIR = (_gpio[port]->DIR & ~mask) | ((flags & GPIOF_OUTPUT) ? mask : 0);
-
+#else
+	_gpio[port]->FIODIR = (_gpio[port]->FIODIR & ~mask) | ((flags & GPIOF_OUTPUT) ? mask : 0);
+#endif
 	// TODO
 }
