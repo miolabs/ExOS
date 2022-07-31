@@ -39,7 +39,7 @@
       linker_memory_map_file="$(PackagesDir)/STM32F4xx/XML//STM32F405RG_MemoryMap.xml"
       linker_section_placement_file="$(ExosDir)/support/stm32f4/flash_placement.xml"
       linker_section_placement_macros="FLASH_NAME=FLASH1;RAM_NAME=RAM1"
-      macros="ExosDir=..;TargetDir=$(PackagesDir)/STM32F4xx"
+      macros="ExosDir=../exos;TargetDir=$(PackagesDir)/STM32F4xx"
       project_type="Executable"
       property_groups_file_path="$(PackagesDir)/STM32F4xx/XML/propertyGroups.xml"
       target_get_partname_script="GetPartName()"
