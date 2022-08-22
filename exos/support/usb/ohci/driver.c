@@ -6,33 +6,36 @@
 #include <kernel/panic.h>
 #include <kernel/machine/hal.h>
 
-static int _ctrl_setup_read(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *in_data, int in_length);
-static int _ctrl_setup_write(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *out_data, int out_length);
-static int _start_pipe(USB_HOST_PIPE *pipe);
-static int _stop_pipe(USB_HOST_PIPE *pipe);
-static int _begin_bulk_transfer(USB_REQUEST_BUFFER *urb, void *data, int length);
-static int _end_bulk_transfer(USB_REQUEST_BUFFER *urb, unsigned long timeout);
-static int _create_device(USB_HOST_DEVICE *device, int port, USB_HOST_DEVICE_SPEED speed);
-static void _destroy_device(USB_HOST_DEVICE *device);
+static bool _ctrl_setup_read(usb_host_device_t *device, void *setup_data, unsigned setup_length, void *in_data, unsigned in_length);
+static bool _ctrl_setup_write(usb_host_device_t *device, void *setup_data, unsigned setup_length, void *out_data, unsigned out_length);
+static bool _start_pipe(usb_host_controller_t *hc, usb_host_pipe_t *pipe);
+static bool _stop_pipe(usb_host_controller_t *hc, usb_host_pipe_t *pipe);
+static bool _begin_bulk_transfer(usb_host_controller_t *hc, usb_request_buffer_t *urb, void *data, unsigned length);
+static int _end_bulk_transfer(usb_host_controller_t *hc, usb_request_buffer_t *urb, unsigned timeout);
+static bool _create_device(usb_host_controller_t *hc, usb_host_device_t *device, unsigned port, usb_host_device_speed_t speed);
+static void _destroy_device(usb_host_controller_t *hc, usb_host_device_t *device);
 
-const USB_HOST_CONTROLLER_DRIVER __ohci_driver = {
+static const usb_host_controller_driver_t _driver = {
 	_ctrl_setup_read, _ctrl_setup_write, 
 	_start_pipe, _stop_pipe, _begin_bulk_transfer, _end_bulk_transfer,
 	_create_device, _destroy_device };
 
-static EXOS_MUTEX _mutex;
+static usb_host_controller_t _hc;
+static usb_host_device_t _root_devices[USB_HOST_ROOT_HUB_NDP] __usb;
+static mutex_t _mutex;
 
 void ohci_driver_initialize()
 {
 	exos_mutex_create(&_mutex);
-	
+	usb_host_controller_create(&_hc, &_driver, _root_devices, USB_HOST_ROOT_HUB_NDP);
+
 	// initialize static buffers
 	ohci_buffers_initialize();
 
-	ohci_initialize();
+	ohci_initialize(&_hc);
 }
 
-static int _start_pipe(USB_HOST_PIPE *pipe)
+static int _start_pipe(usb_host_controller_t *hcnt, usb_host_pipe_t *pipe)
 {
 	if (pipe == NULL || pipe->Device == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
@@ -72,7 +75,7 @@ static int _start_pipe(USB_HOST_PIPE *pipe)
 	return 0;
 }
 
-static int _stop_pipe(USB_HOST_PIPE *pipe)
+static int _stop_pipe(usb_host_controller_t *hcnt, usb_host_pipe_t *pipe)
 {
 	if (pipe == NULL || pipe->Device == NULL || pipe->Endpoint == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
@@ -96,7 +99,7 @@ static int _stop_pipe(USB_HOST_PIPE *pipe)
 	return 1;
 }
 
-static int _begin_bulk_transfer(USB_REQUEST_BUFFER *urb, void *data, int length)
+static bool _begin_bulk_transfer(usb_host_controller_t *hcnt, usb_request_buffer_t *urb, void *data, unsigned length)
 {
 	// TODO: Add support for more than a single transfer per request
 
@@ -107,7 +110,7 @@ static int _begin_bulk_transfer(USB_REQUEST_BUFFER *urb, void *data, int length)
 	return (std != NULL);
 }
 
-static int _end_bulk_transfer(USB_REQUEST_BUFFER *urb, unsigned long timeout)
+static int _end_bulk_transfer(usb_host_controller_t *hcnt, usb_request_buffer_t *urb, unsigned timeout)
 {
 	if (urb == NULL || urb->Pipe == NULL || urb->UserState == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
@@ -128,22 +131,20 @@ static int _end_bulk_transfer(USB_REQUEST_BUFFER *urb, unsigned long timeout)
 	return (urb->Status == URB_STATUS_DONE) ? urb->Done : -1;
 }
 
-static int _create_device(USB_HOST_DEVICE *device, int port, USB_HOST_DEVICE_SPEED speed)
+static bool _create_device(usb_host_controller_t *hc, usb_host_device_t *device, unsigned port, usb_host_device_speed_t speed)
 {
-	static USB_DEVICE_DESCRIPTOR _dev_desc __usb;	// NOTE: buffer for descriptors, not re-entrant (lock?)
+	static usb_device_descriptor_t _dev_desc __usb;	// NOTE: buffer for descriptors, not re-entrant (lock?)
 	static volatile int _last_device = 0;	// FIXME
 
-	int done = 0;
+	bool done = false;
 	exos_mutex_lock(&_mutex);
 
-	usb_host_create_device(device, &__ohci_driver, port, speed);
-
-	if (_start_pipe(&device->ControlPipe))
+	if (_start_pipe(hc, &device->ControlPipe))
 	{
 		device->State = USB_HOST_DEVICE_ATTACHED;
 
-		USB_HOST_PIPE *pipe = &device->ControlPipe;
-		USB_DEVICE_DESCRIPTOR *dev_desc = &_dev_desc;
+		usb_host_pipe_t *pipe = &device->ControlPipe;
+		usb_device_descriptor_t *dev_desc = &_dev_desc;
 
 		// read device descriptor (header)
 		done = usb_host_read_device_descriptor(device, USB_DESCRIPTOR_TYPE_DEVICE, 0, dev_desc, 8);
@@ -161,7 +162,7 @@ static int _create_device(USB_HOST_DEVICE *device, int port, USB_HOST_DEVICE_SPE
 
 				// read device descriptor (complete) 
 				done = usb_host_read_device_descriptor(device, USB_DESCRIPTOR_TYPE_DEVICE, 0, 
-					dev_desc, sizeof(USB_DEVICE_DESCRIPTOR));
+					dev_desc, sizeof(usb_device_descriptor_t));
 		
 				if (done)
 				{
@@ -172,7 +173,7 @@ static int _create_device(USB_HOST_DEVICE *device, int port, USB_HOST_DEVICE_SPE
 
 		if (!done)
 		{
-			ohci_device_destroy(device);
+			_destroy_device(hc, device);
 		}
 	}
 
@@ -180,48 +181,28 @@ static int _create_device(USB_HOST_DEVICE *device, int port, USB_HOST_DEVICE_SPE
 	return done;
 }
 
-static void _destroy_device(USB_HOST_DEVICE *device)
+static void _destroy_device(usb_host_controller_t *hc, usb_host_device_t *device)
 {
 	exos_mutex_lock(&_mutex);
 
 	if (device->State != USB_HOST_DEVICE_DETACHED)
 	{
 		device->State = USB_HOST_DEVICE_DETACHED;
-		_stop_pipe(&device->ControlPipe);
-
-		usb_host_destroy_device(device);
+		_stop_pipe(hc, &device->ControlPipe);
 	}
 
 	exos_mutex_unlock(&_mutex);
 }
 
-int ohci_device_create(USB_HOST_DEVICE *device, int port, USB_HOST_DEVICE_SPEED speed)
+static bool _ctrl_setup_read(usb_host_device_t *device, void *setup_data, unsigned setup_length, void *in_data, unsigned in_length)
 {
-#ifdef DEBUG
-	if (device == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
-	return _create_device(device, port, speed); 
-}
-
-void ohci_device_destroy(USB_HOST_DEVICE *device)
-{
-#ifdef DEBUG
-	if (device == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
-	_destroy_device(device);
-}
-
-static int _ctrl_setup_read(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *in_data, int in_length)
-{
-	USB_REQUEST_BUFFER urb;
+	usb_request_buffer_t urb;
 
 	exos_mutex_lock(&_mutex);
 
-	USB_HOST_PIPE *pipe = &device->ControlPipe;
+	usb_host_pipe_t *pipe = &device->ControlPipe;
 	usb_host_urb_create(&urb, pipe);
-	int done = ohci_process_std(&urb, OHCI_TD_SETUP, OHCI_TD_TOGGLE_0, setup_data, setup_length);
+	bool done = ohci_process_std(&urb, OHCI_TD_SETUP, OHCI_TD_TOGGLE_0, setup_data, setup_length);
 	if (done) 
 	{
 		if (in_length) 
@@ -238,15 +219,15 @@ static int _ctrl_setup_read(USB_HOST_DEVICE *device, void *setup_data, int setup
 	return done;
 }
 
-static int _ctrl_setup_write(USB_HOST_DEVICE *device, void *setup_data, int setup_length, void *out_data, int out_length)
+static bool _ctrl_setup_write(usb_host_device_t *device, void *setup_data, unsigned setup_length, void *out_data, unsigned out_length)
 {
-	USB_REQUEST_BUFFER urb;
+	usb_request_buffer_t urb;
 
 	exos_mutex_lock(&_mutex);
 
-	USB_HOST_PIPE *pipe = &device->ControlPipe;
+	usb_host_pipe_t *pipe = &device->ControlPipe;
 	usb_host_urb_create(&urb, pipe);
-	int done = ohci_process_std(&urb, OHCI_TD_SETUP, OHCI_TD_TOGGLE_0, setup_data, setup_length);
+	bool done = ohci_process_std(&urb, OHCI_TD_SETUP, OHCI_TD_TOGGLE_0, setup_data, setup_length);
     if (done) 
 	{
         if (out_length) 

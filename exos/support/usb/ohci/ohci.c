@@ -6,13 +6,13 @@
 
 // Host Controller Communications Area (must be 256-aligned)
 static volatile OHCI_HCCA _hcca __usb __attribute__((aligned(256)));
-static EXOS_EVENT _sof_event;
+static event_t _sof_event;
 static void _soft_reset();
 
-int ohci_initialize()
+int ohci_initialize(usb_host_controller_t *hc)
 {
-	ohci_hub_initialize();
-	exos_event_create(&_sof_event);
+	ohci_hub_initialize(hc);
+	exos_event_create(&_sof_event, EXOS_EVENTF_AUTORESET);
 
 	_soft_reset();
 
@@ -145,7 +145,7 @@ void ohci_isr()
 				std->Status = (hctd->ControlBits.ConditionCode == OHCI_TD_CC_NO_ERROR) ?
 					OHCI_STD_STA_COMPLETED : OHCI_STD_STA_ERROR;
 
-				USB_REQUEST_BUFFER *urb = std->Request;
+				usb_request_buffer_t *urb = std->Request;
 				if (urb == NULL) 
 					kernel_panic(KERNEL_ERROR_NULL_POINTER);
 	

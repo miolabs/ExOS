@@ -3,10 +3,10 @@
 #include <kernel/thread.h>
 #include <kernel/panic.h>
 
-static void _pipe_schedule(USB_HOST_PIPE *pipe);
-static void _pipe_unschedule(USB_HOST_PIPE *pipe);
+static void _pipe_schedule(usb_host_pipe_t *pipe);
+static void _pipe_unschedule(usb_host_pipe_t *pipe);
 
-void ohci_pipe_add(USB_HOST_PIPE *pipe)
+void ohci_pipe_add(usb_host_pipe_t *pipe)
 {
 	OHCI_SED *sed = (OHCI_SED *)pipe->Endpoint;
 	switch(pipe->EndpointType)
@@ -25,7 +25,7 @@ void ohci_pipe_add(USB_HOST_PIPE *pipe)
 	}
 }
 
-void ohci_pipe_remove(USB_HOST_PIPE *pipe)
+void ohci_pipe_remove(usb_host_pipe_t *pipe)
 {
 	OHCI_SED *sed = (OHCI_SED *)pipe->Endpoint;
 	// FIXME: look for the matching pipe pointer for removing
@@ -72,7 +72,7 @@ void ohci_pipe_remove(USB_HOST_PIPE *pipe)
 	__hc->Control = (__hc->Control & ~mask) | (old & mask); 
 }
 
-int ohci_pipe_flush(USB_HOST_PIPE *pipe, USB_REQUEST_BUFFER *urb)
+int ohci_pipe_flush(usb_host_pipe_t *pipe, usb_request_buffer_t *urb)
 {
 	OHCI_SED *sed = (OHCI_SED *)pipe->Endpoint;
 	sed->HCED.ControlBits.sKip = 1;
@@ -87,7 +87,7 @@ int ohci_pipe_flush(USB_HOST_PIPE *pipe, USB_REQUEST_BUFFER *urb)
 		if (td == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
 #endif
 		OHCI_STD *std = (OHCI_STD *)td;
-		USB_REQUEST_BUFFER *urb_td = std->Request;
+		usb_request_buffer_t *urb_td = std->Request;
 		if (urb == NULL ||
 			(urb_td != NULL && urb_td == urb))
 		{
@@ -124,7 +124,7 @@ static int _bandwidth(OHCI_HCED *hced)
 	return total;
 }
 
-static void _pipe_schedule(USB_HOST_PIPE *pipe)
+static void _pipe_schedule(usb_host_pipe_t *pipe)
 {
 	OHCI_SED *sed = (OHCI_SED *)pipe->Endpoint;
 
@@ -175,7 +175,7 @@ static void _pipe_schedule(USB_HOST_PIPE *pipe)
 	}
 }
 
-static void _pipe_unschedule(USB_HOST_PIPE *pipe)
+static void _pipe_unschedule(usb_host_pipe_t *pipe)
 {
 	OHCI_SED *sed = (OHCI_SED *)pipe->Endpoint;
 
@@ -211,14 +211,14 @@ static void _init_hctd(OHCI_HCTD *hctd, OHCI_TD_PID pid, OHCI_TD_TOGGLE td_toggl
 	hctd->BufferEnd = buffer + (length - 1);
 }
 
-OHCI_STD *ohci_add_std(USB_REQUEST_BUFFER *urb, OHCI_STD *next_std, OHCI_TD_PID pid, OHCI_TD_TOGGLE toggle)
+OHCI_STD *ohci_add_std(usb_request_buffer_t *urb, OHCI_STD *next_std, OHCI_TD_PID pid, OHCI_TD_TOGGLE toggle)
 {
 #ifdef DEBUG
 	if (urb == NULL || urb->Pipe == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
 #endif
 
-	USB_HOST_PIPE *pipe = urb->Pipe;
+	usb_host_pipe_t *pipe = urb->Pipe;
 	OHCI_SED *sed = (OHCI_SED *)pipe->Endpoint;
 	if (sed->HCED.HeadTDBits.Halted)
 		return NULL;
@@ -261,7 +261,7 @@ OHCI_STD *ohci_add_std(USB_REQUEST_BUFFER *urb, OHCI_STD *next_std, OHCI_TD_PID 
 	return std;
 }
 
-int ohci_remove_std(USB_REQUEST_BUFFER *urb)
+int ohci_remove_std(usb_request_buffer_t *urb)
 {
 	OHCI_STD *std = (OHCI_STD *)urb->UserState;
 #ifdef DEBUG
@@ -269,12 +269,12 @@ int ohci_remove_std(USB_REQUEST_BUFFER *urb)
 		kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
 #endif
 	
-	USB_HOST_PIPE *pipe = urb->Pipe;
+	usb_host_pipe_t *pipe = urb->Pipe;
 	int removed = ohci_pipe_flush(pipe, urb);
 	return removed;
 }
 
-int ohci_process_std(USB_REQUEST_BUFFER *urb, OHCI_TD_PID pid, OHCI_TD_TOGGLE toggle, void *data, int length)
+bool ohci_process_std(usb_request_buffer_t *urb, OHCI_TD_PID pid, OHCI_TD_TOGGLE toggle, void *data, int length)
 {
 #ifdef DEBUG
 	if (urb == NULL || urb->Pipe == NULL)
@@ -289,8 +289,8 @@ int ohci_process_std(USB_REQUEST_BUFFER *urb, OHCI_TD_PID pid, OHCI_TD_TOGGLE to
 		exos_event_wait(&urb->Event, EXOS_TIMEOUT_NEVER);	// FIXME: support timeouts, maybe using the urb begin/end framework in driver.c
 		ohci_buffers_release_std(std);
 	}
-	if (urb->Status == URB_STATUS_DONE) return 1;
-	return 0;
+	if (urb->Status == URB_STATUS_DONE) return true;
+	return false;
 }
 
 

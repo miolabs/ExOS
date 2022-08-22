@@ -7,7 +7,7 @@
 typedef struct __attribute__((aligned(16)))
 {
 	OHCI_HCED HCED;
-	USB_HOST_PIPE *Pipe;
+	usb_host_pipe_t *Pipe;
 } OHCI_SED;
 
 typedef enum
@@ -27,18 +27,18 @@ typedef struct __attribute__((aligned(32))) _OHCI_STD
 		OHCI_HCTD HCTD;
 		OHCI_HCTD_ISO HCTD_ISO;
 	};
-	USB_REQUEST_BUFFER *Request;
+	usb_request_buffer_t *Request;
 	volatile OHCI_STD_STATUS Status;
 } OHCI_STD;
 
 // prototypes
-void ohci_pipe_add(USB_HOST_PIPE *pipe);
-void ohci_pipe_remove(USB_HOST_PIPE *pipe);
-void ohci_pipe_schedule(USB_HOST_PIPE *pipe);
-int ohci_pipe_flush(USB_HOST_PIPE *pipe, USB_REQUEST_BUFFER *urb);
+void ohci_pipe_add(usb_host_pipe_t *pipe);
+void ohci_pipe_remove(usb_host_pipe_t *pipe);
+void ohci_pipe_schedule(usb_host_pipe_t *pipe);
+int ohci_pipe_flush(usb_host_pipe_t *pipe, usb_request_buffer_t *urb);
 
-OHCI_STD *ohci_add_std(USB_REQUEST_BUFFER *urb, OHCI_STD *next_std, OHCI_TD_PID pid, OHCI_TD_TOGGLE toggle);
-int ohci_remove_std(USB_REQUEST_BUFFER *urb);
-int ohci_process_std(USB_REQUEST_BUFFER *urb, OHCI_TD_PID pid, OHCI_TD_TOGGLE toggle, void *data, int length);
+OHCI_STD *ohci_add_std(usb_request_buffer_t *urb, OHCI_STD *next_std, OHCI_TD_PID pid, OHCI_TD_TOGGLE toggle);
+int ohci_remove_std(usb_request_buffer_t *urb);
+int ohci_process_std(usb_request_buffer_t *urb, OHCI_TD_PID pid, OHCI_TD_TOGGLE toggle, void *data, int length);
 
 #endif // OHCI_PIPES_H

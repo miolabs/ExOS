@@ -3,27 +3,31 @@
 #include <usb/enumerate.h>
 #include <kernel/thread.h>
 #include <kernel/dispatch.h>
-#include <support/services/debug.h>
+#include <kernel/verbose.h>
+#include <kernel/panic.h>
 
-#define THREAD_STACK 1024
-static EXOS_THREAD _thread;
+#define THREAD_STACK 2048
+static exos_thread_t _thread;
 static unsigned char _stack[THREAD_STACK] __attribute__((aligned(16)));
 
-static EXOS_EVENT _root_event;
-static EXOS_DISPATCHER_CONTEXT _context;
-
-static USB_HOST_DEVICE _devices[USB_HOST_ROOT_HUB_NDP] __usb;
+static event_t _root_event;
+static dispatcher_context_t _context;
+static usb_host_controller_t *_hc_driver;
 
 static void *_service(void *arg);
 
-void ohci_hub_initialize()
+void ohci_hub_initialize(usb_host_controller_t *hc)
 {
-	exos_event_create(&_root_event);
+	ASSERT(hc != nullptr, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(_hc_driver == nullptr, KERNEL_ERROR_KERNEL_PANIC);	// already in use
+	_hc_driver = hc;
+	
+	exos_event_create(&_root_event, EXOS_EVENTF_AUTORESET);
 	exos_dispatcher_context_create(&_context);
 
-	EXOS_EVENT event;
-	exos_event_create(&event);
-	exos_thread_create(&_thread, 5, _stack, THREAD_STACK, NULL, _service, &event);
+	event_t event;
+	exos_event_create(&event, EXOS_EVENTF_AUTORESET);
+	exos_thread_create(&_thread, 5, _stack, THREAD_STACK, _service, &event);
 	exos_event_wait(&event, EXOS_TIMEOUT_NEVER);
 }
 
@@ -32,9 +36,9 @@ void ohci_hub_signal()
 	exos_event_set(&_root_event);
 }
 
-static void _dispatch(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher)
+static void _dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 {
-	exos_event_reset(&_root_event);
+//	exos_event_reset(&_root_event);
 
 	exos_thread_sleep(500);
 
@@ -54,19 +58,20 @@ static void _dispatch(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatc
 				exos_thread_sleep(100);	// some devices need up to 100ms after port reset
 				
 				__hc->RhPortStatus[port] = OHCIR_RH_PORT_PRSC;	// clear prsc
-				USB_HOST_DEVICE_SPEED speed = (__hc->RhPortStatus[port] & OHCIR_RH_PORT_LSDA) ? 
+				usb_host_device_state_t speed = (__hc->RhPortStatus[port] & OHCIR_RH_PORT_LSDA) ? 
 					USB_HOST_DEVICE_LOW_SPEED : USB_HOST_DEVICE_FULL_SPEED;
 				
-				USB_HOST_DEVICE *child = &_devices[port];
-				ohci_device_create(child, port, speed);
-				debug_printf("usb_roothub: child %04x/%04x added at port #%d\r\n", child->Vendor, child->Product, child->Port);
-			}
+				usb_host_device_t *child = usb_host_create_root_device(_hc_driver, port, speed);
+				if (child != nullptr)
+					verbose(VERBOSE_DEBUG, "usb_roothub", "child %04x/%04x added at port #%d", child->Vendor, child->Product, child->Port);
+				else	
+					verbose(VERBOSE_DEBUG, "usb_roothub", "device add failed");				}
 			else 
 			{
-				USB_HOST_DEVICE *child = &_devices[port];
-				debug_printf("usb_roothub: child %04x/%04x removing at port #%d\r\n", child->Vendor, child->Product, child->Port);
-				ohci_device_destroy(child);
-				debug_printf("usb_roothub: child %04x/%04x removed\r\n", child->Vendor, child->Product);
+				usb_host_device_t *child = &_hc_driver->Devices[port];
+				verbose(VERBOSE_COMMENT, "usb_roothub", "child %04x/%04x removing at port #%d\r\n", child->Vendor, child->Product, child->Port);
+				usb_host_destroy_device(child);
+				verbose(VERBOSE_COMMENT, "usb_roothub", "child %04x/%04x removed\r\n", child->Vendor, child->Product);
 			}
 		}
 		if (status & OHCIR_RH_PORT_PRSC)
@@ -80,12 +85,12 @@ static void _dispatch(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatc
 
 static void *_service(void *arg)
 {
-	EXOS_DISPATCHER dispatcher;
+	dispatcher_t dispatcher;
 	exos_dispatcher_create(&dispatcher, &_root_event, _dispatch, NULL);
 	exos_dispatcher_add(&_context, &dispatcher, EXOS_TIMEOUT_NEVER);
 	exos_event_set(&_root_event);
 
-    exos_event_set((EXOS_EVENT *)arg);    // notify of service ready
+    exos_event_set((event_t *)arg);    // notify of service ready
 
 	while(1)
 	{

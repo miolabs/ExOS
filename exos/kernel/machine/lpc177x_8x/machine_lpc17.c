@@ -1,6 +1,5 @@
 #include <kernel/machine/hal.h>
 #include <LPC177x_8x.h>
-#include <board/board.h>
 
 void __machine_init()
 {

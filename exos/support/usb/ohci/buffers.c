@@ -20,14 +20,14 @@ void ohci_buffers_initialize()
 	for(int i = 0; i < OHCI_MAX_BUFFERS; i++)
 	{
 		OHCI_STD *std = &_buffers[i];
-		exos_fifo_queue(&_free_buffers, (EXOS_NODE *)std);
+		exos_fifo_queue(&_free_buffers, (node_t *)std);
 	}
 
 	exos_fifo_create(&_free_pipes, NULL);
 	for(int i = 0; i < OHCI_MAX_PIPES; i++)
 	{
 		OHCI_SED *pipe = &_pipes[i];
-		exos_fifo_queue(&_free_pipes, (EXOS_NODE *)pipe);
+		exos_fifo_queue(&_free_pipes, (node_t *)pipe);
 	}
 }
 
@@ -44,7 +44,7 @@ OHCI_STD *ohci_buffers_alloc_std()
 
 void ohci_buffers_release_std(OHCI_STD *std)
 {
-	exos_fifo_queue(&_free_buffers, (EXOS_NODE *)std);
+	exos_fifo_queue(&_free_buffers, (node_t *)std);
 }
 
 OHCI_SED *ohci_buffers_alloc_sed()
@@ -55,7 +55,7 @@ OHCI_SED *ohci_buffers_alloc_sed()
 
 void ohci_buffers_release_sed(OHCI_SED *sed)
 {
-	exos_fifo_queue(&_free_pipes, (EXOS_NODE *)sed);
+	exos_fifo_queue(&_free_pipes, (node_t *)sed);
 }
 
 

@@ -181,6 +181,7 @@ typedef enum
 // prototypes
 ///////////////////////////////
 
-int cpu_pclk(PCLK_PERIPH periph);
+unsigned cpu_pclk(PCLK_PERIPH periph);
+unsigned cpu_usbclk();
 
 #endif // LPC17_CPU_H

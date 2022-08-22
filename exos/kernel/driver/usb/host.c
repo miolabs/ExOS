@@ -83,6 +83,7 @@ static void _create_device(usb_host_device_t *device, usb_host_controller_t *hc,
 
 usb_host_device_t *usb_host_create_root_device(usb_host_controller_t *hc, unsigned port, usb_host_device_speed_t speed)
 {
+	ASSERT(hc != nullptr, KERNEL_ERROR_NULL_POINTER);
 	ASSERT(port < hc->RootHubPorts, KERNEL_ERROR_KERNEL_PANIC);
 	ASSERT(hc->Devices != nullptr, KERNEL_ERROR_NULL_POINTER);
 	usb_host_device_t *device = &hc->Devices[port];

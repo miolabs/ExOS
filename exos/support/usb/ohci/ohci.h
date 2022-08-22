@@ -1,7 +1,7 @@
 #ifndef OHCI_H
 #define OHCI_H
 
-#include <usb/usb.h>
+#include <usb/host.h>
 #include <kernel/event.h>
 
 // Root Hub Downstream Ports
@@ -260,7 +260,7 @@ typedef volatile struct
 extern OHCI_OP_REGISTERS *__hc;
 
 // prototypes
-int ohci_initialize();
+int ohci_initialize(usb_host_controller_t *hc);
 OHCI_HCED **ohci_get_periodic_ep(int index);
 void ohci_clear_hced(OHCI_HCED *hced);
 void ohci_clear_hctd(OHCI_HCTD *hctd);
