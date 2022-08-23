@@ -1,16 +1,14 @@
-#ifndef USB_DRIVER_HUB_H
-#define USB_DRIVER_HUB_H
+#ifndef USB_DRIVER_USBHUB_H
+#define USB_DRIVER_USBHUB_H
 
 #include <usb/classes/hub.h>
 #include <usb/host.h>
 #include <kernel/dispatch.h>
 
-typedef struct __HID_FUNCTION_HANDLER HID_FUNCTION_HANDLER;
-
 typedef struct
 {
-	USB_HOST_FUNCTION;
-	USB_HOST_PIPE InputPipe;
+	usb_host_function_t;
+	usb_host_pipe_t InputPipe;
 	unsigned char Reserved;
 	unsigned char Interface;
 	unsigned char ReportSize;
@@ -19,18 +17,17 @@ typedef struct
 	unsigned char InputBuffer[64];
 	
 	unsigned char ExitFlag;
-	unsigned char StartedFlag;
+//	unsigned char StartedFlag;
 	unsigned char InstanceIndex;
 
-	USB_REQUEST_BUFFER Urb;
-	EXOS_DISPATCHER Dispatcher;
-	EXOS_LIST Children;
-	EXOS_EVENT ExitEvent;
-} USB_HUB_FUNCTION;
+	usb_request_buffer_t Request;
+	dispatcher_t Dispatcher;
+	list_t Children;
+	event_t ExitEvent;
+} usb_hub_function_t;
 
-// prototypes
-void usbd_hub_initialize();
+void usb_hub_initialize(dispatcher_context_t *context);
 
-#endif // USB_DRIVER_HUB_H
+#endif // USB_DRIVER_USBHUB_H
 
 

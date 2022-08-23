@@ -1,73 +1,62 @@
 #include "usbhub.h"
 #include <usb/enumerate.h>
-#include <kernel/machine/hal.h>
-#include <kernel/dispatch.h>
-#include <kernel/fifo.h>
+#include <support/misc/pools.h>
 #include <kernel/panic.h>
-#include <support/services/debug.h>
+#include <kernel/verbose.h>
 
 #ifndef USB_HUB_MAX_INSTANCES 
 #define USB_HUB_MAX_INSTANCES 1
 #endif
 
-#ifndef USB_HUB_MAX_CHILDREN 
+#ifndef USB_HUB_MAX_CHILDREN
 #define USB_HUB_MAX_CHILDREN 4
 #endif
 
-#define THREAD_STACK 1024
-static EXOS_THREAD _thread;
-static unsigned char _stack[THREAD_STACK] __attribute__((aligned(16)));
-static void *_service(void *arg);
-static EXOS_DISPATCHER_CONTEXT _service_context;
-static void _dispatch(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher);
+static usb_host_function_t *_check_interface(usb_host_device_t *device, usb_configuration_descriptor_t *conf_desc, usb_descriptor_header_t *fn_desc);
+static void _start(usb_host_function_t *func);
+static void _stop(usb_host_function_t *func);
+static const usb_host_function_driver_t _driver = { 
+	.CheckInterface = _check_interface, 
+	.Start =_start, .Stop = _stop };
 
-static USB_HOST_FUNCTION *_check_interface(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTOR *conf_desc, USB_DESCRIPTOR_HEADER *fn_desc);
-static void _start(USB_HOST_FUNCTION *func);
-static void _stop(USB_HOST_FUNCTION *func);
-
-static const USB_HOST_FUNCTION_DRIVER _driver = { _check_interface, _start, _stop };
-static USB_HOST_FUNCTION_DRIVER_NODE _driver_node;
-
-static USB_HUB_FUNCTION _functions[USB_HUB_MAX_INSTANCES] __usb;
+static usb_hub_function_t _functions[USB_HUB_MAX_INSTANCES] __usb;
 static volatile unsigned char _function_busy[USB_HUB_MAX_INSTANCES];
-static USB_HOST_DEVICE _children[USB_HUB_MAX_CHILDREN] __usb;
-static EXOS_FIFO _children_fifo;
+static usb_host_device_t _children[USB_HUB_MAX_CHILDREN];
+static pool_t _pool;
+static dispatcher_context_t *_context;
 
-static int _read_hub_descriptor(USB_HUB_FUNCTION *func, int desc_type, int desc_index, void *data, int length);
-static int _set_port_feature(USB_HUB_FUNCTION *func, unsigned short feature, unsigned short index);
+static bool _read_hub_descriptor(usb_hub_function_t *func, unsigned char desc_type, unsigned char desc_index, void *data, unsigned length);
+static bool _get_hub_status(usb_hub_function_t *func);
+static bool _set_port_feature(usb_hub_function_t *func, unsigned short feature, unsigned short index);
+static bool _get_port_status(usb_hub_function_t *func, unsigned short port);
+static void _dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher);
 
-void usbd_hub_initialize()
+void usb_hub_initialize(dispatcher_context_t *context)
 {
-	for(int port = 0; port < USB_HUB_MAX_INSTANCES; port++)
+	for(unsigned port = 0; port < USB_HUB_MAX_INSTANCES; port++)
 	{
 		_function_busy[port] = 0;
-		USB_HUB_FUNCTION *func = &_functions[port];
-		*func = (USB_HUB_FUNCTION) { /*.DeviceUnit = port*/ }; 
+		usb_hub_function_t *func = &_functions[port];
+		*func = (usb_hub_function_t) { /*.DeviceUnit = port*/ }; 
 	}
 
-	exos_fifo_create(&_children_fifo, NULL);
-	for(int child = 0; child < USB_HUB_MAX_CHILDREN; child++)
-	{
-		USB_HOST_DEVICE *device = &_children[child];
-		exos_fifo_queue(&_children_fifo, &device->Node);
-	}
+	pool_create(&_pool, (node_t *)_children, sizeof(usb_host_device_t), USB_HUB_MAX_CHILDREN);
 
-	exos_dispatcher_context_create(&_service_context);
-	exos_thread_create(&_thread, 5, _stack, THREAD_STACK, NULL, _service, &_service_context);
+	_context = context;
 
-	_driver_node = (USB_HOST_FUNCTION_DRIVER_NODE) { .Driver = &_driver };
+	static usb_host_function_driver_node_t _driver_node = (usb_host_function_driver_node_t) { .Driver = &_driver };
 	usb_host_driver_register(&_driver_node);
 }
 
-static USB_HOST_FUNCTION *_check_interface(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTOR *conf_desc, USB_DESCRIPTOR_HEADER *fn_desc)
+static usb_host_function_t *_check_interface(usb_host_device_t *device, usb_configuration_descriptor_t *conf_desc, usb_descriptor_header_t *fn_desc)
 {
 	if (fn_desc->DescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE)
 	{
-		USB_INTERFACE_DESCRIPTOR *if_desc = (USB_INTERFACE_DESCRIPTOR *)fn_desc;
+		usb_interface_descriptor_t *if_desc = (usb_interface_descriptor_t *)fn_desc;
 
 		if (if_desc->InterfaceClass == USB_CLASS_HUB)
 		{
-			USB_HUB_FUNCTION *func = NULL;
+			usb_hub_function_t *func = nullptr;
 			for(int i = 0; i < USB_HUB_MAX_INSTANCES; i++)
 			{
 				if (_function_busy[i] == 0)
@@ -77,61 +66,67 @@ static USB_HOST_FUNCTION *_check_interface(USB_HOST_DEVICE *device, USB_CONFIGUR
 				}
 			}
 
-			if (func != NULL)
+			if (func != nullptr)
 			{
-				usb_host_create_function((USB_HOST_FUNCTION *)func, device, &_driver);
+				verbose(VERBOSE_COMMENT, "usb_hub", "if_descriptor indicates protocol %d", if_desc->Protocol);
+
+				usb_host_create_function((usb_host_function_t *)func, device, &_driver);
 				func->Interface = if_desc->InterfaceNumber;
-//				func->InterfaceSubClass = if_desc->InterfaceSubClass;
-//				func->Protocol = if_desc->Protocol;
 
-				USB_ENDPOINT_DESCRIPTOR *ep_desc;			
-				ep_desc = usb_enumerate_find_endpoint_descriptor(conf_desc, if_desc, USB_TT_INTERRUPT, USB_DEVICE_TO_HOST, 0);
-				if (!ep_desc) return NULL;
-				usb_host_init_pipe_from_descriptor(device, &func->InputPipe, ep_desc);
-
-				int done = _read_hub_descriptor(func, USB_HUB_DESCRIPTOR_HUB, 0, 
-					func->InputBuffer, sizeof(USB_HUB_DESCRIPTOR));
-				if (done)
+				usb_endpoint_descriptor_t *ep_desc = usb_enumerate_find_endpoint_descriptor(conf_desc, if_desc, 
+					USB_TT_INTERRUPT, USB_DEVICE_TO_HOST, 0);
+				if (ep_desc != nullptr)
 				{
-					USB_HUB_DESCRIPTOR *hub_desc = (USB_HUB_DESCRIPTOR *)func->InputBuffer;
-					func->PortCount = hub_desc->NbrPorts;
-					func->ReportSize = (func->PortCount + 1 + 7) >> 3;
-					list_initialize(&func->Children);
+					usb_host_init_pipe_from_descriptor(device, &func->InputPipe, ep_desc);
+					
+					if (_read_hub_descriptor(func, USB_HUB_DESCRIPTOR_HUB, 0, 
+							func->InputBuffer, sizeof(usb_hub_descriptor_t)))
+					{
+						usb_hub_descriptor_t *hub_desc = (usb_hub_descriptor_t *)func->InputBuffer;
+						func->PortCount = hub_desc->NbrPorts;
+						func->ReportSize = (func->PortCount + 1 + 7) >> 3;
+						list_initialize(&func->Children);
 				
-					return (USB_HOST_FUNCTION *)func;
+						return (usb_host_function_t *)func;
+					}
 				}
 			}
 		}
 	}
-	return NULL;
+	return nullptr;
 }
 
-static void _start(USB_HOST_FUNCTION *usb_func)
+static void _start(usb_host_function_t *usb_func)
 {
-	USB_HUB_FUNCTION *func = (USB_HUB_FUNCTION *)usb_func;
-#ifdef DEBUG
-	if (_function_busy[func->InstanceIndex] != 0)
-		kernel_panic(KERNEL_ERROR_ALREADY_IN_USE);
-#endif
-
+	usb_hub_function_t *func = (usb_hub_function_t *)usb_func;
+	ASSERT(_function_busy[func->InstanceIndex] == 0, KERNEL_ERROR_KERNEL_PANIC);
 	_function_busy[func->InstanceIndex] = 1;
 
-	for(int port = 1; port <= func->PortCount; port++)
+	bool done = _get_hub_status(func);	// NOTE: currently return data is unused
+	ASSERT(done, KERNEL_ERROR_KERNEL_PANIC);
+
+	for(unsigned port = 1; port <= func->PortCount; port++)
 	{
 		_set_port_feature(func, USB_HUB_FEATURE_PORT_POWER, port);
+		_get_port_status(func, port);
 	}
 
-	usb_host_start_pipe(&func->InputPipe);
+	done = usb_host_start_pipe(&func->InputPipe);
+	ASSERT(done, KERNEL_ERROR_KERNEL_PANIC);
 
-	exos_event_create(&func->ExitEvent);
-	func->StartedFlag = func->ExitFlag = 0;
-	func->Dispatcher = (EXOS_DISPATCHER) { .Callback = _dispatch, .CallbackState = func };
-	exos_dispatcher_add(&_service_context, &func->Dispatcher, 0);
+	exos_event_create(&func->ExitEvent, EXOS_EVENTF_NONE);
+	func->ExitFlag = 0;
+
+	usb_host_urb_create(&func->Request, &func->InputPipe);
+	exos_dispatcher_create(&func->Dispatcher, NULL, _dispatch, func);
+	exos_dispatcher_add(_context, &func->Dispatcher, 0);
+
+	verbose(VERBOSE_DEBUG, "usb_hub", "instance #%d started", func->InstanceIndex);
 }
 
-static void _stop(USB_HOST_FUNCTION *usb_func)
+static void _stop(usb_host_function_t *usb_func)
 {
-	USB_HUB_FUNCTION *func = (USB_HUB_FUNCTION *)usb_func;
+	usb_hub_function_t *func = (usb_hub_function_t *)usb_func;
 
 	func->ExitFlag = 1;
 	usb_host_stop_pipe(&func->InputPipe);
@@ -140,165 +135,228 @@ static void _stop(USB_HOST_FUNCTION *usb_func)
 	_function_busy[func->InstanceIndex] = 0;
 }
 
-static int _read_hub_descriptor(USB_HUB_FUNCTION *func, int desc_type, int desc_index, void *data, int length)
+static bool _read_hub_descriptor(usb_hub_function_t *func, unsigned char desc_type, unsigned char desc_index, void *data, unsigned length)
 {
-	USB_REQUEST req = (USB_REQUEST) {
+	usb_request_t req = (usb_request_t) {
 		.RequestType = USB_REQTYPE_DEVICE_TO_HOST | USB_REQTYPE_CLASS | USB_REQTYPE_RECIPIENT_DEVICE,
 		.RequestCode = USB_REQUEST_GET_DESCRIPTOR,
 		.Value = (desc_type << 8) | desc_index, .Length = length };
 	return usb_host_ctrl_setup(func->Device, &req, data, length);
 }
 
-static int _clear_hub_feature(USB_HUB_FUNCTION *func, unsigned short feature)
+static bool _get_hub_status(usb_hub_function_t *func)
 {
-	USB_REQUEST req = (USB_REQUEST) {
+	usb_request_t req = (usb_request_t) {
+		.RequestType = USB_REQTYPE_DEVICE_TO_HOST | USB_REQTYPE_CLASS | USB_REQTYPE_RECIPIENT_DEVICE,
+		.RequestCode = USB_REQUEST_GET_STATUS,
+		.Length = 4 };
+	bool done = usb_host_ctrl_setup(func->Device, &req, func->InputBuffer, 4);
+	return done;
+}
+
+static bool _clear_hub_feature(usb_hub_function_t *func, unsigned short feature)
+{
+	usb_request_t req = (usb_request_t) {
 		.RequestType = USB_REQTYPE_HOST_TO_DEVICE | USB_REQTYPE_CLASS | USB_REQTYPE_RECIPIENT_DEVICE,
 		.RequestCode = USB_REQUEST_CLEAR_FEATURE,
 		.Value = feature };
-	int done = usb_host_ctrl_setup(func->Device, &req, NULL, 0);
+	bool done = usb_host_ctrl_setup(func->Device, &req, nullptr, 0);
 	return done;
 }
 
-static int _set_hub_feature(USB_HUB_FUNCTION *func, unsigned short feature)
+static bool _set_hub_feature(usb_hub_function_t *func, unsigned short feature)
 {
-	USB_REQUEST req = (USB_REQUEST) {
+	usb_request_t req = (usb_request_t) {
 		.RequestType = USB_REQTYPE_HOST_TO_DEVICE | USB_REQTYPE_CLASS | USB_REQTYPE_RECIPIENT_DEVICE,
 		.RequestCode = USB_REQUEST_SET_FEATURE,
 		.Value = feature };
-	int done = usb_host_ctrl_setup(func->Device, &req, NULL, 0);
+	bool done = usb_host_ctrl_setup(func->Device, &req, nullptr, 0);
 	return done;
 }
 
-static int _clear_port_feature(USB_HUB_FUNCTION *func, unsigned short feature, unsigned short index)
+static bool _clear_port_feature(usb_hub_function_t *func, unsigned short feature, unsigned short index)
 {
-	USB_REQUEST req = (USB_REQUEST) {
+	usb_request_t req = (usb_request_t) {
 		.RequestType = USB_REQTYPE_HOST_TO_DEVICE | USB_REQTYPE_CLASS | USB_REQTYPE_RECIPIENT_OTHER,
 		.RequestCode = USB_REQUEST_CLEAR_FEATURE,
 		.Value = feature, .Index = index };
-	int done = usb_host_ctrl_setup(func->Device, &req, NULL, 0);
+	bool done = usb_host_ctrl_setup(func->Device, &req, nullptr, 0);
 	return done;
 }
 
-static int _set_port_feature(USB_HUB_FUNCTION *func, unsigned short feature, unsigned short index)
+static bool _set_port_feature(usb_hub_function_t *func, unsigned short feature, unsigned short index)
 {
-	USB_REQUEST req = (USB_REQUEST) {
+	usb_request_t req = (usb_request_t) {
 		.RequestType = USB_REQTYPE_HOST_TO_DEVICE | USB_REQTYPE_CLASS | USB_REQTYPE_RECIPIENT_OTHER,
 		.RequestCode = USB_REQUEST_SET_FEATURE,
 		.Value = feature, .Index = index };
-	int done = usb_host_ctrl_setup(func->Device, &req, NULL, 0);
+	bool done = usb_host_ctrl_setup(func->Device, &req, nullptr, 0);
 	return done;
 }
 
-static int _get_port_status(USB_HUB_FUNCTION *func, int port)
+static bool _get_port_status(usb_hub_function_t *func, unsigned short port)
 {
-	USB_REQUEST req = (USB_REQUEST) {
+	usb_request_t req = (usb_request_t) {
 		.RequestType = USB_REQTYPE_DEVICE_TO_HOST | USB_REQTYPE_CLASS | USB_REQTYPE_RECIPIENT_OTHER,
 		.RequestCode = USB_REQUEST_GET_STATUS,
 		.Index = port, .Length = 4 };
-	int done = usb_host_ctrl_setup(func->Device, &req, func->InputBuffer, 4);
+	bool done = usb_host_ctrl_setup(func->Device, &req, func->InputBuffer, 4);
 	return done;
 }
 
-static void *_service(void *arg)
+static usb_host_device_t *_alloc_device(usb_host_device_t *device, unsigned port, usb_host_device_speed_t speed)
 {
-	EXOS_DISPATCHER_CONTEXT *context = (EXOS_DISPATCHER_CONTEXT *)arg;
-	while(1)
+	usb_host_device_t *child = (usb_host_device_t *)pool_allocate(&_pool);
+	if (child != nullptr)
 	{
-		exos_dispatch(&_service_context, EXOS_TIMEOUT_NEVER);
+		bool done = usb_host_create_child_device(device, child, port, speed);
+		if (!done)
+		{
+			pool_free(&_pool, &child->Node);
+			child = nullptr;
+		}
 	}
+	else
+	{
+		verbose(VERBOSE_ERROR, "usb_hub", "can't allocate device por port #%d!", port);
+	}
+	return child;
 }
 
-static USB_HOST_DEVICE *_alloc_device()
+static void _free_device(usb_host_device_t *child)
 {
-	return (USB_HOST_DEVICE *)exos_fifo_dequeue(&_children_fifo);
+	verbose(VERBOSE_COMMENT, "usb_hub", "child %04x/%04x removing at port #%d", child->Vendor, child->Product, child->Port);
+	usb_host_destroy_device(child);
+	verbose(VERBOSE_COMMENT, "usb_hub", "child %04x/%04x removed", child->Vendor, child->Product);
+
+	pool_free(&_pool, &child->Node);
 }
 
-static void _free_device(USB_HOST_DEVICE *child)
+static void _notify(usb_hub_function_t *func, unsigned port)
 {
-	debug_printf("usb_hub: child %04x/%04x removing at port #%d\r\n", child->Vendor, child->Product, child->Port);
-	usb_host_destroy_child_device(child);
-	debug_printf("usb_hub: child %04x/%04x removed\r\n", child->Vendor, child->Product);
-	exos_fifo_queue(&_children_fifo, &child->Node);
-}
+	static unsigned _reset_pending = 0;
 
-static void _notify(USB_HUB_FUNCTION *func, int port)
-{
 	_get_port_status(func, port);
-	USB16 *nw = (USB16 *)func->InputBuffer;
+	usb16_t *nw = (usb16_t *)func->InputBuffer;
 	unsigned short port_status = USB16TOH(nw[0]);
 	unsigned short port_change = USB16TOH(nw[1]);
+	usb_host_device_t *child;
 
 	if (port_change & USB_HUBF_PORT_CONNECTION)
 	{
+		_clear_port_feature(func, USB_HUB_FEATURE_C_PORT_CONNECTION, port);
+
 		if (port_status & USB_HUBF_PORT_CONNECTION)
 		{
-			exos_thread_sleep(50);	// at least 50ms before reset as of USB 2.0 spec
-			_set_port_feature(func, USB_HUB_FEATURE_PORT_RESET, port);
+			exos_thread_sleep(100);	// at least 50ms before reset as of USB 2.0 spec
+			if (_reset_pending == 0)
+			{
+				verbose(VERBOSE_COMMENT, "usb_hub", "connection at port #%d -> reset", port);
+				_set_port_feature(func, USB_HUB_FEATURE_PORT_RESET, port);
+			}
+			else 
+			{
+				verbose(VERBOSE_COMMENT, "usb_hub", "connection at port #%d", port);
+			}
+			_reset_pending |= (1 << port);
 		}
 		else
 		{
+			verbose(VERBOSE_COMMENT, "usb_hub", "disconnetion at port #%d", port);
 			FOREACH(node, &func->Children)
 			{
-				USB_HOST_DEVICE *child = (USB_HOST_DEVICE *)node;
+				child = (usb_host_device_t *)node;
 				if (child->Port == port)
 				{
-					list_remove((EXOS_NODE *)child);
+					list_remove(&child->Node);
 					_free_device(child);
 					break;
 				}
 			}
 		}
-
-		_clear_port_feature(func, USB_HUB_FEATURE_C_PORT_CONNECTION, port);
 	}
 
 	if (port_change & USB_HUBF_PORT_RESET)
 	{
+		_clear_port_feature(func, USB_HUB_FEATURE_C_PORT_RESET, port);
+		verbose(VERBOSE_COMMENT, "usb_hub", "reset completed at port #%d", port);
+		_reset_pending &= ~(1 << port);
+
+		_get_port_status(func, port);
+        port_status = USB16TOH(nw[0]);
+
 		if (port_status & USB_HUBF_PORT_CONNECTION)
 		{
-			exos_thread_sleep(100);	// some devices need up to 100ms after port reset
+			usb_host_device_speed_t speed = (port_status & USB_HUBF_PORT_LOW_SPEED) ?
+				USB_HOST_DEVICE_LOW_SPEED : USB_HOST_DEVICE_FULL_SPEED;
+			verbose(VERBOSE_DEBUG, "usb_hub", "child device is %s", 
+				speed == USB_HOST_DEVICE_LOW_SPEED ? "low-speed" : "full-speed");
 
-			USB_HOST_DEVICE *child = _alloc_device();
-			if (child != NULL)
+			exos_thread_sleep(100);	// some devices need up to 100ms after port reset
+			
+			child = _alloc_device(func->Device, port, speed);
+			if (child != nullptr)
 			{
-				USB_HOST_DEVICE_SPEED speed = (port_status & USB_HUBF_PORT_LOW_SPEED) ?
-					USB_HOST_DEVICE_LOW_SPEED : USB_HOST_DEVICE_FULL_SPEED;
-				int done = usb_host_create_child_device(func->Device, child, port, speed);
-				if (done)
-				{
-					debug_printf("usb_hub: child %04x/%04x added at port #%d\r\n", child->Vendor, child->Product, child->Port);
-					list_add_tail(&func->Children, &child->Node);
-				}
+				verbose(VERBOSE_COMMENT, "usb_hub", "child %04x/%04x added at port #%d", child->Vendor, child->Product, child->Port);
+				list_add_tail(&func->Children, &child->Node);
+			}
+			else
+			{
+				verbose(VERBOSE_ERROR, "usb_hub", "child creation failed at port #%d", port);
 			}
 		}
+		else
+		{
+			verbose(VERBOSE_ERROR, "usb_hub", "port #%d not connected after reset!", port);
+		}
 
-		_clear_port_feature(func, USB_HUB_FEATURE_C_PORT_RESET, port);
+		if (_reset_pending != 0)
+		{
+			port = 0;
+			while(1)
+			{
+				unsigned mask = (1 << port);
+				ASSERT(mask != 0, KERNEL_ERROR_KERNEL_PANIC);
+				if (mask & _reset_pending)
+				{
+					verbose(VERBOSE_COMMENT, "usb_hub", "pending reset at port #%d", port);
+					_set_port_feature(func, USB_HUB_FEATURE_PORT_RESET, port);
+					break;
+				}
+				port++;
+			}
+		}
 	}
 
 	if (port_change & USB_HUBF_PORT_ENABLE)
 	{
 		_clear_port_feature(func, USB_HUB_FEATURE_C_PORT_ENABLE, port);
+        
+		_get_port_status(func, port);
+        port_status = USB16TOH(nw[0]);
+		verbose(VERBOSE_COMMENT, "usb_hub", "port #%d %s", port,
+			(port_status & USB_HUBF_PORT_CONNECTION) ? "enabled" : "disabled");
 	}
 
 	if (port_change & USB_HUBF_PORT_OVER_CURRENT)
 	{
+   		verbose(VERBOSE_ERROR, "usb_hub", "port #%d overcurrent", port);
 		_clear_port_feature(func, USB_HUB_FEATURE_C_PORT_OVER_CURRENT, port);
 	}
 }
 
-static void _dispatch(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatcher)
+static void _dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 {
-	USB_HUB_FUNCTION *func = (USB_HUB_FUNCTION *)dispatcher->CallbackState;
-#ifdef DEBUG
-	if (func == NULL) kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
+	usb_hub_function_t *func = (usb_hub_function_t *)dispatcher->CallbackState;
+	ASSERT(func != nullptr, KERNEL_ERROR_NULL_POINTER);
 
-	if (func->StartedFlag)
+	usb_request_buffer_t *urb = &func->Request;
+   	if (urb->Status != URB_STATUS_EMPTY)
 	{
-		int done = usb_host_end_bulk_transfer(&func->Urb, EXOS_TIMEOUT_NEVER);
+		int done = usb_host_end_transfer(urb, EXOS_TIMEOUT_NEVER);
 		if (done >= 0)
 		{
-			for (int port = 1; port <= func->PortCount; port++)
+			for (unsigned port = 1; port <= func->PortCount; port++)
 			{
 				if (func->InputBuffer[port >> 3] & (1 << (port & 7)))
 					_notify(func, port);
@@ -306,6 +364,7 @@ static void _dispatch(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatc
 		}
 		else 
 		{
+			verbose(VERBOSE_COMMENT, "usb_hub", "control in failed (instance #%d)", func->InstanceIndex);
 			// TODO: recover from failure state
 			func->ExitFlag = 2;
 		}
@@ -313,21 +372,21 @@ static void _dispatch(EXOS_DISPATCHER_CONTEXT *context, EXOS_DISPATCHER *dispatc
 
 	if (!func->ExitFlag)
 	{
-		usb_host_urb_create(&func->Urb, &func->InputPipe);
-		if (usb_host_begin_bulk_transfer(&func->Urb, func->InputBuffer, func->ReportSize))
+		usb_host_urb_create(urb, &func->InputPipe);
+		if (usb_host_begin_transfer(urb, func->InputBuffer, func->ReportSize))
 		{
-			func->StartedFlag = 1;
-			dispatcher->Event = &func->Urb.Event;
-            exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);
+			dispatcher->Event = &urb->Event;
+			exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);
 		}
         else func->ExitFlag = 3;
 	}
 
-	if (func->ExitFlag)
+	if (func->ExitFlag != 0)
 	{
-		USB_HOST_DEVICE *child = NULL;
-		while(child = (USB_HOST_DEVICE *)list_rem_head(&func->Children))
+		usb_host_device_t *child;
+		while(child = (usb_host_device_t *)LIST_FIRST(&func->Children))
 		{
+			list_remove(&child->Node);
 			_free_device(child);
 		}
 		exos_event_set(&func->ExitEvent);
