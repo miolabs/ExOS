@@ -4,6 +4,8 @@
 #include <kernel/panic.h>
 #include <kernel/verbose.h>
 
+#define _verbose(level, ...) verbose(level, "usb-hub", __VA_ARGS__)
+
 #ifndef USB_HUB_MAX_INSTANCES 
 #define USB_HUB_MAX_INSTANCES 1
 #endif
@@ -68,7 +70,7 @@ static usb_host_function_t *_check_interface(usb_host_device_t *device, usb_conf
 
 			if (func != nullptr)
 			{
-				verbose(VERBOSE_COMMENT, "usb_hub", "if_descriptor indicates protocol %d", if_desc->Protocol);
+				_verbose(VERBOSE_COMMENT, "hub if_descriptor indicates protocol %d", if_desc->Protocol);
 
 				usb_host_create_function((usb_host_function_t *)func, device, &_driver);
 				func->Interface = if_desc->InterfaceNumber;
@@ -86,6 +88,9 @@ static usb_host_function_t *_check_interface(usb_host_device_t *device, usb_conf
 						func->PortCount = hub_desc->NbrPorts;
 						func->ReportSize = (func->PortCount + 1 + 7) >> 3;
 						list_initialize(&func->Children);
+
+						func->PwrOn2PwrGood = hub_desc->PwrOn2PwrGood;
+						func->HubCharacteristics = USB16TOH(hub_desc->HubCharacteristics);
 				
 						return (usb_host_function_t *)func;
 					}
@@ -105,6 +110,14 @@ static void _start(usb_host_function_t *usb_func)
 	bool done = _get_hub_status(func);	// NOTE: currently return data is unused
 	ASSERT(done, KERNEL_ERROR_KERNEL_PANIC);
 
+	_verbose(VERBOSE_COMMENT, "hub logical power control is %s",
+		((func->HubCharacteristics & USB_HUB_CHARF_LOGICAL_POWER_MASK) == USB_HUB_CHARF_LOGICAL_POWER_INDIVIDUAL) ? "individual" : "global");
+	_verbose(VERBOSE_COMMENT, "hub over-current protection mode is %s",
+		((func->HubCharacteristics & USB_HUB_CHARF_OVERCURRENT_MODE_MASK) == USB_HUB_CHARF_OVERCURRENT_MODE_INDIVIDUAL) ? "individual" : "global");
+	_verbose(VERBOSE_COMMENT, "hub port indication is %s",
+		(func->HubCharacteristics & USB_HUB_CHARF_PORT_INDICATORS_SUPPORTED) ? "supported" : "not supported");
+	_verbose(VERBOSE_COMMENT, "hub port power delay is %d ms", func->PwrOn2PwrGood * 2);
+
 	for(unsigned port = 1; port <= func->PortCount; port++)
 	{
 		_set_port_feature(func, USB_HUB_FEATURE_PORT_POWER, port);
@@ -121,7 +134,7 @@ static void _start(usb_host_function_t *usb_func)
 	exos_dispatcher_create(&func->Dispatcher, NULL, _dispatch, func);
 	exos_dispatcher_add(_context, &func->Dispatcher, 0);
 
-	verbose(VERBOSE_DEBUG, "usb_hub", "instance #%d started", func->InstanceIndex);
+	_verbose(VERBOSE_DEBUG, "instance #%d started", func->InstanceIndex);
 }
 
 static void _stop(usb_host_function_t *usb_func)
@@ -151,6 +164,9 @@ static bool _get_hub_status(usb_hub_function_t *func)
 		.RequestCode = USB_REQUEST_GET_STATUS,
 		.Length = 4 };
 	bool done = usb_host_ctrl_setup(func->Device, &req, func->InputBuffer, 4);
+#ifdef DEBUG
+	if (!done) _verbose(VERBOSE_ERROR, "get_hub_status() failed");
+#endif
 	return done;
 }
 
@@ -201,6 +217,9 @@ static bool _get_port_status(usb_hub_function_t *func, unsigned short port)
 		.RequestCode = USB_REQUEST_GET_STATUS,
 		.Index = port, .Length = 4 };
 	bool done = usb_host_ctrl_setup(func->Device, &req, func->InputBuffer, 4);
+#ifdef DEBUG
+	if (!done) _verbose(VERBOSE_ERROR, "get_port_status(%d) failed", port);
+#endif
 	return done;
 }
 
@@ -218,16 +237,16 @@ static usb_host_device_t *_alloc_device(usb_host_device_t *device, unsigned port
 	}
 	else
 	{
-		verbose(VERBOSE_ERROR, "usb_hub", "can't allocate device por port #%d!", port);
+		_verbose(VERBOSE_ERROR, "can't allocate device por port #%d!", port);
 	}
 	return child;
 }
 
 static void _free_device(usb_host_device_t *child)
 {
-	verbose(VERBOSE_COMMENT, "usb_hub", "child %04x/%04x removing at port #%d", child->Vendor, child->Product, child->Port);
+	_verbose(VERBOSE_COMMENT, "child %04x/%04x removing at port #%d", child->Vendor, child->Product, child->Port);
 	usb_host_destroy_device(child);
-	verbose(VERBOSE_COMMENT, "usb_hub", "child %04x/%04x removed", child->Vendor, child->Product);
+	_verbose(VERBOSE_COMMENT, "child %04x/%04x removed", child->Vendor, child->Product);
 
 	pool_free(&_pool, &child->Node);
 }
@@ -242,6 +261,9 @@ static void _notify(usb_hub_function_t *func, unsigned port)
 	unsigned short port_change = USB16TOH(nw[1]);
 	usb_host_device_t *child;
 
+	_verbose(VERBOSE_DEBUG, "(pre) port #%d status %04x %04x", port,
+		USB16TOH(nw[0]), USB16TOH(nw[1]));
+
 	if (port_change & USB_HUBF_PORT_CONNECTION)
 	{
 		_clear_port_feature(func, USB_HUB_FEATURE_C_PORT_CONNECTION, port);
@@ -251,18 +273,18 @@ static void _notify(usb_hub_function_t *func, unsigned port)
 			exos_thread_sleep(100);	// at least 50ms before reset as of USB 2.0 spec
 			if (_reset_pending == 0)
 			{
-				verbose(VERBOSE_COMMENT, "usb_hub", "connection at port #%d -> reset", port);
+				_verbose(VERBOSE_COMMENT, "connection at port #%d -> reset", port);
 				_set_port_feature(func, USB_HUB_FEATURE_PORT_RESET, port);
 			}
 			else 
 			{
-				verbose(VERBOSE_COMMENT, "usb_hub", "connection at port #%d", port);
+				_verbose(VERBOSE_COMMENT, "connection at port #%d", port);
 			}
 			_reset_pending |= (1 << port);
 		}
 		else
 		{
-			verbose(VERBOSE_COMMENT, "usb_hub", "disconnetion at port #%d", port);
+			_verbose(VERBOSE_COMMENT, "disconnection at port #%d", port);
 			FOREACH(node, &func->Children)
 			{
 				child = (usb_host_device_t *)node;
@@ -279,7 +301,7 @@ static void _notify(usb_hub_function_t *func, unsigned port)
 	if (port_change & USB_HUBF_PORT_RESET)
 	{
 		_clear_port_feature(func, USB_HUB_FEATURE_C_PORT_RESET, port);
-		verbose(VERBOSE_COMMENT, "usb_hub", "reset completed at port #%d", port);
+		_verbose(VERBOSE_COMMENT, "reset completed at port #%d", port);
 		_reset_pending &= ~(1 << port);
 
 		_get_port_status(func, port);
@@ -289,7 +311,7 @@ static void _notify(usb_hub_function_t *func, unsigned port)
 		{
 			usb_host_device_speed_t speed = (port_status & USB_HUBF_PORT_LOW_SPEED) ?
 				USB_HOST_DEVICE_LOW_SPEED : USB_HOST_DEVICE_FULL_SPEED;
-			verbose(VERBOSE_DEBUG, "usb_hub", "child device is %s", 
+			_verbose(VERBOSE_DEBUG, "child device is %s", 
 				speed == USB_HOST_DEVICE_LOW_SPEED ? "low-speed" : "full-speed");
 
 			exos_thread_sleep(100);	// some devices need up to 100ms after port reset
@@ -297,17 +319,17 @@ static void _notify(usb_hub_function_t *func, unsigned port)
 			child = _alloc_device(func->Device, port, speed);
 			if (child != nullptr)
 			{
-				verbose(VERBOSE_COMMENT, "usb_hub", "child %04x/%04x added at port #%d", child->Vendor, child->Product, child->Port);
+				_verbose(VERBOSE_COMMENT, "child %04x/%04x added at port #%d", child->Vendor, child->Product, child->Port);
 				list_add_tail(&func->Children, &child->Node);
 			}
 			else
 			{
-				verbose(VERBOSE_ERROR, "usb_hub", "child creation failed at port #%d", port);
+				_verbose(VERBOSE_ERROR, "child creation failed at port #%d", port);
 			}
 		}
 		else
 		{
-			verbose(VERBOSE_ERROR, "usb_hub", "port #%d not connected after reset!", port);
+			_verbose(VERBOSE_ERROR, "port #%d not connected after reset!", port);
 		}
 
 		if (_reset_pending != 0)
@@ -319,7 +341,7 @@ static void _notify(usb_hub_function_t *func, unsigned port)
 				ASSERT(mask != 0, KERNEL_ERROR_KERNEL_PANIC);
 				if (mask & _reset_pending)
 				{
-					verbose(VERBOSE_COMMENT, "usb_hub", "pending reset at port #%d", port);
+					_verbose(VERBOSE_COMMENT, "pending reset at port #%d", port);
 					_set_port_feature(func, USB_HUB_FEATURE_PORT_RESET, port);
 					break;
 				}
@@ -334,15 +356,26 @@ static void _notify(usb_hub_function_t *func, unsigned port)
         
 		_get_port_status(func, port);
         port_status = USB16TOH(nw[0]);
-		verbose(VERBOSE_COMMENT, "usb_hub", "port #%d %s", port,
+		_verbose(VERBOSE_COMMENT, "port #%d %s", port,
 			(port_status & USB_HUBF_PORT_CONNECTION) ? "enabled" : "disabled");
+			//             ^^^^^^^^^^^^^^^^^^^^^^^^^????
 	}
 
 	if (port_change & USB_HUBF_PORT_OVER_CURRENT)
 	{
-   		verbose(VERBOSE_ERROR, "usb_hub", "port #%d overcurrent", port);
+		_verbose(VERBOSE_ERROR, "port #%d overcurrent", port);
 		_clear_port_feature(func, USB_HUB_FEATURE_C_PORT_OVER_CURRENT, port);
 	}
+
+	if (port_change & USB_HUBF_PORT_POWER)
+	{
+		_verbose(VERBOSE_ERROR, "port #%d power changed", port);
+	}
+
+#ifdef DEBUG
+	_get_hub_status(func);
+	_verbose(VERBOSE_DEBUG, "(post) hub status %04x %04x", USB16TOH(nw[0]), USB16TOH(nw[1]));
+#endif
 }
 
 static void _dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
@@ -354,8 +387,14 @@ static void _dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
    	if (urb->Status != URB_STATUS_EMPTY)
 	{
 		int done = usb_host_end_transfer(urb, EXOS_TIMEOUT_NEVER);
-		if (done >= 0)
+		if (done > 0)
 		{
+			if (func->InputBuffer[0] & (1 << 0))
+			{
+				_verbose(VERBOSE_DEBUG, "hub change detected");
+				// TODO
+			}
+
 			for (unsigned port = 1; port <= func->PortCount; port++)
 			{
 				if (func->InputBuffer[port >> 3] & (1 << (port & 7)))
@@ -364,7 +403,7 @@ static void _dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 		}
 		else 
 		{
-			verbose(VERBOSE_COMMENT, "usb_hub", "control in failed (instance #%d)", func->InstanceIndex);
+			_verbose(VERBOSE_ERROR, "control in failed (instance #%d)", func->InstanceIndex);
 			// TODO: recover from failure state
 			func->ExitFlag = 2;
 		}

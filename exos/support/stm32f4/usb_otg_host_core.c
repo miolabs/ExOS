@@ -302,14 +302,14 @@ bool usb_otg_host_start_pipe(usb_host_pipe_t *pipe)
 	unsigned chn, chn2;
 
 	unsigned ep_num = pipe->EndpointNumber;
-//	if (ep_num == 0 && _root_control_ep != nullptr)
-//	{
-//		ASSERT(pipe->EndpointType == USB_TT_CONTROL, KERNEL_ERROR_KERNEL_PANIC);
-//		pipe->Endpoint = _root_control_ep;
-//		// NOTE: channels are not re-opened because they're already open and control requests will update ep when used
-//		verbose(VERBOSE_DEBUG, "usb-core", "endpoint recycled for control pipe (port #%d)", pipe->Device->Port);
-//		return true;
-//	}
+	if (ep_num == 0 && _root_control_ep != nullptr)
+	{
+		ASSERT(pipe->EndpointType == USB_TT_CONTROL, KERNEL_ERROR_KERNEL_PANIC);
+		pipe->Endpoint = _root_control_ep;
+		// NOTE: channels are not re-opened because they're already open and control requests will update ep when used
+		verbose(VERBOSE_DEBUG, "usb-core", "endpoint recycled for control pipe (port #%d)", pipe->Device->Port);
+		return true;
+	}
 
 	stm32_usbh_ep_t *ep = (stm32_usbh_ep_t *)pool_allocate(&_ep_pool);
 	if (ep != nullptr)
