@@ -37,7 +37,7 @@ static void inline hal_i2c_init_context(i2c_context_t *context, unsigned char ad
 
 // prototypes
 void hal_i2c_initialize(unsigned module, unsigned bitrate);
-bool hal_i2c_write(unsigned module, i2c_context_t *context, void *data, unsigned length);
+bool hal_i2c_write(unsigned module, i2c_context_t *context, const void *data, unsigned length);
 bool hal_i2c_read(unsigned module, i2c_context_t *context, void *data, unsigned length);
 
 #endif // HAL_I2C_HAL_H

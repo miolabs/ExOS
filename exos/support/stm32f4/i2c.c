@@ -239,12 +239,12 @@ static void _transmit(unsigned module, i2c_context_t *context, unsigned write_le
 	exos_mutex_unlock(&instance->Lock);
 }
 
-bool hal_i2c_write(unsigned module, i2c_context_t *context, void *data, unsigned length)
+bool hal_i2c_write(unsigned module, i2c_context_t *context, const void *data, unsigned length)
 {
 	ASSERT(context != nullptr, KERNEL_ERROR_NULL_POINTER);
 	ASSERT(context->Cmd != nullptr || context->CmdLength == 0, KERNEL_ERROR_KERNEL_PANIC);
 	
-	context->Data = data;
+	context->Data = (unsigned char *)data;
 	_transmit(module, context, length, 0);
 	return context->Error == I2C_OK;
 }
