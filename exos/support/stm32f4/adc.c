@@ -72,6 +72,7 @@ bool adc_initialize(unsigned module, unsigned rate, unsigned bits)
 	adc->CR2 = ADC_CR2_ADON;
 
 	exos_event_create(&_event[module], EXOS_EVENTF_NONE);
+	exos_event_set(&_event[module]);	// NOTE: don't wait if conversion not started yet
 	if (!dma_alloc_stream(ADC_DMA_MODULE, &_dma_si[module], _dma_stream_msk[module]))	// NOTE: dma stream is never released
 			kernel_panic(KERNEL_ERROR_NO_HARDWARE_RESOURCES);
 } 
@@ -100,13 +101,13 @@ void adc_start(unsigned module, unsigned ch_mask, adc_mode_t mode)
 	static const dma_config_t _dma_config[] = {
 		{ .Mem = { .Burst = DMA_BURST_1, .Width = DMA_WIDTH_16BIT, .Increment = 1}, 
 			.Periph = { .Burst = DMA_BURST_1, .Width = DMA_WIDTH_16BIT },
-			.Flow = DMA_FLOW_P2M | DMA_FLOW_CIRCULAR, .Channel = 0 }, 
+			.Flow = DMA_FLOW_P2M | DMA_FLOW_CIRCULAR | DMA_FLOW_DISABLE_FIFO, .Channel = 0 }, 
 		{ .Mem = { .Burst = DMA_BURST_1, .Width = DMA_WIDTH_16BIT, .Increment = 1}, 
 			.Periph = { .Burst = DMA_BURST_1, .Width = DMA_WIDTH_16BIT },
-			.Flow = DMA_FLOW_P2M | DMA_FLOW_CIRCULAR, .Channel = 1 }, 
+			.Flow = DMA_FLOW_P2M | DMA_FLOW_CIRCULAR | DMA_FLOW_DISABLE_FIFO, .Channel = 1 }, 
 		{ .Mem = { .Burst = DMA_BURST_1, .Width = DMA_WIDTH_16BIT, .Increment = 1}, 
 			.Periph = { .Burst = DMA_BURST_1, .Width = DMA_WIDTH_16BIT },
-			.Flow = DMA_FLOW_P2M | DMA_FLOW_CIRCULAR, .Channel = 2 } }; 
+			.Flow = DMA_FLOW_P2M | DMA_FLOW_CIRCULAR | DMA_FLOW_DISABLE_FIFO, .Channel = 2 } }; 
 	
 	ADC_TypeDef *adc = _adc(module);
 	
@@ -147,7 +148,9 @@ void adc_start(unsigned module, unsigned ch_mask, adc_mode_t mode)
 
 		dma_stream_enable(ADC_DMA_MODULE, _dma_si[module], (void *)&adc->DR, 
 			_buffer[module], length, &_dma_config[module], NULL);
+		// NOTE: length passed to dma because PeripFlowCTRL not (offically) supported by ADC
 
+		exos_event_reset(&_event[module]);
 		adc->CR2 |= ADC_CR2_SWSTART;
 	}
 }
