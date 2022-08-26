@@ -103,7 +103,7 @@ static unsigned _enum_interfaces(usb_host_device_t *device, usb_configuration_de
 		else if (fn_desc->DescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE_ASSOCIATION)
 		{
 			usb_if_association_descriptor_t *iad_desc = (usb_if_association_descriptor_t *)fn_desc;
-			verbose(VERBOSE_DEBUG, "usbh-enum", "checking conf #%d, if asoc #%d(%d)...", 
+			verbose(VERBOSE_DEBUG, "usbh-enum", "checking conf #%d, if asoc #%d (%d if)...", 
 				conf_desc->ConfigurationIndex, iad_desc->FirstInterface, iad_desc->InterfaceCount);
 			found_driver = usb_host_driver_enumerate(_check_interface, &enum_data);
 		}
@@ -142,6 +142,9 @@ static bool _parse_configuration(usb_host_device_t *device, unsigned char conf_i
 	{
 		usb_configuration_descriptor_t *conf_desc = (usb_configuration_descriptor_t *)_buffer;
 		
+		verbose(VERBOSE_DEBUG, "usbh-enum", "checking conf[%d] (#%d, val=%02xh)...", conf_index,
+			conf_desc->ConfigurationIndex, conf_desc->ConfigurationValue);
+
 		unsigned total_length = USB16TOH(conf_desc->TotalLength);
 		if (total_length <= USB_ENUM_BUFFER_SIZE) 
 		{
@@ -150,12 +153,13 @@ static bool _parse_configuration(usb_host_device_t *device, unsigned char conf_i
 			if (done)
 			{
 				done = (_enum_interfaces(device, conf_desc) != 0);
+				if (!done) verbose(VERBOSE_DEBUG, "usbh-enum", "no driver found for conf[%d]", conf_index);
 			}
-			else verbose(VERBOSE_DEBUG, "usbh-enum", "cannot read conf #%d descriptor (full)", conf_index); 
+			else verbose(VERBOSE_DEBUG, "usbh-enum", "cannot read conf[%d] descriptor (full)", conf_index); 
 		}
-		else verbose(VERBOSE_DEBUG, "usbh-enum", "conf #%d descriptor is too big!", conf_index);
+		else verbose(VERBOSE_DEBUG, "usbh-enum", "conf[%d] descriptor is too big!", conf_index);
 	}
-	else verbose(VERBOSE_DEBUG, "usbh-enum", "cannot read conf #%d descriptor (short)", conf_index);
+	else verbose(VERBOSE_DEBUG, "usbh-enum", "cannot read conf[%d] descriptor (short)", conf_index);
 	
 	return done;
 }
