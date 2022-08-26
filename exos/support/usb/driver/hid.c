@@ -239,6 +239,7 @@ static usb_host_function_t *_check_interface(usb_host_device_t *device, usb_conf
 
 		if (if_desc->InterfaceClass == USB_CLASS_HID)
 		{
+			verbose(VERBOSE_COMMENT, "usb-hid", "interface is hid class");
 			usb_hid_descriptor_t *hid_desc = (usb_hid_descriptor_t *)usb_enumerate_find_class_descriptor(
 				conf_desc, if_desc,
 				USB_HID_DESCRIPTOR_HID, 0);

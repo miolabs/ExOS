@@ -88,9 +88,11 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 			{
 				verbose(VERBOSE_DEBUG, "usb_roothub", "connect detected");
 				
+				exos_thread_sleep(50);	// at least 50ms before reset as of USB 2.0 spec
+
 				_port_state = HPORT_RESET;
 				otg_host->HPRT = hprt_const | USB_OTG_HPRT_PRST;
-				timeout = 100;	// min 20ms
+				timeout = 20;	// min 20ms
 			}
 			break;
 		case HPORT_RESET:

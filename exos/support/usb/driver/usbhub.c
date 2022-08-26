@@ -261,8 +261,8 @@ static void _notify(usb_hub_function_t *func, unsigned port)
 	unsigned short port_change = USB16TOH(nw[1]);
 	usb_host_device_t *child;
 
-	_verbose(VERBOSE_DEBUG, "(pre) port #%d status %04x %04x", port,
-		USB16TOH(nw[0]), USB16TOH(nw[1]));
+//	_verbose(VERBOSE_DEBUG, "(pre) port #%d status %04x %04x", port,
+//		USB16TOH(nw[0]), USB16TOH(nw[1]));
 
 	if (port_change & USB_HUBF_PORT_CONNECTION)
 	{
@@ -373,8 +373,8 @@ static void _notify(usb_hub_function_t *func, unsigned port)
 	}
 
 #ifdef DEBUG
-	_get_hub_status(func);
-	_verbose(VERBOSE_DEBUG, "(post) hub status %04x %04x", USB16TOH(nw[0]), USB16TOH(nw[1]));
+//	_get_hub_status(func);
+//	_verbose(VERBOSE_DEBUG, "(post) hub status %04x %04x", USB16TOH(nw[0]), USB16TOH(nw[1]));
 #endif
 }
 
