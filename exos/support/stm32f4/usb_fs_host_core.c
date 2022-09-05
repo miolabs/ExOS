@@ -1,4 +1,4 @@
-#include "usb_otg_host_core.h"
+#include "usb_fs_host_core.h"
 #include "usb_otg_fs.h"
 #include "cpu.h"
 #include <usb/host.h>

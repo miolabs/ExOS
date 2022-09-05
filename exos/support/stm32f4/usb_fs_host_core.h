@@ -1,5 +1,5 @@
-#ifndef STM32F1_USB_OTG_HOST_CORE_H
-#define STM32F1_USB_OTG_HOST_CORE_H
+#ifndef STM32F4_USB_FS_HOST_CORE_H
+#define STM32F4_USB_FS_HOST_CORE_H
 
 #include <usb/host.h>
 #include <stdint.h>
@@ -57,5 +57,5 @@ void usb_otg_host_flush_rx_fifo();	// FIXME
 
 bool usb_otg_host_begin_xfer(usb_request_buffer_t *urb, usb_direction_t dir, bool setup);
 
-#endif // STM32F1_USB_OTG_HOST_CORE_H
+#endif // STM32F4_USB_FS_HOST_CORE_H
 
