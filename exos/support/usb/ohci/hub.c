@@ -69,9 +69,9 @@ static void _dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 			else 
 			{
 				usb_host_device_t *child = &_hc_driver->Devices[port];
-				verbose(VERBOSE_COMMENT, "usb_roothub", "child %04x/%04x removing at port #%d\r\n", child->Vendor, child->Product, child->Port);
+				verbose(VERBOSE_COMMENT, "usb_roothub", "child %04x/%04x removing at port #%d", child->Vendor, child->Product, child->Port);
 				usb_host_destroy_device(child);
-				verbose(VERBOSE_COMMENT, "usb_roothub", "child %04x/%04x removed\r\n", child->Vendor, child->Product);
+				verbose(VERBOSE_COMMENT, "usb_roothub", "child %04x/%04x removed", child->Vendor, child->Product);
 			}
 		}
 		if (status & OHCIR_RH_PORT_PRSC)

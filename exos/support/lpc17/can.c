@@ -1,6 +1,5 @@
 #include "can.h"
 #include "cpu.h"
-#include <support/board_hal.h>
 #include <kernel/panic.h>
 
 // NOTE: nominal bit time = (1 + (tseg1 + 1) + (tseg2 + 1))
@@ -39,7 +38,7 @@ int hal_can_initialize(int module, int bitrate, CAN_INIT_FLAGS initf)
 		int brp = pclk / (5 * bitrate);
 		btr = CANBTR_F((brp - 1), 1, 2, 0, 0);  // BRP, SJW, TSEG1, TSEG2, SAM (5 clk /bit)
 	}
-	else return 0;
+	else kernel_panic(KERNEL_ERROR_KERNEL_PANIC);
 
 	switch(module)
 	{

@@ -79,8 +79,10 @@ static int _write(io_entry_t *io, const unsigned char *buffer, unsigned int leng
 	while(1)
 	{
 		unsigned part = rtt_write(&rtt->up, buffer + done, length - done);
+#if !defined(RTT_SLOWDOWN) && defined(DEBUG)
 		if (part == 0)
 			break;
+#endif
 		done += part;
 		if (done == length)
 			break;
