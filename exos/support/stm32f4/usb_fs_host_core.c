@@ -568,12 +568,13 @@ void __usb_otg_rxflvl_irq_handler()
 	unsigned ch_num = (stsp & USB_OTG_GRXSTSP_EPNUM_Msk) >> USB_OTG_GRXSTSP_EPNUM_Pos;
 	ASSERT(ch_num < NUM_CHANNELS, KERNEL_ERROR_KERNEL_PANIC);
 	stm32_usbh_channel_t *ch = &_ch_table[ch_num];
-	stm32_usbh_ep_t *ep = _ch2ep[ch_num];
-	ASSERT(ep != nullptr, KERNEL_ERROR_KERNEL_PANIC);
 
 	if (pktsts == 0b0010		// IN data_packet
 		&& bcnt != 0)
 	{
+		stm32_usbh_ep_t *ep = _ch2ep[ch_num];
+		ASSERT(ep != nullptr, KERNEL_ERROR_KERNEL_PANIC);
+
 		stm32_usbh_xfer_t *xfer = &ch->Current;
 		ASSERT(ep->Status == STM32_EP_STA_BUSY, KERNEL_ERROR_KERNEL_PANIC);
 		usb_request_buffer_t *urb = xfer->Request;

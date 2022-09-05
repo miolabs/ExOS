@@ -35,13 +35,21 @@ void usb_otg_initialize()
 
 void OTG_FS_IRQHandler()
 {
-	if (otg_global->GINTSTS & USB_OTG_GINTSTS_MMIS)
+	unsigned sta = otg_global->GINTSTS;
+
+	if (sta & USB_OTG_GINTSTS_MMIS)
 	{
 		otg_global->GINTSTS = USB_OTG_GINTSTS_MMIS; // clear int
 	}
 
-	__usb_otg_host_irq_handler();
-    __usb_otg_device_irq_handler();
+	if (sta & USB_OTG_GINTSTS_CMOD)
+	{
+		__usb_otg_host_irq_handler();
+    }
+	else
+	{
+		__usb_otg_device_irq_handler();
+	}
 }
 
 

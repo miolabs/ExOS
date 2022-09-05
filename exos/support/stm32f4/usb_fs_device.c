@@ -1,5 +1,4 @@
-#include "usb_otg_device.h"
-#include "usb_otg_fs.h"
+#include "usb_fs_device.h"
 #include "cpu.h"
 #include <support/usb/device_hal.h>
 #include <kernel/panic.h>
@@ -25,7 +24,7 @@ static unsigned char _in_ep_last_packet[USB_DEV_EP_COUNT];
 
 void hal_usbd_initialize()
 {
-	event_create(&_connected, EVENTF_NONE);
+	exos_event_create(&_connected, EXOS_EVENTF_NONE);
 	for(unsigned ep_num = 0; ep_num < USB_DEV_EP_COUNT; ep_num++)
 		_ep_in_io[ep_num] = _ep_out_io[ep_num] = nullptr;
 
@@ -58,7 +57,7 @@ void hal_usbd_connect(bool connect)
 	else
 	{
 		// TODO
-		panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+		kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 	}
 }
 
@@ -145,7 +144,7 @@ void hal_usbd_enable_in_ep(unsigned ep_num, usb_transfer_type_t tt, unsigned max
 void hal_usbd_stall_out_ep(unsigned ep_num, bool stall)
 {
 	// TODO
-	panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 }
 
 void hal_usbd_stall_in_ep(unsigned ep_num, bool stall)
@@ -313,7 +312,7 @@ static void _write_fifo(unsigned ep_num, usb_io_buffer_t *iob, unsigned txlen)
 		iob->Status = USB_IOSTA_IN_COMPLETE;
 		// NOTE: core will generate a XFRCM (transfer complete) int later
 	}
-	else panic(KERNEL_ERROR_NOT_IMPLEMENTED);	// fifo refill is not implemented
+	else kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);	// fifo refill is not implemented
 
 	_busy = false;
 }
@@ -385,7 +384,7 @@ void hal_usbd_prepare_in_ep(unsigned ep_num, usb_io_buffer_t *iob)
 	{
 		ASSERT(iob == _ep_in_io[ep_num], KERNEL_ERROR_KERNEL_PANIC);
 		_disable_in_ep(ep_num);
-		bool done = event_wait(iob->Event, 10);
+		bool done = exos_event_wait(iob->Event, 10);
 		ASSERT(done, KERNEL_ERROR_KERNEL_PANIC);
 	}
 
@@ -458,7 +457,7 @@ static void _handle_rxf()
 			if (iob->Status == USB_IOSTA_OUT_WAIT)
 			{
 				iob->Status = USB_IOSTA_DONE;
-				event_set(iob->Event);
+				exos_event_set(iob->Event);
 			}
 			// NOTE: as bcnt == 0, no fifo read following
 			break;
@@ -475,7 +474,7 @@ static void _handle_rxf()
 			{
 				ASSERT(iob->Status == USB_IOSTA_OUT_WAIT, KERNEL_ERROR_KERNEL_PANIC);
 				iob->Status = USB_IOSTA_DONE;
-				event_set(iob->Event);
+				exos_event_set(iob->Event);
 			}
 			break;
 		case 0b0010:		// OUT data_packet
@@ -495,7 +494,7 @@ static void _handle_rxf()
 			}
 			break;
 		default:
-			panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+			kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 			break;
 	}
 
@@ -554,7 +553,7 @@ static void _ep_out_handler(unsigned ep)
 	}
 	else
 	{
-		panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+		kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 	}
 }
 
@@ -596,7 +595,7 @@ static void _ep_in_handler(unsigned ep)
 		{
 			ASSERT(iob->Done == iob->Length, KERNEL_ERROR_KERNEL_PANIC);
 			iob->Status = USB_IOSTA_DONE;
-			event_set(iob->Event);
+			exos_event_set(iob->Event);
 
 			_ep_in_io[ep] = nullptr;
 		}
@@ -614,11 +613,11 @@ static void _ep_in_handler(unsigned ep)
 			while(otg_global->GRSTCTL & USB_OTG_GRSTCTL_TXFFLSH);
 
 			iob->Status = USB_IOSTA_DONE;
-			event_set(iob->Event);
+			exos_event_set(iob->Event);
 
 			_ep_in_io[ep] = nullptr;
 		}
-		else panic(KERNEL_ERROR_NULL_POINTER);
+		else kernel_panic(KERNEL_ERROR_NULL_POINTER);
 
 		int_handled = USB_OTG_DIEPINT_EPDISD;
 	}
@@ -636,7 +635,7 @@ static void _ep_in_handler(unsigned ep)
 	}
 	else 
 	{
-		panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+		kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 	}
 } 
 
@@ -694,7 +693,7 @@ static void _reset(unsigned speed)
 				otg_device->DOEPCTL0 = USB_OTG_DOEPCTL_EPENA | USB_OTG_DOEPCTL_CNAK;	 // NOTE: size is taken from DIEPCTL0
 				_ep_max_length[0] = 8;
 				break;
-			default:	panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+			default:	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 		}
 
         otg_global->GINTMSK |= USB_OTG_GINTMSK_RXFLVLM
