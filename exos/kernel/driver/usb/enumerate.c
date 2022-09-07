@@ -169,6 +169,7 @@ bool usb_host_enumerate(usb_host_device_t *device, usb_device_descriptor_t *dev_
 	// extract device data
 	device->Vendor = USB16TOH(dev_desc->VendorId);
 	device->Product = USB16TOH(dev_desc->ProductId);
+	verbose(VERBOSE_DEBUG, "usbh-enum", "device %04x/%04x", device->Vendor, device->Product);
 
 	bool done = false;
 	unsigned char num_configs = dev_desc->NumConfigurations;
