@@ -1,6 +1,8 @@
 #ifndef APPLE_CP20_H
 #define APPLE_CP20_H
 
+#include <stdbool.h>
+
 typedef enum
 {
 	CP20_REG_DEVICE_VERSION = 0,
@@ -53,10 +55,10 @@ typedef enum
 } CP20_PROC_CONTROL;
 
 // prototypes
-int apple_cp20_initialize();
-int apple_cp2_read_device_id(unsigned long *pdevice_id);
-int apple_cp2_read_acc_cert_length(unsigned short *plength);
-int apple_cp2_read_acc_cert_page(int page, unsigned char *buffer, int length);
+bool apple_cp20_initialize();
+bool apple_cp2_read_device_id(unsigned long *pdevice_id);
+bool apple_cp2_read_acc_cert_length(unsigned short *plength);
+bool apple_cp2_read_acc_cert_page(int page, unsigned char *buffer, int length);
 int apple_cp2_get_auth_signature(unsigned char *challenge, int length, unsigned char *sig);
 
 #endif // APPLE_CP20_H

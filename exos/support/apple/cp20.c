@@ -1,8 +1,12 @@
 #include "cp20.h"
 #include <support/i2c_hal.h>
 #include <kernel/thread.h>
-#ifdef IAP_DEBUG
-#include <support/services/debug.h>
+#include <kernel/verbose.h>
+
+#ifdef DEBUG
+#define _verbose(level, ...) verbose(level, "cp20", __VA_ARGS__)
+#else
+#define _verbose(...) { /* nothing */ }
 #endif
 
 #ifndef APPLE_CP20_I2C_MODULE
@@ -11,71 +15,56 @@
 
 static int _addr;
 
-int apple_cp20_initialize()
+bool apple_cp20_initialize()
 {
 	unsigned long auth_id;
-	int done;
-	hal_i2c_initialize(APPLE_CP20_I2C_MODULE, 400000);
 	
 	for(int i = 0; i <= 1; i++)
 	{
 		_addr = 0x10 + i;
-		done = apple_cp2_read_device_id(&auth_id);
+		bool done = apple_cp2_read_device_id(&auth_id);
 		if (done && auth_id == 0x200) 
 		{
-#ifdef IAP_DEBUG
-			debug_printf("Apple CP20 Detected at I2C addr 0x%x\r\n", _addr);
-#endif
-			return 1;
+			_verbose(VERBOSE_DEBUG, "Apple CP20 Detected at I2C addr 0x%x", _addr);
+			return true;
 		}
 	}
-#ifdef IAP_DEBUG
-	debug_printf("Apple CP20 Not Detected!\r\n");
-#endif
-	return 0;
+	_verbose(VERBOSE_ERROR, "Apple CP20 Not Detected!");
+	return false;
 }
 
-static int _read(CP20_REG reg, unsigned char *buffer, unsigned char length)
+static bool _read(CP20_REG reg, unsigned char *buffer, unsigned char length)
 {
-	int err;
+	i2c_context_t i2c;
+
+	bool done = false;
 	for (int retry = 0; retry < 3; retry++)
 	{
-		err = hal_i2c_master_frame(APPLE_CP20_I2C_MODULE, _addr, 
-			(unsigned char *)&reg, 1, 0);
-		if (err == 0) break;
+		hal_i2c_init_context(&i2c, _addr, &reg, 1);
+		done = hal_i2c_read(APPLE_CP20_I2C_MODULE, &i2c, buffer, length);
+
+		if (done) return true;
 		exos_thread_sleep(1);
 	}
-	if (err == 0)
-	{
-		for (int retry = 0; retry < 10; retry++)
-		{
-			err = hal_i2c_master_frame(APPLE_CP20_I2C_MODULE, _addr, 
-				buffer, 0, length);
-			if (err == 0) return 1;
-			exos_thread_sleep(1);
-		}
-	}
-	return 0;
+	return false;
 }
 
-static int _write(CP20_REG reg, unsigned char *buffer, unsigned char length)
+static bool _write(CP20_REG reg, unsigned char *buffer, unsigned char length)
 {
-	int err;
-	unsigned char buf2[length + 1];
-	buf2[0] = reg;
-	for (int i = 0; i < length; i++) buf2[i + 1] = buffer[i];
+	i2c_context_t i2c;
 
+	bool done;
 	for (int retry = 0; retry < 10; retry++)
 	{
-		err = hal_i2c_master_frame(APPLE_CP20_I2C_MODULE, _addr, 
-			buf2, length + 1, 0);
-		if (err == 0) return 1;
+		hal_i2c_init_context(&i2c, _addr, &reg, 1);		
+		done = hal_i2c_write(APPLE_CP20_I2C_MODULE, &i2c, buffer, length); 
+		if (done == 0) return true;
 		exos_thread_sleep(1);
 	}
-	return 0;
+	return false;
 }
 
-int apple_cp2_read_device_id(unsigned long *pdevice_id)
+bool apple_cp2_read_device_id(unsigned long *pdevice_id)
 {
 	int done;
     unsigned char buffer[4];
@@ -83,34 +72,32 @@ int apple_cp2_read_device_id(unsigned long *pdevice_id)
 	if (done)
 	{
 		*pdevice_id = (buffer[0] << 24) | (buffer[1] << 16) | (buffer[2] << 8) | buffer[3];
-		return 1;
+		return true;
 	}
-	return 0;
+	return false;
 }
 
-int apple_cp2_read_acc_cert_length(unsigned short *plength)
+bool apple_cp2_read_acc_cert_length(unsigned short *plength)
 {
-	int done;
     unsigned char buffer[2];
-	done = _read(CP20_REG_ACCESORY_CERTIFICATE_DATA_LENGTH, buffer, 2);
+	bool done = _read(CP20_REG_ACCESORY_CERTIFICATE_DATA_LENGTH, buffer, 2);
 	if (done)
 	{
 		*plength = (buffer[0] << 8) | buffer[1];
-		return 1;
+		return true;
 	}
-	return 0;
+	return false;
 }
 
-int apple_cp2_read_acc_cert_page(int page, unsigned char *buffer, int length)
+bool apple_cp2_read_acc_cert_page(int page, unsigned char *buffer, int length)
 {
-	int done;
-	done = _read(CP20_REG_ACCESORY_CERTIFICATE_DATA_PAGE1 + page, buffer, length);
+	bool done = _read(CP20_REG_ACCESORY_CERTIFICATE_DATA_PAGE1 + page, buffer, length);
 	return done;
 }
 
 int apple_cp2_get_auth_signature(unsigned char *challenge, int ch_len, unsigned char *sig)
 {
-	int done;
+	bool done;
 	unsigned char buffer[2];
 
 	done = _read(CP20_REG_ERROR_CODE, buffer, 1);
