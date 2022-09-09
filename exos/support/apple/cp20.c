@@ -40,10 +40,18 @@ static bool _read(CP20_REG reg, unsigned char *buffer, unsigned char length)
 	bool done = false;
 	for (int retry = 0; retry < 3; retry++)
 	{
-		hal_i2c_init_context(&i2c, _addr, &reg, 1);
-		done = hal_i2c_read(APPLE_CP20_I2C_MODULE, &i2c, buffer, length);
-
-		if (done) return true;
+		hal_i2c_init_context(&i2c, _addr, NULL, 0);
+		done = hal_i2c_write(APPLE_CP20_I2C_MODULE, &i2c, &reg, 1);
+		if (done)
+		{
+			for (int retry2 = 0; retry2 < 10; retry2++)
+			{
+				exos_thread_sleep(1);
+				hal_i2c_init_context(&i2c, _addr, NULL, 0);
+				done = hal_i2c_read(APPLE_CP20_I2C_MODULE, &i2c, buffer, length);
+				if (done) return true;
+			}
+		}
 		exos_thread_sleep(1);
 	}
 	return false;
