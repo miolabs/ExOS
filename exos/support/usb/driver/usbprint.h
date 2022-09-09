@@ -1,10 +1,10 @@
-#ifndef USB_DRIVER_USBPRINT
-#define USB_DRIVER_USBPRINT
+#ifndef USB_DRIVER_USBPRINT_H
+#define USB_DRIVER_USBPRINT_H
 
 #include <usb/classes/usbprint.h>
 #include <usb/host.h>
 #include <kernel/tree.h>
-#include <comm/comm.h>
+#include <kernel/io.h>
 
 #define USBPRINT_USB_BUFFER 64
 
@@ -16,26 +16,25 @@ typedef enum
 	USBPRINT_OPENING,
 	USBPRINT_READY,
 	USBPRINT_ERROR,
-} USBPRINT_STATE;
+} usbprint_state_t;
 
 typedef struct
 {
-	USB_HOST_FUNCTION;
-	USB_HOST_PIPE BulkInputPipe;
-	USB_HOST_PIPE BulkOutputPipe;
-	USBPRINT_STATE State;
-
-	COMM_IO_ENTRY *Entry;
-	EXOS_TREE_DEVICE KernelDevice;
-	unsigned char Buffer[USBPRINT_USB_BUFFER];
-
-	unsigned char Interface;
+	usb_host_function_t;
 	unsigned char Protocol;
+	unsigned char Interface;
 
-} USBPRINT_FUNCTION;
+	usb_host_pipe_t BulkInputPipe;
+	usb_host_pipe_t BulkOutputPipe;
+	usbprint_state_t State;
+
+	io_entry_t *Entry;
+	io_tree_device_t KernelDevice;
+	unsigned char Buffer[USBPRINT_USB_BUFFER];
+} usbprint_function_t;
 
 
 void usbprint_initialize(unsigned short vendor_id, unsigned short product_id);
 
 
-#endif // USB_DRIVER_USBPRINT
+#endif // USB_DRIVER_USBPRINT_H

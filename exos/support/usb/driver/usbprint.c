@@ -1,79 +1,92 @@
 #include "usbprint.h"
 #include <usb/enumerate.h>
-#include <kernel/machine/hal.h>
+#include <kernel/io.h>
+#include <kernel/verbose.h>
+#include <kernel/panic.h>
+#include <string.h>
 
-static USB_HOST_FUNCTION *_check_interface(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTOR *conf_desc, USB_DESCRIPTOR_HEADER *fn_desc);
-static void _start(USB_HOST_FUNCTION *func);
-static void _stop(USB_HOST_FUNCTION *func);
+#ifdef DEBUG
+#define _verbose(level, ...) verbose(level, "usbprint", __VA_ARGS__)
+#else
+#devine _verbose(level, ...) { /* nothing */ }
+#endif
 
-static const USB_HOST_FUNCTION_DRIVER _driver = { _check_interface, _start, _stop };
-static USB_HOST_FUNCTION_DRIVER_NODE _driver_node;
+static usb_host_function_t *_check_interface(usb_host_device_t *device, usb_configuration_descriptor_t *conf_desc, usb_descriptor_header_t *fn_desc);
+static void _start(usb_host_function_t *func);
+static void _stop(usb_host_function_t *func);
 
-static int _open(COMM_IO_ENTRY *io);
-static void _close(COMM_IO_ENTRY *io);
-static int _get_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value);
-static int _set_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value);
-static int _read(COMM_IO_ENTRY *io, unsigned char *buffer, unsigned long length);
-static int _write(COMM_IO_ENTRY *io, const unsigned char *buffer, unsigned long length);
+static const usb_host_function_driver_t _driver = { _check_interface, _start, _stop };
+static usb_host_function_driver_node_t _driver_node;
 
-static const COMM_DRIVER _comm_driver = {
+static io_error_t _open(io_entry_t *io, const char *path, io_flags_t flags);
+static void _close(io_entry_t *io);
+//static int _get_attr(io_entry_t *io, COMM_ATTR_ID attr, void *value);
+//static int _set_attr(io_entry_t *io, COMM_ATTR_ID attr, void *value);
+static int _read(io_entry_t *io, unsigned char *buffer, unsigned length);
+static int _write(io_entry_t *io, const unsigned char *buffer, unsigned length);
+
+static const io_driver_t _io_driver = {
 	.Open = _open, .Close = _close,
-    .GetAttr = _get_attr, .SetAttr = _set_attr, 
+	//.GetAttr = _get_attr, .SetAttr = _set_attr, 
 	.Read = _read, .Write = _write };
-static COMM_DEVICE _comm_device = { .Driver = &_comm_driver, .PortCount = 1 };
-static USBPRINT_FUNCTION _func __usb; // FIXME: support multiple instances
+
+static usbprint_function_t _func __usb; // NOTE: single instance
 
 static unsigned short _vendor_id = 0x1cbe;
 static unsigned short _product_id = 0x0002;
 
 void usbprint_initialize(unsigned short vendor_id, unsigned short product_id)
-{        
-        _vendor_id = vendor_id;
-        _product_id = product_id;
+{
+	_vendor_id = vendor_id;
+	_product_id = product_id;
 	_func.State = USBPRINT_NOT_ATTACHED;
 
-	_driver_node = (USB_HOST_FUNCTION_DRIVER_NODE) { .Driver = &_driver };
+	_driver_node = (usb_host_function_driver_node_t) { .Driver = &_driver };
 	usb_host_driver_register(&_driver_node);
 }
 
-static int _protocol_matches(USB_INTERFACE_DESCRIPTOR *if_desc, USBPRINT_PROTOCOL *pproto)
+static bool _protocol_matches(usb_interface_descriptor_t *if_desc, usbprint_protocol_t *pproto)
 {
-	USBPRINT_PROTOCOL proto = (USBPRINT_PROTOCOL)if_desc->Protocol;
+	usbprint_protocol_t proto = (usbprint_protocol_t)if_desc->Protocol;
 	switch(proto)
 	{
 		case USBPRINT_PROTOCOL_UNIDIRECTIONAL:
 		case USBPRINT_PROTOCOL_BIDIRECTIONAL:
-//		case USBPRINT_PROTOCOL_1284_4: currently unsupported
 			*pproto = proto;
-			return 1;
+			return true;
+		case USBPRINT_PROTOCOL_1284_4: //currently unsupported
+		default:		
+			_verbose(VERBOSE_ERROR, "protocol not supported");
+			break;
 	}
-	return 0;
+	return false;
 }
 
-static int _device_if_matches(USB_HOST_DEVICE *device, USB_INTERFACE_DESCRIPTOR *if_desc, USBPRINT_PROTOCOL *pproto)
+static bool _device_if_matches(usb_host_device_t *device, usb_interface_descriptor_t *if_desc, usbprint_protocol_t *pproto)
 {
 	return device->Vendor == _vendor_id
 		&& device->Product == _product_id;
 }
 
-static USB_HOST_FUNCTION *_check_interface(USB_HOST_DEVICE *device, USB_CONFIGURATION_DESCRIPTOR *conf_desc, USB_DESCRIPTOR_HEADER *fn_desc)
+static usb_host_function_t *_check_interface(usb_host_device_t *device, 
+	usb_configuration_descriptor_t *conf_desc, usb_descriptor_header_t *fn_desc)
 {
 	if (fn_desc->DescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE)
 	{
-		USB_INTERFACE_DESCRIPTOR *if_desc = (USB_INTERFACE_DESCRIPTOR *)fn_desc;
+		usb_interface_descriptor_t *if_desc = (usb_interface_descriptor_t *)fn_desc;
 
-		USBPRINT_PROTOCOL proto;
+		usbprint_protocol_t proto;
 		if ((if_desc->InterfaceClass == USB_CLASS_PRINTER
 			&& if_desc->InterfaceSubClass == USBPRINT_SUBCLASS_PRINTER
 			&& _protocol_matches(if_desc, &proto)) ||
-			_device_if_matches(device, if_desc,&proto))
+			_device_if_matches(device, if_desc, &proto))
 		{
-			USBPRINT_FUNCTION *func = &_func;
+			usbprint_function_t *func = &_func;	// NOTE: single instance
 			if (func->State == USBPRINT_NOT_ATTACHED)
 			{
-				usb_host_create_function((USB_HOST_FUNCTION *)func, device, &_driver);
+				usb_host_create_function((usb_host_function_t *)func, device, &_driver);
 	
-				USB_ENDPOINT_DESCRIPTOR *ep_desc;			
+				usb_endpoint_descriptor_t *ep_desc;			
 				ep_desc = usb_enumerate_find_endpoint_descriptor(conf_desc, if_desc, USB_TT_BULK, USB_HOST_TO_DEVICE, 0);
 				if (!ep_desc) return NULL;
 				usb_host_init_pipe_from_descriptor(device, &func->BulkOutputPipe, ep_desc);
@@ -88,16 +101,16 @@ static USB_HOST_FUNCTION *_check_interface(USB_HOST_DEVICE *device, USB_CONFIGUR
 				func->Interface = if_desc->InterfaceNumber;
 				func->Protocol = proto;
 				func->State = USBPRINT_ATTACHING;
-				return (USB_HOST_FUNCTION *)func;
+				return (usb_host_function_t *)func;
 			}
 		}
 	}
 	return NULL;
 }
 
-static void _start(USB_HOST_FUNCTION *usb_func)
+static void _start(usb_host_function_t *usb_func)
 {
-	USBPRINT_FUNCTION *func = (USBPRINT_FUNCTION *)usb_func;
+	usbprint_function_t *func = (usbprint_function_t *)usb_func;
 
 	usb_host_start_pipe(&func->BulkOutputPipe);
 	if (func->Protocol == USBPRINT_PROTOCOL_BIDIRECTIONAL)
@@ -105,36 +118,32 @@ static void _start(USB_HOST_FUNCTION *usb_func)
 
 	if (exos_tree_find_path(NULL, "dev/usbprint") == NULL)
 	{
-		func->KernelDevice = (EXOS_TREE_DEVICE) {
-			.Name = "usbprint",	// FIXME: allow more instances
-			.Device = &_comm_device,
-			.Unit = 0 };	// FIXME: allow more instances
-		
-		comm_add_device(&func->KernelDevice, "dev");
+		// NOTE: single instance
+		exos_io_add_device(&func->KernelDevice, "usbprint", &_io_driver, func);
 	}
 	func->Entry = NULL;
 	func->State = USBPRINT_CLOSED;
 }
 
-static void _stop(USB_HOST_FUNCTION *usb_func)
+static void _stop(usb_host_function_t *usb_func)
 {
-	USBPRINT_FUNCTION *func = (USBPRINT_FUNCTION *)usb_func;
+	usbprint_function_t *func = (usbprint_function_t *)usb_func;
 
 	usb_host_stop_pipe(&func->BulkOutputPipe);
    	if (func->Protocol == USBPRINT_PROTOCOL_BIDIRECTIONAL)
 		usb_host_stop_pipe(&func->BulkInputPipe);
 
-	COMM_IO_ENTRY *io = func->Entry;
-	if (io != NULL) comm_io_close(io);
+	io_entry_t *io = func->Entry;
+	if (io != NULL) exos_io_close(io);
 
 	func->State = USBPRINT_NOT_ATTACHED;
 }
 
-static int _open(COMM_IO_ENTRY *io)
+static io_error_t _open(io_entry_t *io, const char *path, io_flags_t flags)
 {
 	if (io->Port == 0)
 	{
-		USBPRINT_FUNCTION *func = &_func;
+		usbprint_function_t *func = &_func;
 		if (func->State == USBPRINT_CLOSED && func->Entry == NULL)
 		{
 			func->State = USBPRINT_READY;
@@ -146,21 +155,21 @@ static int _open(COMM_IO_ENTRY *io)
 	return -1;
 }
 
-static int _get_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
-{
-	return -1;
-}
+//static int _get_attr(io_entry_t *io, COMM_ATTR_ID attr, void *value)
+//{
+//	return -1;
+//}
 
-static int _set_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
-{
-	return -1;
-}
+//static int _set_attr(io_entry_t *io, COMM_ATTR_ID attr, void *value)
+//{
+//	return -1;
+//}
 
-static void _close(COMM_IO_ENTRY *io)
+static void _close(io_entry_t *io)
 {
 	if (io->Port == 0)
 	{
-		USBPRINT_FUNCTION *func = &_func;
+		usbprint_function_t *func = &_func;
 		if (func->Entry == io &&
 			(func->State == USBPRINT_READY || func->State == USBPRINT_ERROR))
 		{
@@ -171,26 +180,26 @@ static void _close(COMM_IO_ENTRY *io)
 	}
 }
 
-static int _read(COMM_IO_ENTRY *io, unsigned char *buffer, unsigned long length)
+static int _read(io_entry_t *io, unsigned char *buffer, unsigned length)
 {
 	// TODO: implement bidirectional feature
 	return -1;
 }
 
-static int _write(COMM_IO_ENTRY *io, const unsigned char *buffer, unsigned long length)
+static int _write(io_entry_t *io, const unsigned char *buffer, unsigned length)
 {
 	if (io->Port == 0)
 	{
-		USBPRINT_FUNCTION *func = &_func;
+		usbprint_function_t *func = &_func;
 		if (io == func->Entry)
 		{
 			int offset = 0;
 			do
 			{
-				int part = length - offset;
+				unsigned part = length - offset;
 				if (part > USBPRINT_USB_BUFFER) part = USBPRINT_USB_BUFFER;
-				__mem_copy(func->Buffer, func->Buffer + part, buffer + offset);
-				int done = usb_host_bulk_transfer(&func->BulkOutputPipe, func->Buffer, part, EXOS_TIMEOUT_NEVER);
+				memcpy(func->Buffer, buffer + offset, part);
+				bool done = usb_host_do_transfer(&func->BulkOutputPipe, func->Buffer, part, EXOS_TIMEOUT_NEVER);
 				if (!done) return -1;
 				offset += part;
 			} while(offset < length);

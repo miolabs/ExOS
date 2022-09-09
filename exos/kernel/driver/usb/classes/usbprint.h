@@ -6,7 +6,7 @@
 typedef enum
 {
 	USBPRINT_SUBCLASS_PRINTER = 1,
-} USBPRINT_SUBCLASS;
+} usbprint_subclass_t;
 
 typedef enum
 {
@@ -14,21 +14,21 @@ typedef enum
 	USBPRINT_PROTOCOL_UNIDIRECTIONAL,
 	USBPRINT_PROTOCOL_BIDIRECTIONAL,
 	USBPRINT_PROTOCOL_1284_4,
-} USBPRINT_PROTOCOL;
+} usbprint_protocol_t;
 
 typedef enum
 {
 	USBPRINT_REQ_GET_DEVICE_ID = 0,
 	USBPRINT_REQ_GET_PORT_STATUS,
 	USBPRINT_REQ_SOFT_RESET,
-} USBPRINT_REQUEST_CODE;
+} usbprint_request_code_t;
 
 typedef enum
 {
 	USBPRINT_PORT_NO_ERROR = (1<<3),
 	USBPRINT_PORT_SELECT = (1<<4),
 	USBPRINT_PORT_PAPER_EMPTY = (1<<5),
-} USBPRINT_PORT_STATUS;
+} usbprint_port_status_t;
 
 #endif // USB_CLASS_USBPRINT_H
 
