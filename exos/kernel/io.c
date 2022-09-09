@@ -31,7 +31,7 @@ void exos_io_add_device(io_tree_device_t *device, const char *name, const io_dri
 
 io_error_t exos_io_open(io_entry_t *io, const char *path, io_flags_t flags)
 {
-	EXOS_TREE_NODE *node = exos_tree_find_path(NULL, &path);
+	EXOS_TREE_NODE *node = exos_tree_parse_path(NULL, &path);
 	io_error_t res = IO_ERROR_UNKNOWN;
 	if (node != NULL && node->Type == EXOS_TREE_NODE_DEVICE)
 	{

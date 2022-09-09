@@ -81,17 +81,11 @@ EXOS_TREE_NODE *exos_tree_find_group(EXOS_TREE_NODE *parent, const char *path)
 	return parent;
 }
 
-EXOS_TREE_NODE *exos_tree_find_path(EXOS_TREE_NODE *parent, const char **ppath)
+EXOS_TREE_NODE *exos_tree_find_path(EXOS_TREE_NODE *parent, const char *path)
 {
-	ASSERT(ppath != NULL, KERNEL_ERROR_NULL_POINTER);
-	const char *path = *ppath;
-	EXOS_TREE_NODE *node = exos_tree_parse_path(parent, ppath);
-	if (node != NULL && node->Type != EXOS_TREE_NODE_GROUP)
-	{
-		*ppath = path;
-		return node;
-	}
-	return NULL; 
+	ASSERT(path != NULL, KERNEL_ERROR_NULL_POINTER);
+	EXOS_TREE_NODE *node = exos_tree_parse_path(parent, &path);
+	return (node != NULL && node->Type != EXOS_TREE_NODE_GROUP) ? node : NULL;
 }
 
 EXOS_TREE_NODE *exos_tree_parse_path(EXOS_TREE_NODE *parent, const char **psubpath)

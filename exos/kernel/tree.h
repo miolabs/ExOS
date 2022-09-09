@@ -31,7 +31,7 @@ struct _TREE_GROUP
 void __tree_initialize();
 void exos_tree_add_child(EXOS_TREE_GROUP *group, EXOS_TREE_NODE *child);
 EXOS_TREE_NODE *exos_tree_find_group(EXOS_TREE_NODE *parent, const char *path);
-EXOS_TREE_NODE *exos_tree_find_path(EXOS_TREE_NODE *parent, const char **ppath);
+EXOS_TREE_NODE *exos_tree_find_path(EXOS_TREE_NODE *parent, const char *path);
 EXOS_TREE_NODE *exos_tree_parse_path(EXOS_TREE_NODE *parent, const char **psubpath);
 int exos_tree_add_child_path(EXOS_TREE_NODE *child, const char *parent_path);
 void exos_tree_add_group(EXOS_TREE_GROUP *group, const char *parent_path);
