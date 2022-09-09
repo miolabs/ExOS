@@ -43,7 +43,7 @@ static void _register()
 static bool _open(FILE *stream, const char *path, io_flags_t flags)
 {
 	ASSERT(stream != nullptr, KERNEL_ERROR_NULL_POINTER);
-	if (IO_OK == exos_io_open(&stream->io, path, flags))
+	if (IO_OK == exos_io_open_path(&stream->io, path, flags))
 	{
 		exos_mutex_create(&stream->mutex);
 		return true;

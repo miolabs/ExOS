@@ -28,17 +28,30 @@ void exos_io_add_device(io_tree_device_t *device, const char *name, const io_dri
     exos_tree_add_child_path(&device->TreeNode, "/dev");
 }
 
-
-io_error_t exos_io_open(io_entry_t *io, const char *path, io_flags_t flags)
+static void _io_create(io_entry_t *io, const io_driver_t *driver, void *driver_context, unsigned port)
 {
+	*io = (io_entry_t) {
+#ifdef DEBUG
+		.Node = (node_t) { .Type = EXOS_NODE_IO_ENTRY },
+#endif
+		.Driver = driver, .DriverContext = driver_context, .Port = port };
+
+	exos_event_create(&io->InputEvent, EXOS_EVENTF_AUTORESET);
+	exos_event_create(&io->OutputEvent, EXOS_EVENTF_AUTORESET);
+}
+
+io_error_t exos_io_open_path(io_entry_t *io, const char *path, io_flags_t flags)
+{
+	ASSERT(io != NULL, KERNEL_ERROR_NULL_POINTER);
+
 	EXOS_TREE_NODE *node = exos_tree_parse_path(NULL, &path);
 	io_error_t res = IO_ERROR_UNKNOWN;
 	if (node != NULL && node->Type == EXOS_TREE_NODE_DEVICE)
 	{
 		io_tree_device_t *dev = (io_tree_device_t *)node;
-		exos_io_create(io, dev->Driver, dev->DriverContext, dev->Port);
+		_io_create(io, dev->Driver, dev->DriverContext, dev->Port);
 
-		const io_driver_t *driver= io->Driver;
+		const io_driver_t *driver = io->Driver;
 		ASSERT(driver != NULL && driver->Open != NULL, KERNEL_ERROR_NULL_POINTER);
 		res = driver->Open(io, path, flags);
 	}
@@ -50,22 +63,29 @@ io_error_t exos_io_open(io_entry_t *io, const char *path, io_flags_t flags)
 
 void exos_io_create(io_entry_t *io, const io_driver_t *driver, void *driver_context, unsigned port)
 {
-#ifdef DEBUG
-	if (io == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-#endif
+	ASSERT(io != NULL, KERNEL_ERROR_NULL_POINTER);
+	_io_create(io, driver, driver_context, port);
+}
 
-	*io = (io_entry_t) {
-#ifdef DEBUG
-		.Node = (node_t) { .Type = EXOS_NODE_IO_ENTRY },
-#endif
-		.Driver = driver, .DriverContext = driver_context, .Port = port };
+io_error_t exos_io_open(io_entry_t *io, io_flags_t flags)
+{
+	ASSERT(io != NULL, KERNEL_ERROR_NULL_POINTER);
 
-	exos_event_create(&io->InputEvent, EXOS_EVENTF_AUTORESET);
-	exos_event_create(&io->OutputEvent, EXOS_EVENTF_AUTORESET);
+	const io_driver_t *driver = io->Driver;
+	ASSERT(driver != NULL && driver->Open != NULL, KERNEL_ERROR_NULL_POINTER);
+	io_error_t res = driver->Open(io, NULL, flags);
+	return res;
 }
 
 
+void exos_io_close(io_entry_t *io)
+{
+	ASSERT(io != NULL, KERNEL_ERROR_NULL_POINTER);
+
+	const io_driver_t *driver = io->Driver;
+	ASSERT(driver != NULL && driver->Close != NULL, KERNEL_ERROR_NULL_POINTER);
+	driver->Close(io);
+}
 
 void exos_io_set_timeout(io_entry_t *io, unsigned long timeout)
 {

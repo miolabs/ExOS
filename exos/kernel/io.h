@@ -84,8 +84,11 @@ typedef struct
 
 void __io_initialize();
 void exos_io_add_device(io_tree_device_t *device, const char *name, const io_driver_t *driver, void *driver_context);
-void exos_io_create(io_entry_t *io, const io_driver_t *driver, void *driver_context, unsigned port);
-io_error_t exos_io_open(io_entry_t *io, const char *path, io_flags_t flags);
+
+io_error_t exos_io_open_path(io_entry_t *io, const char *path, io_flags_t flags);
+
+void exos_io_create(io_entry_t *io, const io_driver_t *driver, void *driver_context, unsigned port) __deprecated;
+io_error_t exos_io_open(io_entry_t *io, io_flags_t flags) __deprecated;
 void exos_io_close(io_entry_t *io);
 void exos_io_set_timeout(io_entry_t *io, unsigned long timeout);
 

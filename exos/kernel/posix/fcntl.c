@@ -41,7 +41,7 @@ int open(const char *path, int oflag, ...)
 		return posix_set_error(ENOMEM);
 	
 	//EXOS_IO_FLAGS flags = oflag & O_NONBLOCK ? EXOS_IOF_NONE : EXOS_IOF_WAIT;
-	io_error_t res = exos_io_open(io, path, IOF_NONE);	// TODO: parse flags
+	io_error_t res = exos_io_open_path(io, path, IOF_NONE);	// TODO: parse flags
 	if (res == IO_OK)
 	{
 		int fd = posix_add_file_descriptor((io_entry_t *)io);
