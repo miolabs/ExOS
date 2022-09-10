@@ -15,7 +15,7 @@
 #endif
 
 static usb_host_function_t *_check_interface(usb_host_device_t *device, usb_configuration_descriptor_t *conf_desc, usb_descriptor_header_t *fn_desc);
-static void _start(usb_host_function_t *func);
+static void _start(usb_host_function_t *func, usb_configuration_descriptor_t *conf_desc, usb_descriptor_header_t *fn_desc);
 static void _stop(usb_host_function_t *func);
 static const usb_host_function_driver_t _driver = { 
 	.CheckInterface = _check_interface, 
@@ -101,7 +101,7 @@ static usb_host_function_t *_check_interface(usb_host_device_t *device, usb_conf
 	return nullptr;
 }
 
-static void _start(usb_host_function_t *usb_func)
+static void _start(usb_host_function_t *usb_func, usb_configuration_descriptor_t *conf_desc, usb_descriptor_header_t *fn_desc)
 {
 	usb_hub_function_t *func = (usb_hub_function_t *)usb_func;
 	ASSERT(_function_busy[func->InstanceIndex] == 0, KERNEL_ERROR_KERNEL_PANIC);

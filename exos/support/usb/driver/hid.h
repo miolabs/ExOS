@@ -72,9 +72,9 @@ typedef struct
 
 typedef struct 
 {
-	hid_function_handler_t *(*MatchDevice)(usb_host_device_t *device, usb_configuration_descriptor_t *conf_desc, usb_interface_descriptor_t *if_desc, 
-		hid_report_parser_t *parser);
-	void (*Start)(hid_function_handler_t *handler);
+	hid_function_handler_t *(*MatchDevice)(usb_host_device_t *device, usb_configuration_descriptor_t *conf_desc, 
+		usb_interface_descriptor_t *if_desc, usb_hid_descriptor_t *hid_desc);
+	bool (*Start)(hid_function_handler_t *handler, hid_report_parser_t *parser);
 	void (*Stop)(hid_function_handler_t *handler);
 	void (*Notify)(hid_function_handler_t *handler, unsigned char report_id, unsigned char *data, unsigned length);
 } hid_driver_t;
@@ -88,7 +88,7 @@ typedef struct
 struct __hid_function_handler
 {
 	node_t Node;
-	hid_driver_node_t *DriverNode;
+	const hid_driver_t *Driver;
 	hid_function_t *Function;
 	unsigned char MaxReportId;
 };
@@ -102,9 +102,11 @@ typedef struct
 
 void usb_hid_initialize(dispatcher_context_t *context);
 void usb_hid_add_driver(hid_driver_node_t *node);
+
 bool usb_hid_parse_report_descriptor(hid_report_parser_t *parser, hid_report_parser_item_t *item, hid_parse_found_t *pfound);
 bool usb_hid_parse_find_collection(hid_report_parser_t *parser, unsigned char collection_type);
 void usb_hid_parse_local_item(const hid_report_parser_item_t *item, usb_hid_desktop_usage_t *pusage, usb_hid_desktop_usage_t *pusage_min, usb_hid_desktop_usage_t *pusage_max);
+
 bool usb_hid_set_idle(hid_function_t *func, unsigned char report_id, unsigned char idle);
 bool usb_hid_set_report(hid_function_t *func, unsigned char report_type, unsigned char report_id, void *data, int length);
 unsigned usb_hid_read_field(unsigned bit_offset, unsigned bit_length, const unsigned char *report, unsigned char *data);

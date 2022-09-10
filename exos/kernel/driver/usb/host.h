@@ -76,7 +76,7 @@ typedef struct
 struct __usb_host_function_driver
 {
 	usb_host_function_t *(*CheckInterface)(usb_host_device_t *device, usb_configuration_descriptor_t *conf_desc, usb_descriptor_header_t *fn_desc);
-	void (*Start)(usb_host_function_t *func);
+	void (*Start)(usb_host_function_t *func, usb_configuration_descriptor_t *conf_desc, usb_descriptor_header_t *fn_desc);
 	void (*Stop)(usb_host_function_t *func);
 };
 

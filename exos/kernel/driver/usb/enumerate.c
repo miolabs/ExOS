@@ -96,8 +96,9 @@ static unsigned _enum_interfaces(usb_host_device_t *device, usb_configuration_de
 		if (fn_desc->DescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE)
 		{
 			usb_interface_descriptor_t *if_desc = (usb_interface_descriptor_t *)fn_desc;
-			verbose(VERBOSE_DEBUG, "usbh-enum", "checking conf #%d, interface #%d...", 
-				conf_desc->ConfigurationIndex, if_desc->InterfaceNumber);
+			verbose(VERBOSE_DEBUG, "usbh-enum", "checking conf #%d, if #%d (alt=%d, class=$%x/$%x, proto=%d) ...", 
+				conf_desc->ConfigurationIndex, if_desc->InterfaceNumber,
+				if_desc->AlternateSetting, if_desc->InterfaceClass, if_desc->InterfaceSubClass, if_desc->Protocol);
 			found_driver = usb_host_driver_enumerate(_check_interface, &enum_data);
 		}
 		else if (fn_desc->DescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE_ASSOCIATION)
@@ -121,7 +122,7 @@ static unsigned _enum_interfaces(usb_host_device_t *device, usb_configuration_de
 
 			usb_host_function_t *func = enum_data.Function;
 			const usb_host_function_driver_t *driver = func->Driver;
-			driver->Start(func);
+			driver->Start(func, conf_desc, fn_desc);
 			list_add_tail(&device->Functions, &func->Node); 
 			done++;
 		}

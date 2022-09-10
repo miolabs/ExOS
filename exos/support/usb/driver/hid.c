@@ -15,7 +15,7 @@ static hid_function_t _function[HID_MAX_INSTANCES] __usb;
 static unsigned char _function_busy[HID_MAX_INSTANCES];
 
 static usb_host_function_t *_check_interface(usb_host_device_t *device, usb_configuration_descriptor_t *conf_desc, usb_descriptor_header_t *fn_desc);
-static void _start(usb_host_function_t *func);
+static void _start(usb_host_function_t *func, usb_configuration_descriptor_t *conf_desc, usb_descriptor_header_t *fn_desc);
 static void _stop(usb_host_function_t *func);
 static const usb_host_function_driver_t _driver = { 
 	.CheckInterface = _check_interface, 
@@ -214,16 +214,16 @@ static hid_function_handler_t *_check_hid_descriptor_report(usb_host_device_t *d
 
 		hid_driver_node_t *driver_node = (hid_driver_node_t *)node;
 		const hid_driver_t *driver = driver_node->Driver;
-		ASSERT(driver != nullptr, KERNEL_ERROR_NULL_POINTER);
-		ASSERT(driver->MatchDevice != nullptr, KERNEL_ERROR_NULL_POINTER);
+		//ASSERT(driver != nullptr, KERNEL_ERROR_NULL_POINTER);
+		//ASSERT(driver->MatchDevice != nullptr, KERNEL_ERROR_NULL_POINTER);
 
-		handler = driver->MatchDevice(device, conf_desc, if_desc, &parser);
-		if (handler != nullptr)
-		{
-   			verbose(VERBOSE_COMMENT, "usb-hid", "handler found; max report id = %d", handler->MaxReportId); 
-			handler->DriverNode = driver_node;
-			break;
-		}
+		//handler = driver->MatchDevice(device, conf_desc, if_desc, (report_desc != NULL && desc_length != 0) ? &parser : NULL);
+		//if (handler != nullptr)
+		//{
+		//	verbose(VERBOSE_COMMENT, "usb-hid", "handler found; max report id = %d", handler->MaxReportId); 
+		//	handler->DriverNode = driver_node;
+		//	break;
+		//}
 	}
 	exos_mutex_unlock(&_manager_lock);
 	return handler;
@@ -244,77 +244,76 @@ static usb_host_function_t *_check_interface(usb_host_device_t *device, usb_conf
 				conf_desc, if_desc,
 				USB_HID_DESCRIPTOR_HID, 0);
 			
+			// NOTE: ensure that Hdd descriptor exists and has at elast one report descriptor
 			if (hid_desc != nullptr && hid_desc->NumDescriptors >= 1 &&
 				hid_desc->ReportDescriptors[0].DescriptorType == USB_HID_DESCRIPTOR_REPORT)
 			{
-				unsigned short desc_length = USB16TOH(hid_desc->ReportDescriptors[0].DescriptorLength);
-				if (desc_length <= HID_MAX_REPORT_DESCRIPTOR_SIZE &&
-					usb_host_read_if_descriptor(device, if_desc->InterfaceNumber, 
-						USB_HID_DESCRIPTOR_REPORT, 0, _report_buffer, desc_length))
+				hid_function_handler_t *handler = NULL;
+
+				exos_mutex_lock(&_manager_lock);	
+				FOREACH(node, &_manager_list)
 				{
-					hid_function_handler_t *handler = _check_hid_descriptor_report(device, conf_desc, if_desc, _report_buffer, desc_length);
-					
-					if (handler != nullptr)
+					hid_driver_node_t *driver_node = (hid_driver_node_t *)node;
+					const hid_driver_t *driver = driver_node->Driver;
+					ASSERT(driver != nullptr, KERNEL_ERROR_NULL_POINTER);
+					ASSERT(driver->MatchDevice != nullptr, KERNEL_ERROR_NULL_POINTER);
+
+					handler = driver->MatchDevice(device, conf_desc, if_desc, hid_desc);
+					if (handler != NULL)
+						handler->Driver = driver;
+				}
+
+				if (handler != nullptr)
+				{
+					for(int i = 0; i < HID_MAX_INSTANCES; i++)
 					{
-						for(int i = 0; i < HID_MAX_INSTANCES; i++)
+						if (_function[i].Handler == nullptr)
 						{
-							if (_function[i].Handler == nullptr)
-							{
-								func = &_function[i];
-								func->InstanceIndex = i;
-								break;
-							}
+							func = &_function[i];
+							func->InstanceIndex = i;
+							break;
 						}
+					}
 
-						if (func != nullptr)
+					if (func != nullptr)
+					{
+						usb_host_create_function((usb_host_function_t *)func, device, &_driver);
+						func->Interface = if_desc->InterfaceNumber;
+						func->InterfaceSubClass = if_desc->InterfaceSubClass;
+						func->Protocol = if_desc->Protocol;
+
+						usb_endpoint_descriptor_t *ep_desc;			
+						ep_desc = usb_enumerate_find_endpoint_descriptor(conf_desc, if_desc, USB_TT_INTERRUPT, USB_DEVICE_TO_HOST, 0);
+						if (ep_desc != nullptr)
 						{
-							usb_host_create_function((usb_host_function_t *)func, device, &_driver);
-							func->Interface = if_desc->InterfaceNumber;
-							func->InterfaceSubClass = if_desc->InterfaceSubClass;
-							func->Protocol = if_desc->Protocol;
+							usb_host_init_pipe_from_descriptor(device, &func->InputPipe, ep_desc);
 
-							usb_endpoint_descriptor_t *ep_desc;			
-							ep_desc = usb_enumerate_find_endpoint_descriptor(conf_desc, if_desc, USB_TT_INTERRUPT, USB_DEVICE_TO_HOST, 0);
-							if (ep_desc != nullptr)
-							{
-								usb_host_init_pipe_from_descriptor(device, &func->InputPipe, ep_desc);
+							handler->Function = func;
+							func->Handler = handler;
+							func->ExitFlag = 0;
 
-								handler->Function = func;
-								func->Handler = handler;
-								func->ExitFlag = 0;
+							verbose(VERBOSE_DEBUG, "usb-hid", "created new instance for interface #%d (port #%d)", 
+								if_desc->InterfaceNumber, device->Port);
 
-								verbose(VERBOSE_DEBUG, "usb-hid", "created new instance for interface #%d (port #%d)", 
-									if_desc->InterfaceNumber, device->Port);
-
-								return (usb_host_function_t *)func;
-							}
-							else verbose(VERBOSE_ERROR, "usb-hid", "cannot start interrupt IN ep for interface #%d (port #%d)", 
-									if_desc->InterfaceNumber, device->Port);
+							return (usb_host_function_t *)func;
 						}
-						else verbose(VERBOSE_ERROR, "usb-hid", "cannot allocate a new instance for interface #%d (port #%d)", 
+						else verbose(VERBOSE_ERROR, "usb-hid", "cannot start interrupt IN ep for interface #%d (port #%d)", 
 								if_desc->InterfaceNumber, device->Port);
 					}
-					else verbose(VERBOSE_DEBUG, "usb-hid", "no handler matches interface #%d (port #%d)", 
+					else verbose(VERBOSE_ERROR, "usb-hid", "cannot allocate a new instance for interface #%d (port #%d)", 
 							if_desc->InterfaceNumber, device->Port);
 				}
-				else
-				{
-					if (desc_length > HID_MAX_REPORT_DESCRIPTOR_SIZE)
-					{
-						verbose(VERBOSE_ERROR, "usb-hid", "desc_length (%d) > HID_MAX_REPORT_DESCRIPTOR_SIZE", desc_length);			
-					}
-					verbose(VERBOSE_ERROR, "usb-hid", "cannot read report descriptor for interface #%d (port #%d)", 
-						if_desc->InterfaceNumber, device->Port);			
-				}
+				else verbose(VERBOSE_DEBUG, "usb-hid", "no handler matches interface #%d (port #%d)", 
+						if_desc->InterfaceNumber, device->Port);
 			}
-			else verbose(VERBOSE_ERROR, "usb-hid", "cannot find report descriptor for interface #%d (port #%d)", 
+			else verbose(VERBOSE_ERROR, "usb-hid", "cannot find Hid descriptor for interface #%d (port #%d)", 
 					if_desc->InterfaceNumber, device->Port);			
 		}
 	}
 	return nullptr;
 }
 
-static void _start(usb_host_function_t *usb_func)
+static void _start(usb_host_function_t *usb_func, usb_configuration_descriptor_t *conf_desc, usb_descriptor_header_t *fn_desc)
 {
 	hid_function_t *func = (hid_function_t *)usb_func;
 	hid_function_handler_t *handler = func->Handler;
@@ -323,22 +322,49 @@ static void _start(usb_host_function_t *usb_func)
 	
 	ASSERT(func->InstanceIndex < HID_MAX_INSTANCES, KERNEL_ERROR_KERNEL_PANIC);
 	ASSERT(_function_busy[func->InstanceIndex] == 0, KERNEL_ERROR_KERNEL_PANIC);
-	_function_busy[func->InstanceIndex] = 1;
 
-	bool done = usb_host_start_pipe(&func->InputPipe);
-	ASSERT(done, KERNEL_ERROR_KERNEL_PANIC);
+	verbose(VERBOSE_ERROR, "usb-hid", "starting instance %d...", func->InstanceIndex);
 
-	verbose(VERBOSE_ERROR, "usb-hid", "start instance %d", func->InstanceIndex);
+	usb_hid_descriptor_t *hid_desc = (usb_hid_descriptor_t *)usb_enumerate_find_class_descriptor(conf_desc, 
+		(usb_interface_descriptor_t *)fn_desc, USB_HID_DESCRIPTOR_HID, 0);
+	if (hid_desc != NULL &&
+		hid_desc->NumDescriptors >= 1 &&
+		hid_desc->ReportDescriptors[0].DescriptorType == USB_HID_DESCRIPTOR_REPORT)
+	{
+		unsigned short desc_length = USB16TOH(hid_desc->ReportDescriptors[0].DescriptorLength);
+		if (desc_length <= HID_MAX_REPORT_DESCRIPTOR_SIZE &&
+			usb_host_read_if_descriptor(func->Device, func->Interface, 
+			USB_HID_DESCRIPTOR_REPORT, 0, _report_buffer, desc_length))
+		{
+			// NOTE: initialize parser for driver to use in Start()
+			hid_report_parser_global_state_t state = (hid_report_parser_global_state_t) { 
+				.ReportId = 0 };	// FIXME
+			hid_report_parser_t parser = (hid_report_parser_t) {
+				.Ptr = _report_buffer, .Length = desc_length, .Global = &state };
 
-	hid_driver_node_t *driver_node = handler->DriverNode;
-	ASSERT(driver_node != nullptr, KERNEL_ERROR_NULL_POINTER);
-	const hid_driver_t *driver = driver_node->Driver;
-	ASSERT(driver != nullptr && driver->Start != nullptr, KERNEL_ERROR_NULL_POINTER);
-	driver->Start(handler);
+			const hid_driver_t *driver = handler->Driver;
+			ASSERT(driver != nullptr && driver->Start != nullptr, KERNEL_ERROR_NULL_POINTER);
+			if (driver->Start(handler, &parser))
+			{
+				bool done = usb_host_start_pipe(&func->InputPipe);
+				ASSERT(done, KERNEL_ERROR_KERNEL_PANIC);
+			}
+			else verbose(VERBOSE_ERROR, "usb-hid", "handler didn't start! waiting detach...");
 
-	usb_host_urb_create(&func->Request, &func->InputPipe);
-	exos_dispatcher_create(&func->Dispatcher, nullptr, _dispatch, func);
-	exos_dispatcher_add(_context, &func->Dispatcher, 0);
+			_function_busy[func->InstanceIndex] = 1;
+
+			usb_host_urb_create(&func->Request, &func->InputPipe);
+			exos_dispatcher_create(&func->Dispatcher, nullptr, _dispatch, func);
+			exos_dispatcher_add(_context, &func->Dispatcher, 0);
+		}
+		else
+		{
+			if (desc_length > HID_MAX_REPORT_DESCRIPTOR_SIZE)
+				verbose(VERBOSE_ERROR, "usb-hid", "desc_length (%d) > HID_MAX_REPORT_DESCRIPTOR_SIZE", desc_length);			
+
+			verbose(VERBOSE_ERROR, "usb-hid", "cannot read report descriptor");		
+		}
+	}
 }
 
 static void _stop(usb_host_function_t *usb_func)
@@ -346,6 +372,8 @@ static void _stop(usb_host_function_t *usb_func)
 	hid_function_t *func = (hid_function_t *)usb_func;
 
 	func->ExitFlag = true;
+
+	// FIXME: if we stop the pipe now, the callback will crash <<<<<<
 	usb_host_stop_pipe(&func->InputPipe);
 
 	_function_busy[func->InstanceIndex] = 0;
@@ -359,8 +387,7 @@ static void _dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 	hid_function_t *func = (hid_function_t *)dispatcher->CallbackState;
 	ASSERT(func != nullptr, KERNEL_ERROR_NULL_POINTER);
 	hid_function_handler_t *handler = func->Handler;
-	ASSERT(handler != nullptr && handler->DriverNode, KERNEL_ERROR_NULL_POINTER);
-	const hid_driver_t *driver = handler->DriverNode->Driver;
+	const hid_driver_t *driver = handler->Driver;
 	ASSERT(driver != nullptr, KERNEL_ERROR_NULL_POINTER);
 
 	if (dispatcher->State == DISPATCHER_TIMEOUT)
