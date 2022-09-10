@@ -341,7 +341,20 @@ bool usb_hs_host_start_pipe(usb_host_pipe_t *pipe)
 				}
 				break;
 			case USB_TT_BULK:
-				kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+				if (_alloc_channel(&chn, pipe, pipe->Direction, 0))
+				{
+					if (pipe->Direction == USB_DEVICE_TO_HOST) 
+					{
+						verbose(VERBOSE_DEBUG, "usb-hs-core", "channel %d allocated for ep %d as bulk IN (port #%d)", chn, pipe->EndpointNumber, pipe->Device->Port);
+						ep->Rx = &_ch_table[chn];
+					}
+					else
+					{
+						verbose(VERBOSE_DEBUG, "usb-hs-core", "channel %d allocated for ep %d as bulk OUT (port #%d)", chn, pipe->EndpointNumber, pipe->Device->Port);
+						ep->Tx = &_ch_table[chn];
+					}
+					return true;
+				}
 				break;
 			case USB_TT_INTERRUPT:
 				if (_alloc_channel(&chn, pipe, pipe->Direction, pipe->InterruptInterval))
@@ -353,7 +366,7 @@ bool usb_hs_host_start_pipe(usb_host_pipe_t *pipe)
 					}
 					else
 					{
-						verbose(VERBOSE_DEBUG, "usb-hs-core", "channel %d allocated for ep %d as interrupt IN (port #%d)", chn, pipe->EndpointNumber, pipe->Device->Port); 
+						verbose(VERBOSE_DEBUG, "usb-hs-core", "channel %d allocated for ep %d as interrupt OUT (port #%d)", chn, pipe->EndpointNumber, pipe->Device->Port); 
 						ep->Tx = &_ch_table[chn];
 					}
 					return true;
