@@ -21,7 +21,7 @@ typedef struct
 	unsigned char InputBuffer[64];
 	unsigned char OutputBuffer[64];
 	
-	bool ExitFlag;
+	unsigned char ExitFlag;
 	unsigned char InstanceIndex;
 
 	usb_request_buffer_t Request;

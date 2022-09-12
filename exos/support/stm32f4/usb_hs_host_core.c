@@ -429,7 +429,7 @@ static void _disable_channel(unsigned ch_num, bool wait)
 			stm32_usbh_ep_t *ep;
 			while(ep = _ch2ep[ch_num], ep != nullptr)
 			{
-				ASSERT(ep->Status == STM32_EP_STA_STOPPING, KERNEL_ERROR_KERNEL_PANIC);
+				//ASSERT(ep->Status == STM32_EP_STA_STOPPING, KERNEL_ERROR_KERNEL_PANIC);
 			}
 		}
 	}

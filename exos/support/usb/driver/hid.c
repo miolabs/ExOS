@@ -346,16 +346,21 @@ static void _start(usb_host_function_t *usb_func, usb_configuration_descriptor_t
 			ASSERT(driver != nullptr && driver->Start != nullptr, KERNEL_ERROR_NULL_POINTER);
 			if (driver->Start(handler, &parser))
 			{
+				// NOTE: this should never fail, it's just we being paranoid
 				bool done = usb_host_start_pipe(&func->InputPipe);
 				ASSERT(done, KERNEL_ERROR_KERNEL_PANIC);
+
+				usb_host_urb_create(&func->Request, &func->InputPipe);
+				exos_dispatcher_create(&func->Dispatcher, nullptr, _dispatch, func);
+				exos_dispatcher_add(_context, &func->Dispatcher, 0);
 			}
-			else verbose(VERBOSE_ERROR, "usb-hid", "handler didn't start! waiting detach...");
+			else 
+			{
+				func->Handler = NULL;
+				verbose(VERBOSE_ERROR, "usb-hid", "handler didn't start! waiting detach...");
+			}
 
 			_function_busy[func->InstanceIndex] = 1;
-
-			usb_host_urb_create(&func->Request, &func->InputPipe);
-			exos_dispatcher_create(&func->Dispatcher, nullptr, _dispatch, func);
-			exos_dispatcher_add(_context, &func->Dispatcher, 0);
 		}
 		else
 		{
@@ -371,13 +376,24 @@ static void _stop(usb_host_function_t *usb_func)
 {
 	hid_function_t *func = (hid_function_t *)usb_func;
 
-	func->ExitFlag = true;
+	func->ExitFlag = 1;
 
-	// FIXME: if we stop the pipe now, the callback will crash <<<<<<
 	usb_host_stop_pipe(&func->InputPipe);
+	// NOTE: all pending urbs should have end with error by now
+
+	hid_function_handler_t *handler= func->Handler;
+	if (handler != NULL)
+	{
+		exos_dispatcher_remove(_context, &func->Dispatcher);
+		ASSERT(func->Request.Status != URB_STATUS_ISSUED, KERNEL_ERROR_KERNEL_PANIC);
+		const hid_driver_t *driver = handler->Driver;
+		ASSERT(driver != NULL && driver->Stop != NULL, KERNEL_ERROR_NULL_POINTER);
+		driver->Stop(handler);
+
+		_function->Handler = NULL;
+	}
 
 	_function_busy[func->InstanceIndex] = 0;
-	_function->Handler = nullptr;
 
     verbose(VERBOSE_DEBUG, "usb-hid", "stopped instance %d", func->InstanceIndex);
 }
@@ -387,6 +403,7 @@ static void _dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 	hid_function_t *func = (hid_function_t *)dispatcher->CallbackState;
 	ASSERT(func != nullptr, KERNEL_ERROR_NULL_POINTER);
 	hid_function_handler_t *handler = func->Handler;
+	ASSERT(handler != nullptr, KERNEL_ERROR_NULL_POINTER);
 	const hid_driver_t *driver = handler->Driver;
 	ASSERT(driver != nullptr, KERNEL_ERROR_NULL_POINTER);
 
@@ -446,8 +463,6 @@ static void _dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 	if (func->ExitFlag)
 	{
 		verbose(VERBOSE_DEBUG, "usb-hid", "stopping handler (%d)", func->InstanceIndex);
-
-		driver->Stop(handler);
 	}
 }
 
