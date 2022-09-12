@@ -73,6 +73,7 @@ void exos_dispatcher_remove(dispatcher_context_t *context, dispatcher_t *dispatc
 
 	exos_mutex_lock(&context->Lock);
 	_remove(context, dispatcher);
+	dispatcher->State = DISPATCHER_REMOVED;
 	exos_mutex_unlock(&context->Lock);
 }
 

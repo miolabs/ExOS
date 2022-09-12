@@ -16,6 +16,7 @@ typedef enum
 	DISPATCHER_IMMEDIATE,
 	DISPATCHER_DONE,
 	DISPATCHER_TIMEOUT,
+	DISPATCHER_REMOVED,
 } dispatcher_state_t;
 
 typedef enum
