@@ -138,8 +138,8 @@ bool usb_hid_parse_report_descriptor(hid_report_parser_t *parser, hid_report_par
 							state->NextInputOffset += state->ReportSize * state->ReportCount;
 							if (!(item->Value & USB_HID_INPUT_CONSTANT))
 							{
-								verbose(VERBOSE_DEBUG, "usb-hid", "input report #%d (offset %d, %dx%d bit) page 0x%02x", 
-									state->ReportId, state->InputOffset, state->ReportCount, state->ReportSize, state->UsagePage);
+								//verbose(VERBOSE_DEBUG, "usb-hid", "input report #%d (offset %d, %dx%d bit) page 0x%02x", 
+								//	state->ReportId, state->InputOffset, state->ReportCount, state->ReportSize, state->UsagePage);
 
 								*pfound = HID_PARSE_FOUND_INPUT;
 								found = true;
@@ -151,8 +151,8 @@ bool usb_hid_parse_report_descriptor(hid_report_parser_t *parser, hid_report_par
 						{
 							state->OutputOffset = state->NextOutputOffset;
 							state->NextOutputOffset += state->ReportSize * state->ReportCount;
-							verbose(VERBOSE_DEBUG, "usb-hid", "output report #%d (offset %d, %dx%d bit) page 0x%02x", 
-								state->ReportId, state->OutputOffset, state->ReportCount, state->ReportSize, state->UsagePage);
+							//verbose(VERBOSE_DEBUG, "usb-hid", "output report #%d (offset %d, %dx%d bit) page 0x%02x", 
+							//	state->ReportId, state->OutputOffset, state->ReportCount, state->ReportSize, state->UsagePage);
 
 							*pfound = HID_PARSE_FOUND_OUTPUT;
 							found = true;
