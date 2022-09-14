@@ -84,8 +84,29 @@ void iap2_stop()
 
 //-------------------------
 
-static bool _identify()
+static bool _send(iap2_transport_t *t, const unsigned char *data, unsigned length)
 {
+	const iap2_transport_driver_t *driver = t->Driver;
+	ASSERT(driver != NULL && driver->Send != NULL, KERNEL_ERROR_NULL_POINTER);
+	return driver->Send(t, data, length);
+}
+
+static bool _initialize(iap2_transport_t *t)
+{
+	const unsigned char _hello[] = { 0xff, 0x55, 0x02, 0x00, 0xee, 0x10 };
+
+	bool done = false;
+	for(unsigned i = 0; i < 30; i++)
+	{
+		if (!_send(t, _hello, sizeof(_hello)))
+		{
+			_verbose(VERBOSE_ERROR, "send hello failed!");
+			break;
+		}
+		exos_thread_sleep(1000);
+	}
+
+	return done;
 }
 
 static void _slave_io()
@@ -100,7 +121,7 @@ static void *_service(void *arg)
 
 	_verbose(VERBOSE_COMMENT, "Service starting (%s)...", t->Id);
 
-	if (_identify())
+	if (_initialize(t))
 	{
 		_verbose(VERBOSE_DEBUG, "Identify procedure succeded!");
 

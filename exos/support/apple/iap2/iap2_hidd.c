@@ -21,7 +21,7 @@ static const hid_driver_t _hid_driver = {
 	.Notify = _notify };
 static hid_driver_node_t _hid_driver_node = { .Driver = &_hid_driver };
 
-static bool _iap2_send(iap2_transport_t *t, unsigned char *data, unsigned length);
+static bool _iap2_send(iap2_transport_t *t, const unsigned char *data, unsigned length);
 static const iap2_transport_driver_t _iap2_driver = {
 	.Send = _iap2_send,
 	}; 
@@ -167,7 +167,7 @@ static struct iap2_hid_report  *_get_best_bigger_report(iap2_hid_handler_t *iap2
 	return best;
 }
 
-static bool _iap2_send(iap2_transport_t *t, unsigned char *data, unsigned length)
+static bool _iap2_send(iap2_transport_t *t, const unsigned char *data, unsigned length)
 {
 	iap2_hid_handler_t *iap2 = &_instance; // NOTE: single instance
 	ASSERT(t == &iap2->Transport, KERNEL_ERROR_KERNEL_PANIC);
@@ -176,7 +176,6 @@ static bool _iap2_send(iap2_transport_t *t, unsigned char *data, unsigned length
 
 	struct iap2_hid_report *r;
 	unsigned char buffer[64];
-	unsigned char sum = 0;
 	
 	buffer[1] = IAP2_LCB_START;
 	unsigned offset = 2;
@@ -194,7 +193,7 @@ static bool _iap2_send(iap2_transport_t *t, unsigned char *data, unsigned length
 		if ((offset + fit) > report_size) fit = report_size - offset;
 
 		for (unsigned i = 0; i < fit; i++) 
-			sum += buffer[offset++] = data[payload_offset++];
+			buffer[offset++] = data[payload_offset++];
 
 		if (offset == report_size)
 		{
@@ -213,22 +212,19 @@ static bool _iap2_send(iap2_transport_t *t, unsigned char *data, unsigned length
 		payload -= fit;
 	}
 
-	for (unsigned i = 0; i < payload; i++) 
-		sum += buffer[offset++] = data[payload_offset++];
-	buffer[offset++] = -sum;
-
 	r = _get_best_bigger_report(iap2, offset);
 	if (r != NULL)
 	{
 		unsigned report_size = r->Length + 1;	// NOTE: byte for report_id
 		buffer[0] = r->ReportId;
+		while (payload_offset < length)
+			buffer[offset++] = data[payload_offset++];
+		ASSERT(offset <= sizeof(buffer), KERNEL_ERROR_UNKNOWN);
 		for (unsigned i = offset; i < report_size; i++) 
 			buffer[i] = 0; 
 		
-		if (usb_hid_set_report(iap2->Hid.Function, USB_HID_REPORT_OUTPUT, r->ReportId, buffer, offset))
+		if (usb_hid_set_report(iap2->Hid.Function, USB_HID_REPORT_OUTPUT, r->ReportId, buffer, report_size))
 		{
-			//_verbose(VERBOSE_DEBUG, "<- CMD%02x(%x) tr=%x",
-			//	cmd->CommandID, cmd->LingoID, cmd->Transaction);
 			return true;
 		}
 		else _verbose(VERBOSE_DEBUG, "set report failed (2)");

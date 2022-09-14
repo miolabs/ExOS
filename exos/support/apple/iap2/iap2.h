@@ -3,6 +3,8 @@
 
 #include <stdbool.h>
 
+#define USB_IAP_REQ_DEVICE_POWER_REQUEST 0x40
+
 typedef struct
 {
 	// TODO
@@ -20,7 +22,7 @@ typedef struct
 
 struct iap2_transport_driver
 {
-	bool (*Send)(iap2_transport_t *t, unsigned char *data, unsigned length);
+	bool (*Send)(iap2_transport_t *t, const unsigned char *data, unsigned length);
 	// TODO
 };
 
