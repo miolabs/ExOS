@@ -3,7 +3,8 @@
 
 #include <support/usb/driver/hid.h>
 #include <kernel/tree.h>
-#include <comm/comm.h>
+#include <kernel/io.h>
+#include <kernel/iobuffer.h>
 
 #ifndef USB_KEYBOARD_MAX_INSTANCES
 #define USB_KEYBOARD_MAX_INSTANCES 1
@@ -11,30 +12,12 @@
 
 #define USB_KEYBOARD_IO_BUFFER 16
 
-typedef enum
-{
-	USBKB_IO_NOT_MOUNTED = 0,
-	USBKB_IO_CLOSED,
-	USBKB_IO_OPENING,
-	USBKB_IO_READY,
-	USBKB_IO_ERROR,
-} USBKB_IO_STATE;
-
 typedef struct
 {
-	EXOS_TREE_DEVICE KernelDevice;
-	COMM_IO_ENTRY *Entry;
-    USBKB_IO_STATE State;
-	EXOS_IO_BUFFER IOBuffer;
-   	unsigned char Buffer[USB_KEYBOARD_IO_BUFFER];	
+	io_entry_t *Entry;
+	io_buffer_t IOBuffer;
+	unsigned char Buffer[USB_KEYBOARD_IO_BUFFER];	
 } USBKB_IO_HANDLE;
-
-typedef enum
-{
-	USB_KEYBOARD_NOT_PRESENT = 0,
-	USB_KEYBOARD_PRESENT,
-	USB_KEYBOARD_REMOVED,
-} USB_KEYBOARD_STATE;
 
 typedef enum
 {
@@ -50,18 +33,23 @@ typedef enum
 
 typedef struct
 {
-	HID_FUNCTION_HANDLER;
-	HID_REPORT_INPUT *Report0;
-	HID_REPORT_INPUT *Report1;
-	USB_KEYBOARD_STATE State;
-	USBKB_IO_HANDLE *IOHandle;
-    USBKB_MODIFIERS Modifiers;
-} USB_KEYBOARD_HANDLER;
-
+	hid_function_handler_t Hid;
+	unsigned char InstanceIndex;
+	unsigned char MaxReportId;
+	enum { USB_KB_DETACHED, USB_KB_STARTING, USB_KB_READY, USB_KB_OPEN, USB_KB_ERROR } State;
+	char DeviceName[8];
+	io_tree_device_t Device;
+	io_entry_t *IOEntry;
+	io_buffer_t IOBuffer;
+	unsigned char Buffer[USB_KEYBOARD_IO_BUFFER];	
+ //   USBKB_MODIFIERS Modifiers;
+} usb_kb_function_handler_t; 
 
 void usbkb_initialize();
-void usbkb_push_text(USB_KEYBOARD_HANDLER *kb, char *text, int length);
-void usbkb_translate(USB_KEYBOARD_HANDLER *kb, unsigned char key);
+bool usbkb_set_report(hid_function_t *func, unsigned char report_id, unsigned char *data, unsigned length);
+
+//void usbkb_push_text(usb_keyboard_handler_t *kb, char *text, int length);
+//void usbkb_translate(usb_keyboard_handler_t *kb, unsigned char key);
 
 #endif // HID_KEYBOARD_H
 

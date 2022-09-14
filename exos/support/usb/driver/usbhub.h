@@ -23,7 +23,6 @@ typedef struct
 	usb_request_buffer_t Request;
 	dispatcher_t Dispatcher;
 	list_t Children;
-	event_t ExitEvent;
 } usb_hub_function_t;
 
 #define USB_HUB_CHARF_LOGICAL_POWER_MASK (0x3 << 0)

@@ -182,8 +182,8 @@ static bool _do_control_xfer(usb_request_buffer_t *urb, usb_direction_t dir, boo
 	if (_begin_xfer(urb, dir, setup, data, length))
 	{
 #ifdef DEBUG
-		if (!exos_event_wait(&urb->Event, 3000))
-			kernel_panic(KERNEL_ERROR_UNKNOWN);
+		while (!exos_event_wait(&urb->Event, 3000))
+			verbose(VERBOSE_ERROR, "usb-drv", "still waiting...");
 #else
 		exos_event_wait(&urb->Event, TIMEOUT_NEVER);
 #endif

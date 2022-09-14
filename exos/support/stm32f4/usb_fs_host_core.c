@@ -86,7 +86,7 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 		case HPORT_POWERED:
 			if (hprt & USB_OTG_HPRT_PCSTS)
 			{
-				verbose(VERBOSE_DEBUG, "usb_roothub", "connect detected");
+				verbose(VERBOSE_DEBUG, "usb-fs-roothub", "connect detected");
 				
 				exos_thread_sleep(50);	// at least 50ms before reset as of USB 2.0 spec
 
@@ -129,13 +129,13 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 				usb_host_device_t *child = usb_host_create_root_device(_hc, 0, 
 					(_port_speed == HPORT_FULL_SPEED) ? USB_HOST_DEVICE_FULL_SPEED : USB_HOST_DEVICE_LOW_SPEED);
 				if (child != nullptr)
-					verbose(VERBOSE_DEBUG, "usb_roothub", "child %04x/%04x added at port #%d", child->Vendor, child->Product, child->Port);
+					verbose(VERBOSE_DEBUG, "usb-fs-roothub", "child %04x/%04x added at port #%d", child->Vendor, child->Product, child->Port);
 				else	
-					verbose(VERBOSE_DEBUG, "usb_roothub", "device add failed");		
+					verbose(VERBOSE_DEBUG, "usb-fs-roothub", "device add failed");		
 			}
 			else 
 			{
-				verbose(VERBOSE_ERROR, "usb-roothub", "not enabled after reset");
+				verbose(VERBOSE_ERROR, "usb-fs-roothub", "not enabled after reset");
 				_port_state = HPORT_POWERED;
 				timeout = 500;
 			}
@@ -146,9 +146,9 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 			
 			ASSERT(_hc->Devices != nullptr, KERNEL_ERROR_NULL_POINTER);
 			usb_host_device_t *child = &_hc->Devices[0];	// single port
-			verbose(VERBOSE_DEBUG, "usb_roothub", "child %04x/%04x removing at port #%d", child->Vendor, child->Product, child->Port);
+			verbose(VERBOSE_DEBUG, "usb-fs-roothub", "child %04x/%04x removing at port #%d", child->Vendor, child->Product, child->Port);
 			usb_host_destroy_device(child);
-			verbose(VERBOSE_DEBUG, "usb_roothub", "child %04x/%04x removed", child->Vendor, child->Product);
+			verbose(VERBOSE_DEBUG, "usb-fs-roothub", "child %04x/%04x removed", child->Vendor, child->Product);
 			
 			exos_thread_sleep(10);	// NOTE: avoid glitchy re-connect
 			_port_state = HPORT_POWERED;
@@ -309,7 +309,7 @@ bool usb_otg_host_start_pipe(usb_host_pipe_t *pipe)
 		ASSERT(pipe->EndpointType == USB_TT_CONTROL, KERNEL_ERROR_KERNEL_PANIC);
 		pipe->Endpoint = _root_control_ep;
 		// NOTE: channels are not re-opened because they're already open and control requests will update ep when used
-		verbose(VERBOSE_DEBUG, "usb-core", "endpoint recycled for control pipe (port #%d)", pipe->Device->Port);
+		verbose(VERBOSE_DEBUG, "usb-fs-core", "endpoint recycled for control pipe (port #%d)", pipe->Device->Port);
 		return true;
 	}
 
@@ -328,7 +328,7 @@ bool usb_otg_host_start_pipe(usb_host_pipe_t *pipe)
 				{
 					if (_alloc_channel(&chn2, pipe, USB_DEVICE_TO_HOST, 0))
 					{
-						verbose(VERBOSE_DEBUG, "usb-core", "channels %d+%d allocated for control (port #%d)", chn, chn2, pipe->Device->Port); 
+						verbose(VERBOSE_DEBUG, "usb-fs-core", "channels %d+%d allocated for control (port #%d)", chn, chn2, pipe->Device->Port); 
 						ep->Tx = &_ch_table[chn];
 						ep->Rx = &_ch_table[chn2];
 
@@ -349,12 +349,12 @@ bool usb_otg_host_start_pipe(usb_host_pipe_t *pipe)
 				{
 					if (pipe->Direction == USB_DEVICE_TO_HOST) 
 					{
-						verbose(VERBOSE_DEBUG, "usb-core", "channel %d allocated for ep %d as interrupt IN (port #%d)", chn, pipe->EndpointNumber, pipe->Device->Port); 
+						verbose(VERBOSE_DEBUG, "usb-fs-core", "channel %d allocated for ep %d as interrupt IN (port #%d)", chn, pipe->EndpointNumber, pipe->Device->Port); 
 						ep->Rx = &_ch_table[chn];
 					}
 					else
 					{
-						verbose(VERBOSE_DEBUG, "usb-core", "channel %d allocated for ep %d as interrupt IN (port #%d)", chn, pipe->EndpointNumber, pipe->Device->Port); 
+						verbose(VERBOSE_DEBUG, "usb-fs-core", "channel %d allocated for ep %d as interrupt IN (port #%d)", chn, pipe->EndpointNumber, pipe->Device->Port); 
 						ep->Tx = &_ch_table[chn];
 					}
 					return true;
@@ -364,11 +364,11 @@ bool usb_otg_host_start_pipe(usb_host_pipe_t *pipe)
 				kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 		}
 
-		verbose(VERBOSE_DEBUG, "usb-core", "alloc channel failed (addr=%d, ep=%d)", pipe->Device->Address, pipe->EndpointNumber); 
+		verbose(VERBOSE_DEBUG, "usb-fs-core", "alloc channel failed (addr=%d, ep=%d)", pipe->Device->Address, pipe->EndpointNumber); 
 		pipe->Endpoint = nullptr;
 		pool_free(&_ep_pool, &ep->Node);
 	}
-	else verbose(VERBOSE_DEBUG, "usb-core", "alloc endpoint failed (addr=%d, ep=%d)", pipe->Device->Address, pipe->EndpointNumber); 
+	else verbose(VERBOSE_DEBUG, "usb-fs-core", "alloc endpoint failed (addr=%d, ep=%d)", pipe->Device->Address, pipe->EndpointNumber); 
 
 	return false;
 }

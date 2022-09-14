@@ -127,7 +127,6 @@ static void _start(usb_host_function_t *usb_func, usb_configuration_descriptor_t
 	done = usb_host_start_pipe(&func->InputPipe);
 	ASSERT(done, KERNEL_ERROR_KERNEL_PANIC);
 
-	exos_event_create(&func->ExitEvent, EXOS_EVENTF_NONE);
 	func->ExitFlag = 0;
 
 	usb_host_urb_create(&func->Request, &func->InputPipe);
@@ -137,6 +136,8 @@ static void _start(usb_host_function_t *usb_func, usb_configuration_descriptor_t
 	_verbose(VERBOSE_DEBUG, "instance #%d started", func->InstanceIndex);
 }
 
+static void _free_device(usb_host_device_t *child);
+
 static void _stop(usb_host_function_t *usb_func)
 {
 	usb_hub_function_t *func = (usb_hub_function_t *)usb_func;
@@ -144,7 +145,16 @@ static void _stop(usb_host_function_t *usb_func)
 	func->ExitFlag = 1;
 	usb_host_stop_pipe(&func->InputPipe);
 
-	exos_event_wait(&func->ExitEvent, EXOS_TIMEOUT_NEVER);
+	exos_dispatcher_remove(_context, &func->Dispatcher);
+	ASSERT(func->Request.Status != URB_STATUS_ISSUED, KERNEL_ERROR_KERNEL_PANIC);
+
+	usb_host_device_t *child;
+	while(child = (usb_host_device_t *)LIST_FIRST(&func->Children))
+	{
+		list_remove(&child->Node);
+		_free_device(child);
+	}
+
 	_function_busy[func->InstanceIndex] = 0;
 }
 
@@ -422,13 +432,7 @@ static void _dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 
 	if (func->ExitFlag != 0)
 	{
-		usb_host_device_t *child;
-		while(child = (usb_host_device_t *)LIST_FIRST(&func->Children))
-		{
-			list_remove(&child->Node);
-			_free_device(child);
-		}
-		exos_event_set(&func->ExitEvent);
+		_verbose(VERBOSE_DEBUG, "dispatcher exit code %d", func->ExitFlag);
 	}
 }
 

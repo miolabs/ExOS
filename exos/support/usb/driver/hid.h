@@ -76,7 +76,7 @@ typedef struct
 		usb_interface_descriptor_t *if_desc, usb_hid_descriptor_t *hid_desc);
 	bool (*Start)(hid_function_handler_t *handler, hid_report_parser_t *parser);
 	void (*Stop)(hid_function_handler_t *handler);
-	void (*Notify)(hid_function_handler_t *handler, unsigned char report_id, unsigned char *data, unsigned length);
+	void (*Notify)(hid_function_handler_t *handler, unsigned char *data, unsigned length);
 } hid_driver_t;
 
 typedef struct
@@ -90,7 +90,7 @@ struct __hid_function_handler
 	node_t Node;
 	const hid_driver_t *Driver;
 	hid_function_t *Function;
-	unsigned char MaxReportId;
+//	unsigned char MaxReportId;	moved to each handler discretion
 };
 
 typedef struct

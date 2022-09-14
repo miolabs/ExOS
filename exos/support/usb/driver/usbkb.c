@@ -1,222 +1,268 @@
 #include "usbkb.h"
+#include <support/misc/pools.h>
+#include <kernel/verbose.h>
+#include <kernel/panic.h>
 #include <stdio.h>
 
-static HID_FUNCTION_HANDLER *_match_device(HID_FUNCTION *func);
-static int _match_handler(HID_FUNCTION_HANDLER *handler, HID_REPORT_INPUT *input);
-static void _start(HID_FUNCTION_HANDLER *handler);
-static void _stop(HID_FUNCTION_HANDLER *handler);
-static void _notify(HID_FUNCTION_HANDLER *handler, HID_REPORT_INPUT *input, unsigned char *data);
-static const HID_DRIVER _hidd_driver = { 
-	.MatchDevice = _match_device, .MatchInputHandler = _match_handler,
+#ifdef DEBUG
+#define _verbose(level, ...) verbose(level, "usb-kb", __VA_ARGS__)
+#else
+#devine _verbose(level, ...) { /* nothing */ }
+#endif
+
+static pool_t _handler_pool;
+
+static hid_function_handler_t *_match_device(usb_host_device_t *device, usb_configuration_descriptor_t *conf_desc, usb_interface_descriptor_t *if_desc, 
+		usb_hid_descriptor_t *hid_desc);
+static bool _start(hid_function_handler_t *handler, hid_report_parser_t *parser);
+static void _stop(hid_function_handler_t *handler);
+static void _notify(hid_function_handler_t *handler, unsigned char *data, unsigned length);
+static const hid_driver_t _driver = {
+	.MatchDevice = _match_device, 
 	.Start = _start, .Stop = _stop,
 	.Notify = _notify };
-static HID_DRIVER_NODE _hidd_driver_node = { .Driver = &_hidd_driver };
 
-static int _open(COMM_IO_ENTRY *io);
-static void _close(COMM_IO_ENTRY *io);
-static int _get_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value);
-static int _set_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value);
-static int _read(COMM_IO_ENTRY *io, unsigned char *buffer, unsigned long length);
-static int _write(COMM_IO_ENTRY *io, const unsigned char *buffer, unsigned long length);
+static io_error_t _open(io_entry_t *io, const char *path, io_flags_t flags);
+static void _close(io_entry_t *io);
+//static int _get_attr(io_entry_t *io, COMM_ATTR_ID attr, void *value);
+//static int _set_attr(io_entry_t *io, COMM_ATTR_ID attr, void *value);
+static int _read(io_entry_t *io, unsigned char *buffer, unsigned length);
+static int _write(io_entry_t *io, const unsigned char *buffer, unsigned length);
 
-static const COMM_DRIVER _comm_driver = {
+static const io_driver_t _io_driver = {
 	.Open = _open, .Close = _close,
-    .GetAttr = _get_attr, .SetAttr = _set_attr, 
+//	.GetAttr = _get_attr, .SetAttr = _set_attr, 
 	.Read = _read, .Write = _write };
-static COMM_DEVICE _comm_device = { .Driver = &_comm_driver, .PortCount = USB_KEYBOARD_MAX_INSTANCES };
-
-static USB_KEYBOARD_HANDLER _instances[USB_KEYBOARD_MAX_INSTANCES];
-static USBKB_IO_HANDLE _handles[USB_KEYBOARD_MAX_INSTANCES];
-static const char *_device_names[] = { "usbkb0", "usbkb1", "usbkb2", "usbkb3" };
 
 void usbkb_initialize()
 {
-	for (int i = 0; i < USB_KEYBOARD_MAX_INSTANCES; i++)
-	{
-		USBKB_IO_HANDLE *handle = &_handles[i];
-		handle->State = USBKB_IO_NOT_MOUNTED;
-		handle->KernelDevice = (EXOS_TREE_DEVICE) {
-			.Name = _device_names[i],
-			.Device = &_comm_device,
-			.Unit = i };
+	static usb_kb_function_handler_t _handler_heap[USB_KEYBOARD_MAX_INSTANCES];
 
-		_instances[i] = (USB_KEYBOARD_HANDLER) { .State = USB_KEYBOARD_NOT_PRESENT, .IOHandle = handle };
+	pool_create(&_handler_pool, (node_t *)_handler_heap, sizeof(usb_kb_function_handler_t), USB_KEYBOARD_MAX_INSTANCES);
+	for (unsigned i = 0; i < USB_KEYBOARD_MAX_INSTANCES; i++) 
+	{
+		usb_kb_function_handler_t *kb = (usb_kb_function_handler_t *)&_handler_heap[i];
+		kb->InstanceIndex = i;
+		kb->State = USB_KB_DETACHED;
+		kb->IOEntry = NULL; 
+		sprintf(kb->DeviceName, "usbkb%d", i);
+		exos_io_add_device(&kb->Device, kb->DeviceName, &_io_driver, kb);
 	}
 
-	usbd_hid_add_driver(&_hidd_driver_node);
+	static hid_driver_node_t node = (hid_driver_node_t) { .Driver = &_driver };
+	usb_hid_add_driver(&node);
 }
 
-static HID_FUNCTION_HANDLER *_match_device(HID_FUNCTION *func)
+static hid_function_handler_t *_match_device(usb_host_device_t *device, 
+	usb_configuration_descriptor_t *conf_desc, usb_interface_descriptor_t *if_desc, 
+	usb_hid_descriptor_t *hid_desc)
 {
-	if (func->InterfaceSubClass == USB_HID_SUBCLASS_BOOT && 
-		func->Protocol == USB_HID_PROTOCOL_KEYBOARD)
+	if (if_desc->InterfaceSubClass == USB_HID_SUBCLASS_BOOT && 
+		if_desc->Protocol == USB_HID_PROTOCOL_KEYBOARD)
 	{
-		for (int i = 0; i < USB_KEYBOARD_MAX_INSTANCES; i++)
+		usb_kb_function_handler_t *kb_handler = (usb_kb_function_handler_t *)pool_allocate(&_handler_pool);
+
+		if (kb_handler != NULL)
 		{
-			USB_KEYBOARD_HANDLER *kb = &_instances[i];
-			if (kb->State == USB_KEYBOARD_NOT_PRESENT ||
-				kb->State == USB_KEYBOARD_REMOVED) 
-			{
-				kb->Report0 = NULL;
-				kb->Report1 = NULL;
-				return (HID_FUNCTION_HANDLER *)kb;
-			}
+			kb_handler->State = USB_KB_STARTING;
+			return (hid_function_handler_t *)kb_handler;
 		}
+		else _verbose(VERBOSE_ERROR, "handler instance not available for new device"); 
 	}
 	return NULL;
 }
 
-static int _match_handler(HID_FUNCTION_HANDLER *handler, HID_REPORT_INPUT *input)
+static bool _parse_report_descriptor(usb_kb_function_handler_t *handler, hid_report_parser_t *parser)
 {
-	USB_KEYBOARD_HANDLER *kb = (USB_KEYBOARD_HANDLER *)handler;
-	if (input->UsagePage == 7) // FIXME: use enum
+	hid_report_parser_global_state_t *state = parser->Global;
+	ASSERT(state != NULL, KERNEL_ERROR_NULL_POINTER);
+
+	hid_report_parser_item_t item;
+	hid_parse_found_t found;
+	bool usage_ok = false;
+
+	unsigned usage_offset = 0;
+	usb_hid_desktop_usage_t usage = 0, usage_min = 0, usage_max = 0;
+
+	while(usb_hid_parse_report_descriptor(parser, &item, &found))
 	{
-		if (input->Offset == 0)
+		if (parser->Global->ReportId > handler->MaxReportId)
+			handler->MaxReportId = parser->Global->ReportId;
+
+		switch(found)
 		{
-			kb->Report0 = input;
-			return 1;
-		}
-		else if (kb->Report1 == 0)
-		{
-			kb->Report1 = input; 
-			return 1;
+			case HID_PARSE_FOUND_LOCAL:
+				usb_hid_parse_local_item(&item, &usage, &usage_min, &usage_max);
+				break;
+			case HID_PARSE_FOUND_INPUT:
+				if (state->UsagePage == USB_HID_USAGE_PAGE_KEYBOARD)
+				{
+					if (usage_min != usage_max)
+					{
+						_verbose(VERBOSE_DEBUG, "report id #%d, keyboard page, usages 0x%02x-0x%02x (offset %d)", 
+							state->ReportId, usage_min, usage_max, state->InputOffset);
+					}
+				
+					usage_ok = true; 
+				}
+				break;
 		}
 	}
-	return 0;
+
+	return usage_ok;
 }
 
-static void _start(HID_FUNCTION_HANDLER *handler)
+static bool _start(hid_function_handler_t *handler, hid_report_parser_t *parser)
 {
-	USB_KEYBOARD_HANDLER *kb = (USB_KEYBOARD_HANDLER *)handler;
-	if (kb->Report1 != NULL)
-	{
-		USBKB_IO_HANDLE *handle = kb->IOHandle;
-		if (handle->State == USBKB_IO_NOT_MOUNTED)
-		{
-			handle->State = USBKB_IO_CLOSED;
-			comm_add_device(&handle->KernelDevice, "dev");
-		}
-		else
-		{
-			handle->State = USBKB_IO_CLOSED;
-		}
-	}
-}
+	usb_kb_function_handler_t *kb = (usb_kb_function_handler_t *)handler;
 
-static void _stop(HID_FUNCTION_HANDLER *handler)
-{
-	USB_KEYBOARD_HANDLER *kb = (USB_KEYBOARD_HANDLER *)handler;
-	USBKB_IO_HANDLE *handle = kb->IOHandle;
+	_verbose(VERBOSE_COMMENT, "starting...");
 	
-	COMM_IO_ENTRY *io = handle->Entry;
-	if (io != NULL) 
+#ifdef DEBUG
+	bool usage_ok = _parse_report_descriptor(kb, parser);
+	if(!usage_ok)
+		_verbose(VERBOSE_COMMENT, "could not find keyboard usage"); 
+#endif
+
+	bool done = usb_hid_set_idle(handler->Function, 0, 0);
+	if (!done) 
+		_verbose(VERBOSE_ERROR, "set report idle failed!"); 
+
+	kb->State = USB_KB_READY;
+}
+
+static void _stop(hid_function_handler_t *handler)
+{
+	usb_kb_function_handler_t *kb = (usb_kb_function_handler_t *)handler;
+	
+	if (kb->State == USB_KB_OPEN)
 	{
-		handle->State = USBKB_IO_ERROR;
-		comm_io_close(io);
+		_verbose(VERBOSE_DEBUG, "closing kb io on detaching..."); 
+		ASSERT(kb->IOEntry != NULL, KERNEL_ERROR_KERNEL_PANIC);
+		exos_io_close(kb->IOEntry);
 	}
-	kb->State = USB_KEYBOARD_REMOVED;
+	ASSERT(kb->IOEntry == NULL, KERNEL_ERROR_KERNEL_PANIC);
+	kb->State = USB_KB_DETACHED;
+	_verbose(VERBOSE_COMMENT, "stopped");
+
+	pool_free(&_handler_pool, &handler->Node);
 }
 
-static void _notify(HID_FUNCTION_HANDLER *handler, HID_REPORT_INPUT *input, unsigned char *data)
+static void _notify(hid_function_handler_t *handler, unsigned char *data, unsigned length)
 {
-	int packet_size = ((input->Size * input->Count) >> 3);
-	USB_KEYBOARD_HANDLER *kb = (USB_KEYBOARD_HANDLER *)handler;
+	usb_kb_function_handler_t *kb = (usb_kb_function_handler_t *)handler;
 
-	if (input == kb->Report0)
+//	int packet_size = ((input->Size * input->Count) >> 3);
+//	USB_KEYBOARD_HANDLER *kb = (USB_KEYBOARD_HANDLER *)handler;
+
+#if 1
+	static unsigned char buffer[32];
+	sprintf(buffer, "%02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x",
+		data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]);
+	_verbose(VERBOSE_DEBUG, "notify (%d) %s", length, buffer); 
+#endif
+
+	//if (input == kb->Report0)
+	//{
+	//	kb->Modifiers = data[0];
+	//}
+	//else if (input == kb->Report1)
+	//{
+	//	for (int i = 0; i < packet_size; i++)
+	//	{
+	//		unsigned char key = data[i];
+	//		if (key != 0)
+	//			usbkb_translate(kb, key);
+	//		else break;
+	//	}
+	//}
+}
+
+//void usbkb_push_text(USB_KEYBOARD_HANDLER *kb, char *text, int length)
+//{
+//	USBKB_IO_HANDLE *handle = kb->IOHandle;
+//	if (handle != NULL && handle->State == USBKB_IO_READY)
+//	{
+//		exos_io_buffer_write(&handle->IOBuffer, text, length);
+//	}
+//}
+
+//__attribute__((__weak__))
+//void usbkb_translate(USB_KEYBOARD_HANDLER *kb, unsigned char key)
+//{
+//	char buffer[4];
+//	int length = sprintf(buffer, "%x ", key);
+//	usbkb_push_text(kb, buffer, length);
+//}
+
+
+//  IO interface
+
+static io_error_t _open(io_entry_t *io, const char *path, io_flags_t flags)
+{
+	usb_kb_function_handler_t *kb = (usb_kb_function_handler_t *)io->DriverContext;
+	ASSERT(kb != NULL, KERNEL_ERROR_NULL_POINTER);
+
+	switch(kb->State)
 	{
-		kb->Modifiers = data[0];
+		case USB_KB_READY:
+			exos_io_buffer_create(&kb->IOBuffer, kb->Buffer, sizeof(kb->Buffer), &io->InputEvent, NULL);
+			kb->State = USB_KB_OPEN;
+			return IO_OK;
+		case USB_KB_OPEN:
+			return IO_ERROR_ALREADY_LOCKED;
+		case USB_KB_DETACHED:
+			return IO_ERROR_DEVICE_NOT_MOUNTED;
 	}
-	else if (input == kb->Report1)
+	return IO_ERROR_UNKNOWN;
+}
+
+//static int _get_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
+//{
+//	// TODO: support baud rate, etc.
+//	return -1;
+//}
+
+//static int _set_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
+//{
+//	// TODO: support baud rate, etc.
+//	return -1;
+//}
+
+static void _close(io_entry_t *io)
+{
+	usb_kb_function_handler_t *kb = (usb_kb_function_handler_t *)io->DriverContext;
+	ASSERT(kb != NULL, KERNEL_ERROR_NULL_POINTER);
+
+	if (kb->State == USB_KB_OPEN)
 	{
-		for (int i = 0; i < packet_size; i++)
-		{
-			unsigned char key = data[i];
-			if (key != 0)
-				usbkb_translate(kb, key);
-			else break;
-		}
-	}
-}
-
-void usbkb_push_text(USB_KEYBOARD_HANDLER *kb, char *text, int length)
-{
-	USBKB_IO_HANDLE *handle = kb->IOHandle;
-	if (handle != NULL && handle->State == USBKB_IO_READY)
-	{
-		exos_io_buffer_write(&handle->IOBuffer, text, length);
-	}
-}
-
-__attribute__((__weak__))
-void usbkb_translate(USB_KEYBOARD_HANDLER *kb, unsigned char key)
-{
-	char buffer[4];
-	int length = sprintf(buffer, "%x ", key);
-	usbkb_push_text(kb, buffer, length);
-}
-
-
-// COM interface
-static int _open(COMM_IO_ENTRY *io)
-{
-	USBKB_IO_HANDLE *handle = &_handles[io->Port];
-	if (handle->State == USBKB_IO_CLOSED)
-	{
-		handle->State = USBKB_IO_OPENING;
-		handle->Entry = io;
-
-		// initialize input buffer for io
-		exos_io_buffer_create(&handle->IOBuffer, handle->Buffer, sizeof(handle->Buffer));
-		handle->IOBuffer.NotEmptyEvent = &io->InputEvent;
-		
-        handle->State = USBKB_IO_READY;
-		exos_event_set(&io->OutputEvent);
-		return 0;
-	}
-	return -1;
-}
-
-static int _get_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
-{
-	// TODO: support baud rate, etc.
-	return -1;
-}
-
-static int _set_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
-{
-	// TODO: support baud rate, etc.
-	return -1;
-}
-
-static void _close(COMM_IO_ENTRY *io)
-{
-	USBKB_IO_HANDLE *handle = &_handles[io->Port];
-	if (handle->Entry == io)
-	{
-		if (handle->State == USBKB_IO_READY)
-			handle->State = USBKB_IO_CLOSED;
-
+		kb->State = USB_KB_READY;
+		ASSERT(kb->IOEntry != NULL, KERNEL_ERROR_NULL_POINTER);
 		exos_event_reset(&io->OutputEvent);
 		exos_event_set(&io->InputEvent);
-		handle->Entry = NULL;
+		kb->IOEntry = NULL;
 	}
 }
 
-static int _read(COMM_IO_ENTRY *io, unsigned char *buffer, unsigned long length)
+static int _read(io_entry_t *io, unsigned char *buffer, unsigned length)
 {
-	USBKB_IO_HANDLE *handle = &_handles[io->Port];
-	if (handle->Entry == io && handle->State == USBKB_IO_READY)
+	usb_kb_function_handler_t *kb = (usb_kb_function_handler_t *)io->DriverContext;
+	ASSERT(kb != NULL, KERNEL_ERROR_NULL_POINTER);
+
+	if (kb->IOEntry == io && kb->State == USB_KB_OPEN)
 	{
-		int done = exos_io_buffer_read(&handle->IOBuffer, buffer, length);
+		int done = exos_io_buffer_read(&kb->IOBuffer, buffer, length);
 		return done;
 	}
 	return -1;
 }
 
-static int _write(COMM_IO_ENTRY *io, const unsigned char *buffer, unsigned long length)
+static int _write(io_entry_t *io, const unsigned char *buffer, unsigned length)
 {
-	USBKB_IO_HANDLE *handle = &_handles[io->Port];
-	if (handle->Entry == io && handle->State == USBKB_IO_READY)
+	usb_kb_function_handler_t *kb = (usb_kb_function_handler_t *)io->DriverContext;
+	ASSERT(kb != NULL, KERNEL_ERROR_NULL_POINTER);
+
+	if (kb->IOEntry == io && kb->State == USB_KB_OPEN)
 	{
 		// FAKE writing
 		return length;

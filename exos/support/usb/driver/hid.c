@@ -6,6 +6,7 @@
 #include <kernel/panic.h>
 #include <kernel/machine/hal.h>
 #include <string.h>
+#include <stdio.h>
 
 #ifndef HID_MAX_INSTANCES
 #define HID_MAX_INSTANCES 1
@@ -199,36 +200,6 @@ void usb_hid_parse_local_item(const hid_report_parser_item_t *item, usb_hid_desk
 	}
 }
 
-static hid_function_handler_t *_check_hid_descriptor_report(usb_host_device_t *device, usb_configuration_descriptor_t *conf_desc, usb_interface_descriptor_t *if_desc, 
-	unsigned char *report_desc, unsigned desc_length)
-{
-	hid_function_handler_t *handler = nullptr;
-
-	exos_mutex_lock(&_manager_lock);	
-	FOREACH(node, &_manager_list)
-	{
-		hid_report_parser_global_state_t state = (hid_report_parser_global_state_t) { 
-			.ReportId = 0 };	// FIXME
-		hid_report_parser_t parser = (hid_report_parser_t) {
-			.Ptr = report_desc, .Length = desc_length, .Global = &state };
-
-		hid_driver_node_t *driver_node = (hid_driver_node_t *)node;
-		const hid_driver_t *driver = driver_node->Driver;
-		//ASSERT(driver != nullptr, KERNEL_ERROR_NULL_POINTER);
-		//ASSERT(driver->MatchDevice != nullptr, KERNEL_ERROR_NULL_POINTER);
-
-		//handler = driver->MatchDevice(device, conf_desc, if_desc, (report_desc != NULL && desc_length != 0) ? &parser : NULL);
-		//if (handler != nullptr)
-		//{
-		//	verbose(VERBOSE_COMMENT, "usb-hid", "handler found; max report id = %d", handler->MaxReportId); 
-		//	handler->DriverNode = driver_node;
-		//	break;
-		//}
-	}
-	exos_mutex_unlock(&_manager_lock);
-	return handler;
-}
-
 static usb_host_function_t *_check_interface(usb_host_device_t *device, usb_configuration_descriptor_t *conf_desc, usb_descriptor_header_t *fn_desc)
 {
 	hid_function_t *func = nullptr;
@@ -260,7 +231,10 @@ static usb_host_function_t *_check_interface(usb_host_device_t *device, usb_conf
 
 					handler = driver->MatchDevice(device, conf_desc, if_desc, hid_desc);
 					if (handler != NULL)
+					{
 						handler->Driver = driver;
+						break;
+					}
 				}
 
 				if (handler != nullptr)
@@ -379,13 +353,14 @@ static void _stop(usb_host_function_t *usb_func)
 	func->ExitFlag = 1;
 
 	usb_host_stop_pipe(&func->InputPipe);
-	// NOTE: all pending urbs should have end with error by now
+	// NOTE: all pending urbs should have ended with error by now
 
 	hid_function_handler_t *handler= func->Handler;
 	if (handler != NULL)
 	{
 		exos_dispatcher_remove(_context, &func->Dispatcher);
 		ASSERT(func->Request.Status != URB_STATUS_ISSUED, KERNEL_ERROR_KERNEL_PANIC);
+
 		const hid_driver_t *driver = handler->Driver;
 		ASSERT(driver != NULL && driver->Stop != NULL, KERNEL_ERROR_NULL_POINTER);
 		driver->Stop(handler);
@@ -421,21 +396,7 @@ static void _dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 		int done = usb_host_end_transfer(&func->Request, EXOS_TIMEOUT_NEVER);
 		if (done >= 0)
 		{
-			unsigned char buffer[64];
-			unsigned char *data;
-			unsigned char report_id;
-			if (handler->MaxReportId != 0)
-			{
-				report_id = func->InputBuffer[0];
-				data = &func->InputBuffer[1];
-			}
-			else
-			{
-				report_id = 0;
-				data = func->InputBuffer;
-			}
-
-			driver->Notify(handler, report_id, data, done);
+			driver->Notify(handler, func->InputBuffer, done);
 		}
 		else 
 		{
@@ -462,7 +423,7 @@ static void _dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 
 	if (func->ExitFlag)
 	{
-		verbose(VERBOSE_DEBUG, "usb-hid", "stopping handler (%d)", func->InstanceIndex);
+		verbose(VERBOSE_DEBUG, "usb-hid", "dispatcher exit code %d", func->InstanceIndex);
 	}
 }
 
@@ -481,6 +442,15 @@ bool usb_hid_set_report(hid_function_t *func, unsigned char report_type, unsigne
 {
 	ASSERT(func != nullptr, KERNEL_ERROR_NULL_POINTER);
 	ASSERT(data != nullptr || length == 0, KERNEL_ERROR_KERNEL_PANIC);
+
+#ifdef HID_DEBUG
+	unsigned dbg_size = length <= 9 ? length : 9;
+	char dbg_buf[32];
+	char *dbg_ptr = dbg_buf;
+	for (unsigned i = 0; i < dbg_size; i++)	dbg_ptr += sprintf(dbg_ptr, "%02x ", ((unsigned char *)data)[i]);
+	if (dbg_size < length) sprintf(dbg_ptr, "...");
+	verbose(VERBOSE_DEBUG, "usb-hid", "SetReport #%d (%d bytes) %s", report_id, length, dbg_buf); 
+#endif
 
 	usb_request_t req = (usb_request_t) {
 		.RequestType = USB_REQTYPE_HOST_TO_DEVICE | USB_REQTYPE_CLASS | USB_REQTYPE_RECIPIENT_INTERFACE,
