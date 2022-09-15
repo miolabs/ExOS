@@ -67,7 +67,7 @@ static void _parse_item_global(hid_report_parser_global_state_t *state, unsigned
 		case USB_HID_ITEM_TAG_USAGE_PAGE: state->UsagePage = value; break;
 		case USB_HID_ITEM_TAG_REPORT_SIZE: state->ReportSize = value;	break;
 		case USB_HID_ITEM_TAG_REPORT_ID: 
-			state->ReportId = value;	
+			state->ReportId = value;
 			state->NextInputOffset = state->NextOutputOffset = 0; 
 			break;
         case USB_HID_ITEM_TAG_REPORT_COUNT: state->ReportCount = value; break;
@@ -215,7 +215,7 @@ static usb_host_function_t *_check_interface(usb_host_device_t *device, usb_conf
 				conf_desc, if_desc,
 				USB_HID_DESCRIPTOR_HID, 0);
 			
-			// NOTE: ensure that Hdd descriptor exists and has at elast one report descriptor
+			// NOTE: ensure that Hdd descriptor exists and has at last one report descriptor
 			if (hid_desc != nullptr && hid_desc->NumDescriptors >= 1 &&
 				hid_desc->ReportDescriptors[0].DescriptorType == USB_HID_DESCRIPTOR_REPORT)
 			{
@@ -297,7 +297,7 @@ static void _start(usb_host_function_t *usb_func, usb_configuration_descriptor_t
 	ASSERT(func->InstanceIndex < HID_MAX_INSTANCES, KERNEL_ERROR_KERNEL_PANIC);
 	ASSERT(_function_busy[func->InstanceIndex] == 0, KERNEL_ERROR_KERNEL_PANIC);
 
-	verbose(VERBOSE_ERROR, "usb-hid", "starting instance %d...", func->InstanceIndex);
+	verbose(VERBOSE_ERROR, "usb-hid", "starting instance #%d...", func->InstanceIndex);
 
 	usb_hid_descriptor_t *hid_desc = (usb_hid_descriptor_t *)usb_enumerate_find_class_descriptor(conf_desc, 
 		(usb_interface_descriptor_t *)fn_desc, USB_HID_DESCRIPTOR_HID, 0);
@@ -325,7 +325,9 @@ static void _start(usb_host_function_t *usb_func, usb_configuration_descriptor_t
 				ASSERT(done, KERNEL_ERROR_KERNEL_PANIC);
 
 				usb_host_urb_create(&func->Request, &func->InputPipe);
-				exos_dispatcher_create(&func->Dispatcher, nullptr, _dispatch, func);
+
+				// NOTE: immediate dispatch
+				exos_dispatcher_create(&func->Dispatcher, NULL, _dispatch, func);
 				exos_dispatcher_add(_context, &func->Dispatcher, 0);
 			}
 			else 
@@ -370,7 +372,7 @@ static void _stop(usb_host_function_t *usb_func)
 
 	_function_busy[func->InstanceIndex] = 0;
 
-    verbose(VERBOSE_DEBUG, "usb-hid", "stopped instance %d", func->InstanceIndex);
+    verbose(VERBOSE_DEBUG, "usb-hid", "stopped instance #%d", func->InstanceIndex);
 }
 
 static void _dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
@@ -384,7 +386,7 @@ static void _dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 
 	if (dispatcher->State == DISPATCHER_TIMEOUT)
 	{
-		verbose(VERBOSE_ERROR, "usb-hid", "TIMEOUT (%d)", func->InstanceIndex);
+		verbose(VERBOSE_ERROR, "usb-hid", "inst #%d, TIMEOUT", func->InstanceIndex);
 		exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);
 		return;
 	}
@@ -400,7 +402,7 @@ static void _dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 		}
 		else 
 		{
-			verbose(VERBOSE_ERROR, "usb-hid", "report input failed");
+			verbose(VERBOSE_ERROR, "usb-hid", "inst #%d, report input failed", func->InstanceIndex);
 			// TODO: recover from failure state
 			func->ExitFlag = 2;
 		}
@@ -408,7 +410,7 @@ static void _dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 
 	if (!func->ExitFlag)
 	{
-		usb_host_urb_create(urb, &func->InputPipe);
+//		usb_host_urb_create(urb, &func->InputPipe);
 		if (usb_host_begin_transfer(urb, func->InputBuffer, report_bytes))
 		{
 			dispatcher->Event = &urb->Event;
@@ -423,7 +425,8 @@ static void _dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 
 	if (func->ExitFlag)
 	{
-		verbose(VERBOSE_DEBUG, "usb-hid", "dispatcher exit code %d", func->InstanceIndex);
+		verbose(VERBOSE_DEBUG, "usb-hid", "inst %d, dispatcher exit code %d", 
+			func->InstanceIndex, func->ExitFlag);
 	}
 }
 

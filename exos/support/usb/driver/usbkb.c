@@ -99,12 +99,16 @@ static bool _parse_report_descriptor(usb_kb_function_handler_t *handler, hid_rep
 				{
 					if (usage_min != usage_max)
 					{
-						_verbose(VERBOSE_DEBUG, "report id #%d, keyboard page, usages 0x%02x-0x%02x (offset %d)", 
+						_verbose(VERBOSE_DEBUG, "input report id #%d, keyboard page, usages 0x%02x-0x%02x (offset %d)", 
 							state->ReportId, usage_min, usage_max, state->InputOffset);
 					}
 				
 					usage_ok = true; 
 				}
+				break;
+			case HID_PARSE_FOUND_OUTPUT:
+				_verbose(VERBOSE_DEBUG, "output report id #%d, keyboard page, usages 0x%02x-0x%02x (offset %d)", 
+					state->ReportId, usage_min, usage_max, state->InputOffset);
 				break;
 		}
 	}
@@ -127,6 +131,9 @@ static bool _start(hid_function_handler_t *handler, hid_report_parser_t *parser)
 	bool done = usb_hid_set_idle(handler->Function, 0, 0);
 	if (!done) 
 		_verbose(VERBOSE_ERROR, "set report idle failed!"); 
+
+	unsigned char leds[] = { 0x0f };
+	usb_hid_set_report(handler->Function, USB_HID_REPORT_OUTPUT, 0, leds, sizeof(leds));
 
 	kb->State = USB_KB_READY;
 }
