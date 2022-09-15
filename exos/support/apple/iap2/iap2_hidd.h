@@ -13,7 +13,8 @@ typedef struct
 	struct iap2_hid_report { unsigned char ReportId; unsigned char Length; } Reports[IAP2_MAX_REPORTS];
 	unsigned ReportsCount;
 	iap2_transport_t Transport;
-	unsigned char Buffer[IAP2_MAX_INPUT_BUFFER];
+	unsigned short InputOffset;
+	unsigned char InputBuffer[IAP2_MAX_INPUT_BUFFER];
 } iap2_hid_handler_t;
 
 // link control byte flags

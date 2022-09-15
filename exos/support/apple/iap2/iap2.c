@@ -82,14 +82,46 @@ void iap2_stop()
 	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 }
 
-//-------------------------
-
 static bool _send(iap2_transport_t *t, const unsigned char *data, unsigned length)
 {
 	const iap2_transport_driver_t *driver = t->Driver;
 	ASSERT(driver != NULL && driver->Send != NULL, KERNEL_ERROR_NULL_POINTER);
 	return driver->Send(t, data, length);
 }
+
+void iap2_parse(iap2_transport_t *t, const unsigned char *packet, unsigned packet_length)
+{
+	if (packet_length < sizeof(iap2_header_t))
+	{
+		_verbose(VERBOSE_ERROR, "packet header incomplete, length = %d", packet_length);
+		return;
+	}
+
+	iap2_header_t *hdr = (iap2_header_t *)packet;
+	unsigned short sop = IAP2SHTOH(hdr->Sop);
+	unsigned short hdr_pkt_len = IAP2SHTOH(hdr->PacketLength);
+	if (sop != 0xff5a || hdr_pkt_len != packet_length)
+	{
+		_verbose(VERBOSE_ERROR, "bad packet header", sop);
+		return;
+	}
+
+	unsigned char checksum = hdr->Sop.High + hdr->Sop.Low + hdr->PacketLength.High + hdr->PacketLength.Low +
+		hdr->Control + hdr->SequenceNumber + hdr->AckNumber + hdr->SessionId;
+	if (checksum != hdr->Checksum)
+	{
+		_verbose(VERBOSE_ERROR, "packet header bad checksum ($%02x != $%02x)", hdr->Checksum, checksum);
+		return;
+	}
+
+	// TODO
+
+	_verbose(VERBOSE_DEBUG, "got packet (%s), %d bytes", t->Id, packet_length);
+}
+
+
+
+
 
 static bool _initialize(iap2_transport_t *t)
 {

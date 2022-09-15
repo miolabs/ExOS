@@ -104,29 +104,46 @@ static void _stop(hid_function_handler_t *handler)
 	iap2->Hid.Function = NULL;
 }
 
+
 static void _notify(hid_function_handler_t *handler, unsigned char *data, unsigned length)
 {
 	iap2_hid_handler_t *iap2 = (iap2_hid_handler_t *)handler;
-/*
-	int packet_size = ((input->Size * input->Count) >> 3);
-	int offset = 0;
-	unsigned char lcb = data[offset++];
 
-	if (!(lcb & IAP_LCB_CONTINUATION))
-		iap->Offset = 0;
-	
-	int fit = packet_size - 1;
-	if ((iap->Offset + fit) > sizeof(iap->Buffer))
-		fit = sizeof(iap->Buffer) - iap->Offset;
-	for (int i = 0; i < fit; i++) iap->Buffer[iap->Offset++] = data[offset++];
-
-	if (!(lcb & IAP_LCB_MORE_TO_FOLLOW))
+	if (length > 2)
 	{
-		iap_core_parse(iap->Buffer, iap->Offset);
-		iap->Offset = sizeof(iap->Buffer);
+		unsigned offset = 0;
+		unsigned char report_id = data[offset++];
+		unsigned char lcb = data[offset++];
+		_verbose(VERBOSE_DEBUG, "got input report #%d, %d bytes", report_id, length); 
+
+		unsigned part = length - offset;
+
+		if (!(lcb & IAP2_LCB_CONTINUATION))
+			iap2->InputOffset = 0;
+
+		unsigned fit = length - offset;
+		if ((iap2->InputOffset + fit) <= sizeof(iap2->InputBuffer))
+		{
+			unsigned input_length = iap2->InputOffset;
+			for (unsigned i = 0; i < fit; i++) iap2->InputBuffer[input_length++] = data[offset++];
+
+			if (!(lcb & IAP2_LCB_MORE_TO_FOLLOW))
+			{
+				iap2_parse(&iap2->Transport, iap2->InputBuffer, input_length);
+				iap2->InputOffset = sizeof(iap2->InputBuffer);
+			}
+			else 
+			{
+				iap2->InputOffset = input_length;
+			}
+		}
+		else 
+		{
+			_verbose(VERBOSE_ERROR, "packet doesn't fit in buffer, lost!");
+			iap2->InputOffset = sizeof(iap2->InputBuffer);
+		}
 	}
-*/
-	kernel_panic(KERNEL_ERROR_KERNEL_PANIC);
+	else _verbose(VERBOSE_ERROR, "got short report!");
 }
 
 static struct iap2_hid_report *_get_best_smaller_report(iap2_hid_handler_t *iap2, unsigned size)
@@ -217,6 +234,7 @@ static bool _iap2_send(iap2_transport_t *t, const unsigned char *data, unsigned 
 	{
 		unsigned report_size = r->Length + 1;	// NOTE: byte for report_id
 		buffer[0] = r->ReportId;
+
 		while (payload_offset < length)
 			buffer[offset++] = data[payload_offset++];
 		ASSERT(offset <= sizeof(buffer), KERNEL_ERROR_UNKNOWN);
