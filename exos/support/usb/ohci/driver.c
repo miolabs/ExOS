@@ -4,7 +4,13 @@
 #include <kernel/fifo.h>
 #include <kernel/memory.h>
 #include <kernel/panic.h>
-#include <kernel/machine/hal.h>
+#include <kernel/verbose.h>
+
+#ifdef DEBUG
+#define _verbose(level, ...) verbose(level, "ohci", __VA_ARGS__)
+#else
+#define _verbose(level, ...) { /* nothing */ }
+#endif
 
 static bool _ctrl_setup_read(usb_host_device_t *device, void *setup_data, unsigned setup_length, void *in_data, unsigned in_length);
 static bool _ctrl_setup_write(usb_host_device_t *device, void *setup_data, unsigned setup_length, void *out_data, unsigned out_length);
@@ -16,9 +22,9 @@ static bool _create_device(usb_host_controller_t *hc, usb_host_device_t *device,
 static void _destroy_device(usb_host_controller_t *hc, usb_host_device_t *device);
 
 static const usb_host_controller_driver_t _driver = {
-	_ctrl_setup_read, _ctrl_setup_write, 
-	_start_pipe, _stop_pipe, _begin_bulk_transfer, _end_bulk_transfer,
-	_create_device, _destroy_device };
+	.CtrlSetupRead = _ctrl_setup_read, .CtrlSetupWrite = _ctrl_setup_write, 
+	.StartPipe = _start_pipe, .StopPipe = _stop_pipe, .BeginTransfer = _begin_bulk_transfer, .EndTransfer = _end_bulk_transfer,
+	.CreateDevice = _create_device, .DestroyDevice = _destroy_device };
 
 static usb_host_controller_t _hc;
 static usb_host_device_t _root_devices[USB_HOST_ROOT_HUB_NDP] __usb;
@@ -120,13 +126,15 @@ static int _end_bulk_transfer(usb_host_controller_t *hcnt, usb_request_buffer_t 
 	if (std->Request != urb)
 		kernel_panic(KERNEL_ERROR_MEMORY_CORRUPT);
 #endif
-	if (exos_event_wait(&urb->Event, timeout) == -1)
+	if (urb->Status == URB_STATUS_ISSUED)
 	{
-		int removed = ohci_remove_std(urb);
-		if (removed != 0) 
-			return -1;
+		if (!exos_event_wait(&urb->Event, timeout))
+		{
+			int removed = ohci_remove_std(urb);
+			if (removed != 0) 
+				return -1;
+		}
 	}
-
 	ohci_buffers_release_std(std);
 	return (urb->Status == URB_STATUS_DONE) ? urb->Done : -1;
 }

@@ -4,12 +4,6 @@
 #include <usb/host.h>
 #include <support/usb/ohci/ohci.h>
 
-typedef enum
-{
-	OHCI_HUB_PORT_CONNECTED = (1 << 0),
-	OHCI_HUB_PORT_FULLSPEED = (1 << 1),
-} OHCI_HUB_PORT_STATUS;
-
 void ohci_hub_initialize(usb_host_controller_t *hc);
 void ohci_hub_signal();
 

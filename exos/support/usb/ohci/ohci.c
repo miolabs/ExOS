@@ -169,7 +169,7 @@ void ohci_isr()
 		}
 
         if (int_status & OHCIR_INTR_STATUS_SF)
-			exos_event_reset(&_sof_event);
+			exos_event_set(&_sof_event);
 
 		// clear interrupt flags 
 		__hc->InterruptStatus = int_status;
