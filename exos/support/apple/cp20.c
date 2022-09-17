@@ -3,7 +3,7 @@
 #include <kernel/thread.h>
 #include <kernel/verbose.h>
 
-#ifdef CP20_DEBUG
+#ifdef DEBUG
 #define _verbose(level, ...) verbose(level, "cp20", __VA_ARGS__)
 #else
 #define _verbose(...) { /* nothing */ }

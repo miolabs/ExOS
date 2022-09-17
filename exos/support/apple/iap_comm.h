@@ -1,7 +1,7 @@
 #ifndef APPLE_IAP_COMM_H
 #define APPLE_IAP_COMM_H
 
-#include <comm/comm.h>
+#include <kernel/iobuffer.h>
 #include <kernel/io.h>
 
 #ifndef APPLE_IAP_IO_BUFFER
@@ -18,14 +18,14 @@ typedef enum
 
 typedef struct
 {
-	EXOS_NODE Node;
+	node_t Node;
 	const char *Name;
-	EXOS_TREE_DEVICE KernelDevice;
+	io_tree_device_t KernelDevice;
 
 	unsigned short ProtocolIndex;
 	unsigned short SessionID;
 
-	COMM_IO_ENTRY *Entry;
+	io_entry_t *Entry;
 	APPLE_IAP_IO_STATE IOState;
 
 #ifdef DEBUG
@@ -33,8 +33,8 @@ typedef struct
 	unsigned int write_byte_cnt;
 #endif
 
-	EXOS_EVENT InputEvent;
-	EXOS_IO_BUFFER InputIOBuffer;
+	event_t InputEvent;
+	io_buffer_t InputIOBuffer;
    	unsigned char InputBuffer[APPLE_IAP_IO_BUFFER];	
 	unsigned char OutputBuffer[APPLE_IAP_IO_BUFFER];
 } APPLE_IAP_PROTOCOL_MANAGER;

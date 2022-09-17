@@ -6,7 +6,7 @@
 typedef enum
 {
 	IAP_LINGO_GENERAL = 0,
-} IAP_LINGO_ID;
+} iap_lingo_t;
 
 typedef enum
 {
@@ -49,7 +49,7 @@ typedef enum
 	IAP_CMD_RET_SUPPORTED_EVENT_NOTIFICATION,
 
 	IAP_CMD_SET_AVAILABLE_CURRENT = 0x54,
-} IAP_CMD_ID;
+} iap_cmd_id_t;
 
 typedef enum
 {
@@ -71,10 +71,10 @@ typedef enum
 	IAP_ERROR_OPERATION_TIMED_OUT,
 	IAP_ERROR_COMMAND_NOT_AVAILABLE,
 	// FIXME: incomplete
-} IAP_CMD_STATUS;
+} iap_cmd_status_t;
 
 #define IAP_MAX_PACKET_BUFFER 506
-typedef unsigned char IAP_PAYLOAD_BUFFER[IAP_MAX_PACKET_BUFFER]; 
+typedef unsigned char iap_payload_buffer_t[IAP_MAX_PACKET_BUFFER]; 
 
 typedef struct
 {
@@ -83,38 +83,38 @@ typedef struct
 	unsigned short Transaction;
 	unsigned short CommandID;
 	unsigned short Length;
-} IAP_CMD;
+} iap_cmd_t;
 
 typedef struct
 {
-	EXOS_NODE Node;
-	IAP_CMD Cmd;
-	IAP_PAYLOAD_BUFFER Buffer;
-} IAP_CMD_NODE;
+	node_t Node;
+	iap_cmd_t Cmd;
+	iap_payload_buffer_t Buffer;
+} iap_cmd_node_t;
 
 typedef struct
 {
-	EXOS_NODE Node;
-	EXOS_EVENT CompletedEvent;
-	IAP_CMD *Cmd;
+	node_t Node;
+	event_t CompletedEvent;
+	iap_cmd_t *Cmd;
 	unsigned char *CmdData;
-	IAP_CMD *Response;
+	iap_cmd_t *Response;
 	unsigned char *ResponseData;
-} IAP_REQUEST;
+} iap_request_t;
 
 void iap_core_initialize();
 void iap_core_start();
 void iap_core_stop();
 void iap_core_parse(unsigned char *buffer, int length);
 
-IAP_REQUEST *iap_begin_req(IAP_CMD *cmd, unsigned char *cmd_data, IAP_CMD *resp, unsigned char *resp_data);
-IAP_CMD_STATUS iap_end_req(IAP_REQUEST *req, int timeout);
-IAP_CMD_STATUS iap_do_req(IAP_CMD *cmd, unsigned char *cmd_data, IAP_CMD *resp, unsigned char *resp_data);
-IAP_CMD_STATUS iap_do_req2(IAP_CMD_ID cmd_id, IAP_CMD *resp, unsigned char *resp_data);
-IAP_CMD_STATUS iap_do_req3(IAP_CMD_ID cmd_id, unsigned char *cmd_data, int cmd_length, IAP_CMD *resp, unsigned char *resp_data);
+iap_request_t *iap_begin_req(iap_cmd_t *cmd, unsigned char *cmd_data, iap_cmd_t *resp, unsigned char *resp_data);
+iap_cmd_status_t iap_end_req(iap_request_t *req, unsigned timeout);
+iap_cmd_status_t iap_do_req(iap_cmd_t *cmd, unsigned char *cmd_data, iap_cmd_t *resp, unsigned char *resp_data);
+iap_cmd_status_t iap_do_req2(iap_cmd_id_t cmd_id, iap_cmd_t *resp, unsigned char *resp_data);
+iap_cmd_status_t iap_do_req3(iap_cmd_id_t cmd_id, unsigned char *cmd_data, int cmd_length, iap_cmd_t *resp, unsigned char *resp_data);
 
 // external
-int iap_send_cmd(IAP_CMD *cmd, unsigned char *data);
+int iap_send_cmd(iap_cmd_t *cmd, unsigned char *data);
 
 #endif // APPLE_IAP_CORE_H
 

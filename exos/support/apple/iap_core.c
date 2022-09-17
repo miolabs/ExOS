@@ -3,15 +3,18 @@
 #include "cp20.h"
 #include "iap_comm.h"
 #include <kernel/fifo.h>
+#include <kernel/verbose.h>
 #include <kernel/panic.h>
-#include <kernel/machine/hal.h>
-#include <support/board_hal.h>
+
 #ifdef IAP_DEBUG
-#include <support/services/debug.h>
+#define _verbose(level, ...) verbose(level, "iAP-core", __VA_ARGS__)
+#else
+#define _verbose(level, ...) { /* nothing */ }
 #endif
 
+
 #define THREAD_STACK 2048
-static EXOS_THREAD _thread;
+static exos_thread_t _thread;
 static unsigned char _stack[THREAD_STACK] __attribute__((aligned(16)));
 static void *_service(void *arg);
 static int _service_busy = 0;
@@ -20,36 +23,36 @@ static int _service_exit = 0;
 static unsigned long _transaction = 1;
 
 #define IAP_MAX_PENDING_REQUESTS 2
-static IAP_REQUEST _requests[IAP_MAX_PENDING_REQUESTS];
+static iap_request_t _requests[IAP_MAX_PENDING_REQUESTS];
 static EXOS_FIFO _free_requests_fifo;
-static EXOS_MUTEX _busy_requests_lock;
-static EXOS_LIST _busy_requests_list;
+static mutex_t _busy_requests_lock;
+static list_t _busy_requests_list;
 
 #define IAP_MAX_INCOMING_COMMANDS 3
-static IAP_CMD_NODE _incoming_cmds[IAP_MAX_INCOMING_COMMANDS];
+static iap_cmd_node_t _incoming_cmds[IAP_MAX_INCOMING_COMMANDS];
 static EXOS_FIFO _free_cmds_fifo;
 static EXOS_FIFO _incoming_cmds_fifo;
-static EXOS_EVENT _incoming_cmds_event;
+static event_t _incoming_cmds_event;
 
 void iap_core_initialize()
 {
 	exos_fifo_create(&_free_requests_fifo, NULL);
-	for(int i = 0; i < IAP_MAX_PENDING_REQUESTS; i++)
+	for(unsigned i = 0; i < IAP_MAX_PENDING_REQUESTS; i++)
 	{
-		IAP_REQUEST *req = &_requests[i];
-		exos_event_create(&req->CompletedEvent);
-		exos_fifo_queue(&_free_requests_fifo, (EXOS_NODE *)req);
+		iap_request_t *req = &_requests[i];
+		exos_event_create(&req->CompletedEvent, EXOS_EVENTF_NONE);
+		exos_fifo_queue(&_free_requests_fifo, &req->Node);
 	}
 	exos_mutex_create(&_busy_requests_lock);
 	list_initialize(&_busy_requests_list);
 
 	exos_fifo_create(&_free_cmds_fifo, NULL);
-	for(int i = 0; i < IAP_MAX_INCOMING_COMMANDS; i++)
+	for(unsigned i = 0; i < IAP_MAX_INCOMING_COMMANDS; i++)
 	{
-		IAP_CMD_NODE *cmd_node = &_incoming_cmds[i];
-		exos_fifo_queue(&_free_cmds_fifo, (EXOS_NODE *)cmd_node);
+		iap_cmd_node_t *cmd_node = &_incoming_cmds[i];
+		exos_fifo_queue(&_free_cmds_fifo, &cmd_node->Node);
 	}
-	exos_event_create(&_incoming_cmds_event);
+	exos_event_create(&_incoming_cmds_event, EXOS_EVENTF_NONE);
 	exos_fifo_create(&_incoming_cmds_fifo, &_incoming_cmds_event);
 
 	apple_cp20_initialize();
@@ -62,7 +65,7 @@ void iap_core_start()
 	if (!_service_busy)
 	{
 		_service_busy = 1;
-		exos_thread_create(&_thread, 5, _stack, THREAD_STACK, NULL, _service, NULL);
+		exos_thread_create(&_thread, 5, _stack, THREAD_STACK, _service, NULL);
 	}
 }
 
@@ -76,29 +79,28 @@ void iap_core_stop()
 #ifdef DEBUG
 static void _die()
 {
-	hal_led_set(0, 1);
 	kernel_panic(KERNEL_ERROR_UNKNOWN);
 }
 #endif
 
-static IAP_CMD_NODE *_alloc_cmd()
+static iap_cmd_node_t *_alloc_cmd()
 {
-	IAP_CMD_NODE *cmd_node = (IAP_CMD_NODE *)exos_fifo_dequeue(&_free_cmds_fifo);
+	iap_cmd_node_t *cmd_node = (iap_cmd_node_t *)exos_fifo_dequeue(&_free_cmds_fifo);
 	if (cmd_node)
 	{
-		*cmd_node = (IAP_CMD_NODE) { .Cmd.Length = sizeof(cmd_node->Buffer) };
+		*cmd_node = (iap_cmd_node_t) { .Cmd.Length = sizeof(cmd_node->Buffer) };
 	}
     return cmd_node;
 }
 
-static void _free_cmd(IAP_CMD_NODE *cmd_node)
+static void _free_cmd(iap_cmd_node_t *cmd_node)
 {
-	exos_fifo_queue(&_free_cmds_fifo, (EXOS_NODE *)cmd_node);
+	exos_fifo_queue(&_free_cmds_fifo, &cmd_node->Node);
 }
 
-static IAP_REQUEST *_alloc_request()
+static iap_request_t *_alloc_request()
 {
-	IAP_REQUEST *req = (IAP_REQUEST *)exos_fifo_dequeue(&_free_requests_fifo);
+	iap_request_t *req = (iap_request_t *)exos_fifo_dequeue(&_free_requests_fifo);
     if (req != NULL)
 	{
 		exos_event_reset(&req->CompletedEvent);
@@ -107,18 +109,18 @@ static IAP_REQUEST *_alloc_request()
 	return req;
 }
 
-static void _free_request(IAP_REQUEST *req)
+static void _free_request(iap_request_t *req)
 {
-	exos_fifo_queue(&_free_requests_fifo, (EXOS_NODE *)req);
+	exos_fifo_queue(&_free_requests_fifo, &req->Node);
 }
 
-static IAP_REQUEST *_find_pending_request_by_tr(unsigned short tr_id)
+static iap_request_t *_find_pending_request_by_tr(unsigned short tr_id)
 {
-	IAP_REQUEST *found = NULL;
+	iap_request_t *found = NULL;
 	exos_mutex_lock(&_busy_requests_lock);
 	FOREACH(node, &_busy_requests_list)
 	{
-		IAP_REQUEST *req = (IAP_REQUEST *)node;
+		iap_request_t *req = (iap_request_t *)node;
 		if (req->Cmd != NULL && req->Cmd->Transaction == tr_id)
 		{
 			found = req;
@@ -129,13 +131,13 @@ static IAP_REQUEST *_find_pending_request_by_tr(unsigned short tr_id)
 	return found;
 }
 
-static IAP_REQUEST *_find_pending_request_by_cmd(unsigned short cmd_id)
+static iap_request_t *_find_pending_request_by_cmd(unsigned short cmd_id)
 {
-	IAP_REQUEST *found = NULL;
+	iap_request_t *found = NULL;
 	exos_mutex_lock(&_busy_requests_lock);
 	FOREACH(node, &_busy_requests_list)
 	{
-		IAP_REQUEST *req = (IAP_REQUEST *)node;
+		iap_request_t *req = (iap_request_t *)node;
 		if (req->Cmd != NULL && req->Cmd->CommandID == cmd_id)
 		{
 			found = req;
@@ -148,15 +150,15 @@ static IAP_REQUEST *_find_pending_request_by_cmd(unsigned short cmd_id)
 
 void iap_core_parse(unsigned char *data, int length)
 {
-	IAP_CMD *cmd;
-	IAP_REQUEST *req;
-	IAP_CMD_NODE *cmd_node;
+	iap_cmd_t *cmd;
+	iap_request_t *req;
+	iap_cmd_node_t *cmd_node;
     unsigned short cmd_length;
 	unsigned char checksum;
 	unsigned char lingo;
 	unsigned short cmd_id;
 	unsigned short tr_id;
-	IAP_CMD_STATUS error_code;
+	iap_cmd_status_t error_code;
 	
 	int offset_start;
 	int offset = 0; 
@@ -247,9 +249,7 @@ void iap_core_parse(unsigned char *data, int length)
 		}
 		else 
 		{
-#ifdef IAP_DEBUG
-			debug_printf("iAP core: incoming cmd discarded (could not be allocated)\r\n");
-#endif
+			_verbose(VERBOSE_ERROR, "incoming cmd discarded (could not be allocated)");
 			break;
 		}
 
@@ -259,26 +259,22 @@ void iap_core_parse(unsigned char *data, int length)
 			{
 				exos_mutex_lock(&_busy_requests_lock);
 #ifdef DEBUG
-				if (!list_find_node(&_busy_requests_list, (EXOS_NODE *)req))
+				if (!list_find_node(&_busy_requests_list, &req->Node))
 					_die();	// matching request is not pending
 #endif
-				list_remove((EXOS_NODE *)req);
+				list_remove(&req->Node);
 				exos_mutex_unlock(&_busy_requests_lock);
 				exos_event_set(&req->CompletedEvent);
 
-#ifdef IAP_DEBUG
-				debug_printf("-> CMD%02x(%x) tr=%x, iap request completed (CMD%02x(%x) tr=%x)\r\n",
+				_verbose(VERBOSE_DEBUG, "-> CMD%02x(%x) tr=%x, iap request completed (CMD%02x(%x) tr=%x)",
 					cmd->CommandID, cmd->LingoID, cmd->Transaction,
 					req->Cmd->CommandID, req->Cmd->LingoID, req->Cmd->Transaction);
-#endif						
 			}
 			else if (cmd_node != NULL)
 			{
-				exos_fifo_queue(&_incoming_cmds_fifo, (EXOS_NODE *)cmd_node);
-#ifdef IAP_DEBUG
-				debug_printf("-> CMD%02x(%x) tr=%x, cmd queued\r\n",
+				exos_fifo_queue(&_incoming_cmds_fifo, &cmd_node->Node);
+				_verbose(VERBOSE_DEBUG, "-> CMD%02x(%x) tr=%x, cmd queued",
 					cmd->CommandID, cmd->LingoID, cmd->Transaction);
-#endif		
 			}
 #ifdef DEBUG
 			else _die();	// target cmd buffer unavailable
@@ -286,9 +282,7 @@ void iap_core_parse(unsigned char *data, int length)
 		}
 		else 
 		{
-#ifdef IAP_DEBUG
-			debug_printf("-> bad checksum!\r\n");
-#endif	
+			_verbose(VERBOSE_DEBUG, "-> bad checksum!");
 			if (cmd_node != NULL)
 			{
 				_free_cmd(cmd_node);
@@ -299,9 +293,9 @@ void iap_core_parse(unsigned char *data, int length)
 }
 
 
-IAP_REQUEST *iap_begin_req(IAP_CMD *cmd, unsigned char *cmd_data, IAP_CMD *resp, unsigned char *resp_data)
+iap_request_t *iap_begin_req(iap_cmd_t *cmd, unsigned char *cmd_data, iap_cmd_t *resp, unsigned char *resp_data)
 {
-	IAP_REQUEST *req = _alloc_request();
+	iap_request_t *req = _alloc_request();
 	if (req != NULL)
 	{
 		cmd->Transaction = _transaction++;
@@ -311,19 +305,17 @@ IAP_REQUEST *iap_begin_req(IAP_CMD *cmd, unsigned char *cmd_data, IAP_CMD *resp,
 		req->ResponseData = resp_data;
 
 		exos_mutex_lock(&_busy_requests_lock);
-		list_add_tail(&_busy_requests_list, (EXOS_NODE *)req);
+		list_add_tail(&_busy_requests_list, &req->Node);
 		exos_mutex_unlock(&_busy_requests_lock);
 
 		if (iap_send_cmd(cmd, cmd_data))
 			return req;
 
-#ifdef IAP_DEBUG
-			debug_printf("cmd request could not be sent, CMD%02x(%x) tr=%x\r\n",
+		_verbose(VERBOSE_ERROR, "cmd request could not be sent, CMD%02x(%x) tr=%x",
 				cmd->CommandID, cmd->LingoID, cmd->Transaction);
-#endif	
 
 		exos_mutex_lock(&_busy_requests_lock);
-		list_remove((EXOS_NODE *)req);
+		list_remove(&req->Node);
 		exos_mutex_unlock(&_busy_requests_lock);
 
 		_free_request(req);
@@ -331,51 +323,50 @@ IAP_REQUEST *iap_begin_req(IAP_CMD *cmd, unsigned char *cmd_data, IAP_CMD *resp,
 	return NULL;
 }
 
-IAP_CMD_STATUS iap_end_req(IAP_REQUEST *req, int timeout)
+iap_cmd_status_t iap_end_req(iap_request_t *req, unsigned timeout)
 {
 	if (req == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
 
-	int res = exos_event_wait(&req->CompletedEvent, timeout);
-	if (res == -1)
+	if (!exos_event_wait(&req->CompletedEvent, timeout))
 	{
 		exos_mutex_lock(&_busy_requests_lock);
-		if (list_find_node(&_busy_requests_list, (EXOS_NODE *)req))
-			list_remove((EXOS_NODE *)req);
+		if (list_find_node(&_busy_requests_list, &req->Node))
+			list_remove(&req->Node);
 		exos_mutex_unlock(&_busy_requests_lock);
 		_free_request(req);
 		return IAP_ERROR_OPERATION_TIMED_OUT;
 	}
 
-	IAP_CMD_STATUS status = req->Response->ErrorCode;
+	iap_cmd_status_t status = req->Response->ErrorCode;
 	_free_request(req);
 	return status;
 }
 
-IAP_CMD_STATUS iap_do_req(IAP_CMD *cmd, unsigned char *cmd_data, IAP_CMD *resp, unsigned char *resp_data)
+iap_cmd_status_t iap_do_req(iap_cmd_t *cmd, unsigned char *cmd_data, iap_cmd_t *resp, unsigned char *resp_data)
 {
-	IAP_REQUEST *req = iap_begin_req(cmd, cmd_data, resp, resp_data);
-	return (req != NULL) ? iap_end_req(req, 1000) : IAP_ERROR_COMMAND_FAILED;
+	iap_request_t *req = iap_begin_req(cmd, cmd_data, resp, resp_data);
+	return (req != NULL) ? iap_end_req(req, 5000) : IAP_ERROR_COMMAND_FAILED;
 }
 
-IAP_CMD_STATUS iap_do_req2(IAP_CMD_ID cmd_id, IAP_CMD *resp, unsigned char *resp_data)
+iap_cmd_status_t iap_do_req2(iap_cmd_id_t cmd_id, iap_cmd_t *resp, unsigned char *resp_data)
 {
-	IAP_CMD cmd = (IAP_CMD) { .CommandID = cmd_id };
+	iap_cmd_t cmd = (iap_cmd_t) { .CommandID = cmd_id };
 	return iap_do_req(&cmd, NULL, resp, resp_data);
 }
 
-IAP_CMD_STATUS iap_do_req3(IAP_CMD_ID cmd_id, unsigned char *cmd_data, int cmd_length, IAP_CMD *resp, unsigned char *resp_data)
+iap_cmd_status_t iap_do_req3(iap_cmd_id_t cmd_id, unsigned char *cmd_data, int cmd_length, iap_cmd_t *resp, unsigned char *resp_data)
 {
-	IAP_CMD cmd = (IAP_CMD) { .CommandID = cmd_id, .Length = cmd_length };
+	iap_cmd_t cmd = (iap_cmd_t) { .CommandID = cmd_id, .Length = cmd_length };
 	return iap_do_req(&cmd, cmd_data, resp, resp_data);
 }
 
-int iap_get_incoming_cmd(IAP_CMD *cmd, unsigned char *cmd_data, int timeout)
+bool iap_get_incoming_cmd(iap_cmd_t *cmd, unsigned char *cmd_data, int timeout)
 {
-	IAP_CMD_NODE *cmd_node = (IAP_CMD_NODE *)exos_fifo_wait(&_incoming_cmds_fifo, timeout);
+	iap_cmd_node_t *cmd_node = (iap_cmd_node_t *)exos_fifo_wait(&_incoming_cmds_fifo, timeout);
 	if (cmd_node)
 	{
-		IAP_CMD *input = &cmd_node->Cmd;
+		iap_cmd_t *input = &cmd_node->Cmd;
 		cmd->LingoID = input->LingoID;
 		cmd->ErrorCode = input->ErrorCode;
 		cmd->Transaction = input->Transaction;
@@ -386,58 +377,56 @@ int iap_get_incoming_cmd(IAP_CMD *cmd, unsigned char *cmd_data, int timeout)
 		cmd->Length = length;
 
 		_free_cmd(cmd_node);
-		return 1;
+		return true;
 	}
-	return 0;
+	return false;
 }
 
-static int _identify()
+static bool _identify()
 {
-	IAP_CMD_STATUS status;
+	iap_cmd_status_t status;
 	unsigned char buffer[256];
-	IAP_CMD resp = (IAP_CMD) { .Length = sizeof(buffer) };
+	iap_cmd_t resp = (iap_cmd_t) { .Length = sizeof(buffer) };
 	status = iap_do_req2(IAP_CMD_START_IDPS, &resp, buffer);
     if (status == IAP_OK)
 	{
-		resp = (IAP_CMD) { .Length = sizeof(buffer) };
+		resp = (iap_cmd_t) { .Length = sizeof(buffer) };
 		status = iap_do_req2(IAP_CMD_REQUEST_TRANSPORT_MAX_PAYLOAD_SIZE, &resp, buffer);
-		int max_payload = (status == IAP_OK && resp.CommandID == IAP_CMD_RETURN_TRANSPORT_MAX_PAYLOAD_SIZE) ? 
+		unsigned max_payload = (status == IAP_OK && resp.CommandID == IAP_CMD_RETURN_TRANSPORT_MAX_PAYLOAD_SIZE) ? 
 			buffer[0] << 8 | buffer[1] : 
 			(status == IAP_ERROR_BAD_PARAMETER ? IAP_MAX_PACKET_BUFFER : 0);
 		if (max_payload != 0)
 		{
+			_verbose(VERBOSE_DEBUG, "max_payload=0x%x", max_payload);
 			unsigned char lingo = 0;
-			resp = (IAP_CMD) { .Length = sizeof(buffer) };
+			resp = (iap_cmd_t) { .Length = sizeof(buffer) };
 			status = iap_do_req3(IAP_CMD_GET_IPOD_OPTIONS_FOR_LINGO, &lingo, 1, &resp, buffer);
 			// TODO: use received info when other lingos are supported
 
 			int fid_data = iap_fid_fill(buffer, sizeof(buffer));
-			resp = (IAP_CMD) { .Length = sizeof(buffer) - fid_data };
+			resp = (iap_cmd_t) { .Length = sizeof(buffer) - fid_data };
 			status = iap_do_req3(IAP_CMD_SET_FID_TOKEN_VALUES, buffer, fid_data, &resp, buffer + fid_data);
 			if (status == IAP_OK)
 			{
 				unsigned char end_param = 0; // immediately request authentication
-				resp = (IAP_CMD) { .Length = sizeof(buffer) };
+				resp = (iap_cmd_t) { .Length = sizeof(buffer) };
 				status = iap_do_req3(IAP_CMD_END_IDPS, &end_param, 1, &resp, buffer);
 				if (status == IAP_OK)
-					return 1;
+					return true;
 			}
+			else _verbose(VERBOSE_ERROR, "IAP_CMD_SET_FID_TOKEN_VALUES failed!");
 		}
-#ifdef IAP_DEBUG
 		else
 		{
-			debug_printf("iAP core: IAP_CMD_REQUEST_TRANSPORT_MAX_PAYLOAD_FAILED; max_payload=0x%x, status=0x%02x!\r\n", 
+			_verbose(VERBOSE_ERROR, "IAP_CMD_REQUEST_TRANSPORT_MAX_PAYLOAD_FAILED; max_payload=0x%x, status=0x%02x!", 
 				max_payload, status);
 		}
-#endif
 	}
-#ifdef IAP_DEBUG
 	else
 	{
-		debug_printf("iAP core: IAP_CMD_START_IDPS failed; status=0x%02x!\r\n", status);
+		_verbose(VERBOSE_ERROR, "IAP_CMD_START_IDPS failed; status=0x%02x!", status);
 	}
-#endif
-	return 0;
+	return false;
 }
 
 static int _read_cert(unsigned char *ppart, unsigned char *buffer, unsigned short total_length)
@@ -464,7 +453,7 @@ static int _read_cert(unsigned char *ppart, unsigned char *buffer, unsigned shor
 
 static int _slave_io()
 {
-	IAP_CMD cmd, resp;
+	iap_cmd_t cmd, resp;
 	unsigned char cmd_buffer[512];
 	unsigned char resp_buffer[256];
 	unsigned short total_length;
@@ -473,7 +462,7 @@ static int _slave_io()
 	int done;
 	while(!_service_exit)
 	{
-		cmd = (IAP_CMD) { .Length = sizeof(cmd_buffer) };
+		cmd = (iap_cmd_t) { .Length = sizeof(cmd_buffer) };
 		if (iap_get_incoming_cmd(&cmd, cmd_buffer, 1000))
 		{
 			offset = 0;
@@ -488,43 +477,34 @@ static int _slave_io()
 							{
 								case IAP_CMD_RET_ACC_AUTH_INFO:
 									offset = _read_cert(&parts_done, resp_buffer, total_length);
-									resp = (IAP_CMD) { .CommandID = IAP_CMD_RET_ACC_AUTH_INFO, .Length = offset, .Transaction = cmd.Transaction };
+									resp = (iap_cmd_t) { .CommandID = IAP_CMD_RET_ACC_AUTH_INFO, .Length = offset, .Transaction = cmd.Transaction };
 									iap_send_cmd(&resp, resp_buffer);
 									break;
 								case IAP_CMD_ACCESORY_DATA_TRANSFER:
-#ifdef IAP_DEBUG
-									debug_printf("iAP core: AccessoryDataTransfer returned status 0x%02x\r\n",
+									_verbose(VERBOSE_DEBUG, "AccessoryDataTransfer returned status 0x%02x",
 										cmd_buffer[0]);
-#endif
 									break;
 								case IAP_CMD_SET_AVAILABLE_CURRENT:
-#ifdef IAP_DEBUG
-									debug_printf("iAP core: SetAvailableCurrent returned status 0x%02x\r\n",
+									_verbose(VERBOSE_DEBUG, "SetAvailableCurrent returned status 0x%02x",
 										cmd_buffer[0]);
-#endif
 									break;
-#ifdef IAP_DEBUG
 								default:
-									debug_printf("iAP core: received unexpected iPodAck for cmd 0x%02x\r\n",
+									_verbose(VERBOSE_DEBUG, "received unexpected iPodAck for cmd 0x%02x",
 										cmd_buffer[1]);
 									break;
-#endif
 							}
 						}
-#ifdef IAP_DEBUG
 						else 
 						{
-							debug_printf("iAP core: iPodAck received with status 0x%02x\r\n",
-								cmd.ErrorCode);
-						};
-#endif
+							_verbose(VERBOSE_DEBUG, "iPodAck received with status 0x%02x", cmd.ErrorCode);
+						}
 						break;
 					case IAP_CMD_GET_ACC_AUTH_INFO:
 						if (apple_cp2_read_acc_cert_length(&total_length))
 						{
 							parts_done = 0;
 							offset = _read_cert(&parts_done, resp_buffer, total_length);
-							resp = (IAP_CMD) { .CommandID = IAP_CMD_RET_ACC_AUTH_INFO, .Length = offset, .Transaction = cmd.Transaction };
+							resp = (iap_cmd_t) { .CommandID = IAP_CMD_RET_ACC_AUTH_INFO, .Length = offset, .Transaction = cmd.Transaction };
                             iap_send_cmd(&resp, resp_buffer);
 						}
 						break;
@@ -537,11 +517,9 @@ static int _slave_io()
 					case IAP_CMD_GET_ACC_AUTH_SIGNATURE:
 						if (cmd.Length == 21)
 						{
-#ifdef IAP_DEBUG
-							debug_printf("iAP core: Authentication started!\r\n");
-#endif		
+							_verbose(VERBOSE_DEBUG, "Authentication started!");
 							offset = apple_cp2_get_auth_signature(cmd_buffer, cmd.Length - 1, resp_buffer);
-							resp = (IAP_CMD) { .CommandID = IAP_CMD_RET_ACC_AUTH_SIGNATURE, .Length = offset, .Transaction = cmd.Transaction };
+							resp = (iap_cmd_t) { .CommandID = IAP_CMD_RET_ACC_AUTH_SIGNATURE, .Length = offset, .Transaction = cmd.Transaction };
 							iap_send_cmd(&resp, resp_buffer);
 						}
 						break;
@@ -549,14 +527,12 @@ static int _slave_io()
 						if (cmd.Length == 1 && 
 							cmd_buffer[0] == 0) // auth operation passed
 						{
-#ifdef IAP_DEBUG
-							debug_printf("iAP core: Authentication completed!\r\n");
-#endif		
+							_verbose(VERBOSE_DEBUG, "Authentication completed!");
 
 							// EXPERIMENTAL: try to enable ipad charging using iap 
 							resp_buffer[offset++] = 2100 >> 8;
 							resp_buffer[offset++] = 2100 & 0xFF;
-							resp = (IAP_CMD) { .CommandID = IAP_CMD_SET_AVAILABLE_CURRENT, .Length = offset, .Transaction = cmd.Transaction };
+							resp = (iap_cmd_t) { .CommandID = IAP_CMD_SET_AVAILABLE_CURRENT, .Length = offset, .Transaction = cmd.Transaction };
 							iap_send_cmd(&resp, resp_buffer);
 
 							// TODO: notify app level that lingo ids are ready to be used
@@ -566,23 +542,21 @@ static int _slave_io()
 #endif
 						break;
 					case IAP_CMD_OPEN_DATA_SESSION_FOR_PROTOCOL:
-#ifdef IAP_DEBUG
-						debug_printf("OpenDataSession (0x%02x) tr=%x\r\n",
+						_verbose(VERBOSE_DEBUG, "OpenDataSession (0x%02x) tr=%x",
 							cmd.CommandID, cmd.Transaction);
-#endif							
+
 						// FIXME: ensure we are not ignoring protocol field
 						
 						done = iap_open_session((cmd_buffer[0] << 8) | cmd_buffer[1], cmd_buffer[2]);
 						resp_buffer[offset++] = done ? IAP_OK : IAP_ERROR_BAD_PARAMETER;
 						resp_buffer[offset++] = cmd.CommandID;
-						resp = (IAP_CMD) { .CommandID = IAP_CMD_ACCESORY_ACK, .Length = offset, .Transaction = cmd.Transaction };
+						resp = (iap_cmd_t) { .CommandID = IAP_CMD_ACCESORY_ACK, .Length = offset, .Transaction = cmd.Transaction };
                         iap_send_cmd(&resp, resp_buffer);
 						break;
 					case IAP_CMD_IPOD_DATA_TRANSFER:
-#ifdef IAP_DEBUG
-						debug_printf("iPodDataTransfer (0x%02x) tr=%x, length=%d\r\n",
+						_verbose(VERBOSE_DEBUG, "iPodDataTransfer (0x%02x) tr=%x, length=%d",
 							cmd.CommandID, cmd.Transaction, cmd.Length);
-#endif	
+
 						if (cmd.Length > 2)
 						{
 							done = iap_comm_write((cmd_buffer[0] << 8) | cmd_buffer[1], &cmd_buffer[2], cmd.Length - 2);
@@ -591,26 +565,23 @@ static int _slave_io()
 
 						resp_buffer[offset++] = done ? IAP_OK : IAP_ERROR_BAD_PARAMETER;
 						resp_buffer[offset++] = cmd.CommandID;
-						resp = (IAP_CMD) { .CommandID = IAP_CMD_ACCESORY_ACK, .Length = offset, .Transaction = cmd.Transaction };
+						resp = (iap_cmd_t) { .CommandID = IAP_CMD_ACCESORY_ACK, .Length = offset, .Transaction = cmd.Transaction };
 						iap_send_cmd(&resp, resp_buffer);
 						break;
 					case IAP_CMD_CLOSE_DATA_SESSION:
-#ifdef IAP_DEBUG
-						debug_printf("CloseDataSession (0x%02x) tr=%x\r\n",
+						_verbose(VERBOSE_DEBUG, "CloseDataSession (0x%02x) tr=%x",
 							cmd.CommandID, cmd.Transaction);
-#endif							
+
 						iap_close_session((cmd_buffer[0] << 8) | cmd_buffer[1]);
 						resp_buffer[offset++] = IAP_OK;
 						resp_buffer[offset++] = cmd.CommandID;
-						resp = (IAP_CMD) { .CommandID = IAP_CMD_ACCESORY_ACK, .Length = offset, .Transaction = cmd.Transaction };
+						resp = (iap_cmd_t) { .CommandID = IAP_CMD_ACCESORY_ACK, .Length = offset, .Transaction = cmd.Transaction };
                         iap_send_cmd(&resp, resp_buffer);
 						break;
-#ifdef IAP_DEBUG
 					default:
-						debug_printf("iAP core: unexpected command(0x%02x) tr=%x\r\n",
+						_verbose(VERBOSE_DEBUG, "unexpected command(0x%02x) tr=%x",
 							cmd.CommandID, cmd.Transaction);
 						break;
-#endif
 				}
 			}
 		}
@@ -622,29 +593,22 @@ static void *_service(void *arg)
 {
 	exos_thread_sleep(1000);
 
-#ifdef IAP_DEBUG
-	debug_printf("iAP core: Service started...\r\n");
-#endif	
+	_verbose(VERBOSE_COMMENT, "Service started...");
+
 	if (_identify())
 	{
-#ifdef IAP_DEBUG
-		debug_printf("iAP core: Identify procedure succeded!\r\n");
-#endif	
+		_verbose(VERBOSE_DEBUG, "Identify procedure succeded!");
+
 		_slave_io();
 		iap_close_all();
 	}
 	else
 	{
-#ifdef IAP_DEBUG
-		debug_printf("iAP core: Identify procedure failed!\r\n");
-#endif	
+		_verbose(VERBOSE_ERROR, "Identify procedure failed!");
 	}
-#ifdef IAP_DEBUG
-	debug_printf("iAP core: Service exiting...\r\n");
-#endif	
+	_verbose(VERBOSE_COMMENT, "Service exiting...");
 	_service_exit = 0;
 }
-
 
 
 

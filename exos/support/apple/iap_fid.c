@@ -1,6 +1,7 @@
 #include "iap_fid.h"
 #include "iap_comm.h"
 #include "cp20.h"
+#include <kernel/verbose.h>
 #include <kernel/machine/hal.h>
 
 #ifndef IAP_ACCESORY_NAME
@@ -52,8 +53,11 @@ int iap_fid_fill(unsigned char *payload, int max_payload)
 	//FIXME: check used buffer against max_payload
 
 	if (!apple_cp2_read_device_id(&_device_id))
+	{
+		verbose(VERBOSE_ERROR, "iap-fid", "cp20 is not ready");
 		return 0;
-	
+	}
+
 	unsigned char buffer[32];
 	int count = 0;
 	int offset = 1;

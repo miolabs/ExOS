@@ -3,17 +3,17 @@
 
 #include <support/usb/driver/hid.h>
 
-#define IAP_MAX_REPORT_INPUTS 4
+#define IAP_MAX_REPORT_INPUTS 5
 #define IAP_MAX_INPUT_BUFFER 512
 
 typedef struct
 {
-	HID_FUNCTION_HANDLER;
-	HID_REPORT_INPUT *Inputs[IAP_MAX_REPORT_INPUTS];
-	int InputsCount;
+	hid_function_handler_t Hid;
+	struct iap_input_report { unsigned char ReportId; unsigned char Length; } Inputs[IAP_MAX_REPORT_INPUTS];
+	unsigned char InputsCount;
 	unsigned long Offset;
 	unsigned char Buffer[IAP_MAX_INPUT_BUFFER];
-} IAP_HID_HANDLER;
+} iap_hid_handler_t;
 
 // link control byte flags
 #define IAP_LCB_START (0)
