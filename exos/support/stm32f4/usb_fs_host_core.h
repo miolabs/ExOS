@@ -15,8 +15,8 @@ typedef enum
 
 typedef struct
 {
-	// TODO
 	usb_request_buffer_t *Request;
+	unsigned char LastPacketLength;
 } stm32_usbh_xfer_t;
 
 typedef struct

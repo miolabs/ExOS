@@ -320,6 +320,9 @@ static void _start(usb_host_function_t *usb_func, usb_configuration_descriptor_t
 			ASSERT(driver != nullptr && driver->Start != nullptr, KERNEL_ERROR_NULL_POINTER);
 			if (driver->Start(handler, &parser))
 			{
+				verbose(VERBOSE_DEBUG, "usb-hid", "starting EP %d IN, period=%d", 
+					func->InputPipe.EndpointNumber, func->InputPipe.InterruptInterval);				
+				
 				// NOTE: this should never fail, it's just we being paranoid
 				bool done = usb_host_start_pipe(&func->InputPipe);
 				ASSERT(done, KERNEL_ERROR_KERNEL_PANIC);
