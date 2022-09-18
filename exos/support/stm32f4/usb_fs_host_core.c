@@ -26,9 +26,9 @@ static volatile uint32_t * const otg_fifo[NUM_CHANNELS] = {
 #define NUM_ENDPOINTS 6
 #endif
 
-/*static*/ stm32_usbh_channel_t _ch_table[NUM_CHANNELS];
-/*static*/ stm32_usbh_ep_t *_ch2ep[NUM_CHANNELS];
-/*static*/ stm32_usbh_ep_t _ep_array[NUM_ENDPOINTS];
+static stm32_usbh_channel_t _ch_table[NUM_CHANNELS];
+static stm32_usbh_ep_t *_ch2ep[NUM_CHANNELS];
+static stm32_usbh_ep_t _ep_array[NUM_ENDPOINTS];
 static pool_t _ep_pool;
 static stm32_usbh_ep_t _common_control_ep;
 
@@ -37,13 +37,13 @@ static enum { HPORT_DISABLED = 0, HPORT_POWERED, HPORT_RESET, HPORT_RESET_DONE, 
 static enum { HPORT_FULL_SPEED = 1, HPORT_LOW_SPEED = 2 } _port_speed;
 static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatcher);
 
-void usb_otg_host_initialize(usb_host_controller_t *hc, dispatcher_context_t *context)
+void usb_fs_host_initialize(usb_host_controller_t *hc, dispatcher_context_t *context)
 {
 	ASSERT(hc != nullptr, KERNEL_ERROR_NULL_POINTER);
 	ASSERT(_hc == nullptr, KERNEL_ERROR_NOT_ENOUGH_MEMORY);	// already in use
 	_hc = hc;
 
-	usb_otg_initialize();
+	usb_otg_fs_initialize();
 
 	otg_global->GUSBCFG |= USB_OTG_GUSBCFG_FHMOD;	// Force Host MODe
 	while(!(otg_global->GINTSTS & USB_OTG_GINTSTS_CMOD)); 
@@ -120,8 +120,8 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 						kernel_panic(KERNEL_ERROR_KERNEL_PANIC);
 				}
 				
-				usb_otg_host_flush_tx_fifo(0x10); // TXNUM_FLUSH_ALL
-				usb_otg_host_flush_rx_fifo();
+				usb_fs_host_flush_tx_fifo(0x10); // TXNUM_FLUSH_ALL
+				usb_fs_host_flush_rx_fifo();
 
 				_port_state = HPORT_READY;
 				exos_thread_sleep(200);	// FIXME
@@ -158,7 +158,7 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 	exos_dispatcher_add(context, dispatcher, timeout);
 }
 
-void usb_otg_host_port_reset()
+void usb_fs_host_port_reset()
 {
 	unsigned hport = otg_host->HPRT & ~USB_OTG_HPRT_PRST;
 	otg_host->HPRT = hport | USB_OTG_HPRT_PRST;
@@ -167,7 +167,7 @@ void usb_otg_host_port_reset()
 	exos_thread_sleep(20);
 }
 
-void usb_otg_host_flush_tx_fifo(unsigned num)
+void usb_fs_host_flush_tx_fifo(unsigned num)
 {
 	otg_global->GRSTCTL = (num << USB_OTG_GRSTCTL_TXFNUM_Pos)
 		| USB_OTG_GRSTCTL_TXFFLSH; 
@@ -175,7 +175,7 @@ void usb_otg_host_flush_tx_fifo(unsigned num)
 	for(unsigned volatile i = 0; i < 12; i++);	// wait 3 phy clks
 }
 
-void usb_otg_host_flush_rx_fifo()
+void usb_fs_host_flush_rx_fifo()
 {
 	otg_global->GRSTCTL = USB_OTG_GRSTCTL_RXFFLSH; 
 	while(otg_global->GRSTCTL & USB_OTG_GRSTCTL_RXFFLSH);
@@ -251,7 +251,7 @@ static void _halt_channel(stm32_usbh_channel_t *ch)
 	
 	if (sts == 0)
 	{
-		usb_otg_host_flush_tx_fifo(ch->Index);
+		usb_fs_host_flush_tx_fifo(ch->Index);
 	}
 	otg_host->HC[ch->Index].HCCHAR = cchar | USB_OTG_HCCHAR_CHENA; // halts channel
 }
@@ -295,7 +295,7 @@ static void _free_channel(unsigned index)
 	_ch2ep[index] = nullptr;
 }
 
-bool usb_otg_host_start_pipe(usb_host_pipe_t *pipe)
+bool usb_fs_host_start_pipe(usb_host_pipe_t *pipe)
 {
 	static stm32_usbh_ep_t *_root_control_ep = nullptr;
 
@@ -342,7 +342,20 @@ bool usb_otg_host_start_pipe(usb_host_pipe_t *pipe)
 				}
 				break;
 			case USB_TT_BULK:
-				kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+				if (_alloc_channel(&chn, pipe, pipe->Direction, 0))
+				{
+					if (pipe->Direction == USB_DEVICE_TO_HOST) 
+					{
+						verbose(VERBOSE_DEBUG, "usb-fs-core", "channel %d allocated for ep %d as bulk IN (port #%d)", chn, pipe->EndpointNumber, pipe->Device->Port);
+						ep->Rx = &_ch_table[chn];
+					}
+					else
+					{
+						verbose(VERBOSE_DEBUG, "usb-fs-core", "channel %d allocated for ep %d as bulk OUT (port #%d)", chn, pipe->EndpointNumber, pipe->Device->Port);
+						ep->Tx = &_ch_table[chn];
+					}
+					return true;
+				}
 				break;
 			case USB_TT_INTERRUPT:
 				if (_alloc_channel(&chn, pipe, pipe->Direction, pipe->InterruptInterval))
@@ -373,7 +386,7 @@ bool usb_otg_host_start_pipe(usb_host_pipe_t *pipe)
 	return false;
 }
 
-void usb_otg_host_update_control_pipe(usb_host_pipe_t *pipe)
+void usb_fs_host_update_control_pipe(usb_host_pipe_t *pipe)
 {
 	ASSERT(pipe != nullptr, KERNEL_ERROR_NULL_POINTER);
 	ASSERT(pipe->EndpointType == USB_TT_CONTROL, KERNEL_ERROR_KERNEL_PANIC);
@@ -392,11 +405,10 @@ static void _xfer_complete(unsigned ch_num, urb_status_t status)
 	stm32_usbh_ep_t *ep = _ch2ep[ch_num];
 	if (ep != nullptr && ep->Status != STM32_EP_STA_IDLE)
 	{
-		stm32_usbh_xfer_t *xfer = &ch->Current;
+
 		usb_request_buffer_t *urb = ch->Current.Request;
 		if (urb != nullptr)
 		{
-			// FIXME: this should be done in an "ACK" interrupt, TXFE or similar
 			if (status == URB_STATUS_DONE && urb->Pipe->Direction == USB_HOST_TO_DEVICE)
 			{
 				urb->Done = urb->Length;
@@ -435,7 +447,7 @@ static void _disable_channel(unsigned ch_num, bool wait)
 	}
 }
 
-void usb_otg_host_stop_pipe(usb_host_pipe_t *pipe)
+void usb_fs_host_stop_pipe(usb_host_pipe_t *pipe)
 {
 	ASSERT(pipe != nullptr, KERNEL_ERROR_NULL_POINTER);
 	stm32_usbh_ep_t *ep = (stm32_usbh_ep_t *)pipe->Endpoint;
@@ -512,7 +524,7 @@ static void _enable_channel(unsigned ch_num)
 	}
 }
 
-bool usb_otg_host_begin_xfer(usb_request_buffer_t *urb, usb_direction_t dir, bool setup)
+bool usb_fs_host_begin_xfer(usb_request_buffer_t *urb, usb_direction_t dir, bool setup)
 {
 	ASSERT(urb != nullptr && urb->Pipe != nullptr, KERNEL_ERROR_NULL_POINTER);
 	stm32_usbh_ep_t *ep = (stm32_usbh_ep_t *)urb->Pipe->Endpoint;

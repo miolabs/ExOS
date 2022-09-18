@@ -9,7 +9,7 @@
 static usb_otg_crs_global_t * const otg_global = (usb_otg_crs_global_t *)(USB_OTG_FS_BASE + 0x000);
 static usb_otg_crs_power_t * const otg_power = (usb_otg_crs_power_t *)(USB_OTG_FS_BASE + 0xe00);
 
-void usb_otg_initialize()
+void usb_otg_fs_initialize()
 {
 	// core initialization
 	RCC->AHB2RSTR |= RCC_AHB2RSTR_OTGFSRST;

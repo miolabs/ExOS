@@ -407,7 +407,11 @@ static void _xfer_complete(unsigned ch_num, urb_status_t status)
 		usb_request_buffer_t *urb = ch->Current.Request;
 		if (urb != nullptr)
 		{
-//			ASSERT(status == URB_STATUS_DONE, KERNEL_ERROR_UNKNOWN);	// for testing purposes only!
+			if (status == URB_STATUS_DONE && urb->Pipe->Direction == USB_HOST_TO_DEVICE)
+			{
+				urb->Done = urb->Length;
+			}
+
 			urb->Status = status;
 
 			exos_event_reset(&urb->Event);
@@ -457,7 +461,7 @@ void usb_hs_host_stop_pipe(usb_host_pipe_t *pipe)
 	pool_free(&_ep_pool, &ep->Node);
 }
 
-static unsigned _write_fifo(unsigned ch_num)
+static unsigned _write_fifo(unsigned ch_num, bool ack_done)
 {
 	ASSERT(ch_num < NUM_CHANNELS, KERNEL_ERROR_KERNEL_PANIC);
 	stm32_usbh_channel_t *ch = &_ch_table[ch_num];
@@ -471,7 +475,11 @@ static unsigned _write_fifo(unsigned ch_num)
 	
 	ASSERT(urb->Pipe != nullptr && urb->Pipe->Endpoint == ep, KERNEL_ERROR_KERNEL_PANIC);
 	ASSERT(urb->Pipe->EndpointNumber == ch->EndpointNumber, KERNEL_ERROR_KERNEL_PANIC);
-	unsigned lenw = (urb->Length + 3) >> 2;
+	if (ack_done)
+		urb->Done += xfer->LastPacketLength;
+
+	unsigned rem = (urb->Length > urb->Done) ? urb->Length - urb->Done : 0;
+	unsigned lenw = (rem + 3) >> 2;
 	unsigned availw = (otg_global->HNPTXSTS & USB_OTG_GNPTXSTS_NPTXFSAV_Msk) >> USB_OTG_GNPTXSTS_NPTXFSAV_Pos;
 	ASSERT(availw >= lenw, KERNEL_ERROR_KERNEL_PANIC);
 	uint32_t *ptr = (uint32_t *)(urb->Data + urb->Done);	// FIXME: alignment required?
@@ -479,8 +487,10 @@ static unsigned _write_fifo(unsigned ch_num)
 	for(unsigned i = 0; i < lenw; i++)
 		*otg_fifo[ch_num] = *ptr++;
 
-	urb->Done += lenw << 2;
-	return urb->Length > urb->Done ? urb->Length - urb->Done : 0;
+	xfer->LastPacketLength = lenw << 2;
+	unsigned fifo_done = urb->Done + xfer->LastPacketLength;
+	rem = (fifo_done < urb->Length) ? urb->Length - fifo_done : 0;
+	return rem;
 }
 
 static void _enable_channel(unsigned ch_num)
@@ -492,7 +502,7 @@ static void _enable_channel(unsigned ch_num)
 
 	if (ch->Direction == USB_HOST_TO_DEVICE)
 	{
-		unsigned rem = _write_fifo(ch->Index);
+		unsigned rem = _write_fifo(ch->Index, false);
 		if (rem != 0)
 		{
 			switch(ch->EndpointType)
@@ -642,7 +652,7 @@ void __usb_hs_nptxfe_irq_handler()
 	unsigned qtop = (sts & USB_OTG_GNPTXSTS_NPTXQTOP_Msk) >> USB_OTG_GNPTXSTS_NPTXQTOP_Pos;
 	unsigned ch_num = qtop >> 3;
 
-	unsigned rem = _write_fifo(ch_num);
+	unsigned rem = _write_fifo(ch_num, true);
 	if (rem == 0)
 	{
 		// disable int

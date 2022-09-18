@@ -27,13 +27,13 @@ static const usb_host_controller_driver_t _driver = {
 static usb_host_controller_t _hc;
 static usb_host_device_t _root_device;
 
-void usb_otg_init_as_host(dispatcher_context_t *context)
+void usb_otg_fs_init_as_host(dispatcher_context_t *context)
 {
 	ASSERT(context != nullptr, KERNEL_ERROR_NULL_POINTER);
 
 	exos_mutex_create(&_mutex);
 	usb_host_controller_create(&_hc, &_driver, &_root_device, 1);
-	usb_otg_host_initialize(&_hc, context);
+	usb_fs_host_initialize(&_hc, context);
 }
 
 static bool _begin_xfer(usb_request_buffer_t *urb, usb_direction_t dir, bool setup, void *data, unsigned length)
@@ -45,7 +45,7 @@ static bool _begin_xfer(usb_request_buffer_t *urb, usb_direction_t dir, bool set
 	urb->Done = 0;
 	urb->Status = URB_STATUS_ISSUED;
 
-	return usb_otg_host_begin_xfer(urb, dir, setup);
+	return usb_fs_host_begin_xfer(urb, dir, setup);
 }
 
 // HC driver
@@ -56,7 +56,7 @@ static bool _start_pipe(usb_host_controller_t *hc, usb_host_pipe_t *pipe)
 	ASSERT(pipe != nullptr && pipe->Device != nullptr, KERNEL_ERROR_NULL_POINTER);
 	ASSERT(pipe->Endpoint == nullptr, KERNEL_ERROR_KERNEL_PANIC);	// already in use
 
-	return usb_otg_host_start_pipe(pipe);
+	return usb_fs_host_start_pipe(pipe);
 }
 
 static bool _stop_pipe(usb_host_controller_t *hc, usb_host_pipe_t *pipe)
@@ -65,7 +65,7 @@ static bool _stop_pipe(usb_host_controller_t *hc, usb_host_pipe_t *pipe)
 	ASSERT(pipe->Device != nullptr, KERNEL_ERROR_NULL_POINTER);
 	ASSERT(pipe->Endpoint != nullptr, KERNEL_ERROR_KERNEL_PANIC);
 
-	usb_otg_host_stop_pipe(pipe);
+	usb_fs_host_stop_pipe(pipe);
 	return true;
 }
 
@@ -108,7 +108,7 @@ static bool _create_device(usb_host_controller_t *hc, usb_host_device_t *device,
 	exos_mutex_lock(&_mutex);
 
 	usb_host_pipe_t *control_pipe = &device->ControlPipe;
-	if (usb_otg_host_start_pipe(control_pipe))
+	if (usb_fs_host_start_pipe(control_pipe))
 	{
 		device->State = USB_HOST_DEVICE_ATTACHED;
 
@@ -122,7 +122,7 @@ static bool _create_device(usb_host_controller_t *hc, usb_host_device_t *device,
 			{
 				// NOTE: full-speed devices can use more than (the minimum) 8 byte packet size
 				control_pipe->MaxPacketSize = dev_desc->MaxPacketSize;
-				usb_otg_host_update_control_pipe(control_pipe);
+				usb_fs_host_update_control_pipe(control_pipe);
 			}
 			else
 			{
@@ -135,7 +135,7 @@ static bool _create_device(usb_host_controller_t *hc, usb_host_device_t *device,
 			if (done)
 			{
 				device->Address = addr; 
-				usb_otg_host_update_control_pipe(control_pipe);
+				usb_fs_host_update_control_pipe(control_pipe);
 
 				// read device descriptor (complete) 
 				done = usb_host_read_device_descriptor(device, USB_DESCRIPTOR_TYPE_DEVICE, 0, 
@@ -176,7 +176,7 @@ static bool _do_control_xfer(usb_request_buffer_t *urb, usb_direction_t dir, boo
 	if (setup)
 	{
 		// NOTE: redefine control channels according to device/pipe before starting control request
-		usb_otg_host_update_control_pipe(pipe);
+		usb_fs_host_update_control_pipe(pipe);
 	}
 
 	if (_begin_xfer(urb, dir, setup, data, length))

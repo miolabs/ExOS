@@ -34,7 +34,7 @@ void hal_usbd_initialize()
 #endif
 
 	// core initialization
-	usb_otg_initialize();
+	usb_otg_fs_initialize();
 
 #ifndef USB_FS_ENABLE_ID
 	otg_global->GUSBCFG &= ~USB_OTG_GUSBCFG_HNPCAP;

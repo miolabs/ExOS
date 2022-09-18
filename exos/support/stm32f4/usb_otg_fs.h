@@ -164,7 +164,7 @@ typedef struct
 extern void __usb_otg_host_irq_handler() __weak;
 extern void __usb_otg_device_irq_handler() __weak;
 
-void usb_otg_initialize();
+void usb_otg_fs_initialize();
 
 
 #endif // STM32F1_USB_OTG_FS_H
