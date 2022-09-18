@@ -3,6 +3,7 @@
 #include "cp20.h"
 #include <kernel/verbose.h>
 #include <kernel/machine/hal.h>
+#include <stdio.h>
 
 #ifndef IAP_ACCESORY_NAME
 #define IAP_ACCESORY_NAME "MIO Labs Test Accesory"
@@ -54,7 +55,7 @@ int iap_fid_fill(unsigned char *payload, int max_payload)
 
 	if (!apple_cp2_read_device_id(&_device_id))
 	{
-		verbose(VERBOSE_ERROR, "iap-fid", "cp20 is not ready");
+		verbose(VERBOSE_ERROR, "iap-fid", "cp20 is not ready!!!");
 		return 0;
 	}
 
@@ -184,7 +185,8 @@ static int _fid_callback(IAP_FID_TOKEN *token, IAP_FID_TOKEN_VALUES *values, uns
 			}
 			else 
 			{
-				offset += __str_copy(buffer + offset, "fake protocol", 255) + 1;
+				verbose(VERBOSE_ERROR, "iap-fid", "protocol enumeration failed!!!");
+				offset += sprintf(buffer + offset, "com.miolabs.proto%d", index) + 1;
 			}
 			*values = (IAP_FID_TOKEN_VALUES) { .Token = IAP_FID_TOKEN_EA_PROTOCOL, 
 				.Data = buffer, .DataLength = offset };

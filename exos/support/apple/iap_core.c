@@ -202,7 +202,7 @@ void iap_core_parse(unsigned char *data, int length)
 			}
 
 			error_code = data[offset];
-			if (req == NULL) 
+			if (req == NULL)
 				req = _find_pending_request_by_cmd(data[offset + 1]);
 		}
 		else
@@ -264,17 +264,18 @@ void iap_core_parse(unsigned char *data, int length)
 #endif
 				list_remove(&req->Node);
 				exos_mutex_unlock(&_busy_requests_lock);
-				exos_event_set(&req->CompletedEvent);
 
-				_verbose(VERBOSE_DEBUG, "-> CMD%02x(%x) tr=%x, iap request completed (CMD%02x(%x) tr=%x)",
-					cmd->CommandID, cmd->LingoID, cmd->Transaction,
-					req->Cmd->CommandID, req->Cmd->LingoID, req->Cmd->Transaction);
+				//_verbose(VERBOSE_DEBUG, "-> CMD%02x(%x) tr=%x, iap request completed (CMD%02x(%x) tr=%x)",
+				//	cmd->CommandID, cmd->LingoID, cmd->Transaction,
+				//	req->Cmd->CommandID, req->Cmd->LingoID, req->Cmd->Transaction);
+
+				exos_event_set(&req->CompletedEvent);
 			}
 			else if (cmd_node != NULL)
 			{
 				exos_fifo_queue(&_incoming_cmds_fifo, &cmd_node->Node);
-				_verbose(VERBOSE_DEBUG, "-> CMD%02x(%x) tr=%x, cmd queued",
-					cmd->CommandID, cmd->LingoID, cmd->Transaction);
+				//_verbose(VERBOSE_DEBUG, "-> CMD%02x(%x) tr=%x, cmd queued",
+				//	cmd->CommandID, cmd->LingoID, cmd->Transaction);
 			}
 #ifdef DEBUG
 			else _die();	// target cmd buffer unavailable
@@ -413,6 +414,7 @@ static bool _identify()
 				status = iap_do_req3(IAP_CMD_END_IDPS, &end_param, 1, &resp, buffer);
 				if (status == IAP_OK)
 					return true;
+				else _verbose(VERBOSE_ERROR, "IAP_CMD_END_IDPS failed!");
 			}
 			else _verbose(VERBOSE_ERROR, "IAP_CMD_SET_FID_TOKEN_VALUES failed!");
 		}
@@ -477,6 +479,7 @@ static int _slave_io()
 							{
 								case IAP_CMD_RET_ACC_AUTH_INFO:
 									offset = _read_cert(&parts_done, resp_buffer, total_length);
+									_verbose(VERBOSE_DEBUG, "AuthInfo part %d", parts_done);
 									resp = (iap_cmd_t) { .CommandID = IAP_CMD_RET_ACC_AUTH_INFO, .Length = offset, .Transaction = cmd.Transaction };
 									iap_send_cmd(&resp, resp_buffer);
 									break;
@@ -502,26 +505,32 @@ static int _slave_io()
 					case IAP_CMD_GET_ACC_AUTH_INFO:
 						if (apple_cp2_read_acc_cert_length(&total_length))
 						{
+							_verbose(VERBOSE_ERROR, "CP cert length=%d", total_length);
 							parts_done = 0;
 							offset = _read_cert(&parts_done, resp_buffer, total_length);
+							_verbose(VERBOSE_DEBUG, "AuthInfo part %d (%d bytes)", parts_done, offset);
 							resp = (iap_cmd_t) { .CommandID = IAP_CMD_RET_ACC_AUTH_INFO, .Length = offset, .Transaction = cmd.Transaction };
                             iap_send_cmd(&resp, resp_buffer);
 						}
+						else _verbose(VERBOSE_ERROR, "CP didn't return a valid cert length!");
 						break;
 					case IAP_CMD_ACK_ACC_AUTH_INFO:
 						if (cmd_buffer[0] == 0)	// 0x00 = auth info supported
 						{
 							// hmmmm, nothing to do but wait next command							 
 						}
+						else _verbose(VERBOSE_ERROR, "Device rejected auth info ($%02x)!", cmd_buffer[0]);
 						break;
 					case IAP_CMD_GET_ACC_AUTH_SIGNATURE:
 						if (cmd.Length == 21)
 						{
+							// NOTE: what is the last byte for?
 							_verbose(VERBOSE_DEBUG, "Authentication started!");
 							offset = apple_cp2_get_auth_signature(cmd_buffer, cmd.Length - 1, resp_buffer);
 							resp = (iap_cmd_t) { .CommandID = IAP_CMD_RET_ACC_AUTH_SIGNATURE, .Length = offset, .Transaction = cmd.Transaction };
 							iap_send_cmd(&resp, resp_buffer);
 						}
+						else _verbose(VERBOSE_ERROR, "Auth challenge length not supported (%d)!", cmd.Length);
 						break;
 					case IAP_CMD_ACK_ACC_AUTH_STATUS:
 						if (cmd.Length == 1 && 
@@ -540,7 +549,7 @@ static int _slave_io()
 #ifdef DEBUG
 						else 
 						{
-							_verbose(VERBOSE_ERROR, "Authetication failed!!!");
+							_verbose(VERBOSE_ERROR, "Authetication failed ($%02x)!!!", cmd_buffer[0]);
 							//_die();	// auth failed, FIXME <<<<<<<<<<<<<<<
 						}
 #endif

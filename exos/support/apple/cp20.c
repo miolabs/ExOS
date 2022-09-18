@@ -140,25 +140,35 @@ int apple_cp2_get_auth_signature(unsigned char *challenge, int ch_len, unsigned 
 					unsigned char status = buffer[0];
 					if (((status & 0x70) >> 4) == 1) // Accessory signature successfully generated
 						break;
-					else done = 0;
+					else 
+					{
+						_verbose(VERBOSE_ERROR, "Signature generation failed (status=$%02x)!", status);
+						done = 0;
+					}
 				}
 				exos_thread_sleep(1000);
 			}
 
-			done = _read(CP20_REG_ERROR_CODE, buffer, 1);
-
 			if (done)
 			{
-				done = _read(CP20_REG_SIGNATURE_DATA_LENGTH, buffer, 2);
+				done = _read(CP20_REG_ERROR_CODE, buffer, 1);
+
 				if (done)
 				{
-					int sig_len = (buffer[0] << 8) | buffer[1];
-					done = _read(CP20_REG_SIGNATURE_DATA, sig, sig_len);
+					done = _read(CP20_REG_SIGNATURE_DATA_LENGTH, buffer, 2);
 					if (done)
-						return sig_len;
+					{
+						int sig_len = (buffer[0] << 8) | buffer[1];
+						done = _read(CP20_REG_SIGNATURE_DATA, sig, sig_len);
+						if (done)
+							return sig_len;
+					}
+					else _verbose(VERBOSE_ERROR, "Could not rread signature!");
 				}
 			}
 		}
+		else _verbose(VERBOSE_ERROR, "Could not write challenge!");
 	}
+	_verbose(VERBOSE_ERROR, "Signature not done!");
 	return 0;
 }
