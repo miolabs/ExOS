@@ -538,7 +538,11 @@ static int _slave_io()
 							// TODO: notify app level that lingo ids are ready to be used
 						}
 #ifdef DEBUG
-						else _die();	// auth failed, FIXME
+						else 
+						{
+							_verbose(VERBOSE_ERROR, "Authetication failed!!!");
+							//_die();	// auth failed, FIXME <<<<<<<<<<<<<<<
+						}
 #endif
 						break;
 					case IAP_CMD_OPEN_DATA_SESSION_FOR_PROTOCOL:

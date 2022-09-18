@@ -18,7 +18,7 @@
 #define IAP_ACCESORY_MANUFACTURER "MIO Research Labs"
 #endif
 #ifndef IAP_ACCESORY_MODEL
-#define IAP_ACCESORY_MODEL "uMFi Board 0.1"
+#define IAP_ACCESORY_MODEL "undefined"
 #endif
 #ifndef IAP_ACCESORY_SERIAL
 #define IAP_ACCESORY_SERIAL "00000"
@@ -178,9 +178,17 @@ static int _fid_callback(IAP_FID_TOKEN *token, IAP_FID_TOKEN_VALUES *values, uns
 		case IAP_FID_TOKEN_EA_PROTOCOL:
 			buffer[offset++] = ++index;
 			APPLE_IAP_PROTOCOL_MANAGER *iap = iap_comm_get_protocol(index);
-			offset += __str_copy(buffer + offset, iap->Name, 255) + 1;
+			if (iap != NULL)
+			{
+				offset += __str_copy(buffer + offset, iap->Name, 255) + 1;
+			}
+			else 
+			{
+				offset += __str_copy(buffer + offset, "fake protocol", 255) + 1;
+			}
 			*values = (IAP_FID_TOKEN_VALUES) { .Token = IAP_FID_TOKEN_EA_PROTOCOL, 
 				.Data = buffer, .DataLength = offset };
+
 			if (index >= iap_comm_get_protocol_count())
 			{
 				index = 0;
