@@ -31,8 +31,8 @@ static int _dequeue(unsigned long *args)
 #endif
 	if (fifo->Event != NULL)
 	{
-		kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
-//		__set_event(fifo->Event, !LIST_ISEMPTY(&fifo->Items));
+		if (LIST_ISEMPTY(&fifo->Items))
+			exos_event_reset(fifo->Event);
 	}
 	return (*pnode != NULL);
 }
@@ -52,7 +52,7 @@ node_t *exos_fifo_wait(EXOS_FIFO *fifo, unsigned long timeout)
 #endif
 
 	if (fifo->Event != NULL && 
-		exos_event_wait(fifo->Event, timeout) < 0)
+		!exos_event_wait(fifo->Event, timeout))
 		return NULL;
 
 	node_t *node;
@@ -76,8 +76,7 @@ static int _queue(unsigned long *args)
 	list_add_tail(&fifo->Items, node);
    	if (fifo->Event != NULL)
 	{
-		kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
-//		__set_event(fifo->Event, 1);
+		exos_event_set(fifo->Event);
 	}
 	return 0;
 }
