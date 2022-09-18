@@ -68,7 +68,7 @@ static bool _write(CP20_REG reg, unsigned char *buffer, unsigned char length)
 	{
 		hal_i2c_init_context(&i2c, _addr, &reg, 1);		
 		done = hal_i2c_write(APPLE_CP20_I2C_MODULE, &i2c, buffer, length); 
-		if (done == 0) return true;
+		if (done) return true;
 		exos_thread_sleep(1);
 	}
 #else
@@ -85,9 +85,17 @@ bool apple_cp2_read_device_id(unsigned long *pdevice_id)
 	if (done)
 	{
 		*pdevice_id = (buffer[0] << 24) | (buffer[1] << 16) | (buffer[2] << 8) | buffer[3];
-		return true;
+
+#ifdef DEBUG
+		done = _read(CP20_REG_ERROR_CODE, buffer, 1);
+		buffer[0] = 0x01;
+		done = _write(CP20_REG_SELFTEST_CONTROL_AND_STATUS, buffer, 1);
+		exos_thread_sleep(10);
+		done = _read(CP20_REG_SELFTEST_CONTROL_AND_STATUS, buffer, 1);
+		ASSERT(done && ((buffer[0] & 0xf0) == 0xc0), KERNEL_ERROR_KERNEL_PANIC);
+#endif
 	}
-	return false;
+	return done;
 }
 
 bool apple_cp2_read_acc_cert_length(unsigned short *plength)
@@ -142,7 +150,9 @@ int apple_cp2_get_auth_signature(unsigned char *challenge, int ch_len, unsigned 
 						break;
 					else 
 					{
-						_verbose(VERBOSE_ERROR, "Signature generation failed (status=$%02x)!", status);
+						done = _read(CP20_REG_ERROR_CODE, buffer, 1);
+						_verbose(VERBOSE_ERROR, "Signature generation failed (status=$%02x, error=$%02x)!", 
+							status, buffer[0]);
 						done = 0;
 					}
 				}
@@ -163,7 +173,7 @@ int apple_cp2_get_auth_signature(unsigned char *challenge, int ch_len, unsigned 
 						if (done)
 							return sig_len;
 					}
-					else _verbose(VERBOSE_ERROR, "Could not rread signature!");
+					else _verbose(VERBOSE_ERROR, "Could not read signature!");
 				}
 			}
 		}
