@@ -47,6 +47,31 @@ static unsigned _fill_string(int *poffset, const char *s);
 #define VERBOSE(...) { /* nothing */ }
 #endif
 
+#ifndef USB_USER_DEVICE_VENDORID
+#define USB_USER_DEVICE_VENDORID	0x0403 // FTDI
+
+#ifndef USB_USER_DEVICE_PRODUCTID
+#define USB_USER_DEVICE_PRODUCTID	0x6001
+#endif
+
+#ifndef USB_USER_DEVICE_VERSION
+#define USB_USER_DEVICE_VERSION 0x600
+#endif
+
+#ifndef USB_USER_DEVICE_MANUFACTURER
+#define USB_USER_DEVICE_MANUFACTURER "FTDI"
+#endif
+
+#ifndef USB_USER_DEVICE_PRODUCT
+#define USB_USER_DEVICE_PRODUCT "Emulator"
+#endif
+
+#ifndef USB_USER_DEVICE_SERIALNUMBER 
+#define USB_USER_DEVICE_SERIALNUMBER "12345678"
+#endif
+
+#endif	// USB_USER_DEVICE_VENDORID
+
 static bool _initialize(usb_device_interface_t *iface, const void *instance_data)
 {
 	usb_device_config_add_string(&iface->Name, "FTDI Interface");

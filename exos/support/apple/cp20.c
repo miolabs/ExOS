@@ -34,6 +34,7 @@ static bool _read(CP20_REG reg, unsigned char *buffer, unsigned char length)
 {
 	i2c_context_t i2c;
 
+#ifdef APPLE_CP20_I2C_MODULE
 	bool done = false;
 	for (int retry = 0; retry < 3; retry++)
 	{
@@ -51,6 +52,9 @@ static bool _read(CP20_REG reg, unsigned char *buffer, unsigned char length)
 		}
 		exos_thread_sleep(1);
 	}
+#else
+#warning "CP20 i2c module not defined"
+#endif
 	return false;
 }
 
@@ -58,6 +62,7 @@ static bool _write(CP20_REG reg, unsigned char *buffer, unsigned char length)
 {
 	i2c_context_t i2c;
 
+#ifdef APPLE_CP20_I2C_MODULE
 	bool done;
 	for (int retry = 0; retry < 10; retry++)
 	{
@@ -66,6 +71,9 @@ static bool _write(CP20_REG reg, unsigned char *buffer, unsigned char length)
 		if (done == 0) return true;
 		exos_thread_sleep(1);
 	}
+#else
+#warning "CP20 i2c module not defined"
+#endif
 	return false;
 }
 

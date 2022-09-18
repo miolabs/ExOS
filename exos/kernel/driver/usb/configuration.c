@@ -316,6 +316,7 @@ const char *usb_device_config_get_string(int index)
 #define USB_USER_DEVICE_PROTOCOL 0
 #endif
 
+#ifdef USB_USER_DEVICE_VENDORID
 __weak
 int usb_device_fill_device_descriptor(usb_device_descriptor_t *desc)
 {
@@ -370,5 +371,5 @@ int usb_device_fill_vendor_descriptor(usb_descriptor_header_t *desc, unsigned sh
 	return  0;
 }
 
-
+#endif
 
