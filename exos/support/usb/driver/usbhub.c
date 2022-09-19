@@ -4,7 +4,11 @@
 #include <kernel/panic.h>
 #include <kernel/verbose.h>
 
+#ifdef USB_HUB_DEBUG
 #define _verbose(level, ...) verbose(level, "usb-hub", __VA_ARGS__)
+#else
+#define _verbose(level, ...) { /* nothing */ }
+#endif
 
 #ifndef USB_HUB_MAX_INSTANCES 
 #define USB_HUB_MAX_INSTANCES 1
@@ -133,7 +137,7 @@ static void _start(usb_host_function_t *usb_func, usb_configuration_descriptor_t
 	exos_dispatcher_create(&func->Dispatcher, NULL, _dispatch, func);
 	exos_dispatcher_add(_context, &func->Dispatcher, 0);
 
-	_verbose(VERBOSE_DEBUG, "instance #%d started", func->InstanceIndex);
+	_verbose(VERBOSE_COMMENT, "instance #%d started", func->InstanceIndex);
 }
 
 static void _free_device(usb_host_device_t *child);

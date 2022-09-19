@@ -8,6 +8,12 @@
 #include <kernel/panic.h>
 #include <kernel/verbose.h>
 
+#ifdef STM32_USB_DEBUG
+#define _verbose(level, ...)	verbose(level, "usb-fs-host", __VA_ARGS__)
+#else
+#define _verbose(level, ...)	{ /* nothing */ }
+#endif
+
 static mutex_t _mutex;
 
 static bool _ctrl_setup_read(usb_host_device_t *device, void *setup_data, unsigned setup_length, void *in_data, unsigned in_length);
@@ -126,7 +132,7 @@ static bool _create_device(usb_host_controller_t *hc, usb_host_device_t *device,
 			}
 			else
 			{
-				verbose(VERBOSE_COMMENT, "usb_otg_host_drv", "device is LOW_SPEED");
+				_verbose(VERBOSE_COMMENT, "device is LOW_SPEED");
 			}
 
 			// set address
@@ -145,15 +151,15 @@ static bool _create_device(usb_host_controller_t *hc, usb_host_device_t *device,
 				{
 					done = usb_host_enumerate(device, dev_desc); 
 					if (!done)
-						verbose(VERBOSE_DEBUG, "usb-drv", "device enumeration failed (port #%d)", device->Port);
+						_verbose(VERBOSE_DEBUG, "device enumeration failed (port #%d)", device->Port);
 				}
-				else verbose(VERBOSE_DEBUG, "usb-drv", "cannot read device descriptor (full)");
+				else _verbose(VERBOSE_ERROR, "cannot read device descriptor (full)");
 			}
 #ifdef DEBUG
 			else kernel_panic(KERNEL_ERROR_KERNEL_PANIC);
 #endif
 		}
-		else verbose(VERBOSE_DEBUG, "usb-drv", "cannot read device descriptor (short)");
+		else _verbose(VERBOSE_ERROR, "cannot read device descriptor (short)");
 
 		if (!done)
 		{
@@ -183,7 +189,7 @@ static bool _do_control_xfer(usb_request_buffer_t *urb, usb_direction_t dir, boo
 	{
 #ifdef DEBUG
 		if (!exos_event_wait(&urb->Event, 3000))
-			verbose(VERBOSE_DEBUG, "usb-drv", "still waiting...");
+			_verbose(VERBOSE_ERROR, "still waiting...");
 #else
 		exos_event_wait(&urb->Event, TIMEOUT_NEVER);
 #endif

@@ -6,6 +6,12 @@
 #include <kernel/panic.h>
 #include <kernel/verbose.h>
 
+#ifdef STM32_USB_DEBUG
+#define _verbose(level, ...)	verbose(level, "usb-fs-core", __VA_ARGS__)
+#else
+#define _verbose(level, ...)	{ /* nothing */ }
+#endif
+
 #define NUM_CHANNELS 8
 
 static usb_otg_crs_global_t * const otg_global = (usb_otg_crs_global_t *)(USB_OTG_FS_BASE + 0x000);
@@ -309,7 +315,7 @@ bool usb_fs_host_start_pipe(usb_host_pipe_t *pipe)
 		ASSERT(pipe->EndpointType == USB_TT_CONTROL, KERNEL_ERROR_KERNEL_PANIC);
 		pipe->Endpoint = _root_control_ep;
 		// NOTE: channels are not re-opened because they're already open and control requests will update ep when used
-		verbose(VERBOSE_DEBUG, "usb-fs-core", "endpoint recycled for control pipe (port #%d)", pipe->Device->Port);
+		_verbose(VERBOSE_DEBUG, "endpoint recycled for control pipe (port #%d)", pipe->Device->Port);
 		return true;
 	}
 
@@ -328,7 +334,7 @@ bool usb_fs_host_start_pipe(usb_host_pipe_t *pipe)
 				{
 					if (_alloc_channel(&chn2, pipe, USB_DEVICE_TO_HOST, 0))
 					{
-						verbose(VERBOSE_DEBUG, "usb-fs-core", "channels %d+%d allocated for control (port #%d)", chn, chn2, pipe->Device->Port); 
+						_verbose(VERBOSE_DEBUG, "channels %d+%d allocated for control (port #%d)", chn, chn2, pipe->Device->Port); 
 						ep->Tx = &_ch_table[chn];
 						ep->Rx = &_ch_table[chn2];
 
@@ -346,12 +352,12 @@ bool usb_fs_host_start_pipe(usb_host_pipe_t *pipe)
 				{
 					if (pipe->Direction == USB_DEVICE_TO_HOST) 
 					{
-						verbose(VERBOSE_DEBUG, "usb-fs-core", "channel %d allocated for ep %d as bulk IN (port #%d)", chn, pipe->EndpointNumber, pipe->Device->Port);
+						_verbose(VERBOSE_DEBUG, "channel %d allocated for ep %d as bulk IN (port #%d)", chn, pipe->EndpointNumber, pipe->Device->Port);
 						ep->Rx = &_ch_table[chn];
 					}
 					else
 					{
-						verbose(VERBOSE_DEBUG, "usb-fs-core", "channel %d allocated for ep %d as bulk OUT (port #%d)", chn, pipe->EndpointNumber, pipe->Device->Port);
+						_verbose(VERBOSE_DEBUG, "channel %d allocated for ep %d as bulk OUT (port #%d)", chn, pipe->EndpointNumber, pipe->Device->Port);
 						ep->Tx = &_ch_table[chn];
 					}
 					return true;
@@ -362,12 +368,12 @@ bool usb_fs_host_start_pipe(usb_host_pipe_t *pipe)
 				{
 					if (pipe->Direction == USB_DEVICE_TO_HOST) 
 					{
-						verbose(VERBOSE_DEBUG, "usb-fs-core", "channel %d allocated for ep %d as interrupt IN (port #%d)", chn, pipe->EndpointNumber, pipe->Device->Port); 
+						_verbose(VERBOSE_DEBUG, "channel %d allocated for ep %d as interrupt IN (port #%d)", chn, pipe->EndpointNumber, pipe->Device->Port); 
 						ep->Rx = &_ch_table[chn];
 					}
 					else
 					{
-						verbose(VERBOSE_DEBUG, "usb-fs-core", "channel %d allocated for ep %d as interrupt IN (port #%d)", chn, pipe->EndpointNumber, pipe->Device->Port); 
+						_verbose(VERBOSE_DEBUG, "channel %d allocated for ep %d as interrupt OUT (port #%d)", chn, pipe->EndpointNumber, pipe->Device->Port); 
 						ep->Tx = &_ch_table[chn];
 					}
 					return true;
@@ -377,11 +383,11 @@ bool usb_fs_host_start_pipe(usb_host_pipe_t *pipe)
 				kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 		}
 
-		verbose(VERBOSE_DEBUG, "usb-fs-core", "alloc channel failed (addr=%d, ep=%d)", pipe->Device->Address, pipe->EndpointNumber); 
+		_verbose(VERBOSE_ERROR, "alloc channel failed (addr=%d, ep=%d)", pipe->Device->Address, pipe->EndpointNumber); 
 		pipe->Endpoint = nullptr;
 		pool_free(&_ep_pool, &ep->Node);
 	}
-	else verbose(VERBOSE_DEBUG, "usb-fs-core", "alloc endpoint failed (addr=%d, ep=%d)", pipe->Device->Address, pipe->EndpointNumber); 
+	else _verbose(VERBOSE_ERROR, "alloc endpoint failed (addr=%d, ep=%d)", pipe->Device->Address, pipe->EndpointNumber); 
 
 	return false;
 }
