@@ -44,7 +44,7 @@ io_error_t exos_io_open_path(io_entry_t *io, const char *path, io_flags_t flags)
 {
 	ASSERT(io != NULL, KERNEL_ERROR_NULL_POINTER);
 
-	EXOS_TREE_NODE *node = exos_tree_parse_path(NULL, &path);
+	exos_tree_node_t *node = exos_tree_parse_path(NULL, &path);
 	io_error_t res = IO_ERROR_UNKNOWN;
 	if (node != NULL && node->Type == EXOS_TREE_NODE_DEVICE)
 	{

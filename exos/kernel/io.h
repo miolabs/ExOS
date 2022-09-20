@@ -70,7 +70,7 @@ typedef struct io_driver_t
 
 typedef struct
 {
-	EXOS_TREE_NODE TreeNode;
+	exos_tree_node_t TreeNode;
 	const io_driver_t *Driver;
 	void *DriverContext;
 	unsigned Port;

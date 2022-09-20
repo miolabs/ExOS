@@ -1,19 +1,19 @@
 #include "tree.h"
 #include <kernel/panic.h>
 
-EXOS_TREE_GROUP __root = {
+exos_tree_group_t __root = {
 #ifdef DEBUG
 	.Node = { .Type = EXOS_NODE_TREE_NODE },
 #endif
 	.Type = EXOS_TREE_NODE_GROUP, .Name = "root" };
 
-static EXOS_TREE_GROUP _dev = {
+static exos_tree_group_t _dev = {
 #ifdef DEBUG
 	.Node = { .Type = EXOS_NODE_TREE_NODE },
 #endif
 	.Type = EXOS_TREE_NODE_GROUP, .Name = "dev" };
 
-static EXOS_TREE_GROUP _mnt = {
+static exos_tree_group_t _mnt = {
 #ifdef DEBUG
 	.Node = { .Type = EXOS_NODE_TREE_NODE },
 #endif
@@ -28,11 +28,11 @@ void __tree_initialize()
 	list_initialize(&_mnt.Children);
 	exos_mutex_create(&_mnt.Mutex);
 
-	exos_tree_add_child(&__root, (EXOS_TREE_NODE *)&_dev);
-	exos_tree_add_child(&__root, (EXOS_TREE_NODE *)&_mnt);
+	exos_tree_add_child(&__root, (exos_tree_node_t *)&_dev);
+	exos_tree_add_child(&__root, (exos_tree_node_t *)&_mnt);
 }
 
-void exos_tree_add_child(EXOS_TREE_GROUP *group, EXOS_TREE_NODE *child)
+void exos_tree_add_child(exos_tree_group_t *group, exos_tree_node_t *child)
 {
 	ASSERT(group != NULL && child != NULL, KERNEL_ERROR_NULL_POINTER);
 	ASSERT(group->Type == EXOS_TREE_NODE_GROUP, KERNEL_ERROR_WRONG_NODE);
@@ -71,24 +71,24 @@ static int _name_eq(const char **ppath, const char *name)
 	return 0;
 }
 
-EXOS_TREE_NODE *exos_tree_find_group(EXOS_TREE_NODE *parent, const char *path)
+exos_tree_group_t *exos_tree_find_group(exos_tree_group_t *parent, const char *path)
 {
 	if (path != NULL)
 	{
-		EXOS_TREE_NODE *node = exos_tree_parse_path(parent, &path);
-		return (node != NULL && node->Type == EXOS_TREE_NODE_GROUP) ? node : NULL; 
+		exos_tree_node_t *node = exos_tree_parse_path(parent, &path);
+		return (node != NULL && node->Type == EXOS_TREE_NODE_GROUP) ? (exos_tree_group_t *)node : NULL; 
 	}
 	return parent;
 }
 
-EXOS_TREE_NODE *exos_tree_find_path(EXOS_TREE_NODE *parent, const char *path)
+exos_tree_node_t *exos_tree_find_path(exos_tree_group_t *parent, const char *path)
 {
 	ASSERT(path != NULL, KERNEL_ERROR_NULL_POINTER);
-	EXOS_TREE_NODE *node = exos_tree_parse_path(parent, &path);
+	exos_tree_node_t *node = exos_tree_parse_path(parent, &path);
 	return (node != NULL && node->Type != EXOS_TREE_NODE_GROUP) ? node : NULL;
 }
 
-EXOS_TREE_NODE *exos_tree_parse_path(EXOS_TREE_NODE *parent, const char **psubpath)
+exos_tree_node_t *exos_tree_parse_path(exos_tree_group_t *parent, const char **psubpath)
 {
 	if (psubpath == NULL)
 		kernel_panic(KERNEL_ERROR_NULL_POINTER);
@@ -97,29 +97,30 @@ EXOS_TREE_NODE *exos_tree_parse_path(EXOS_TREE_NODE *parent, const char **psubpa
 	if (*subpath == '/') 
 	{
 		subpath++;
-		parent = (EXOS_TREE_NODE *)&__root;
+		parent = &__root;
 	}
 	else if (parent == NULL) 
-		parent = (EXOS_TREE_NODE *)&__root;
+		parent = &__root;
 
+	exos_tree_node_t *found = (exos_tree_node_t *)parent;
 	if (subpath != NULL)
 	{
 		while(1)
 		{
 #ifdef DEBUG
-			if (parent->Node.Type != EXOS_NODE_TREE_NODE)
+			if (found->Node.Type != EXOS_NODE_TREE_NODE)
 				kernel_panic(KERNEL_ERROR_LIST_CORRUPTED);
 #endif
 			if (*subpath != '\0' &&
-				parent->Type == EXOS_TREE_NODE_GROUP)
+				found->Type == EXOS_TREE_NODE_GROUP)
 			{
-				EXOS_TREE_GROUP *group = (EXOS_TREE_GROUP *)parent;
+				exos_tree_group_t *group = (exos_tree_group_t *)found;
 				
 				exos_mutex_lock(&group->Mutex);
-				EXOS_TREE_NODE *found = NULL;
+				found = NULL;
 				FOREACH(node, &group->Children)
 				{
-					EXOS_TREE_NODE *child = (EXOS_TREE_NODE *)node;
+					exos_tree_node_t *child = (exos_tree_node_t *)node;
 					if (_name_eq(&subpath, child->Name))
 					{
 						found = child;
@@ -129,37 +130,36 @@ EXOS_TREE_NODE *exos_tree_parse_path(EXOS_TREE_NODE *parent, const char **psubpa
 				exos_mutex_unlock(&group->Mutex);
 
 				if (found != NULL) 
-				{
-					parent = found;
 					continue;
-				}	
+				
+				found = (exos_tree_node_t *)group;
 			}
 			break;
 		}
 		
 		*psubpath = subpath;
 	}
-	return parent;
+	return found;
 }
 
-int exos_tree_add_child_path(EXOS_TREE_NODE *child, const char *parent_path)
+bool exos_tree_add_child_path(exos_tree_node_t *child, const char *parent_path)
 {
-	EXOS_TREE_NODE *parent = exos_tree_find_group(NULL, parent_path);
+	exos_tree_group_t *parent = exos_tree_find_group(NULL, parent_path);
 	if (parent != NULL &&
 		parent->Type == EXOS_TREE_NODE_GROUP)
 	{
-		exos_tree_add_child((EXOS_TREE_GROUP *)parent, child);
-		return 1;
+		exos_tree_add_child((exos_tree_group_t *)parent, child);
+		return true;
 	}
-	return 0;
+	return false;
 }
 
-void exos_tree_add_group(EXOS_TREE_GROUP *group, const char *parent_path)
+void exos_tree_add_group(exos_tree_group_t *group, const char *parent_path)
 {
 	group->Type = EXOS_TREE_NODE_GROUP;
 	list_initialize(&group->Children);
 	exos_mutex_create(&group->Mutex);
-	exos_tree_add_child_path((EXOS_TREE_NODE *)group, parent_path);
+	exos_tree_add_child_path((exos_tree_node_t *)group, parent_path);
 }
 
 int exos_tree_valid_name(const char *name)

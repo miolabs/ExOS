@@ -30,7 +30,7 @@ static int _protocol_count = 0;
 	static APPLE_IAP_PROTOCOL_MANAGER _manager1 = { .Name = IAP_ACCESORY_EA_PROTOCOL_NAME };
 #endif
 
-static EXOS_TREE_GROUP _iap_device_node = { .Name = "iap" };
+static exos_tree_group_t _iap_device_node = { .Name = "iap" };
 
 void iap_comm_initialize()
 {
