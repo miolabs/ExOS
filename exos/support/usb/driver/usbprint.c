@@ -103,6 +103,7 @@ static usb_host_function_t *_check_interface(usb_host_device_t *device,
 				func->State = USBPRINT_ATTACHING;
 				return (usb_host_function_t *)func;
 			}
+			else _verbose(VERBOSE_ERROR, "can't add more instances!");
 		}
 	}
 	return NULL;
@@ -112,6 +113,7 @@ static void _start(usb_host_function_t *usb_func, usb_configuration_descriptor_t
 {
 	usbprint_function_t *func = (usbprint_function_t *)usb_func;
 
+	_verbose(VERBOSE_COMMENT, "starting...");
 	usb_host_start_pipe(&func->BulkOutputPipe);
 	if (func->Protocol == USBPRINT_PROTOCOL_BIDIRECTIONAL)
 		usb_host_start_pipe(&func->BulkInputPipe);
@@ -119,6 +121,7 @@ static void _start(usb_host_function_t *usb_func, usb_configuration_descriptor_t
 	if (exos_tree_find_path(NULL, "dev/usbprint") == NULL)
 	{
 		// NOTE: single instance
+		_verbose(VERBOSE_COMMENT, "adding new io device");
 		exos_io_add_device(&func->KernelDevice, "usbprint", &_io_driver, func);
 	}
 	func->Entry = NULL;
@@ -128,6 +131,8 @@ static void _start(usb_host_function_t *usb_func, usb_configuration_descriptor_t
 static void _stop(usb_host_function_t *usb_func)
 {
 	usbprint_function_t *func = (usbprint_function_t *)usb_func;
+
+	_verbose(VERBOSE_COMMENT, "stopping...");
 
 	usb_host_stop_pipe(&func->BulkOutputPipe);
    	if (func->Protocol == USBPRINT_PROTOCOL_BIDIRECTIONAL)
