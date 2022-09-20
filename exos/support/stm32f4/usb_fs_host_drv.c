@@ -188,7 +188,7 @@ static bool _do_control_xfer(usb_request_buffer_t *urb, usb_direction_t dir, boo
 	if (_begin_xfer(urb, dir, setup, data, length))
 	{
 #ifdef DEBUG
-		if (!exos_event_wait(&urb->Event, 3000))
+		while (!exos_event_wait(&urb->Event, 3000))
 			_verbose(VERBOSE_ERROR, "still waiting...");
 #else
 		exos_event_wait(&urb->Event, TIMEOUT_NEVER);

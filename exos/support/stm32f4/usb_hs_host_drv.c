@@ -30,7 +30,7 @@ static const usb_host_controller_driver_t _driver = {
 	_start_pipe, _stop_pipe, _begin_transfer, _end_transfer,
 	_create_device, _destroy_device };
 
-static usb_host_controller_t _hc_hs;
+static usb_host_controller_t _hc;
 static usb_host_device_t _root_device;
 
 void usb_hs_init_as_host(dispatcher_context_t *context)
@@ -38,8 +38,8 @@ void usb_hs_init_as_host(dispatcher_context_t *context)
 	ASSERT(context != nullptr, KERNEL_ERROR_NULL_POINTER);
 
 	exos_mutex_create(&_mutex);
-	usb_host_controller_create(&_hc_hs, &_driver, &_root_device, 1);
-	usb_hs_host_initialize(&_hc_hs, context);
+	usb_host_controller_create(&_hc, &_driver, &_root_device, 1);
+	usb_hs_host_initialize(&_hc, context);
 }
 
 static bool _begin_xfer(usb_request_buffer_t *urb, usb_direction_t dir, bool setup, void *data, unsigned length)

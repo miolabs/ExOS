@@ -697,7 +697,6 @@ void __usb_hs_hcint_irq_handler()
 				}
 				else if (hcint & USB_OTG_HCINT_NAK)
 				{
-					otg_host->HC[ch_num].HCINT = USB_OTG_HCINT_NAK;
 					if (ch->Period == 0)
 					{
 						if (_ch_table[ch_num].Direction == USB_DEVICE_TO_HOST)
@@ -714,6 +713,7 @@ void __usb_hs_hcint_irq_handler()
 					{
 						_disable_channel(ch_num, false); // NOTE: will trigger CHH interrupt
 					}
+					otg_host->HC[ch_num].HCINT = USB_OTG_HCINT_NAK;
 				}
 				else if (hcint & USB_OTG_HCINT_CHH)
 				{
@@ -725,7 +725,11 @@ void __usb_hs_hcint_irq_handler()
 							case STM32_EP_STA_BUSY:
 								if (ch->Period == 0)
 								{
-									// TODO: error count? rewind pointers?
+									// TODO: error count?
+
+									// NOTE: GD32x workaround: need to re-write HCSIZx register to re-enable non-periodic
+									otg_host->HC[ch_num].HCTSIZ = otg_host->HC[ch_num].HCTSIZ;
+
 									_enable_channel(ch_num);
 								}
 								else
