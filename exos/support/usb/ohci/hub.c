@@ -6,6 +6,8 @@
 #include <kernel/verbose.h>
 #include <kernel/panic.h>
 
+#define _verbose(level, ...) verbose(level, "ohci-roothub", __VA_ARGS__)
+
 #define THREAD_STACK 2048
 static exos_thread_t _thread;
 static unsigned char _stack[THREAD_STACK] __attribute__((aligned(16)));
@@ -63,15 +65,16 @@ static void _dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 				
 				usb_host_device_t *child = usb_host_create_root_device(_hc_driver, port, speed);
 				if (child != nullptr)
-					verbose(VERBOSE_DEBUG, "usb_roothub", "child %04x/%04x added at port #%d", child->Vendor, child->Product, child->Port);
+					_verbose(VERBOSE_COMMENT, "child %04x:%04x added at port #%d", child->Vendor, child->Product, child->Port);
 				else	
-					verbose(VERBOSE_DEBUG, "usb_roothub", "device add failed");				}
+					_verbose(VERBOSE_ERROR, "device add failed");
+			}
 			else 
 			{
 				usb_host_device_t *child = &_hc_driver->Devices[port];
-				verbose(VERBOSE_COMMENT, "usb_roothub", "child %04x/%04x removing at port #%d", child->Vendor, child->Product, child->Port);
+				_verbose(VERBOSE_COMMENT, "child %04x:%04x removing at port #%d", child->Vendor, child->Product, child->Port);
 				usb_host_destroy_device(child);
-				verbose(VERBOSE_COMMENT, "usb_roothub", "child %04x/%04x removed", child->Vendor, child->Product);
+				_verbose(VERBOSE_COMMENT, "child %04x:%04x removed", child->Vendor, child->Product);
 			}
 		}
 		if (status & OHCIR_RH_PORT_PRSC)
