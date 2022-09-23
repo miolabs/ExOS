@@ -479,7 +479,7 @@ static int _slave_io()
 							{
 								case IAP_CMD_RET_ACC_AUTH_INFO:
 									offset = _read_cert(&parts_done, resp_buffer, total_length);
-									_verbose(VERBOSE_DEBUG, "AuthInfo part %d", parts_done);
+									//_verbose(VERBOSE_DEBUG, "AuthInfo part %d", parts_done);
 									resp = (iap_cmd_t) { .CommandID = IAP_CMD_RET_ACC_AUTH_INFO, .Length = offset, .Transaction = cmd.Transaction };
 									iap_send_cmd(&resp, resp_buffer);
 									break;
@@ -508,7 +508,7 @@ static int _slave_io()
 							_verbose(VERBOSE_ERROR, "CP cert length=%d", total_length);
 							parts_done = 0;
 							offset = _read_cert(&parts_done, resp_buffer, total_length);
-							_verbose(VERBOSE_DEBUG, "AuthInfo part %d (%d bytes)", parts_done, offset);
+							//_verbose(VERBOSE_DEBUG, "AuthInfo part %d (%d bytes)", parts_done, offset);
 							resp = (iap_cmd_t) { .CommandID = IAP_CMD_RET_ACC_AUTH_INFO, .Length = offset, .Transaction = cmd.Transaction };
                             iap_send_cmd(&resp, resp_buffer);
 						}

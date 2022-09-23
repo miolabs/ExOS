@@ -39,7 +39,7 @@ static hid_function_handler_t *_match_device(usb_host_device_t *device, usb_conf
 		if (_instance.Hid.Function == NULL)		// NOTE: check if our instance is not running
 		{
 			iap_hid_handler_t *iap = &_instance;
-			iap->InputsCount = 0;
+			iap->OutputReportCount = 0;
 			iap->Offset = 0;
 			return (hid_function_handler_t *)iap;
 		}
@@ -70,12 +70,12 @@ static bool _parse_report_descriptor(iap_hid_handler_t *iap, hid_report_parser_t
 //				usb_hid_parse_local_item(&item, &usage, &usage_min, &usage_max);
 				break;
 			case HID_PARSE_FOUND_OUTPUT:
-				if (iap->InputsCount < IAP_MAX_REPORT_INPUTS)
+				if (iap->OutputReportCount < IAP_MAX_REPORT_OUTPUTS)
 				{
-					struct iap_input_report *input = &iap->Inputs[iap->InputsCount ++];
-					*input = (struct iap_input_report) { 
+					iap_output_report_t *output = &iap->OutputReports[iap->OutputReportCount ++];
+					*output = (iap_output_report_t) { 
 						.ReportId = state->ReportId, .Length = ((state->ReportCount * state->ReportSize) + 7) >> 3 };
-					_verbose(VERBOSE_DEBUG, "report id #%d, %d bytes", input->ReportId, input->Length);
+					_verbose(VERBOSE_DEBUG, "output report id #%d, %d bytes", output->ReportId, output->Length);
 				}
 				break;
 		}
@@ -105,7 +105,7 @@ static void _stop(hid_function_handler_t *handler)
 {
 	iap_hid_handler_t *iap = (iap_hid_handler_t *)handler;
 	iap_core_stop();
-	iap->InputsCount = 0;
+	iap->OutputReportCount = 0;
 	iap->Hid.Function = NULL;
 }
 
@@ -133,38 +133,38 @@ static void _notify(hid_function_handler_t *handler, unsigned char *data, unsign
 	}
 }
 
-static struct iap_input_report *_get_best_smaller_report(iap_hid_handler_t *iap, unsigned size)
+static iap_output_report_t *_get_best_smaller_report(iap_hid_handler_t *iap, unsigned size)
 {
-	struct iap_input_report  *best = NULL;
+	iap_output_report_t  *best = NULL;
 	unsigned best_size = 0;
-	for(unsigned i = 0; i < iap->InputsCount; i++)
+	for(unsigned i = 0; i < iap->OutputReportCount; i++)
 	{
-		struct iap_input_report  *input = &iap->Inputs[i];
-		unsigned report_size = input->Length;
+		iap_output_report_t *output = &iap->OutputReports[i];
+		unsigned report_size = output->Length;
 		if (report_size <= size && 
 			report_size > best_size)
 		{
 			best_size = report_size;
-			best = input;
+			best = output;
 			if (best_size == size) break;
 		}
 	}
 	return best;
 }
 
-static struct iap_input_report  *_get_best_bigger_report(iap_hid_handler_t *iap, unsigned size)
+static iap_output_report_t  *_get_best_bigger_report(iap_hid_handler_t *iap, unsigned size)
 {
-	struct iap_input_report  *best = NULL;
+	iap_output_report_t *best = NULL;
 	int best_size = 65;
-	for(int i = 0; i < iap->InputsCount; i++)
+	for(int i = 0; i < iap->OutputReportCount; i++)
 	{
-		struct iap_input_report  *input = &iap->Inputs[i];
-		int report_size = input->Length;
+		iap_output_report_t *output = &iap->OutputReports[i];
+		int report_size = output->Length;
 		if (report_size >= size && 
 			report_size < best_size)
 		{
 			best_size = report_size;
-			best = input;
+			best = output;
 			if (best_size == size) break;
 		}
 	}
@@ -174,10 +174,11 @@ static struct iap_input_report  *_get_best_bigger_report(iap_hid_handler_t *iap,
 bool iap_send_cmd(iap_cmd_t *cmd, unsigned char *data)
 {
 	iap_hid_handler_t *iap = &_instance; // NOTE: single instance
+#if IAP_DEBUG >= 2
 	_verbose(VERBOSE_DEBUG, "<- CMD%02x(%x) tr=%x",
 		cmd->CommandID, cmd->LingoID, cmd->Transaction);
-					
-	struct iap_input_report  *input;
+#endif
+	iap_output_report_t *output;
 	unsigned char buffer[64];
 	unsigned char sum = 0;
 	
@@ -206,10 +207,10 @@ bool iap_send_cmd(iap_cmd_t *cmd, unsigned char *data)
 	{
 		unsigned fit = sizeof(buffer) - offset;
 		if (fit > payload) fit = payload;
-		input = _get_best_smaller_report(iap, offset + fit);
-		if (input == NULL) break;
+		output = _get_best_smaller_report(iap, offset + fit);
+		if (output == NULL) break;
 
-		unsigned report_size = input->Length + 1;
+		unsigned report_size = output->Length + 1;
 		if ((offset + fit) > report_size) fit = report_size - offset;
 
 		for (unsigned i = 0; i < fit; i++) 
@@ -217,9 +218,9 @@ bool iap_send_cmd(iap_cmd_t *cmd, unsigned char *data)
 
 		if (offset == report_size)
 		{
-			buffer[0] = input->ReportId;
+			buffer[0] = output->ReportId;
 			buffer[1] |= IAP_LCB_MORE_TO_FOLLOW;
-			if (!usb_hid_set_report(iap->Hid.Function, USB_HID_REPORT_OUTPUT, input->ReportId, buffer, offset))
+			if (!usb_hid_set_report(iap->Hid.Function, USB_HID_REPORT_OUTPUT, output->ReportId, buffer, offset))
 			{
 				_verbose(VERBOSE_ERROR, "set report failed (1)");
 				return false;
@@ -236,15 +237,15 @@ bool iap_send_cmd(iap_cmd_t *cmd, unsigned char *data)
 		sum += buffer[offset++] = data[payload_offset++];
 	buffer[offset++] = -sum;
 
-	input = _get_best_bigger_report(iap, offset);
-	if (input != NULL)
+	output = _get_best_bigger_report(iap, offset);
+	if (output != NULL)
 	{
-		unsigned report_size = input->Length + 1;
-		buffer[0] = input->ReportId;
+		unsigned report_size = output->Length + 1;
+		buffer[0] = output->ReportId;
 		for (unsigned i = offset; i < report_size; i++) 
 			buffer[i] = 0; 
 		
-		if (usb_hid_set_report(iap->Hid.Function, USB_HID_REPORT_OUTPUT, input->ReportId, buffer, report_size))
+		if (usb_hid_set_report(iap->Hid.Function, USB_HID_REPORT_OUTPUT, output->ReportId, buffer, report_size))
 		{
 			return true;
 		}

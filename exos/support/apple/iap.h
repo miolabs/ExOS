@@ -3,14 +3,20 @@
 
 #include <support/usb/driver/hid.h>
 
-#define IAP_MAX_REPORT_INPUTS 5
+#define IAP_MAX_REPORT_OUTPUTS 5
 #define IAP_MAX_INPUT_BUFFER 512
+
+typedef struct __packed
+{
+	unsigned char ReportId; 
+	unsigned char Length;
+} iap_output_report_t;
 
 typedef struct
 {
 	hid_function_handler_t Hid;
-	struct iap_input_report { unsigned char ReportId; unsigned char Length; } Inputs[IAP_MAX_REPORT_INPUTS];
-	unsigned char InputsCount;
+	iap_output_report_t OutputReports[IAP_MAX_REPORT_OUTPUTS];
+	unsigned char OutputReportCount;
 	unsigned long Offset;
 	unsigned char Buffer[IAP_MAX_INPUT_BUFFER];
 } iap_hid_handler_t;
