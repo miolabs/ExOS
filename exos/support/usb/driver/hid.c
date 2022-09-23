@@ -367,7 +367,7 @@ static void _stop(usb_host_function_t *usb_func)
 	usb_host_stop_pipe(&func->InputPipe);
 	// NOTE: all pending urbs should have ended with error by now
 
-	hid_function_handler_t *handler= func->Handler;
+	hid_function_handler_t *handler = func->Handler;
 	if (handler != NULL)
 	{
 		exos_dispatcher_remove(_context, &func->Dispatcher);

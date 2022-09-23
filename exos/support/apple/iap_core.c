@@ -24,14 +24,14 @@ static unsigned long _transaction = 1;
 
 #define IAP_MAX_PENDING_REQUESTS 2
 static iap_request_t _requests[IAP_MAX_PENDING_REQUESTS];
-static EXOS_FIFO _free_requests_fifo;
+static fifo_t _free_requests_fifo;
 static mutex_t _busy_requests_lock;
 static list_t _busy_requests_list;
 
 #define IAP_MAX_INCOMING_COMMANDS 3
 static iap_cmd_node_t _incoming_cmds[IAP_MAX_INCOMING_COMMANDS];
-static EXOS_FIFO _free_cmds_fifo;
-static EXOS_FIFO _incoming_cmds_fifo;
+static fifo_t _free_cmds_fifo;
+static fifo_t _incoming_cmds_fifo;
 static event_t _incoming_cmds_event;
 
 void iap_core_initialize()

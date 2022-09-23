@@ -2,9 +2,15 @@
 #define APPLE_IAP2_H
 
 #include <kernel/types.h>
+#include <kernel/iobuffer.h>
 #include <stdbool.h>
 
-#define USB_IAP_REQ_DEVICE_POWER_REQUEST 0x40
+#define USB_IAP2_REQ_DEVICE_POWER_REQUEST 0x40
+
+typedef enum
+{
+	IAP2_LINGO_GENERAL = 0,
+} iap2_lingo_t;
 
 typedef struct
 {
@@ -64,7 +70,7 @@ struct iap2_transport_driver
 void iap2_initialize();
 bool iap2_transport_create(iap2_transport_t *t, const char *id, const iap2_transport_driver_t *driver);
 bool iap2_start(iap2_transport_t *t);
-void iap2_parse(iap2_transport_t *t, const unsigned char *packet, unsigned packet_length);
+void iap2_input(iap2_transport_t *t, const unsigned char *packet, unsigned packet_length);
 void iap2_stop();
 
 #endif // APPLE_IAP2_H

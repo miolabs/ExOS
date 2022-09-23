@@ -4,7 +4,7 @@
 #include <kernel/verbose.h>
 #include <kernel/panic.h>
 
-#ifdef IAP_DEBUG
+#ifdef IAP2_DEBUG
 #define _verbose(level, ...) verbose(level, "iAP2-hidd", __VA_ARGS__)
 #else
 #define _verbose(level, ...) { /* nothing */ }
@@ -127,14 +127,16 @@ static void _notify(hid_function_handler_t *handler, unsigned char *data, unsign
 			unsigned input_length = iap2->InputOffset;
 			for (unsigned i = 0; i < fit; i++) iap2->InputBuffer[input_length++] = data[offset++];
 
-			if (!(lcb & IAP2_LCB_MORE_TO_FOLLOW))
-			{
-				iap2_parse(&iap2->Transport, iap2->InputBuffer, input_length);
-				iap2->InputOffset = sizeof(iap2->InputBuffer);
-			}
-			else 
+			if (0 != (lcb & IAP2_LCB_MORE_TO_FOLLOW))
 			{
 				iap2->InputOffset = input_length;
+			}
+			else
+			{
+				iap2_input(&iap2->Transport, iap2->InputBuffer, input_length);
+
+				// NOTE: no more data fits until next LCB_START
+				iap2->InputOffset = sizeof(iap2->InputBuffer);
 			}
 		}
 		else 
