@@ -8,7 +8,7 @@ typedef struct
 {
 	NET_IO_ENTRY;
    	unsigned short LocalPort;
-	EXOS_FIFO Incoming;
+	fifo_t Incoming;
 } UDP_IO_ENTRY;
 
 void __udp_io_initialize();

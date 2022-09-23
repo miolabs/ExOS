@@ -6,7 +6,7 @@
 typedef struct
 {
 	node_t Node;
-	EXOS_FIFO Fifo;
+	fifo_t Fifo;
 	event_t Event;
 	const char *Name;
 } EXOS_PORT;

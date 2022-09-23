@@ -44,7 +44,7 @@ typedef struct
 		};
 		struct	// for LISTENING STATE
 		{
-			EXOS_FIFO AcceptQueue;
+			fifo_t AcceptQueue;
 		};
 	};
 

@@ -6,15 +6,15 @@
 typedef struct
 {
 #ifdef DEBUG
-	int Count;
+	unsigned Count;
 #endif
 	list_t Items;
 	event_t *Event;
-} EXOS_FIFO;
+} fifo_t;
 
-void exos_fifo_create(EXOS_FIFO *fifo, event_t *event);
-node_t *exos_fifo_dequeue(EXOS_FIFO *fifo);
-node_t *exos_fifo_wait(EXOS_FIFO *fifo, unsigned long timeout);
-void exos_fifo_queue(EXOS_FIFO *fifo, node_t *node);
+void exos_fifo_create(fifo_t *fifo, event_t *event);
+node_t *exos_fifo_dequeue(fifo_t *fifo);
+node_t *exos_fifo_wait(fifo_t *fifo, unsigned long timeout);
+void exos_fifo_queue(fifo_t *fifo, node_t *node);
 
 #endif // EXOS_FIFO_H
