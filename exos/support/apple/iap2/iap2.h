@@ -22,7 +22,13 @@ typedef struct
 } iap2_short_t;
 
 #define IAP2SHTOH(sh) (((sh).High << 8) | (sh).Low)
-#define HTOIAP2S(s) (iap2_short_t){ .High = (s) >> 8, .Low = (s) & 0xff };
+#define HTOIAP2S(s) (iap2_short_t){ .High = (s) >> 8, .Low = (s) & 0xff }
+
+#define IAP2_CONTROLF_SYN 0x80
+#define IAP2_CONTROLF_ACK 0x40
+#define IAP2_CONTROLF_EAK 0x20
+#define IAP2_CONTROLF_RST 0x10
+#define IAP2_CONTROLF_SLP 0x08
 
 typedef struct __packed
 {
@@ -79,13 +85,25 @@ struct iap2_transport_driver
 	// TODO
 };
 
+typedef struct
+{
+	unsigned char MaxNumOutstandingPackets;
+	unsigned short MaxRcvPacketLength;
+	unsigned short RetxTimeout;
+	unsigned short CumulativeAckTimeout;
+	unsigned char MaxRetx;
+	unsigned char MaxCumulativeAcks;
+} iap2_link_params_t;
 
 typedef struct
 {
 	iap2_transport_t *Transport;
 	unsigned char Seq;
 	unsigned char Ack;
-	// TODO
+
+	iap2_link_params_t LinkParams;
+	event_t SyncEvent;
+
 	iap2_link_session1_t Sessions[IAP2_MAX_SESSIONS];
 } iap2_context_t;
 
