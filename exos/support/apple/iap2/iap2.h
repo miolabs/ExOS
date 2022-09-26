@@ -5,6 +5,10 @@
 #include <kernel/iobuffer.h>
 #include <stdbool.h>
 
+#ifndef IAP2_MAX_SESSIONS
+#define IAP2_MAX_SESSIONS 2
+#endif
+
 #define USB_IAP2_REQ_DEVICE_POWER_REQUEST 0x40
 
 typedef enum
@@ -18,6 +22,7 @@ typedef struct
 } iap2_short_t;
 
 #define IAP2SHTOH(sh) (((sh).High << 8) | (sh).Low)
+#define HTOIAP2S(s) (iap2_short_t){ .High = (s) >> 8, .Low = (s) & 0xff };
 
 typedef struct __packed
 {
@@ -30,23 +35,30 @@ typedef struct __packed
 	unsigned char Checksum;
 } iap2_header_t;
 
+typedef enum
+{
+	IAP2_SESSION_TYPE_CONTROL = 0,
+	IAP2_SESSION_TYPE_FILE_TRANSFER = 1,
+	IAP2_SESSION_TYPE_EXTERNAL_ACCESSORY = 2,
+} iap2_session_type_t;
+
 typedef struct __packed
 {
-	unsigned char Identifier;
+	unsigned char Id;
 	unsigned char Type;
-	unsigned char Version;
-} iap2_link_session_payload1_t;
+	unsigned char Ver;
+} iap2_link_session1_t;
 
 typedef struct __packed
 {
 	unsigned char LinkVersion;	// NOTE: always 1
 	unsigned char MaxNumOutstandingPackets;
 	iap2_short_t MaxRcvPacketLength;
-	iap2_short_t RetxTimoout;
-	iap2_short_t CumulativeAckTimoout;
+	iap2_short_t RetxTimeout;
+	iap2_short_t CumulativeAckTimeout;
 	unsigned char MaxRetx;
 	unsigned char MaxCumulativeAcks;
-	iap2_link_session_payload1_t Sessions[0];
+	iap2_link_session1_t Sessions[0];
 } iap2_link_sync_payload1_t;
 
 
@@ -66,6 +78,16 @@ struct iap2_transport_driver
 	bool (*Send)(iap2_transport_t *t, const unsigned char *data, unsigned length);
 	// TODO
 };
+
+
+typedef struct
+{
+	iap2_transport_t *Transport;
+	unsigned char Seq;
+	unsigned char Ack;
+	// TODO
+	iap2_link_session1_t Sessions[IAP2_MAX_SESSIONS];
+} iap2_context_t;
 
 void iap2_initialize();
 bool iap2_transport_create(iap2_transport_t *t, const char *id, const iap2_transport_driver_t *driver);

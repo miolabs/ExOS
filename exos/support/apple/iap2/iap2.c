@@ -103,38 +103,6 @@ void iap2_input(iap2_transport_t *t, const unsigned char *packet, unsigned packe
 }
 
 
-void iap2_parse(iap2_transport_t *t, const unsigned char *packet, unsigned packet_length)
-{
-	if (packet_length < sizeof(iap2_header_t))
-	{
-		_verbose(VERBOSE_ERROR, "packet header incomplete, length = %d", packet_length);
-		return;
-	}
-
-	iap2_header_t *hdr = (iap2_header_t *)packet;
-	unsigned short sop = IAP2SHTOH(hdr->Sop);
-	unsigned short hdr_pkt_len = IAP2SHTOH(hdr->PacketLength);
-	if (sop != 0xff5a || hdr_pkt_len != packet_length)
-	{
-		_verbose(VERBOSE_ERROR, "bad packet header", sop);
-		return;
-	}
-
-	unsigned char checksum = hdr->Sop.High + hdr->Sop.Low + hdr->PacketLength.High + hdr->PacketLength.Low +
-		hdr->Control + hdr->SequenceNumber + hdr->AckNumber + hdr->SessionId;
-	if (checksum != hdr->Checksum)
-	{
-		_verbose(VERBOSE_ERROR, "packet header bad checksum ($%02x != $%02x)", hdr->Checksum, checksum);
-		return;
-	}
-
-	// TODO
-
-	_verbose(VERBOSE_DEBUG, "got packet (%s), %d bytes", t->Id, packet_length);
-}
-
-
-
 static iap2_buffer_t *_wait_buffer(iap2_transport_t *t, unsigned timeout)
 {
 	iap2_buffer_t *buf = (iap2_buffer_t *)exos_fifo_wait(&_input_fifo, timeout);
@@ -178,26 +146,119 @@ static bool _initialize(iap2_transport_t *t)
 	return done;
 }
 
+static unsigned char _checksum(unsigned char *buffer, unsigned length)
+{
+	unsigned char sum = 0;
+	for (unsigned i = 0; i < length; i++) sum += buffer[i];
+	return (unsigned char)(0x100 - sum);
+}
+
 static bool _parse_buffer(iap2_buffer_t *buf, iap2_header_t **pheader, void **ppayload)
 {
+	if (buf->Length < sizeof(iap2_header_t))
+	{
+		_verbose(VERBOSE_ERROR, "packet header incomplete, length = %d", buf->Length);
+		return false;
+	}
+
+	iap2_header_t *hdr = (iap2_header_t *)buf->Buffer;
+	unsigned short sop = IAP2SHTOH(hdr->Sop);
+	unsigned short hdr_pkt_len = IAP2SHTOH(hdr->PacketLength);
+	if (sop != 0xff5a || hdr_pkt_len > buf->Length)
+	{
+		_verbose(VERBOSE_ERROR, "bad packet header", sop);
+		return false;
+	}
+
+	unsigned char checksum = _checksum((unsigned char *)hdr, sizeof(iap2_header_t) - 1);
+	if (checksum != hdr->Checksum)
+	{
+		_verbose(VERBOSE_ERROR, "packet header bad checksum ($%02x != $%02x)", hdr->Checksum, checksum);
+		return false;
+	}
+
 	// TODO
+
 	return false;
 }
 
-static bool _synchronize(iap2_transport_t *t)
+static unsigned _init_header(iap2_context_t *iap2, iap2_header_t *hdr, 
+	unsigned char control, unsigned char sess_id, unsigned payload)
+{
+	hdr->Sop = HTOIAP2S(0xff5a);
+	unsigned packet_length = sizeof(iap2_header_t) + payload + 1;	// NOTE: includes payload chksum
+	hdr->PacketLength = HTOIAP2S(packet_length);
+	hdr->Control = control;
+	hdr->SequenceNumber = iap2->Seq;
+	hdr->AckNumber = iap2->Ack;
+	hdr->SessionId = sess_id;
+	hdr->Checksum = _checksum((unsigned char *)hdr, sizeof(iap2_header_t) - 1);
+	return sizeof(iap2_header_t);
+}
+
+static bool _send_syn(iap2_context_t *iap2, iap2_link_sync_payload1_t *sync, unsigned payload)
+{
+	iap2_buffer_t *buf = (iap2_buffer_t *)pool_allocate(&_output_pool);
+	if (buf != NULL)
+	{
+		iap2_header_t *hdr = (iap2_header_t *)buf->Buffer;
+		unsigned offset = _init_header(iap2, hdr,
+			0x80, 0, payload);
+		
+		memcpy(buf->Buffer + offset, sync, payload);
+		buf->Buffer[offset + payload] = _checksum(buf->Buffer + offset, payload);
+		buf->Length = offset + payload + 1;
+
+		_verbose(VERBOSE_DEBUG, "send SYN packet $%02x, length=$%x",
+			iap2->Seq, buf->Length);
+
+		_send(iap2->Transport, buf->Buffer, buf->Length);
+		
+		pool_free(&_output_pool, &buf->Node);
+		return true;	
+	}
+	else
+	{
+		_verbose(VERBOSE_ERROR, "cannot allocate output buffer");
+	}
+	return false;
+} 
+
+static unsigned _init_link_payload(iap2_context_t *iap2, iap2_link_sync_payload1_t *sync)
+{
+	sync->LinkVersion = 0x01;
+	sync->MaxNumOutstandingPackets = IAP2_BUFFERS;
+	sync->MaxRcvPacketLength = HTOIAP2S(IAP2_BUFFER_SIZE);
+	sync->RetxTimeout = HTOIAP2S(0x040B);	// FIXME
+	sync->CumulativeAckTimeout = HTOIAP2S(0x0017);	// FIXME
+	sync->MaxRetx = 3;
+	sync->MaxCumulativeAcks = 3;
+	unsigned offset = sizeof(iap2_link_sync_payload1_t);
+	for(unsigned i = 0; i < IAP2_MAX_SESSIONS; i++)
+	{
+		sync->Sessions[i] = iap2->Sessions[i];
+		offset += sizeof(iap2_link_session1_t);
+	}
+	return offset;
+}
+
+static bool _synchronize(iap2_context_t *iap2)
 {
 	bool done = false;
 
+	iap2_link_sync_payload1_t sync;
+	unsigned payload = _init_link_payload(iap2, &sync);
+	// TODO?
 
 	bool send_sync = true;
 	while(!_service_exit)
 	{
 		if (send_sync)
 		{
-			// TODO
+			_send_syn(iap2, &sync, payload);
 		}
 
-		iap2_buffer_t *buf = (iap2_buffer_t *)_wait_buffer(t, 1000);	// FIXME: configure timeout
+		iap2_buffer_t *buf = (iap2_buffer_t *)_wait_buffer(iap2->Transport, 1000);	// FIXME: configure timeout
 		if (buf != NULL)
 		{
 			iap2_header_t *header;
@@ -228,15 +289,24 @@ static void *_service(void *arg)
 {
 	iap2_transport_t *t = (iap2_transport_t *)arg;
 
+	iap2_context_t iap = (iap2_context_t) { .Transport = t,
+		.Seq = 0x2b}; // FIXME: randomize seq number
+
+	// TODO: session setup according application needs, this is for testing purposes only
+	for(unsigned i = 0; i < IAP2_MAX_SESSIONS; i++)
+		iap.Sessions[i] = (iap2_link_session1_t) { .Id = 10 + i, 
+			.Type = (i == 0) ? IAP2_SESSION_TYPE_CONTROL : IAP2_SESSION_TYPE_EXTERNAL_ACCESSORY, 
+			.Ver = 1 };
+
 	exos_thread_sleep(1000);
 
 	_verbose(VERBOSE_COMMENT, "Service starting (%s)...", t->Id);
 
 	if (_initialize(t))
 	{
-		_verbose(VERBOSE_DEBUG, "Identify procedure succeded!");
+		_verbose(VERBOSE_DEBUG, "Initialization procedure succeded!");
 
-		while(!_synchronize(t))
+		while(!_synchronize(&iap))
 		{
 			_verbose(VERBOSE_ERROR, "Synchronization failed!");
 			if (_service_exit) break;
