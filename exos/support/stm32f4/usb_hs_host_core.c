@@ -95,9 +95,11 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 			{
 				verbose(VERBOSE_DEBUG, "usb-hs-roothub", "connect detected");
 				
+				exos_thread_sleep(50);	// at least 50ms before reset as of USB 2.0 spec
+
 				_port_state = HPORT_RESET;
 				otg_host->HPRT = hprt_const | USB_OTG_HPRT_PRST;
-				timeout = 100;	// min 20ms
+				timeout = 20;	// min 20ms
 			}
 			break;
 		case HPORT_RESET:
@@ -410,6 +412,7 @@ static void _xfer_complete(unsigned ch_num, urb_status_t status)
 	stm32_usbh_ep_t *ep = _ch2ep[ch_num];
 	if (ep != nullptr && ep->Status != STM32_EP_STA_IDLE)
 	{
+
 		usb_request_buffer_t *urb = ch->Current.Request;
 		if (urb != nullptr)
 		{
@@ -432,8 +435,8 @@ static void _disable_channel(unsigned ch_num, bool wait)
 {
 	if (otg_host->HPRT & USB_OTG_HPRT_PENA)
 	{
-		otg_host->HC[ch_num].HCCHAR |= USB_OTG_HCCHAR_CHDIS | USB_OTG_HCCHAR_CHENA;	// FIXME
 		otg_host->HC[ch_num].HCINTMSK |= USB_OTG_HCINTMSK_CHHM;
+		otg_host->HC[ch_num].HCCHAR |= USB_OTG_HCCHAR_CHDIS | USB_OTG_HCCHAR_CHENA;	// FIXME
 		if (wait)
 		{
 			stm32_usbh_ep_t *ep;
@@ -717,6 +720,8 @@ void __usb_hs_hcint_irq_handler()
 				}
 				else if (hcint & USB_OTG_HCINT_CHH)
 				{
+					otg_host->HC[ch_num].HCINTMSK &= ~USB_OTG_HCINTMSK_CHHM;
+
 					stm32_usbh_ep_t *ep = _ch2ep[ch_num];
 					if (ep != nullptr)
 					{

@@ -434,8 +434,8 @@ static void _disable_channel(unsigned ch_num, bool wait)
 {
 	if (otg_host->HPRT & USB_OTG_HPRT_PENA)
 	{
-		otg_host->HC[ch_num].HCCHAR |= USB_OTG_HCCHAR_CHDIS | USB_OTG_HCCHAR_CHENA;	// FIXME
 		otg_host->HC[ch_num].HCINTMSK |= USB_OTG_HCINTMSK_CHHM;
+		otg_host->HC[ch_num].HCCHAR |= USB_OTG_HCCHAR_CHDIS | USB_OTG_HCCHAR_CHENA;	// FIXME
 		if (wait)
 		{
 			stm32_usbh_ep_t *ep;
