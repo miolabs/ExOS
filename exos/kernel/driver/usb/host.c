@@ -28,6 +28,20 @@ void usb_host_controller_create(usb_host_controller_t *hc, const usb_host_contro
 	exos_event_create(&hc->RootHubEvent, EXOS_EVENTF_AUTORESET);
 }
 
+bool usb_host_controller_stop(usb_host_controller_t *hc)
+{
+	ASSERT(hc != nullptr, KERNEL_ERROR_NULL_POINTER);
+	const usb_host_controller_driver_t *hcd = hc->Driver;
+	ASSERT(hcd != nullptr, KERNEL_ERROR_NULL_POINTER);
+	
+	bool done = false;
+	if (hcd->Stop != nullptr)
+	{
+		done = hcd->Stop(hc);
+	}
+	return done;
+}
+
 void usb_host_wait_sof(usb_host_controller_t *hc)
 {
 	ASSERT(hc != nullptr, KERNEL_ERROR_NULL_POINTER);
