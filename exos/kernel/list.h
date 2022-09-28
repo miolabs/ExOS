@@ -26,10 +26,8 @@ typedef struct __EXOS_NODE
 {
 	struct __EXOS_NODE *Succ;
 	struct __EXOS_NODE *Pred;
-#ifdef DEBUG
 	node_type_t Type;
-#endif
-	int Priority;
+	signed char Priority;
 } node_t;
 
 typedef struct 

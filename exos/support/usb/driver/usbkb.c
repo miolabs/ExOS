@@ -7,7 +7,7 @@
 #ifdef DEBUG
 #define _verbose(level, ...) verbose(level, "usb-kb", __VA_ARGS__)
 #else
-#devine _verbose(level, ...) { /* nothing */ }
+#define _verbose(level, ...) { /* nothing */ }
 #endif
 
 static pool_t _handler_pool;

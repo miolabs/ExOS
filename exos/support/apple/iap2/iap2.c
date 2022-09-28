@@ -60,7 +60,7 @@ bool iap2_start(iap2_transport_t *t)
 
 	t->Transaction = 1;
 
-	_verbose(VERBOSE_DEBUG, "starting thread...");
+	_verbose(VERBOSE_COMMENT, "starting thread...");
 	_service_busy = true;
 
 	pool_create(&_input_pool, (node_t *)_input, sizeof(iap2_buffer_t), IAP2_BUFFERS);
@@ -71,11 +71,12 @@ bool iap2_start(iap2_transport_t *t)
 
 	_service_exit = false;
 	exos_thread_create(&_thread, 5, _stack, THREAD_STACK, _service, t);
+	return true;
 }
 
 void iap2_stop()
 {
-	_verbose(VERBOSE_DEBUG, "stopping thread...");
+	_verbose(VERBOSE_COMMENT, "stopping thread...");
 	_service_exit = true;
 	exos_thread_join(&_thread);
 	_verbose(VERBOSE_DEBUG, "stopped!");

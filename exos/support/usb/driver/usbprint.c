@@ -8,7 +8,7 @@
 #ifdef DEBUG
 #define _verbose(level, ...) verbose(level, "usbprint", __VA_ARGS__)
 #else
-#devine _verbose(level, ...) { /* nothing */ }
+#define _verbose(level, ...) { /* nothing */ }
 #endif
 
 static usb_host_function_t *_check_interface(usb_host_device_t *device, usb_configuration_descriptor_t *conf_desc, usb_descriptor_header_t *fn_desc);

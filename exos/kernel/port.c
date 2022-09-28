@@ -18,7 +18,6 @@ void __port_init()
 int exos_port_create(EXOS_PORT *port, const char *name)
 {
 	port->Node = (node_t) {	.Type = EXOS_NODE_PORT };
-
 	exos_event_create(&port->Event, EXOS_EVENTF_AUTORESET);
 	exos_fifo_create(&port->Fifo, &port->Event);
 	

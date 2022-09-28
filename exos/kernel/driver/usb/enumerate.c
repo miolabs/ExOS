@@ -1,7 +1,7 @@
 #include "enumerate.h"
 #include <kernel/verbose.h>
 
-#ifdef USB_HOST_ENUM
+#ifdef USB_HOST_DEBUG
 #define  _verbose(level, ...) verbose(level, "usbh-enum", __VA_ARGS__)
 #else
 #define  _verbose(level, ...) { /* nothing */ }
