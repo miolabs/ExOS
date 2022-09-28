@@ -191,7 +191,7 @@ static bool _do_control_xfer(usb_request_buffer_t *urb, usb_direction_t dir, boo
 		while (!exos_event_wait(&urb->Event, 3000))
 			_verbose(VERBOSE_ERROR, "still waiting...");
 #else
-		exos_event_wait(&urb->Event, TIMEOUT_NEVER);
+		exos_event_wait(&urb->Event, EXOS_TIMEOUT_NEVER);
 #endif
 		ASSERT(ep->Status == STM32_EP_STA_IDLE, KERNEL_ERROR_KERNEL_PANIC);
 	}

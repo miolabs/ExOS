@@ -221,7 +221,7 @@ static usb_host_function_t *_check_interface(usb_host_device_t *device, usb_conf
 				conf_desc, if_desc,
 				USB_HID_DESCRIPTOR_HID, 0);
 			
-			// NOTE: ensure that Hdd descriptor exists and has at last one report descriptor
+			// NOTE: ensure that Hid descriptor exists and has at last one report descriptor
 			if (hid_desc != nullptr && hid_desc->NumDescriptors >= 1 &&
 				hid_desc->ReportDescriptors[0].DescriptorType == USB_HID_DESCRIPTOR_REPORT)
 			{
@@ -242,6 +242,7 @@ static usb_host_function_t *_check_interface(usb_host_device_t *device, usb_conf
 						break;
 					}
 				}
+				exos_mutex_unlock(&_manager_lock);
 
 				if (handler != nullptr)
 				{

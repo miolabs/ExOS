@@ -5,7 +5,7 @@
 #include <kernel/dispatch.h>
 
 
-void usb_otg_fs_init_as_host(dispatcher_context_t *context);
+usb_host_controller_t *usb_fs_init_as_host(dispatcher_context_t *context);
 
 #endif // STM32F4_USB_FS_HOST_H
 

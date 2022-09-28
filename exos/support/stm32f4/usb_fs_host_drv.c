@@ -24,22 +24,23 @@ static bool _begin_transfer(usb_host_controller_t *hc, usb_request_buffer_t *urb
 static int _end_transfer(usb_host_controller_t *hc, usb_request_buffer_t *urb, unsigned timeout);
 static bool _create_device(usb_host_controller_t *hc, usb_host_device_t *device, unsigned port, usb_host_device_speed_t speed);
 static void _destroy_device(usb_host_controller_t *hc, usb_host_device_t *device);
-
+static bool _stop(usb_host_controller_t *hc);
 static const usb_host_controller_driver_t _driver = {
 	_ctrl_setup_read, _ctrl_setup_write, 
 	_start_pipe, _stop_pipe, _begin_transfer, _end_transfer,
-	_create_device, _destroy_device };
+	_create_device, _destroy_device, _stop };
 
 static usb_host_controller_t _hc;
 static usb_host_device_t _root_device;
 
-void usb_otg_fs_init_as_host(dispatcher_context_t *context)
+usb_host_controller_t *usb_fs_init_as_host(dispatcher_context_t *context)
 {
 	ASSERT(context != nullptr, KERNEL_ERROR_NULL_POINTER);
 
 	exos_mutex_create(&_mutex);
 	usb_host_controller_create(&_hc, &_driver, &_root_device, 1);
 	usb_fs_host_initialize(&_hc, context);
+	return &_hc;
 }
 
 static bool _begin_xfer(usb_request_buffer_t *urb, usb_direction_t dir, bool setup, void *data, unsigned length)
@@ -56,6 +57,16 @@ static bool _begin_xfer(usb_request_buffer_t *urb, usb_direction_t dir, bool set
 
 // HC driver
 //---------------------
+
+static bool _stop(usb_host_controller_t *hc)
+{
+	bool done = usb_fs_host_stop(hc);
+	if (!done)
+	{
+		_verbose(VERBOSE_ERROR, "could not be stopped!");
+	}
+	return done;
+}
 
 static bool _start_pipe(usb_host_controller_t *hc, usb_host_pipe_t *pipe)
 {
@@ -191,7 +202,7 @@ static bool _do_control_xfer(usb_request_buffer_t *urb, usb_direction_t dir, boo
 		while (!exos_event_wait(&urb->Event, 3000))
 			_verbose(VERBOSE_ERROR, "still waiting...");
 #else
-		exos_event_wait(&urb->Event, TIMEOUT_NEVER);
+		exos_event_wait(&urb->Event, EXOS_TIMEOUT_NEVER);
 #endif
 		ASSERT(ep->Status == STM32_EP_STA_IDLE, KERNEL_ERROR_KERNEL_PANIC);
 	}

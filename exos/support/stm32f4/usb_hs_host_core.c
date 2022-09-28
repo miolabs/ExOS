@@ -136,9 +136,9 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 				usb_host_device_t *child = usb_host_create_root_device(_hc, 0, 
 					(_port_speed == HPORT_FULL_SPEED) ? USB_HOST_DEVICE_FULL_SPEED : USB_HOST_DEVICE_LOW_SPEED);
 				if (child != nullptr)
-					verbose(VERBOSE_DEBUG, "usb-hs-roothub", "child %04x/%04x added at port #%d", child->Vendor, child->Product, child->Port);
+					verbose(VERBOSE_COMMENT, "usb-hs-roothub", "child %04x/%04x added at port #%d", child->Vendor, child->Product, child->Port);
 				else	
-					verbose(VERBOSE_DEBUG, "usb-hs-roothub", "device add failed");		
+					verbose(VERBOSE_ERROR, "usb-hs-roothub", "device add failed");		
 			}
 			else 
 			{
@@ -155,7 +155,7 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 			usb_host_device_t *child = &_hc->Devices[0];	// single port
 			verbose(VERBOSE_DEBUG, "usb-hs-roothub", "child %04x/%04x removing at port #%d", child->Vendor, child->Product, child->Port);
 			usb_host_destroy_device(child);
-			verbose(VERBOSE_DEBUG, "usb-hs-roothub", "child %04x/%04x removed", child->Vendor, child->Product);
+			verbose(VERBOSE_COMMENT, "usb-hs-roothub", "child %04x/%04x removed", child->Vendor, child->Product);
 			
 			exos_thread_sleep(10);	// NOTE: avoid glitchy re-connect
 			_port_state = HPORT_POWERED;
@@ -412,7 +412,6 @@ static void _xfer_complete(unsigned ch_num, urb_status_t status)
 	stm32_usbh_ep_t *ep = _ch2ep[ch_num];
 	if (ep != nullptr && ep->Status != STM32_EP_STA_IDLE)
 	{
-
 		usb_request_buffer_t *urb = ch->Current.Request;
 		if (urb != nullptr)
 		{

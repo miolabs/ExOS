@@ -6,7 +6,7 @@
 
 #if (__TARGET_PROCESSOR > 1770)
 
-int cpu_pclk(PCLK_PERIPH periph)
+unsigned cpu_pclk(PCLK_PERIPH periph)
 {
 	// NOTE: periph is ignored
 	int div = LPC_SC->PCLKSEL & 0x1F;
