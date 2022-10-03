@@ -1,8 +1,11 @@
-#ifndef APPLE_IAP2_HIDD_H
-#define APPLE_IAP2_HIDD_H
+#ifndef APPLE_IAP2_HID_H
+#define APPLE_IAP2_HID_H
 
 #include <support/usb/driver/hid.h>
 #include "iap2.h"
+
+#define USB_IAP2_REQ_DEVICE_POWER_REQUEST	0x40
+#define USB_IAP2_REQ_DEVICE_ROLE_SWITCH	0x51
 
 #define IAP2_MAX_REPORTS 5
 #define IAP2_MAX_INPUT_BUFFER 512
@@ -24,8 +27,11 @@ typedef struct
 
 
 // prototypes
-void iap2_hidd_initialize();
+void iap2_hid_initialize();
 
-#endif // APPLE_IAP2_HIDD_H
+extern bool __iap2_hid_switch_role(iap2_hid_handler_t *iap2);
+
+
+#endif // APPLE_IAP2_HID_H
 
 

@@ -1,11 +1,11 @@
-#include "iap2_hidd.h"
+#include "iap2_hid.h"
 
 #include <support/usb/driver/hid.h>
 #include <kernel/verbose.h>
 #include <kernel/panic.h>
 
 #ifdef IAP2_DEBUG
-#define _verbose(level, ...) verbose(level, "iAP2-hidd", __VA_ARGS__)
+#define _verbose(level, ...) verbose(level, "iAP2-hid", __VA_ARGS__)
 #else
 #define _verbose(level, ...) { /* nothing */ }
 #endif
@@ -22,13 +22,15 @@ static const hid_driver_t _hid_driver = {
 static hid_driver_node_t _hid_driver_node = { .Driver = &_hid_driver };
 
 static bool _iap2_send(iap2_transport_t *t, const unsigned char *data, unsigned length);
+static bool _iap2_switch(iap2_transport_t *t);
 static const iap2_transport_driver_t _iap2_driver = {
 	.Send = _iap2_send,
+	.SwitchRole = _iap2_switch,
 	}; 
 
 static iap2_hid_handler_t _instance;	// NOTE: single instance
 
-void iap2_hidd_initialize()
+void iap2_hid_initialize()
 {
 	iap2_initialize();
 
@@ -253,4 +255,27 @@ static bool _iap2_send(iap2_transport_t *t, const unsigned char *data, unsigned 
 	return false;
 }
 
+static bool _iap2_switch(iap2_transport_t *t)
+{
+	iap2_hid_handler_t *iap2 = &_instance; // NOTE: single instance
+	ASSERT(t == &iap2->Transport, KERNEL_ERROR_KERNEL_PANIC);
+
+	bool done = false;
+	if (__iap2_hid_switch_role(iap2))
+	{
+		usb_request_t setup = (usb_request_t) {
+			.RequestType = USB_REQTYPE_HOST_TO_DEVICE | USB_REQTYPE_VENDOR | USB_REQTYPE_RECIPIENT_DEVICE,
+			.RequestCode = USB_IAP2_REQ_DEVICE_ROLE_SWITCH,
+			.Value = 0x00, .Index = 0x00, .Length = 0 };
+		done = usb_host_ctrl_setup(iap2->Hid.Function->Device, &setup, NULL, 0);
+		if (!done) _verbose(VERBOSE_ERROR, "DeviceToHostModeSwitch failed!");
+	}
+	return done;
+}
+
+__weak bool __iap2_hid_switch_role(iap2_hid_handler_t *iap2)
+{
+	// NOTE: this should return true for otg-enabled ports that should switch role, in your board
+	return false;
+}
 

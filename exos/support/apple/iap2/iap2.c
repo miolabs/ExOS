@@ -317,6 +317,16 @@ static bool _loop(iap2_context_t *iap2)
 	return true;
 }
 
+
+static bool _transport_switch_role(iap2_transport_t *t)
+{
+	bool done = false;
+	const iap2_transport_driver_t *driver = t->Driver;
+	if (driver->SwitchRole != NULL)
+		done = driver->SwitchRole(t);
+	return done;
+} 
+
 static void *_service(void *arg)
 {
 	iap2_transport_t *t = (iap2_transport_t *)arg;
@@ -339,10 +349,22 @@ static void *_service(void *arg)
 	{
 		_verbose(VERBOSE_DEBUG, "Initialization procedure succeded!");
 
-		while(_loop(&iap))
+		// NOTE: when we are NOT running in a hid host transport, this does nothing
+		bool done = _transport_switch_role(t);
+		if (done)
 		{
-			if (_service_exit) break;
-			_verbose(VERBOSE_ERROR, "Reset!");
+			// TODO: notify the app that we, the 12 monkeys, did it
+			_verbose(VERBOSE_COMMENT, "Role swith done...");
+			_service_exit = true;
+		}
+
+		if (!_service_exit)
+		{
+			while(_loop(&iap))
+			{
+				if (_service_exit) break;
+				_verbose(VERBOSE_ERROR, "Reset!");
+			}
 		}
 
 //		iap_close_all();

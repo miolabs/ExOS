@@ -9,8 +9,6 @@
 #define IAP2_MAX_SESSIONS 2
 #endif
 
-#define USB_IAP2_REQ_DEVICE_POWER_REQUEST 0x40
-
 typedef enum
 {
 	IAP2_LINGO_GENERAL = 0,
@@ -82,6 +80,7 @@ typedef struct
 struct iap2_transport_driver
 {
 	bool (*Send)(iap2_transport_t *t, const unsigned char *data, unsigned length);
+	bool (*SwitchRole)(iap2_transport_t *t);
 	// TODO
 };
 
