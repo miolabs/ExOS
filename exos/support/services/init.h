@@ -24,15 +24,9 @@ typedef struct
 	void (*Func)();
 } EXOS_INIT_NODE;
 
-#ifdef DEBUG
 #define EXOS_INITIALIZER(name, pri, func) \
 	static EXOS_INIT_NODE name = { .Type = EXOS_NODE_INITIALIZER, .Priority = pri, .Func = func }; \
 	static __used const EXOS_CTOR __attribute__((section(".ctors"))) name##_ctor = &name
-#else
-#define EXOS_INITIALIZER(name, pri, func) \
-	static EXOS_INIT_NODE name = { .Priority = pri, .Func = func }; \
-	static __used const EXOS_CTOR __attribute__((section(".ctors"))) name##_ctor = &name
-#endif
 
 #endif // EXOS_INIT_H
 

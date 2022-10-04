@@ -119,7 +119,7 @@ void __machine_idle(void *args)
 #else
 	while(1)
 	{
-		__WFI();
+//		__WFI();
 	}
 #endif
 }
