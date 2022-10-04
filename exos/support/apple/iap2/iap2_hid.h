@@ -29,7 +29,8 @@ typedef struct
 // prototypes
 void iap2_hid_initialize();
 
-extern bool __iap2_hid_switch_role(iap2_hid_handler_t *iap2);
+// overridables
+extern bool __iap2_hid_should_switch_role(iap2_hid_handler_t *iap2);
 
 
 #endif // APPLE_IAP2_HID_H

@@ -81,7 +81,6 @@ struct iap2_transport_driver
 {
 	bool (*Send)(iap2_transport_t *t, const unsigned char *data, unsigned length);
 	bool (*SwitchRole)(iap2_transport_t *t);
-	// TODO
 };
 
 typedef struct

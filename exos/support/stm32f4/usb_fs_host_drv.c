@@ -24,11 +24,11 @@ static bool _begin_transfer(usb_host_controller_t *hc, usb_request_buffer_t *urb
 static int _end_transfer(usb_host_controller_t *hc, usb_request_buffer_t *urb, unsigned timeout);
 static bool _create_device(usb_host_controller_t *hc, usb_host_device_t *device, unsigned port, usb_host_device_speed_t speed);
 static void _destroy_device(usb_host_controller_t *hc, usb_host_device_t *device);
-static bool _stop(usb_host_controller_t *hc);
+static bool _role_switch(usb_host_controller_t *hc);
 static const usb_host_controller_driver_t _driver = {
 	_ctrl_setup_read, _ctrl_setup_write, 
 	_start_pipe, _stop_pipe, _begin_transfer, _end_transfer,
-	_create_device, _destroy_device, _stop };
+	_create_device, _destroy_device, _role_switch };
 
 static usb_host_controller_t _hc;
 static usb_host_device_t _root_device;
@@ -58,12 +58,12 @@ static bool _begin_xfer(usb_request_buffer_t *urb, usb_direction_t dir, bool set
 // HC driver
 //---------------------
 
-static bool _stop(usb_host_controller_t *hc)
+static bool _role_switch(usb_host_controller_t *hc)
 {
-	bool done = usb_fs_host_stop(hc);
+	bool done = usb_fs_request_role_switch(hc);
 	if (!done)
 	{
-		_verbose(VERBOSE_ERROR, "could not be stopped!");
+		_verbose(VERBOSE_ERROR, "request_role_switch() failed!");
 	}
 	return done;
 }

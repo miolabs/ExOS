@@ -47,6 +47,8 @@ typedef struct
 } stm32_usbh_ep_t;
  
 void usb_fs_host_initialize(usb_host_controller_t *hc, dispatcher_context_t *context);
+bool usb_fs_request_role_switch(usb_host_controller_t *hc);
+
 void usb_fs_host_port_reset();
 bool usb_fs_host_start_pipe(usb_host_pipe_t *pipe);
 void usb_fs_host_update_control_pipe(usb_host_pipe_t *pipe);

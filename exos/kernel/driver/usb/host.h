@@ -119,14 +119,14 @@ struct __usb_host_controller_driver
 	int (*EndTransfer)(usb_host_controller_t *hc, usb_request_buffer_t *urb, unsigned timeout);
 	bool (*CreateDevice)(usb_host_controller_t *hc, usb_host_device_t *device, unsigned port, usb_host_device_speed_t speed);
 	void (*DestroyDevice)(usb_host_controller_t *hc, usb_host_device_t *device);
-	bool (*Stop)(usb_host_controller_t *hc);
+	bool (*RequestRoleSwitch)(usb_host_controller_t *hc);
 };
 
 typedef bool (*usb_host_driver_enumerate_callback_t)(usb_host_function_driver_t *driver, void *arg);
 
 // prototypes
 void usb_host_controller_create(usb_host_controller_t *hc, const usb_host_controller_driver_t *driver, usb_host_device_t *devices, unsigned port_count);
-bool usb_host_controller_stop(usb_host_controller_t *hc);
+bool usb_host_request_role_switch(usb_host_controller_t *hc);
 void usb_host_wait_sof(usb_host_controller_t *hc);
 void usb_host_driver_register(usb_host_function_driver_node_t *driver_node);
 bool usb_host_driver_enumerate(usb_host_driver_enumerate_callback_t callback, void *arg);
@@ -150,5 +150,7 @@ bool usb_host_read_if_descriptor(usb_host_device_t *device, unsigned short inter
 bool usb_host_set_address(usb_host_device_t *device, unsigned char addr);
 bool usb_host_set_interface(usb_host_device_t *device, unsigned short interface, unsigned short alternate_setting);
 
+// overridables
+void __usb_host_disabled(usb_host_controller_t *hc) __weak;
 
 #endif // USB_HOST_H

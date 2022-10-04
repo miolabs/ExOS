@@ -20,7 +20,7 @@
 static exos_thread_t _thread;
 static unsigned char _stack[THREAD_STACK] __attribute__((aligned(16)));
 static void *_service(void *arg);
-static bool _service_busy = false;
+static volatile bool _service_run = false;
 static bool _service_exit = false;
 
 #define IAP2_BUFFERS 5
@@ -55,13 +55,13 @@ bool iap2_transport_create(iap2_transport_t *t, const char *id, const iap2_trans
 
 bool iap2_start(iap2_transport_t *t)
 {
-	ASSERT(!_service_busy, KERNEL_ERROR_KERNEL_PANIC);
+	// TODO: support several instances
+	ASSERT(_service_run == false, KERNEL_ERROR_KERNEL_PANIC);
 	ASSERT(t != NULL && t->Driver != NULL, KERNEL_ERROR_NULL_POINTER);
 
 	t->Transaction = 1;
 
 	_verbose(VERBOSE_COMMENT, "starting thread...");
-	_service_busy = true;
 
 	pool_create(&_input_pool, (node_t *)_input, sizeof(iap2_buffer_t), IAP2_BUFFERS);
 	exos_event_create(&_input_event, EXOS_EVENTF_AUTORESET);
@@ -70,6 +70,8 @@ bool iap2_start(iap2_transport_t *t)
 	pool_create(&_output_pool, (node_t *)_output, sizeof(iap2_buffer_t), IAP2_BUFFERS);
 
 	_service_exit = false;
+	_service_run = true;
+
 	exos_thread_create(&_thread, 5, _stack, THREAD_STACK, _service, t);
 	return true;
 }
@@ -79,8 +81,9 @@ void iap2_stop()
 	_verbose(VERBOSE_COMMENT, "stopping thread...");
 	_service_exit = true;
 	exos_thread_join(&_thread);
+	_service_run = false;
+
 	_verbose(VERBOSE_DEBUG, "stopped!");
-	_service_busy = false;
 }
 
 static bool _send(iap2_transport_t *t, const unsigned char *data, unsigned length)
@@ -327,23 +330,25 @@ static bool _transport_switch_role(iap2_transport_t *t)
 	return done;
 } 
 
+
 static void *_service(void *arg)
 {
 	iap2_transport_t *t = (iap2_transport_t *)arg;
 
-	iap2_context_t iap = (iap2_context_t) { .Transport = t,
+	iap2_context_t iap2 = (iap2_context_t) { .Transport = t,
 		.Seq = 0x2b}; // FIXME: randomize seq number
-	exos_event_create(&iap.SyncEvent, EXOS_EVENTF_AUTORESET);
+	exos_event_create(&iap2.SyncEvent, EXOS_EVENTF_AUTORESET);
 	
 	// TODO: session setup according application needs, this is for testing purposes only
 	for(unsigned i = 0; i < IAP2_MAX_SESSIONS; i++)
-		iap.Sessions[i] = (iap2_link_session1_t) { .Id = 10 + i, 
+		iap2.Sessions[i] = (iap2_link_session1_t) { .Id = 10 + i, 
 			.Type = (i == 0) ? IAP2_SESSION_TYPE_CONTROL : IAP2_SESSION_TYPE_EXTERNAL_ACCESSORY, 
 			.Ver = 1 };
 
 	exos_thread_sleep(1000);
+	bool _role_switched = false;
 
-	_verbose(VERBOSE_COMMENT, "Service starting (%s)...", t->Id);
+	_verbose(VERBOSE_COMMENT, "service starting (%s)...", t->Id);
 
 	if (_initialize(t))
 	{
@@ -354,16 +359,17 @@ static void *_service(void *arg)
 		if (done)
 		{
 			// TODO: notify the app that we, the 12 monkeys, did it
-			_verbose(VERBOSE_COMMENT, "Role swith done...");
+			_verbose(VERBOSE_COMMENT, "role-swith done...");
 			_service_exit = true;
+			_role_switched = true;
 		}
 
 		if (!_service_exit)
 		{
-			while(_loop(&iap))
+			while(_loop(&iap2))
 			{
 				if (_service_exit) break;
-				_verbose(VERBOSE_ERROR, "Reset!");
+				_verbose(VERBOSE_ERROR, "reset!");
 			}
 		}
 
@@ -371,7 +377,8 @@ static void *_service(void *arg)
 	}
 	else
 	{
-		_verbose(VERBOSE_ERROR, "Identify procedure failed!");
+		_verbose(VERBOSE_ERROR, "Initialization procedure failed!");
 	}
-	_verbose(VERBOSE_COMMENT, "Service exiting (%s)...", t->Id);
+
+	_verbose(VERBOSE_COMMENT, "service exiting (%s)...", t->Id);
 }

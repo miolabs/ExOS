@@ -25,8 +25,7 @@ static bool _iap2_send(iap2_transport_t *t, const unsigned char *data, unsigned 
 static bool _iap2_switch(iap2_transport_t *t);
 static const iap2_transport_driver_t _iap2_driver = {
 	.Send = _iap2_send,
-	.SwitchRole = _iap2_switch,
-	}; 
+	.SwitchRole = _iap2_switch }; 
 
 static iap2_hid_handler_t _instance;	// NOTE: single instance
 
@@ -261,21 +260,28 @@ static bool _iap2_switch(iap2_transport_t *t)
 	ASSERT(t == &iap2->Transport, KERNEL_ERROR_KERNEL_PANIC);
 
 	bool done = false;
-	if (__iap2_hid_switch_role(iap2))
+	if (__iap2_hid_should_switch_role(iap2))
 	{
 		usb_request_t setup = (usb_request_t) {
 			.RequestType = USB_REQTYPE_HOST_TO_DEVICE | USB_REQTYPE_VENDOR | USB_REQTYPE_RECIPIENT_DEVICE,
 			.RequestCode = USB_IAP2_REQ_DEVICE_ROLE_SWITCH,
 			.Value = 0x00, .Index = 0x00, .Length = 0 };
 		done = usb_host_ctrl_setup(iap2->Hid.Function->Device, &setup, NULL, 0);
-		if (!done) _verbose(VERBOSE_ERROR, "DeviceToHostModeSwitch failed!");
+		if (done)
+		{
+			done = usb_host_request_role_switch(iap2->Hid.Function->Device->Controller);
+		}
+		else _verbose(VERBOSE_ERROR, "request DeviceToHostModeSwitch failed!");
 	}
 	return done;
 }
 
-__weak bool __iap2_hid_switch_role(iap2_hid_handler_t *iap2)
+
+__weak 
+bool __iap2_hid_should_switch_role(iap2_hid_handler_t *iap2)
 {
 	// NOTE: this should return true for otg-enabled ports that should switch role, in your board
 	return false;
 }
+
 
