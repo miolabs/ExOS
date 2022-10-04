@@ -132,7 +132,7 @@ typedef struct __attribute__((__packed__))
 			unsigned Res1_BusPowered:1;
 		} AttributesBits;
 	};
-	unsigned char MaxPower;	// In 2mA units
+	unsigned char MaxPower;	// bus-power, in 2mA units
 } usb_configuration_descriptor_t;
 
 typedef struct __attribute__((__packed__))

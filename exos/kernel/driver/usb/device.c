@@ -142,7 +142,7 @@ static void _setup_handler(dispatcher_context_t *context, dispatcher_t *dispatch
 		exos_mutex_lock(&_device_lock);
 		memcpy(&_setup, _setup_data, 8); 
 		hal_usbd_prepare_setup_ep(&_setup_io);
-//		USB_DEBUG("\nsetup", &_setup, 8);
+		//_verbose("setup", &_setup, 8);
 
 		if ((_setup.RequestType & USB_REQTYPE_DIRECTION_MASK) == USB_REQTYPE_HOST_TO_DEVICE) 
 		{
@@ -164,7 +164,7 @@ static void _setup_handler(dispatcher_context_t *context, dispatcher_t *dispatch
 
 		if (!_error_state)
 		{
-//			USB_DEBUG("-> process request", nullptr, 0);
+			//_verbose("-> process request", nullptr, 0);
 			unsigned length = _setup.Length;
 			void *data = _control_data;
 			bool done = _setup_req(&_setup, &data, &length);
@@ -177,7 +177,7 @@ static void _setup_handler(dispatcher_context_t *context, dispatcher_t *dispatch
 					_control_in.Data = data;
 					_control_in.Length = length;
 					hal_usbd_prepare_in_ep(0, &_control_in);
-//					USB_DEBUG("-> data_in", data, length);
+					//_verbose("-> data_in", data, length);
 
 					exos_event_wait(_control_in.Event, EXOS_TIMEOUT_NEVER);
 					if (_control_in.Status != USB_IOSTA_DONE)
@@ -199,7 +199,7 @@ static void _setup_handler(dispatcher_context_t *context, dispatcher_t *dispatch
 					_control_in.Data = _control_data;
 					_control_in.Length = 0;
 					hal_usbd_prepare_in_ep(0, &_control_in);
-					_verbose("-> status_in", nullptr, 0);
+					//_verbose("-> status_in", nullptr, 0);
 
 					exos_event_wait(_control_in.Event, EXOS_TIMEOUT_NEVER);
 					if (_control_in.Status != USB_IOSTA_DONE)
@@ -393,7 +393,7 @@ static bool _setup_std_req(usb_request_t *req, void **pdata, unsigned *plength)
 		switch(code)
 		{
 			case USB_REQUEST_GET_DESCRIPTOR:
-				_verbose("get_descriptor", req, 8);
+				//_verbose("get_descriptor", req, 8);
 				*pdata = usb_device_config_get_descriptor(req->Value, req->Index, plength); 
 				return (*pdata != nullptr);
 			case USB_REQUEST_SET_ADDRESS:

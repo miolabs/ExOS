@@ -151,6 +151,8 @@ static int _fill_config(usb_configuration_descriptor_t *desc, unsigned char inde
 	int total = 0;
 	int done = driver->FillConfigurationDescriptor(index, desc, USB_CONF_BUFFER_SIZE - total);
 	// NOTE: driver must fill Attributes/MaxPower fields
+	if (done != 0 && desc->MaxPower != 0)
+		desc->Attributes |= USB_CONFIG_BUS_POWERED;	// USB2.0 spec mandates bit set even when self-powered 
 
 	desc->TotalLength = HTOUSB16(_measure_config(conf, index));
 	desc->NumInterfaces = list_get_count(&conf->Interfaces);
