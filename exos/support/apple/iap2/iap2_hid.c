@@ -93,7 +93,7 @@ static bool _start(hid_function_handler_t *handler, hid_report_parser_t *parser)
 	iap2_hid_handler_t *iap2 = (iap2_hid_handler_t *)handler;
 	_parse_report_descriptor(iap2, parser);
 
-	iap2_transport_create(&iap2->Transport, "Hid - Device Mode", &_iap2_driver);
+	iap2_transport_create(&iap2->Transport, "Hid - Device Mode", 0, &_iap2_driver);
 	iap2_start(&iap2->Transport);
 }
 

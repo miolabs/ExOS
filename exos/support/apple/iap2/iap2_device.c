@@ -26,7 +26,7 @@ static const usb_device_interface_driver_t _driver = { .Initialize = _initialize
 	.Start = _start, .Stop = _stop };
 const usb_device_interface_driver_t *__usb_iap2_device_driver = &_driver;
 
-
+#if 0
 static io_error_t _open(io_entry_t *io, const char *path, io_flags_t flags);
 static void _close(io_entry_t *io);
 static int _read(io_entry_t *io, unsigned char *buffer, unsigned int length);
@@ -34,6 +34,12 @@ static int _write(io_entry_t *io, const unsigned char *buffer, unsigned int leng
 static const io_driver_t _io_driver = {
 	.Open = _open, .Close = _close,
 	.Read = _read, .Write = _write };
+#endif
+
+static bool _iap2_send(iap2_transport_t *t, const unsigned char *data, unsigned length);
+static const iap2_transport_driver_t _iap2_driver = {
+	.Send = _iap2_send,
+	 }; 
 
 static bool _initialized = false;
 static list_t _instance_list;
@@ -51,6 +57,9 @@ static bool _initialize(usb_device_interface_t *iface, const void *instance_data
 
 	if (!_initialized)
 	{
+		// FIXME: removed because cannot be called twice (it was done already by iap2-hid)
+		//iap2_initialize();
+
 		list_initialize(&_instance_list);
 		_initialized = true;
 	}
@@ -58,8 +67,8 @@ static bool _initialize(usb_device_interface_t *iface, const void *instance_data
 	iap2_device_context_t *iap2dev = (iap2_device_context_t *)exos_mem_alloc(sizeof(iap2_device_context_t), EXOS_MEMF_CLEAR);
 	if (iap2dev != nullptr)
 	{
-		iap2dev->Latency = 16;
-		iap2dev->TxSize = 0;
+		//iap2dev->Latency = 16;
+		//iap2dev->TxSize = 0;
 		exos_event_create(&iap2dev->TxEvent, EXOS_EVENTF_AUTORESET);
 		exos_event_create(&iap2dev->RxEvent, EXOS_EVENTF_AUTORESET);
 
@@ -67,11 +76,11 @@ static bool _initialize(usb_device_interface_t *iface, const void *instance_data
 		iface->DriverContext = iap2dev;
 
 		exos_mutex_create(&iap2dev->Lock);
-		iap2dev->Entry = nullptr;
+//		iap2dev->Entry = nullptr;
 
 		iap2dev->Unit = _device_count++;
-		sprintf(iap2dev->DeviceName, "/dev/iap%d", iap2dev->Unit);
-		exos_io_add_device(&iap2dev->DeviceNode, iap2dev->DeviceName, &_io_driver, iap2dev);
+		//sprintf(iap2dev->DeviceName, "/dev/iap%d", iap2dev->Unit);
+		//exos_io_add_device(&iap2dev->DeviceNode, iap2dev->DeviceName, &_io_driver, iap2dev);
 
 		return true;
 	}
@@ -123,6 +132,28 @@ static unsigned _fill_ep_desc(usb_device_interface_t *iface, unsigned ep_index, 
 	return 0;
 }
 
+static iap2_device_context_t *_get_context(unsigned if_num)
+{
+	ASSERT(_initialized, KERNEL_ERROR_KERNEL_PANIC);
+
+	iap2_device_context_t *found = NULL;
+
+	FOREACH(n, &_instance_list)
+	{
+		iap2_device_context_t *iap2dev = (iap2_device_context_t *)n;
+		usb_device_interface_t *iface = iap2dev->Interface;
+		ASSERT(iface != NULL, KERNEL_ERROR_NULL_POINTER);
+		ASSERT(iface->Status == USB_IFSTA_STARTED, KERNEL_ERROR_KERNEL_PANIC);
+		if (iface->Index == if_num)
+		{
+			found = iap2dev;
+			break;
+		}
+	}
+
+	return found;
+}
+
 
 static void _tx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 {
@@ -138,14 +169,15 @@ static void _tx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher
 //			VERBOSE("[%d] busy", ftdi->Interface->Index);
 #endif
 			// continue waiting
-			exos_dispatcher_add(context, &iap2dev->TxDispatcher, iap2dev->Latency);
+			iap2dev->Idle = false;
+			exos_dispatcher_add(context, &iap2dev->TxDispatcher, 1000);
 		}
 		else
 		{
 			ASSERT(iap2dev->Interface != NULL, KERNEL_ERROR_NULL_POINTER);
-			_verbose(VERBOSE_DEBUG, "[%d] timeout (stop)", iap2dev->Interface->Index);
+			_verbose(VERBOSE_ERROR, "[%d] timeout error! (stop)", iap2dev->Interface->Index);
 			iap2dev->TxIo.Status = USB_IOSTA_UNKNOWN;
-			iap2dev->TxSize = 0;
+			//iap2dev->TxSize = 0;
 		}
 	}
 	else if (sta == USB_IOSTA_ERROR)
@@ -153,41 +185,28 @@ static void _tx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher
 		ASSERT(iap2dev->Interface != NULL, KERNEL_ERROR_NULL_POINTER);
 		_verbose(VERBOSE_ERROR, "[%d] tx error! (stop)", iap2dev->Interface->Index);
 		iap2dev->TxIo.Status = USB_IOSTA_UNKNOWN;
-		iap2dev->TxSize = 0;
+		//iap2dev->TxSize = 0;
 	}
 	else
 	{
-		unsigned fit = (IAP2_MAX_PACKET_LENGTH - 2) - iap2dev->TxSize;
-		ASSERT(fit > 0, KERNEL_ERROR_KERNEL_PANIC);
-		unsigned done = exos_io_buffer_read(&iap2dev->Output, &iap2dev->TxData[2 + iap2dev->TxSize], fit);
-		iap2dev->TxSize += done;
-		
-		if (done == fit || dispatcher->State == DISPATCHER_TIMEOUT)
+		unsigned done = exos_io_buffer_read(&iap2dev->Output, iap2dev->TxData, sizeof(iap2dev->TxData));
+		if (done != 0)
 		{
-			unsigned short modem = 0x1234; //_get_modem_status(ftdi);
-			iap2dev->TxData[0] = modem & 0xff;
-			iap2dev->TxData[1] = modem >> 8;
-
-			if (iap2dev->TxSize != 0)
-			{
 #ifdef IAP2_DEBUG
-				static unsigned char vbuf[IAP2_MAX_PACKET_LENGTH];
-				for(unsigned i = 0; i < iap2dev->TxSize; i++)
-				{
-					unsigned char c = iap2dev->TxData[2 + i];
-					vbuf[i] = (c >=' ' && c <='z') ? c : '.';
-				}
-				vbuf[iap2dev->TxSize] = '\0';	
-				_verbose(VERBOSE_DEBUG,"[%d] tx %s", iap2dev->Interface->Index, vbuf);
-#endif
-				iap2dev->Idle = false;
+			static unsigned char vbuf[IAP2_MAX_PACKET_LENGTH + 1];
+			for(unsigned i = 0; i < done; i++)
+			{
+				unsigned char c = iap2dev->TxData[2 + i];
+				vbuf[i] = (c >= ' ' && c <= 'z') ? c : '.';
 			}
+			vbuf[done] = '\0';	
+			_verbose(VERBOSE_DEBUG,"[%d] tx '%s'", iap2dev->Interface->Index, vbuf);
+#endif
+			iap2dev->Idle = false;
 
 			iap2dev->TxIo.Data = iap2dev->TxData;
-			iap2dev->TxIo.Length = 2 + iap2dev->TxSize;
+			iap2dev->TxIo.Length = done;
 			usb_set_tx_buffer(IAP2_BULK_EP, &iap2dev->TxIo);
-			
-			iap2dev->TxSize = 0;
 		}
 		else
 		{
@@ -197,7 +216,7 @@ static void _tx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher
 			iap2dev->Idle = true;
 		}
 
-		exos_dispatcher_add(context, &iap2dev->TxDispatcher, iap2dev->Latency);
+		exos_dispatcher_add(context, &iap2dev->TxDispatcher, iap2dev->Idle ? EXOS_TIMEOUT_NEVER : 100);
 	}
 }
 
@@ -207,16 +226,12 @@ static void _rx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher
 	if (iap2dev->RxIo.Status == USB_IOSTA_DONE)
 	{
 #ifdef USB_DEVICE_DEBUG
-	//	printf("r(%d) ", ftdi->RxIo.Done);
+		_verbose(VERBOSE_DEBUG, "rx (%d bytes)", iap2dev->RxIo.Done);
 #endif
-		unsigned done = exos_io_buffer_write(&iap2dev->Input, iap2dev->RxData, iap2dev->RxIo.Done);
-#ifdef USB_DEVICE_DEBUG
-		ASSERT(iap2dev->Interface != NULL, KERNEL_ERROR_NULL_POINTER);
-		if (done != iap2dev->RxIo.Done)
-			_verbose(VERBOSE_ERROR, "[%d] rx overrun!", iap2dev->Interface->Index);
-#endif
+		iap2_input(&iap2dev->Transport, iap2dev->RxData, iap2dev->RxIo.Done);
+
 		iap2dev->RxIo.Data = iap2dev->RxData;
-		iap2dev->RxIo.Length = 64;
+		iap2dev->RxIo.Length = sizeof(iap2dev->RxData);
 		usb_set_rx_buffer(IAP2_BULK_EP, &iap2dev->RxIo);
 
 		exos_dispatcher_add(context, &iap2dev->RxDispatcher, EXOS_TIMEOUT_NEVER);
@@ -241,14 +256,19 @@ static bool _start(usb_device_interface_t *iface, unsigned char alternate_settin
 	exos_dispatcher_create(&iap2dev->RxDispatcher, &iap2dev->RxEvent, _rx_dispatch, iap2dev);
 	exos_dispatcher_add(iap2dev->DispatcherContext, &iap2dev->RxDispatcher, EXOS_TIMEOUT_NEVER);
 	iap2dev->RxIo = (usb_io_buffer_t) { .Event = &iap2dev->RxEvent,
-		.Data = iap2dev->RxData, .Length = IAP2_MAX_PACKET_LENGTH };	// FIXME: ep size can span multiple packets
+		.Data = iap2dev->RxData, .Length = sizeof(iap2dev->RxData) };	// FIXME: buffer size can span multiple packets
 	usb_set_rx_buffer(IAP2_BULK_EP, &iap2dev->RxIo);
 
-	iap2dev->TxIo = (usb_io_buffer_t) { .Event = &iap2dev->TxEvent };	// FIXME: initialize?
+	iap2dev->TxIo = (usb_io_buffer_t) { .Event = &iap2dev->TxEvent };
 	exos_dispatcher_create(&iap2dev->TxDispatcher, &iap2dev->TxEvent, _tx_dispatch, iap2dev);
-	// NOTE: tx dispatcher is not added until needed
+	exos_dispatcher_add(iap2dev->DispatcherContext, &iap2dev->TxDispatcher, EXOS_TIMEOUT_NEVER);
+	exos_io_buffer_create(&iap2dev->Output, iap2dev->OutputBuffer, IAP2_OUTPUT_BUFFER, NULL, NULL/*&io->OutputEvent*/);
 
 	_verbose(VERBOSE_COMMENT, "[%d] USB start -------", iface->Index);
+	
+	iap2_transport_create(&iap2dev->Transport, "Host Mode", iface->Index, &_iap2_driver);
+	iap2_start(&iap2dev->Transport);
+
 	return true;
 }
 
@@ -261,17 +281,16 @@ static void _stop(usb_device_interface_t *iface)
 	ASSERT(list_find_node(&_instance_list, &iap2dev->Node), KERNEL_ERROR_KERNEL_PANIC);
 
 	exos_mutex_lock(&iap2dev->Lock);
-	if (iap2dev->Entry != NULL)
-	{
-		_verbose(VERBOSE_DEBUG, "[%d] closing io due to extraction", iap2dev->Interface->Index);
-		_close(iap2dev->Entry);
-	}
+	//if (iap2dev->Entry != NULL)
+	//{
+	//	_verbose(VERBOSE_DEBUG, "[%d] closing io due to extraction", iap2dev->Interface->Index);
+	//	_close(iap2dev->Entry);
+	//}
 	iap2dev->Ready = false;
 	exos_mutex_unlock(&iap2dev->Lock);
 
 	// TODO: remove dispatchers
 	exos_dispatcher_remove(iap2dev->DispatcherContext, &iap2dev->RxDispatcher);
-	
 	exos_dispatcher_remove(iap2dev->DispatcherContext, &iap2dev->TxDispatcher);
 
 	list_remove(&iap2dev->Node);
@@ -279,27 +298,17 @@ static void _stop(usb_device_interface_t *iface)
 	_verbose(VERBOSE_COMMENT, "[%d] USB stop -------", iface->Index);
 }
 
-static iap2_device_context_t *_get_context(unsigned if_num)
+static bool _iap2_send(iap2_transport_t *t, const unsigned char *data, unsigned length)
 {
-	ASSERT(_initialized, KERNEL_ERROR_KERNEL_PANIC);
+	iap2_device_context_t *iap2dev = _get_context(t->Unit);
+	ASSERT(iap2dev != NULL, KERNEL_ERROR_NULL_POINTER);
 
-	iap2_device_context_t *found = NULL;
+	unsigned done = exos_io_buffer_write(&iap2dev->Output, data, length);
+	exos_event_set(&iap2dev->TxEvent);
 
-	FOREACH(n, &_instance_list)
-	{
-		iap2_device_context_t *iap2dev = (iap2_device_context_t *)n;
-		usb_device_interface_t *iface = iap2dev->Interface;
-		ASSERT(iface != NULL, KERNEL_ERROR_NULL_POINTER);
-		ASSERT(iface->Status == USB_IFSTA_STARTED, KERNEL_ERROR_KERNEL_PANIC);
-		if (iface->Index == if_num)
-		{
-			found = iap2dev;
-			break;
-		}
-	}
-
-	return found;
+	return (done == length);
 }
+
 
 //static void _set_latency(ftdi_context_t *ftdi, unsigned latency)
 //{
@@ -318,8 +327,8 @@ static iap2_device_context_t *_get_context(unsigned if_num)
 
 static void _reset(iap2_device_context_t *iap2dev)
 {
-	iap2dev->Idle = false;
-	exos_dispatcher_add(iap2dev->DispatcherContext, &iap2dev->TxDispatcher, iap2dev->Latency);
+//	iap2dev->Idle = false;
+//	exos_dispatcher_add(iap2dev->DispatcherContext, &iap2dev->TxDispatcher, iap2dev->Latency);
 }
 
 bool iap2_vendor_request(usb_request_t *req, void **pdata, int *plength)
@@ -352,7 +361,7 @@ bool iap2_vendor_request(usb_request_t *req, void **pdata, int *plength)
 	return false;
 }
 
-
+#if 0
 static io_error_t _open(io_entry_t *io, const char *path, io_flags_t flags)
 {
 	iap2_device_context_t *iap2dev = (iap2_device_context_t *)io->DriverContext;
@@ -417,6 +426,7 @@ static int _write(io_entry_t *io, const unsigned char *buffer, unsigned int leng
 
 	return exos_io_buffer_write(&iap2dev->Output, buffer, length);
 }
+#endif
 
 
 

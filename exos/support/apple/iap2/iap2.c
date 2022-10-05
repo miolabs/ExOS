@@ -46,10 +46,11 @@ void iap2_initialize()
 //	iap_comm_initialize();
 }
 
-bool iap2_transport_create(iap2_transport_t *t, const char *id, const iap2_transport_driver_t *driver)
+bool iap2_transport_create(iap2_transport_t *t, const char *id, unsigned char unit, const iap2_transport_driver_t *driver)
 {
 	t->Id = id;
 	t->Driver = driver;
+	t->Unit = unit;
 	return true;
 }
 

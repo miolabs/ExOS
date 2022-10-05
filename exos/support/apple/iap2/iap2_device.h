@@ -1,15 +1,13 @@
 #ifndef APPLE_IAP2_DEVICE_H
 #define APPLE_IAP2_DEVICE_H
 
+#include "iap2.h"
+
 #include <usb/configuration.h>
 #include <usb/device.h>
 #include <kernel/tree.h>
 #include <kernel/iobuffer.h>
 #include <kernel/io.h>
-
-//#ifndef IAP2_MAX_INTERFACES 
-//#define IAP2_MAX_INTERFACES 1
-//#endif
 
 extern const usb_device_interface_driver_t *__usb_iap2_device_driver;
 
@@ -36,12 +34,13 @@ typedef struct
 	unsigned char Unit;
 //	unsigned Timeout;
 
-	io_tree_device_t DeviceNode;
+//	io_tree_device_t DeviceNode;
 	mutex_t Lock;
-	io_entry_t *Entry;
+//	io_entry_t *Entry;
 
 	io_buffer_t Output;
-	io_buffer_t Input;
+	//io_buffer_t Input;
+	iap2_transport_t Transport;
 
 	usb_device_interface_t *Interface;
 	dispatcher_context_t *DispatcherContext;
@@ -56,8 +55,8 @@ typedef struct
 	
 	unsigned char TxData[IAP2_MAX_PACKET_LENGTH];
 	unsigned char RxData[IAP2_MAX_PACKET_LENGTH];
-	unsigned char TxSize;
-	unsigned char Latency;
+//	unsigned char TxSize;
+//	unsigned char Latency;
 	bool Ready;
 	bool Idle;
 

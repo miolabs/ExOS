@@ -74,7 +74,8 @@ typedef struct
 {
 	const char *Id;
 	const iap2_transport_driver_t *Driver;
-	unsigned Transaction;
+	unsigned char Unit;
+	unsigned char Transaction;
 } iap2_transport_t;
 
 struct iap2_transport_driver
@@ -106,7 +107,7 @@ typedef struct
 } iap2_context_t;
 
 void iap2_initialize();
-bool iap2_transport_create(iap2_transport_t *t, const char *id, const iap2_transport_driver_t *driver);
+bool iap2_transport_create(iap2_transport_t *t, const char *id, unsigned char unit, const iap2_transport_driver_t *driver);
 bool iap2_start(iap2_transport_t *t);
 void iap2_input(iap2_transport_t *t, const unsigned char *packet, unsigned packet_length);
 void iap2_stop();
