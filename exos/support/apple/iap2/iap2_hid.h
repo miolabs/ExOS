@@ -4,7 +4,7 @@
 #include <support/usb/driver/hid.h>
 #include "iap2.h"
 
-#define USB_IAP2_REQ_DEVICE_POWER_REQUEST	0x40
+#define USB_IAP2_REQ_POWER_CAPABILITY	0x40
 #define USB_IAP2_REQ_DEVICE_ROLE_SWITCH	0x51
 
 #define IAP2_MAX_REPORTS 5

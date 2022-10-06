@@ -81,11 +81,11 @@ static bool _parse_report_descriptor(iap2_hid_handler_t *iap2, hid_report_parser
 
 static bool _start(hid_function_handler_t *handler, hid_report_parser_t *parser)
 {
-#ifdef IAP_ENABLE_IPAD_CHARGING
+#if 1//def IAP_ENABLE_IPAD_CHARGING
 	usb_request_t setup = (usb_request_t) {
 		.RequestType = USB_REQTYPE_HOST_TO_DEVICE | USB_REQTYPE_VENDOR | USB_REQTYPE_RECIPIENT_DEVICE,
-		.RequestCode = USB_IAP_REQ_DEVICE_POWER_REQUEST,
-		.Value = 0x6400, .Index = 0x6400, .Length = 0 };
+		.RequestCode = USB_IAP2_REQ_POWER_CAPABILITY,
+		.Value = 1500, .Index = 1500, .Length = 0 };
 	bool done = usb_host_ctrl_setup(handler->Function->Device, &setup, NULL, 0);
 	if (!done) _verbose(VERBOSE_ERROR, "DevicePowerRequest failed!");
 #endif
