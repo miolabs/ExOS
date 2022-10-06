@@ -2,7 +2,6 @@
 #include "../iap_fid.h"
 #include "../cp20.h"
 //#include "iap_comm.h"
-#include <kernel/fifo.h>
 #include <support/misc/pools.h>
 #include <kernel/dispatch.h>
 #include <kernel/verbose.h>
@@ -28,6 +27,7 @@ static bool _service_exit = false;
 typedef struct 
 { 
 	node_t Node;
+	unsigned short Payload;
 	unsigned short Length;
 	unsigned char Buffer[IAP2_BUFFER_SIZE];
 } iap2_buffer_t;
@@ -51,6 +51,7 @@ bool iap2_transport_create(iap2_transport_t *t, const char *id, unsigned char un
 	t->Id = id;
 	t->Driver = driver;
 	t->Unit = unit;
+	t->LinkParams = (iap2_link_params_t){ /* all zero */ };
 	return true;
 }
 
@@ -160,7 +161,7 @@ static unsigned char _checksum(unsigned char *buffer, unsigned length)
 	return (unsigned char)(0x100 - sum);
 }
 
-static bool _parse_buffer(iap2_buffer_t *buf, iap2_header_t **pheader, void **ppayload, unsigned short *plength)
+static bool _parse_buffer(iap2_buffer_t *buf, iap2_header_t **pheader, unsigned short *poffset, unsigned short *plength)
 {
 	if (buf->Length < sizeof(iap2_header_t))
 	{
@@ -188,19 +189,20 @@ static bool _parse_buffer(iap2_buffer_t *buf, iap2_header_t **pheader, void **pp
 
 	if (pkt_len >= (sizeof(iap2_header_t) + 2)) // NOTE: at least 1 byte of payload + checksum
 	{
-		unsigned short payload_len = pkt_len - (sizeof(iap2_header_t) + 1);
-		unsigned char *payload = buf->Buffer + sizeof(iap2_header_t);
+		unsigned short payload_offset = sizeof(iap2_header_t);
+		unsigned short payload_len = (pkt_len - payload_offset) - 1;
+		unsigned char *payload = buf->Buffer + payload_offset;
 		checksum = _checksum(payload, payload_len);
 		if (checksum == payload[payload_len])
 		{
-			*ppayload = payload;
+			*poffset = payload_offset;
 			*plength = payload_len;
 			return true;
 		}
 	}
 	else
 	{
-		*ppayload = NULL;
+		*poffset = 0;
 		*plength = 0;
 		return true;
 	}
@@ -221,7 +223,7 @@ static iap2_buffer_t *_init_packet(iap2_context_t *iap2, unsigned char control, 
 			.Control = control, .SessionId = sess_id,
 			.SequenceNumber = iap2->Seq++, .AckNumber = iap2->Ack };
 
-		buf->Length = sizeof(iap2_header_t);
+		buf->Length = buf->Payload = sizeof(iap2_header_t);
 		return buf;
 	}
 	return NULL;
@@ -233,8 +235,8 @@ static bool _send_packet(iap2_context_t *iap2, iap2_buffer_t *buf)
 	hdr->PacketLength = HTOIAP2S(buf->Length);
 	hdr->Checksum = _checksum((unsigned char *)hdr, sizeof(iap2_header_t) - 1);
 
-	_verbose(VERBOSE_DEBUG, "send SYN packet #$%02x, length=$%x",
-		iap2->Seq, buf->Length);
+	_verbose(VERBOSE_DEBUG, "send packet [sess #%d] ctrl=$%02x, seq=$%02x", 
+		hdr->SessionId, hdr->Control, hdr->SequenceNumber);
 
 	return _send(iap2->Transport, buf->Buffer, buf->Length);
 }
@@ -242,28 +244,70 @@ static bool _send_packet(iap2_context_t *iap2, iap2_buffer_t *buf)
 static void _sync_callback(dispatcher_context_t *context, dispatcher_t *dispatcher)
 {
 	iap2_context_t *iap2 = (iap2_context_t *)dispatcher->CallbackState;
-	iap2_buffer_t *buf = _init_packet(iap2, IAP2_CONTROLF_SYN, 0);	// SYN, sess=0
+	iap2_transport_t *t = iap2->Transport;
+	iap2_link_params_t *link = &t->LinkParams;
+	unsigned char ctrl = IAP2_CONTROLF_SYN;
+
+	iap2_buffer_t *input = (iap2_buffer_t *)exos_fifo_dequeue(&iap2->SyncFifo);
+	if (input != NULL)
+	{
+		_verbose(VERBOSE_DEBUG, "[sync] rx [+%d] %d bytes!", input->Payload, input->Length);
+
+		iap2_link_sync_payload1_t *sync1 = (iap2_link_sync_payload1_t *)(input->Buffer + input->Payload);
+		if (sync1->LinkVersion == 0x01)
+		{
+			unsigned short max_pkt_len = IAP2SHTOH(sync1->MaxRcvPacketLength);
+			_verbose(VERBOSE_DEBUG, "rx [sync] max_out_pks=%d, rcv_pkt_len=%d", 
+				sync1->MaxNumOutstandingPackets, max_pkt_len);
+			_verbose(VERBOSE_DEBUG, "rx [sync] rtx=%d (%d ms) ack=%d (%d ms)",
+				sync1->MaxRetransmits, IAP2SHTOH(sync1->RetransmitTimeout), sync1->MaxCumulativeAcks, IAP2SHTOH(sync1->CumulativeAckTimeout));
+		
+			if (sync1->MaxNumOutstandingPackets >= link->MaxNumOutstandingPackets && 
+				max_pkt_len >= link->MaxNumOutstandingPackets)
+			{
+				ctrl = 0;	// remove SYN flag i.e. OK
+				_verbose(VERBOSE_COMMENT, "[sync] parameters agreement");
+			} 
+
+			ctrl |= IAP2_CONTROLF_ACK;
+		}
+		else _verbose(VERBOSE_ERROR, "[sync] rx unk link version %d != 1!", sync1->LinkVersion);
+
+		pool_free(&_input_pool, &input->Node);
+	}
+
+	iap2_buffer_t *buf = _init_packet(iap2, ctrl, 0);	// SYN, sess=0
 	if (buf != NULL)
 	{
-		iap2_link_sync_payload1_t *sync = (iap2_link_sync_payload1_t *)(buf->Buffer + buf->Length);
-		sync->LinkVersion = 0x01;
-
-		sync->MaxNumOutstandingPackets = IAP2_BUFFERS;
-		sync->MaxRcvPacketLength = HTOIAP2S(IAP2_BUFFER_SIZE);
-		sync->RetxTimeout = HTOIAP2S(0x040B);	// FIXME
-		sync->CumulativeAckTimeout = HTOIAP2S(0x0017);	// FIXME
-		sync->MaxRetx = 3;
-		sync->MaxCumulativeAcks = 3;
-
-		buf->Length += sizeof(iap2_link_sync_payload1_t);
-		for(unsigned i = 0; i < IAP2_MAX_SESSIONS; i++)
+		if (ctrl & IAP2_CONTROLF_SYN)
 		{
-			sync->Sessions[i] = iap2->Sessions[i];
-			buf->Length += sizeof(iap2_link_session1_t);
-		}
+			// TODO
 
-		buf->Buffer[buf->Length] = _checksum((unsigned char *)sync, buf->Length - sizeof(iap2_header_t));
-		buf->Length++;
+			iap2_link_sync_payload1_t *sync2 = (iap2_link_sync_payload1_t *)(buf->Buffer + buf->Length);
+			sync2->LinkVersion = 0x01;
+
+			sync2->MaxNumOutstandingPackets = link->MaxNumOutstandingPackets;	// IAP2_BUFFERS
+			sync2->MaxRcvPacketLength = HTOIAP2S(link->MaxRcvPacketLength);		// IAP2_BUFFER_SIZE
+			sync2->RetransmitTimeout = HTOIAP2S(link->RetransmitTimeout);		// transport init
+			sync2->CumulativeAckTimeout = HTOIAP2S(link->CumulativeAckTimeout);	// transport init
+			sync2->MaxRetransmits = link->MaxRetransmits;		// transport init
+			sync2->MaxCumulativeAcks = link->MaxCumulativeAcks;	// transport init
+
+			buf->Length += sizeof(iap2_link_sync_payload1_t);
+			for(unsigned i = 0; i < IAP2_MAX_SESSIONS; i++)	// FIXME: replace constant with a context variable
+			{
+				sync2->Sessions[i] = iap2->Sessions[i];
+				buf->Length += sizeof(iap2_link_session1_t);
+			}
+
+			buf->Buffer[buf->Length] = _checksum((unsigned char *)sync2, buf->Length - sizeof(iap2_header_t));
+			buf->Length++;
+
+			_verbose(VERBOSE_DEBUG, "tx [sync] max_out_pks=%d, rcv_pkt_len=%d", 
+				sync2->MaxNumOutstandingPackets, IAP2SHTOH(sync2->MaxRcvPacketLength));
+			_verbose(VERBOSE_DEBUG, "tx [sync] rtx=%d (%d ms) ack=%d (%d ms)",
+				sync2->MaxRetransmits, IAP2SHTOH(sync2->RetransmitTimeout), sync2->MaxCumulativeAcks, IAP2SHTOH(sync2->CumulativeAckTimeout));
+		}
 
 		_send_packet(iap2, buf);
 		
@@ -281,16 +325,33 @@ static void _rx_callback(dispatcher_context_t *context, dispatcher_t *dispatcher
 	while(buf = (iap2_buffer_t *)exos_fifo_dequeue(&_input_fifo), buf != NULL)
 	{
 		iap2_header_t *hdr;
-		void *payload;
+		unsigned short payload_offset;
 		unsigned short payload_len;
-		if (_parse_buffer(buf, &hdr, &payload, &payload_len))
+		if (_parse_buffer(buf, &hdr, &payload_offset, &payload_len))
 		{
-			_verbose(VERBOSE_DEBUG, "got packet seq=$%02x, ack=$%02x, control=$%02x, sess=$%02x, payload=%d bytes",
-				hdr->SequenceNumber, hdr->AckNumber, hdr->Control, hdr->SessionId, payload_len);
-		}
-		else _verbose(VERBOSE_ERROR, "rx packet discarded");
+			_verbose(VERBOSE_DEBUG, "got packet [sess #%d] ctrl=$%02x, seq=$%02x, ack=$%02x, payload=%d bytes",
+				hdr->SessionId, hdr->Control, hdr->SequenceNumber, hdr->AckNumber, payload_len);
+		
+			iap2->Ack = hdr->SequenceNumber;
 
-		pool_free(&_input_pool, &buf->Node);
+			if (hdr->SessionId == 0)
+			{
+				buf->Payload = payload_offset;
+				buf->Length = payload_len;
+				exos_fifo_queue(&iap2->SyncFifo, &buf->Node);
+			}
+			else
+			{
+				// TODO
+				_verbose(VERBOSE_ERROR, "rx packet discarded (unk session)");
+				pool_free(&_input_pool, &buf->Node);
+			}
+		}
+		else 
+		{
+			_verbose(VERBOSE_ERROR, "rx packet discarded (parse error)");
+			pool_free(&_input_pool, &buf->Node);
+		}
 	}
 
 	exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);
@@ -299,7 +360,14 @@ static void _rx_callback(dispatcher_context_t *context, dispatcher_t *dispatcher
 
 static bool _loop(iap2_context_t *iap2)
 {
-	// TODO: init params
+	iap2_transport_t *t = iap2->Transport;
+	iap2_link_params_t *link = &t->LinkParams;
+	ASSERT(link->RetransmitTimeout != 0, KERNEL_ERROR_KERNEL_PANIC);
+	ASSERT(link->CumulativeAckTimeout != 0, KERNEL_ERROR_KERNEL_PANIC);
+
+	// init params
+	link->MaxRcvPacketLength = IAP2_BUFFER_SIZE;	// our max input buffer
+	link->MaxNumOutstandingPackets = IAP2_BUFFERS;	// our max input buffers
 
 	dispatcher_context_t context;
 	exos_dispatcher_context_create(&context);
@@ -339,6 +407,7 @@ static void *_service(void *arg)
 	iap2_context_t iap2 = (iap2_context_t) { .Transport = t,
 		.Seq = 0x2b}; // FIXME: randomize seq number
 	exos_event_create(&iap2.SyncEvent, EXOS_EVENTF_AUTORESET);
+	exos_fifo_create(&iap2.SyncFifo, &iap2.SyncEvent);
 	
 	// TODO: session setup according application needs, this is for testing purposes only
 	for(unsigned i = 0; i < IAP2_MAX_SESSIONS; i++)

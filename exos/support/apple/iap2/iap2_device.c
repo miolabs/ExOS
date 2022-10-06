@@ -193,14 +193,14 @@ static void _tx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher
 		if (done != 0)
 		{
 #ifdef IAP2_DEBUG
-			static unsigned char vbuf[IAP2_MAX_PACKET_LENGTH + 1];
-			for(unsigned i = 0; i < done; i++)
-			{
-				unsigned char c = iap2dev->TxData[2 + i];
-				vbuf[i] = (c >= ' ' && c <= 'z') ? c : '.';
-			}
-			vbuf[done] = '\0';	
-			_verbose(VERBOSE_DEBUG,"[%d] tx '%s'", iap2dev->Interface->Index, vbuf);
+			//static unsigned char vbuf[IAP2_MAX_PACKET_LENGTH + 1];
+			//for(unsigned i = 0; i < done; i++)
+			//{
+			//	unsigned char c = iap2dev->TxData[2 + i];
+			//	vbuf[i] = (c >= ' ' && c <= 'z') ? c : '.';
+			//}
+			//vbuf[done] = '\0';	
+			//_verbose(VERBOSE_DEBUG,"[%d] tx '%s'", iap2dev->Interface->Index, vbuf);
 #endif
 			iap2dev->Idle = false;
 
@@ -211,7 +211,7 @@ static void _tx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher
 		else
 		{
 #ifdef IAP2_DEBUG
-			if (!iap2dev->Idle) _verbose(VERBOSE_DEBUG, "[%d] idle", iap2dev->Interface->Index);
+			//if (!iap2dev->Idle) _verbose(VERBOSE_DEBUG, "[%d] idle", iap2dev->Interface->Index);
 #endif
 			iap2dev->Idle = true;
 		}
@@ -262,12 +262,20 @@ static bool _start(usb_device_interface_t *iface, unsigned char alternate_settin
 	iap2dev->TxIo = (usb_io_buffer_t) { .Event = &iap2dev->TxEvent };
 	exos_dispatcher_create(&iap2dev->TxDispatcher, &iap2dev->TxEvent, _tx_dispatch, iap2dev);
 	exos_dispatcher_add(iap2dev->DispatcherContext, &iap2dev->TxDispatcher, EXOS_TIMEOUT_NEVER);
-	exos_io_buffer_create(&iap2dev->Output, iap2dev->OutputBuffer, IAP2_OUTPUT_BUFFER, NULL, NULL/*&io->OutputEvent*/);
+	exos_io_buffer_create(&iap2dev->Output, iap2dev->OutputBuffer, IAP2_OUTPUT_BUFFER, NULL, NULL);
 
 	_verbose(VERBOSE_COMMENT, "[%d] USB start -------", iface->Index);
 	
-	iap2_transport_create(&iap2dev->Transport, "Host Mode", iface->Index, &_iap2_driver);
-	iap2_start(&iap2dev->Transport);
+	iap2_transport_t *t = &iap2dev->Transport;
+	iap2_transport_create(t, "Host Mode", iface->Index, &_iap2_driver);
+
+	// transport link params
+	t->LinkParams.RetransmitTimeout = 2000;
+	t->LinkParams.CumulativeAckTimeout = 22;
+	t->LinkParams.MaxRetransmits = 30;
+	t->LinkParams.MaxCumulativeAcks = 3;
+
+	iap2_start(t);
 
 	return true;
 }

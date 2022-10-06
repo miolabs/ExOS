@@ -3,6 +3,7 @@
 
 #include <kernel/types.h>
 #include <kernel/iobuffer.h>
+#include <kernel/fifo.h>
 #include <stdbool.h>
 
 #ifndef IAP2_MAX_SESSIONS
@@ -58,9 +59,9 @@ typedef struct __packed
 	unsigned char LinkVersion;	// NOTE: always 1
 	unsigned char MaxNumOutstandingPackets;
 	iap2_short_t MaxRcvPacketLength;
-	iap2_short_t RetxTimeout;
+	iap2_short_t RetransmitTimeout;
 	iap2_short_t CumulativeAckTimeout;
-	unsigned char MaxRetx;
+	unsigned char MaxRetransmits;
 	unsigned char MaxCumulativeAcks;
 	iap2_link_session1_t Sessions[0];
 } iap2_link_sync_payload1_t;
@@ -70,12 +71,23 @@ typedef struct __packed
 
 typedef struct iap2_transport_driver iap2_transport_driver_t;
 
+typedef struct
+{
+	unsigned short MaxRcvPacketLength;
+	unsigned short RetransmitTimeout;
+	unsigned short CumulativeAckTimeout;
+	unsigned char MaxNumOutstandingPackets;
+	unsigned char MaxRetransmits;
+	unsigned char MaxCumulativeAcks;
+} iap2_link_params_t;
+
 typedef struct 
 {
 	const char *Id;
 	const iap2_transport_driver_t *Driver;
 	unsigned char Unit;
 	unsigned char Transaction;
+	iap2_link_params_t LinkParams;
 } iap2_transport_t;
 
 struct iap2_transport_driver
@@ -86,22 +98,12 @@ struct iap2_transport_driver
 
 typedef struct
 {
-	unsigned char MaxNumOutstandingPackets;
-	unsigned short MaxRcvPacketLength;
-	unsigned short RetxTimeout;
-	unsigned short CumulativeAckTimeout;
-	unsigned char MaxRetx;
-	unsigned char MaxCumulativeAcks;
-} iap2_link_params_t;
-
-typedef struct
-{
 	iap2_transport_t *Transport;
 	unsigned char Seq;
 	unsigned char Ack;
 
-	iap2_link_params_t LinkParams;
 	event_t SyncEvent;
+	fifo_t SyncFifo;
 
 	iap2_link_session1_t Sessions[IAP2_MAX_SESSIONS];
 } iap2_context_t;
