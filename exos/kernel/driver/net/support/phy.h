@@ -1,20 +1,15 @@
 #ifndef SUPPORT_NET_PHY_H
 #define SUPPORT_NET_PHY_H
 
-// common PHY definitions
-#ifndef PHY_BASE_ADDR
-#define PHY_BASE_ADDR	0x0100
-#endif
+#include <stdbool.h>
 
-typedef enum
-{
-	PHY_ID_NONE = 0,
-	PHY_ID_DP83848 = 0x20005C90,
-	PHY_ID_KSZ8001 = 0x00221610,
-	PHY_ID_LAN8720A = 0x0007C0F0,
-} PHY_ID;
+//#ifndef PHY_BASE_ADDR
+//#define PHY_BASE_ADDR	0x0100
+//#endif
 
-typedef enum _PHY_REG
+typedef unsigned long phy_id_t;
+
+typedef enum _phy_regs
 {
 	PHYR_BCR = 0x00,	// Basic Control Register
 	PHYR_BSR,		// Basic Status Register
@@ -25,7 +20,7 @@ typedef enum _PHY_REG
 	PHYR_ANEXP,      // Auto-Negotiation Expansion Register
 	PHYR_ANNP,		// Auto-Negotiation Next Page TX
 	PHYR_LPNPA,		// Link Partner Next Page Ability
-} PHYREG;
+} phy_reg_t;
 
 #define PHY_BCR_RESET			(1<<15)
 #define PHY_BCR_LOOPBACK		(1<<14)
@@ -52,66 +47,15 @@ typedef enum _PHY_REG
 #define PHY_BSR_EXTENDED_CAP	(1<<0)
 
 
-// MICREL KSZxxxx PHY
-typedef enum
-{
-	PHYR_KSZ_RXERC = 0x15,		// RXER (Rx Error) Counter
-	PHYR_KSZ_ICS = 0x1B,		// Interrupt Control/Status Register 
-	PHYR_KSZ_LCS = 0x1D,		// Link Control/Status Register
-	PHYR_KSZ_PCR = 0x1E,		// PHY Control Register
-	PHYR_KSZ_100TPCR = 0x1F,	// 100BASE-TX PHY Control Register
-} PHYREG_KSZ;
-
-typedef enum
-{
-	PHY_KSZ_100TPCR_PAIRSWAP_DISABLE = (1<<13),
-	PHY_KSZ_100TPCR_ENERGY_DETECT = (1<<12),
-	PHY_KSZ_100TPCR_FORCE_LINK = (1<<11),
-	PHY_KSZ_100TPCR_POWER_SAVING = (1<<10),
-} PHY_KSZ_100TPCR_BITS;
-
-typedef enum _PHY_OP_MODE
-{
-	PHY_KSZ_OPMODE_NEGOTIATING = 0,
-	PHY_KSZ_OPMODE_10M_HALF,
-	PHY_KSZ_OPMODE_100M_HALF,
-	PHY_KSZ_OPMODE_RESERVED3,
-	PHY_KSZ_OPMODE_RESERVED4,
-	PHY_KSZ_OPMODE_10M_FULL,
-	PHY_KSZ_OPMODE_100M_FULL,
-	PHY_KSZ_OPMODE_ISOLATE
-} PHY_KSZ_OPMODE;
-
-// NATIONAL DP83848x PHY
-typedef enum
-{
-	PHYR_DP83848_PHYSTA = 0x10, // PHY Status Register
-	PHYR_DP83848_PHYCR = 0x19, // PHY Control Register
-} PHYREG_DP83848;
-
-#define PHY_DP83848_PHYSTA_LINK		(1<<0)
-#define PHY_DP83848_PHYSTA_SPEED	(1<<1)
-#define PHY_DP83848_PHYSTA_DUPLEX	(1<<2)
-
-
-// SMSC LAN8720A PHY
-typedef enum
-{
-	PHYR_LAN8720A_SP_CSR = 0x1F,
-} PHYREG_LAN8720A;
-
-#define PHY_LAN8720A_S_CSR_FULLDUPLEX (1<<4)
-#define PHY_LAN8720A_S_CSR_100BASET (1<<3)
-#define PHY_LAN8720A_S_CSR_10BASET (1<<2)
-
-
 typedef struct 
 {
-	void (*Write)(PHYREG reg, unsigned short value);
-	unsigned short (*Read)(PHYREG reg);
-} PHY_HANDLER;
+	void (*Write)(unsigned unit, phy_reg_t reg, unsigned short value);
+	unsigned short (*Read)(unsigned unit, phy_reg_t reg);
+} phy_driver_t;
 
-typedef enum _ETH_LINK
+typedef struct __phy_handler phy_handler_t;
+
+typedef enum 
 {
 	ETH_LINK_NONE = 0,
 	ETH_LINK_AUTO = 1,
@@ -119,12 +63,28 @@ typedef enum _ETH_LINK
 	ETH_LINK_100M = 4,
 	ETH_LINK_HALF_DUPLEX = 8,
 	ETH_LINK_FULL_DUPLEX = 16,
-} ETH_LINK;
+} eth_link_t;
 
+typedef struct
+{
+	const phy_driver_t *Driver;
+	const phy_handler_t *Handler;
+	unsigned char Unit;
+	eth_link_t Link;
+	phy_id_t Id;
+} phy_t;
+
+
+struct __phy_handler
+{
+	bool (*Reset)(phy_t *phy);
+	bool (*RestartNeg)(phy_t *phy);
+	bool (*ReadLinkState)(phy_t *phy);
+};
 
 // prototypes
-int phy_reset(const PHY_HANDLER *phy);
-void phy_restart_neg(const PHY_HANDLER *phy);
-ETH_LINK phy_link_state(const PHY_HANDLER *phy);
+bool phy_create(phy_t *phy, const phy_driver_t *driver, unsigned unit, const phy_handler_t *handler);
+bool phy_restart_neg(phy_t *phy);
+eth_link_t phy_link_state(phy_t *phy);
 
 #endif // SUPPORT_NET_PHY_H

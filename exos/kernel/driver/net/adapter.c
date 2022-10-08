@@ -16,6 +16,7 @@ static mutex_t _adapters_lock;
 static list_t _adapters;
 static fifo_t _free_wrappers;
 static event_t _free_wrapper_event;
+
 #define NET_PACKET_WRAPPERS 16
 static net_buffer_t _wrappers[NET_PACKET_WRAPPERS];
 
@@ -32,42 +33,45 @@ void net_adapter_initialize()
 
 	exos_mutex_create(&_adapters_lock);
 	net_adapter_t *adapter;
+	const phy_handler_t *handler;
 	int index = 0;
 	while(NULL != (adapter = net_board_get_adapter(index)))
 	{
-		adapter->Node = (node_t) { .Type = EXOS_NODE_IO_DEVICE };
-//		adapter->IP = (ip_addr_t) { .Value = 0 };
-//		adapter->NetMask = (ip_addr_t) { .Bytes = { 255, 255, 255, 255 } };
-//		adapter->Gateway = (ip_addr_t) { .Value = 0 };
-		adapter->Speed = 0;
-		net_board_set_mac_address(adapter, index);
+		if (net_adapter_create(adapter, adapter->Driver, 0, NULL))
+		{
+			net_board_set_mac_address(adapter, index);
 
-		if (net_adapter_install(adapter))
+			net_adapter_install(adapter);
+			
 			net_board_set_ip_address(adapter, index);
+		}
 
 		index++;
 	}
 }
 
-int net_adapter_install(net_adapter_t *adapter)
+bool net_adapter_create(net_adapter_t *adapter, const net_driver_t *driver, unsigned phy_unit, const phy_handler_t *handler)
 {
-	int done = 0;
+	ASSERT(adapter != NULL && driver != NULL, KERNEL_ERROR_NULL_POINTER);
+	*adapter = (net_adapter_t) { .Driver = driver, 
+		.Node = (node_t) { .Type = EXOS_NODE_IO_DEVICE } };
+
+	exos_mutex_create(&adapter->InputLock);
+	exos_mutex_create(&adapter->OutputLock);
+
+	return driver->Initialize(adapter, phy_unit, handler);
+}
+
+void net_adapter_install(net_adapter_t *adapter)
+{
+	ASSERT(adapter != NULL && adapter->Driver != NULL, KERNEL_ERROR_NULL_POINTER);
 	exos_mutex_lock(&_adapters_lock);
-   	
-	const net_driver_t *driver = adapter->Driver;
-	if (driver->Initialize(adapter))
-	{
-		list_add_tail(&_adapters, &adapter->Node);
 
-		exos_mutex_create(&adapter->InputLock);
-		exos_mutex_create(&adapter->OutputLock);
-		net_service_start(adapter);
+	ASSERT(!list_find_node(&_adapters, &adapter->Node), KERNEL_ERROR_KERNEL_PANIC);
+	list_add_tail(&_adapters, &adapter->Node);
 
-		done = 1;
-	}
-	
+	net_service_start(adapter);
 	exos_mutex_unlock(&_adapters_lock);
-	return done;
 }
 
 

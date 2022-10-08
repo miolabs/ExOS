@@ -2,10 +2,12 @@
 #define NET_ADAPTER_H
 
 #include "net.h"
+#include "support/phy.h"
 #include "mbuf.h"
 #include <kernel/thread.h>
 #include <kernel/event.h>
 #include <kernel/mutex.h>
+#include <stdbool.h>
 
 //#ifndef NET_ADAPTER_THREAD_STACK
 //#define NET_ADAPTER_THREAD_STACK 768
@@ -35,6 +37,7 @@ typedef struct
 {
 	node_t Node;
 	const net_driver_t *Driver;
+	phy_t Phy;
 	mutex_t InputLock;
 	mutex_t OutputLock;
 	hw_addr_t MAC;
@@ -67,7 +70,7 @@ typedef void(* NET_CALLBACK)(void *state);
 
 struct __net_driver
 {
-	int (*Initialize)(net_adapter_t *adapter);
+	bool (*Initialize)(net_adapter_t *adapter, unsigned phy_unit, const phy_handler_t *handler);
 	void (*LinkUp)(net_adapter_t *adapter);
 	void (*LinkDown)(net_adapter_t *adapter);
 	void *(*GetInputBuffer)(net_adapter_t *adapter, unsigned long *plength);
@@ -85,10 +88,11 @@ typedef net_buffer_t NET_BUFFER;
 
 // prototypes
 void net_adapter_initialize();
-int net_adapter_install(net_adapter_t *adapter);
+bool net_adapter_create(net_adapter_t *adapter, const net_driver_t *driver, unsigned unit, const phy_handler_t *handler);
+void net_adapter_install(net_adapter_t *adapter);
 void net_adapter_list_lock();
 void net_adapter_list_unlock();
-int net_adapter_enum(net_adapter_t **padapter);
+bool net_adapter_enum(net_adapter_t **padapter);
 //NET_ADAPTER *net_adapter_find(IP_ADDR addr);
 //NET_ADAPTER *net_adapter_find_gateway(IP_ADDR addr);
 

@@ -1,88 +1,69 @@
 #include "phy.h"
-#include <kernel/types.h>
+#include <kernel/panic.h>
 
-static PHY_ID _identify(const PHY_HANDLER *phy)
+static phy_id_t _identify(const phy_driver_t *phy, unsigned unit)
 {
-	unsigned long identifier = (phy->Read(PHYR_ID1) << 16) | phy->Read(PHYR_ID2);
-	return (PHY_ID)(identifier & 0xfffffff0);	// exclude revision number
+	unsigned long identifier = (phy->Read(unit, PHYR_ID1) << 16) | phy->Read(unit, PHYR_ID2);
+	return (phy_id_t)(identifier & 0xfffffff0);	// NOTE: exclude revision number
 }
 
-int phy_reset(const PHY_HANDLER *phy)
+bool phy_create(phy_t *phy, const phy_driver_t *driver, unsigned unit, const phy_handler_t *handler)
 {
+	ASSERT(phy != NULL && driver != NULL && handler != NULL, KERNEL_ERROR_NULL_POINTER);
+	phy->Driver = driver;
+	phy->Handler = handler;
+	phy->Unit = unit;
+
 	// reset PHY
-	phy->Write(PHYR_BCR, PHY_BCR_RESET);
-	int startup_time;
-	for(startup_time = 1000000; startup_time > 0; startup_time--)
+	driver->Write(unit, PHYR_BCR, PHY_BCR_RESET);
+
+	int startup_time = 1000000; 
+	while(startup_time > 0)
 	{
-		unsigned short pv = phy->Read(PHYR_BCR); 
+		unsigned short pv = driver->Read(unit, PHYR_BCR); 
 		if (0 == (pv & (PHY_BCR_RESET | PHY_BCR_POWERDOWN))) break;
+		startup_time--;
 	}
-	if (startup_time == 0) return 0; // no response from PHY
+	if (startup_time == 0) return false; // no response from PHY
 
-	PHY_ID id = _identify(phy);
+	phy->Id = _identify(driver, unit);
 	
-	// custom (specific) initialization
-	if (id == PHY_ID_KSZ8001)
+	// TODO: make a driver for DP83848
+	if (phy->Id == 0x20005C90) // PHY_ID_DP83848
 	{
-		PHY_KSZ_100TPCR_BITS ctrl = phy->Read(PHYR_KSZ_100TPCR);
-		ctrl &= ~PHY_KSZ_100TPCR_PAIRSWAP_DISABLE;
-		phy->Write(PHYR_KSZ_100TPCR, ctrl);
-	}
-	else if (id == PHY_ID_DP83848)
-	{
-		unsigned short ctrl = phy->Read(PHYR_DP83848_PHYCR);
+		unsigned short ctrl = driver->Read(phy->Unit, 0x19);	// PHYCR
 		ctrl |= 0x8000;	// enable auto-neg auto-mdix capability
-		phy->Write(PHYR_DP83848_PHYCR, ctrl);
-	}
-	else if ((id & 0xFFFFFFF0) == PHY_ID_LAN8720A)
-	{
-		// TODO: currenty nothing, all ok by default
+		driver->Write(phy->Unit, 0x19, ctrl);
 	}
 
-	return 1;
+	return (handler->Reset != NULL) ? handler->Reset(phy) : true;
 }
 
-void phy_restart_neg(const PHY_HANDLER *phy)
+bool phy_restart_neg(phy_t *phy)
 {
-	unsigned short bcr = PHY_BCR_AUTO | PHY_BCR_RESTART_AUTO;
-	phy->Write(PHYR_BCR, bcr);
-}
-
-ETH_LINK phy_link_state(const PHY_HANDLER *phy)
-{
-	ETH_LINK mode = ETH_LINK_NONE;
-	unsigned short bsr = phy->Read(PHYR_BSR); 
-	if (0 != (bsr & PHY_BSR_AUTO_COMPLETE))
+	ASSERT(phy != NULL, KERNEL_ERROR_NULL_POINTER);
+	const phy_handler_t *handler = phy->Handler;
+	ASSERT(handler != NULL, KERNEL_ERROR_NULL_POINTER);
+	if (handler->RestartNeg)
 	{
-		unsigned short reg;
-		PHY_ID id = _identify(phy);
-		if (id == PHY_ID_KSZ8001)
-		{
-			reg = phy->Read(PHYR_KSZ_100TPCR);
-
-			switch((PHY_KSZ_OPMODE)((reg >> 2) & 0x7)) // Operation Mode
-			{
-				case PHY_KSZ_OPMODE_10M_HALF:	mode = ETH_LINK_10M | ETH_LINK_HALF_DUPLEX;		break;
-				case PHY_KSZ_OPMODE_100M_HALF:	mode = ETH_LINK_100M | ETH_LINK_HALF_DUPLEX;	break;
-				case PHY_KSZ_OPMODE_10M_FULL:	mode = ETH_LINK_10M | ETH_LINK_FULL_DUPLEX;		break;
-				case PHY_KSZ_OPMODE_100M_FULL:	mode = ETH_LINK_100M | ETH_LINK_FULL_DUPLEX;	break;
-			}
-		}
-		else if (id == PHY_ID_DP83848)
-		{
-			reg = phy->Read(PHYR_DP83848_PHYSTA);
-			mode = ((reg & PHY_DP83848_PHYSTA_SPEED) ? ETH_LINK_10M : ETH_LINK_100M)
-				| ((reg & PHY_DP83848_PHYSTA_DUPLEX) ? ETH_LINK_FULL_DUPLEX : ETH_LINK_HALF_DUPLEX);
-		}
-		else if ((id & 0xFFFFFFF0) == PHY_ID_LAN8720A)
-		{
-			reg = phy->Read(PHYR_LAN8720A_SP_CSR);
-			mode = ((reg & PHY_LAN8720A_S_CSR_FULLDUPLEX) ? ETH_LINK_FULL_DUPLEX : ETH_LINK_HALF_DUPLEX)
-				| ((reg & PHY_LAN8720A_S_CSR_100BASET) ? ETH_LINK_100M : ETH_LINK_10M);
-			// NOTE: maybe this is std and may me merged (it is functionally equivalent to KSZ8001 for the case)
-		}
+		return handler->RestartNeg(phy);
 	}
-	return mode;
+	else
+	{
+		const phy_driver_t *driver = phy->Driver;
+		ASSERT(driver != NULL, KERNEL_ERROR_NULL_POINTER);
+
+		unsigned short bcr = PHY_BCR_AUTO | PHY_BCR_RESTART_AUTO;
+		driver->Write(phy->Unit, PHYR_BCR, bcr);
+		return true;
+	}
 }
 
+bool phy_read_link_state(phy_t *phy)
+{
+	ASSERT(phy != NULL, KERNEL_ERROR_NULL_POINTER);
+	const phy_handler_t *handler = phy->Handler;
+	ASSERT(handler != NULL && handler->RestartNeg, KERNEL_ERROR_NULL_POINTER);
+	return handler->ReadLinkState(phy);
+}
 
