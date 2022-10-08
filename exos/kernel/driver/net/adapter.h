@@ -7,16 +7,16 @@
 #include <kernel/event.h>
 #include <kernel/mutex.h>
 
-#ifndef NET_ADAPTER_THREAD_STACK
-#define NET_ADAPTER_THREAD_STACK 768
-#endif
+//#ifndef NET_ADAPTER_THREAD_STACK
+//#define NET_ADAPTER_THREAD_STACK 768
+//#endif
 
 typedef struct __attribute__((__packed__))
 {
-	HW_ADDR Destination;
-	HW_ADDR Sender;
-	NET16_T Type;
-} ETH_HEADER;
+	hw_addr_t Destination;
+	hw_addr_t Sender;
+	net16_t Type;
+} eth_header_t;
 
 typedef enum
 {
@@ -24,74 +24,81 @@ typedef enum
 	ETH_TYPE_IP = 0x0800,
 	ETH_TYPE_IPv6 = 0x86dd,
 	ETH_TYPE_ETHERCAT = 0x88a4,
-} ETH_TYPE;
+} eth_type_t;
 
 #define ETH_MAX_FRAME_SIZE 1536
 #define ETH_MAX_PAYLOAD 1500
 
-typedef struct _NET_DRIVER NET_DRIVER;
+typedef struct __net_driver net_driver_t;
 
 typedef struct
 {
 	node_t Node;
-	const NET_DRIVER *Driver;
+	const net_driver_t *Driver;
 	mutex_t InputLock;
 	mutex_t OutputLock;
-	HW_ADDR MAC;
+	hw_addr_t MAC;
 	unsigned short Speed;
-	IP_ADDR IP;
-	IP_ADDR NetMask;
-	IP_ADDR Gateway;
+	//ip_addr_t IP;
+	//ip_addr_t NetMask;
+	//ip_addr_t Gateway;
 
-	unsigned long InputSignal;
-	exos_thread_t Thread;
-	unsigned char Stack[NET_ADAPTER_THREAD_STACK];
-} NET_ADAPTER;
+	//unsigned long InputSignal;
+	//exos_thread_t Thread;
+	//unsigned char Stack[NET_ADAPTER_THREAD_STACK];
+} net_adapter_t;
 
 typedef struct
 {
 	node_t Node;
-	NET_ADAPTER *Adapter;
+	net_adapter_t *Adapter;
 	void *Buffer;
 	unsigned short Offset;
 	unsigned short Length;
-} NET_BUFFER;
+} net_buffer_t;
 
 typedef struct
 {
 	event_t *CompletedEvent;
-	NET_MBUF Buffer;
+	net_mbuf_t Buffer;
 } NET_OUTPUT_BUFFER;
 
 typedef void(* NET_CALLBACK)(void *state);
 
-struct _NET_DRIVER
+struct __net_driver
 {
-	int (*Initialize)(NET_ADAPTER *adapter);
-	void (*LinkUp)(NET_ADAPTER *adapter);
-	void (*LinkDown)(NET_ADAPTER *adapter);
-	void *(*GetInputBuffer)(NET_ADAPTER *adapter, unsigned long *plength);
-	void (*DiscardInputBuffer)(NET_ADAPTER *adapter, void *buffer);
-	void *(*GetOutputBuffer)(NET_ADAPTER *adapter, unsigned long size);
-	int (*SendOutputBuffer)(NET_ADAPTER *adapter, NET_MBUF *mbuf, NET_CALLBACK callback, void *state);
+	int (*Initialize)(net_adapter_t *adapter);
+	void (*LinkUp)(net_adapter_t *adapter);
+	void (*LinkDown)(net_adapter_t *adapter);
+	void *(*GetInputBuffer)(net_adapter_t *adapter, unsigned long *plength);
+	void (*DiscardInputBuffer)(net_adapter_t *adapter, void *buffer);
+	void *(*GetOutputBuffer)(net_adapter_t *adapter, unsigned long size);
+	int (*SendOutputBuffer)(net_adapter_t *adapter, net_mbuf_t *mbuf, NET_CALLBACK callback, void *state);
 };
+
+#ifdef EXOS_OLD
+typedef eth_header_t ETH_HEADER;
+typedef eth_type_t ETH_TYPE;
+typedef net_adapter_t NET_ADAPTER;
+typedef net_buffer_t NET_BUFFER;
+#endif
 
 // prototypes
 void net_adapter_initialize();
-int net_adapter_install(NET_ADAPTER *adapter);
+int net_adapter_install(net_adapter_t *adapter);
 void net_adapter_list_lock();
 void net_adapter_list_unlock();
-int net_adapter_enum(NET_ADAPTER **padapter);
-NET_ADAPTER *net_adapter_find(IP_ADDR addr);
-NET_ADAPTER *net_adapter_find_gateway(IP_ADDR addr);
+int net_adapter_enum(net_adapter_t **padapter);
+//NET_ADAPTER *net_adapter_find(IP_ADDR addr);
+//NET_ADAPTER *net_adapter_find_gateway(IP_ADDR addr);
 
-void net_adapter_input(NET_ADAPTER *adapter);
+void net_adapter_input(net_adapter_t *adapter);
 
-void *net_adapter_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *buf, unsigned hdr_size, const HW_ADDR *destination, ETH_TYPE type);
-int net_adapter_send_output(NET_ADAPTER *adapter, NET_OUTPUT_BUFFER *buf);
+void *net_adapter_output(net_adapter_t *adapter, NET_OUTPUT_BUFFER *buf, unsigned hdr_size, const hw_addr_t *destination, eth_type_t type);
+int net_adapter_send_output(net_adapter_t *adapter, NET_OUTPUT_BUFFER *buf);
 
-NET_BUFFER *net_adapter_alloc_buffer(NET_ADAPTER *adapter, void *buffer, void *data, unsigned long length);
-void net_adapter_discard_input_buffer(NET_BUFFER *packet);
+net_buffer_t *net_adapter_alloc_buffer(net_adapter_t *adapter, void *buffer, void *data, unsigned long length);
+void net_adapter_discard_input_buffer(net_buffer_t *packet);
 
 
 #endif // NET_DRIVERS_H

@@ -13,16 +13,16 @@ typedef enum
 
 typedef struct 
 {
-	HW_ADDR	MAC;
+	hw_addr_t MAC;
 	short State;
 	unsigned long Time;
-	IP_ADDR	IP;
-	EXOS_EVENT *Event;
+	ip_addr_t IP;
+	event_t *Event;
 } ARP_ENTRY;
 
 // prototypes
 int net_arp_tables_initialize();
-ARP_ENTRY *net_arp_tables_set_entry(IP_ADDR *ip, HW_ADDR *mac, ARP_ENTRY_STATE state, EXOS_EVENT *event);
-int net_arp_tables_get_hw_addr(IP_ADDR *ip, HW_ADDR *mac);
+ARP_ENTRY *net_arp_tables_set_entry(ip_addr_t *ip, hw_addr_t *mac, ARP_ENTRY_STATE state, event_t *event);
+int net_arp_tables_get_hw_addr(ip_addr_t *ip, hw_addr_t *mac);
 
 #endif // NET_ARP_TABLES_H

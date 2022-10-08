@@ -58,7 +58,7 @@ typedef struct
 typedef struct
 {
 	node_t Node;
-	NET_ADAPTER *Adapter;
+	net_adapter_t *Adapter;
 	IP_ENDPOINT RemoteEP;
 	unsigned short RemotePort;
 	unsigned short LocalPort;

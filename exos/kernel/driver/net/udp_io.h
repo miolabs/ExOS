@@ -12,7 +12,7 @@ typedef struct
 } UDP_IO_ENTRY;
 
 void __udp_io_initialize();
-UDP_IO_ENTRY *__udp_io_find_io(NET_ADAPTER *adapter, unsigned short port);
+UDP_IO_ENTRY *__udp_io_find_io(net_adapter_t *adapter, unsigned short port);
 
 void net_udp_io_create(UDP_IO_ENTRY *io/*, EXOS_IO_FLAGS flags*/);
 

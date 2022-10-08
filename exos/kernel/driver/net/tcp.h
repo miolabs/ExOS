@@ -21,24 +21,24 @@ typedef struct __attribute__((__packed__))
 
 typedef struct __attribute__((__packed__))
 {
-	NET16_T SourcePort;
-	NET16_T DestinationPort;
-	NET32_T Sequence;
-	NET32_T Ack;
+	net16_t SourcePort;
+	net16_t DestinationPort;
+	net32_t Sequence;
+	net32_t Ack;
 	struct __attribute__((__packed__))
 	{
 		unsigned Reserved:4;
 		unsigned DataOffset:4;
 	};
 	TCP_FLAGS Flags;
-	NET16_T WindowSize;
-	NET16_T Checksum;
-	NET16_T UrgentPtr;
+	net16_t WindowSize;
+	net16_t Checksum;
+	net16_t UrgentPtr;
 	unsigned char Options[0];
 } TCP_HEADER;
 
-int net_tcp_input(NET_ADAPTER *adapter, ETH_HEADER *buffer, IP_HEADER *ip);
-unsigned short net_tcp_checksum(IP_ADDR *source_ip, IP_ADDR *dest_ip, NET_MBUF *mbuf, int offset);
+int net_tcp_input(net_adapter_t *adapter, eth_header_t *buffer, IP_HEADER *ip);
+unsigned short net_tcp_checksum(ip_addr_t *source_ip, ip_addr_t *dest_ip, net_mbuf_t *mbuf, int offset);
 
 #endif // NET_TCP_H
 

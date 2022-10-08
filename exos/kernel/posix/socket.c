@@ -100,7 +100,7 @@ int bind(int socket, const struct sockaddr *address, socklen_t address_len)
 
 	struct sockaddr_in *ip_addr = (struct sockaddr_in *)address;
 	IP_PORT_ADDR ipp = (IP_PORT_ADDR) { 
-		.Address = (IP_ADDR)ip_addr->sin_addr.s_addr,
+		.Address = (ip_addr_t)ip_addr->sin_addr.s_addr,
 		.Port = ntohs(ip_addr->sin_port) };
 	int error = net_io_bind((NET_IO_ENTRY *)io, &ipp);
 
@@ -164,7 +164,7 @@ ssize_t sendto(int socket, const void *buffer, size_t length, int flags, const s
 	if (ip_addr != NULL)
 	{
 		IP_PORT_ADDR ipp = (IP_PORT_ADDR) { 
-			.Address = (IP_ADDR)ip_addr->sin_addr.s_addr,
+			.Address = (ip_addr_t)ip_addr->sin_addr.s_addr,
 			.Port = ntohs(ip_addr->sin_port) };
 		done = net_io_send((NET_IO_ENTRY *)io, (void *)buffer, length, &ipp);
 	}
