@@ -11,9 +11,11 @@ typedef enum
 	USB_CDC_SUBCLASS_TCM = 3,	// Telephony Control Model
 	USB_CDC_SUBCLASS_MCCM = 4,	// Multi-Channel Control Model
 	USB_CDC_SUBCLASS_CAPI = 5,	// CAPI Control Model
-	USB_CDC_SUBCLASS_ENCM = 6,	// Ethernet Networking Model
+	USB_CDC_SUBCLASS_ECM = 6,	// Ethernet Control Model
 	USB_CDC_SUBCLASS_ATM = 7,	// ATM Networking Control Model
-} USB_CDC_SUBCLASS;
+
+	USB_CDC_SUBCLASS_NCM = 0xd,	// Network Control Model
+} usb_cdc_subclass_t;
 
 typedef enum
 {
@@ -25,16 +27,16 @@ typedef enum
 	USB_CDC_PROTOCOL_3GPP = 5,
 	USB_CDC_PROTOCOL_CDMA = 6,
 	USB_CDC_PROTOCOL_EEM = 7,
-	USB_CDC_PROTOCOL_EXTERNAL = 0xFE,
+	USB_CDC_PROTOCOL_EXTERNAL = 0xFE,	// AKA 'OEM defined'
 	USB_CDC_PROTOCOL_VENDOR_SPECIFIC = 0xFF,
-} USB_CDC_PROTOCOL;
+} usb_cdc_protocol_t;
 
 typedef enum
 {
 	USB_DATA_PROTOCOL_NONE = 0,
 	USB_DATA_PROTOCOL_EXTERNAL = 0xFE,
 	USB_DATA_PROTOCOL_VENDOR_SPECIFIC = 0xFF,
-} USB_DATA_PROTOCOL;
+} usb_data_protocol_t;
 
 typedef enum
 {
@@ -44,7 +46,7 @@ typedef enum
     USB_CDC_FUNC_DESCRIPTOR_SUBTYPE_DLM = 0x03,
     USB_CDC_FUNC_DESCRIPTOR_SUBTYPE_RINGER = 0x04,
     USB_CDC_FUNC_DESCRIPTOR_SUBTYPE_TCLSRC = 0x05,
-    USB_CDC_FUNC_DESCRIPTOR_SUBTYPE_UFD = 0x06,	// Union Functional Descriptor
+    USB_CDC_FUNC_DESCRIPTOR_SUBTYPE_UFD = 0x06,		// Union Functional Descriptor
     USB_CDC_FUNC_DESCRIPTOR_SUBTYPE_COUNTRY_SELECTION = 0x07,
     USB_CDC_FUNC_DESCRIPTOR_SUBTYPE_TOM = 0x08,
     USB_CDC_FUNC_DESCRIPTOR_SUBTYPE_USBTF = 0x09,
@@ -64,27 +66,27 @@ typedef enum
     USB_CDC_FUNC_DESCRIPTOR_SUBTYPE_CSD = 0x17,
     USB_CDC_FUNC_DESCRIPTOR_SUBTYPE_TCM = 0x18,
     USB_CDC_FUNC_DESCRIPTOR_SUBTYPE_OBEX_SI = 0x19,
-} USB_CDC_FUNC_DESCRIPTOR_SUBTYPE;
+} usb_cdc_func_descriptor_subtype_t;
 
 typedef struct
 {
-	USB_DESCRIPTOR_HEADER Header;
-	unsigned char DescriptorSubtype; // USB_CDC_FUNC_DESCRIPTOR_SUBTYPE_HEADER
-	USB16 CDC;	// CDC Spec. release number in bcd
-} USB_CDC_FUNC_HEADER_DESCRIPTOR;
+	usb_descriptor_header_t Header;
+	unsigned char DescriptorSubtype;	// USB_CDC_FUNC_DESCRIPTOR_SUBTYPE_HEADER
+	usb16_t CDC;						// CDC Spec. release number in bcd
+} usb_cdc_func_header_descriptor_t;
 
 typedef struct
 {
-	USB_DESCRIPTOR_HEADER Header;
+	usb_descriptor_header_t Header;
 	unsigned char DescriptorSubtype; // USB_CDC_FUNC_DESCRIPTOR_SUBTYPE_UFD
 	unsigned char ControlInterface;
 	unsigned char SubordinateInterface[0];
-} USB_CDC_UNION_FUNCTIONAL_DESCRIPTOR;
+} usb_cdc_union_functional_descriptor_t;
 
 typedef enum
 {
 	USB_CDC_REQUEST_SEND_ENCAPSULATED_COMMAND = 0x00,
     USB_CDC_REQUEST_GET_ENCAPSULATED_RESPONSE = 0x01,
-} USB_CDC_REQUEST_CODE;
+} usb_cdc_request_code_t;
 
 #endif // USB_CLASS_CDC_H
