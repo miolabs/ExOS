@@ -16,6 +16,8 @@ void usb_otg_hs_initialize()
 	otg_global->GUSBCFG |= USB_OTG_GUSBCFG_PHYSEL;
 
 	while(!(otg_global->GRSTCTL & USB_OTG_GRSTCTL_AHBIDL));
+	for(unsigned volatile i = 0; i < 100; i++);	// wait 3 phy clks
+
 	otg_global->GRSTCTL |= USB_OTG_GRSTCTL_CSRST;	// soft-reset
 	while(otg_global->GRSTCTL & USB_OTG_GRSTCTL_CSRST);	// NOTE: self-clearing
 	for(unsigned volatile i = 0; i < 100; i++);	// wait 3 phy clks
