@@ -11,8 +11,8 @@
 static OHCI_STD _buffers[OHCI_MAX_BUFFERS] __usb;
 static OHCI_SED _pipes[OHCI_MAX_PIPES] __usb;
 
-static EXOS_FIFO _free_buffers;
-static EXOS_FIFO _free_pipes;
+static fifo_t _free_buffers;
+static fifo_t _free_pipes;
 
 void ohci_buffers_initialize()
 {

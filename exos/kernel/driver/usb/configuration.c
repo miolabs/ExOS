@@ -318,7 +318,10 @@ const char *usb_device_config_get_string(int index)
 #define USB_USER_DEVICE_PROTOCOL 0
 #endif
 
-#ifdef USB_USER_DEVICE_VENDORID
+#ifndef USB_USER_DEVICE_VERSION
+#define USB_USER_DEVICE_VERSION	0
+#endif
+
 __weak
 int usb_device_fill_device_descriptor(usb_device_descriptor_t *desc)
 {
@@ -327,8 +330,12 @@ int usb_device_fill_device_descriptor(usb_device_descriptor_t *desc)
 	desc->DeviceSubClass = USB_USER_DEVICE_SUBCLASS;
 	desc->DeviceProtocol = USB_USER_DEVICE_PROTOCOL;
 	desc->MaxPacketSize = USB_MAX_PACKET0;
+#ifdef USB_USER_DEVICE_VENDORID
 	desc->VendorId = HTOUSB16(USB_USER_DEVICE_VENDORID);
 	desc->ProductId = HTOUSB16(USB_USER_DEVICE_PRODUCTID);
+#else
+#warning "Undefined usb device IDs"
+#endif
 	desc->DeviceVersion = HTOUSB16(USB_USER_DEVICE_VERSION);
 	desc->ManufacturerIndex = _manufacturer_str;
 	desc->ProductIndex = _product_str;
@@ -373,5 +380,4 @@ int usb_device_fill_vendor_descriptor(usb_descriptor_header_t *desc, unsigned sh
 	return  0;
 }
 
-#endif
 
