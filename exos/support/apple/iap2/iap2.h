@@ -67,6 +67,42 @@ typedef struct __packed
 } iap2_link_sync_payload1_t;
 
 
+typedef struct __packed
+{
+	iap2_short_t Sop;
+	iap2_short_t MessageLength;
+	iap2_short_t MessageId;
+	struct iap2_control_session_message_parameter
+	{
+		iap2_short_t Length;
+		iap2_short_t Id;
+		unsigned char Data[0];
+	} Parameter[0];
+} iap2_control_sess_message_t;
+
+typedef struct iap2_control_session_message_parameter iap2_control_session_message_parameter_t;
+
+typedef enum
+{
+	// Accessory Authentication
+	IAP2_CTRL_MSGID_RequestAuthenticationCertificate = 0xAA00,	// device
+	IAP2_CTRL_MSGID_AuthenticationCertificate = 0xAA01,			// accessory
+	IAP2_CTRL_MSGID_RequestAuthenticationChallengeResponse = 0xAA02,	// device
+	IAP2_CTRL_MSGID_AuthenticationResponse = 0xAA03,					// accessory
+	IAP2_CTRL_MSGID_AuthenticationFailed = 0xAA04,					// device
+	IAP2_CTRL_MSGID_AuthenticationSucceeded = 0xAA05,				// device
+	IAP2_CTRL_MSGID_AccessoryAuthenticationSerialNumber = 0xAA06,	// accessory
+	// Accessory Identification
+	IAP2_CTRL_MSGID_StartIdentification = 0x1D00,		// device
+	IAP2_CTRL_MSGID_IdentificationInformation = 0x1D01,	// accessory
+	IAP2_CTRL_MSGID_IdentificationAccepted = 0x1D02,	// device
+	IAP2_CTRL_MSGID_IdentificationRejected = 0x1D03,	// device
+	IAP2_CTRL_MSGID_CancelIdentification = 0x1D05,				// accessory
+	IAP2_CTRL_MSGID_IdentificationInformationUpdate = 0x1D06,	// accessory
+} iap2_ctrl_msgid_t;
+
+
+
 // transport definitions
 
 typedef struct iap2_transport_driver iap2_transport_driver_t;
@@ -105,6 +141,7 @@ typedef struct
 	event_t SyncEvent;
 	fifo_t SyncFifo;
 
+	// NOTE: first session in this array should be a control session i. e. Type == IAP2_SESSION_TYPE_CONTROL (0)
 	iap2_link_session1_t Sessions[IAP2_MAX_SESSIONS];
 } iap2_context_t;
 

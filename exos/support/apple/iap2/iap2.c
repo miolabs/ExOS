@@ -9,7 +9,7 @@
 #include <string.h> 
 
 #ifdef IAP2_DEBUG
-#define _verbose(level, ...) verbose(level, "iAP2-core", __VA_ARGS__)
+#define _verbose(level, ...) verbose(level, "iAP2", __VA_ARGS__)
 #else
 #define _verbose(level, ...) { /* nothing */ }
 #endif
@@ -23,7 +23,11 @@ static volatile bool _service_run = false;
 static bool _service_exit = false;
 
 #define IAP2_BUFFERS 5
+
+#ifndef IAP2_BUFFER_SIZE
 #define IAP2_BUFFER_SIZE 4096
+#endif
+
 typedef struct 
 { 
 	node_t Node;
@@ -251,7 +255,7 @@ static void _sync_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 	iap2_buffer_t *input = (iap2_buffer_t *)exos_fifo_dequeue(&iap2->SyncFifo);
 	if (input != NULL)
 	{
-		_verbose(VERBOSE_DEBUG, "[sync] rx [+%d] %d bytes!", input->Payload, input->Length);
+		//_verbose(VERBOSE_DEBUG, "[sync] rx [+%d] %d bytes!", input->Payload, input->Length);
 
 		iap2_link_sync_payload1_t *sync1 = (iap2_link_sync_payload1_t *)(input->Buffer + input->Payload);
 		if (sync1->LinkVersion == 0x01)
@@ -267,7 +271,7 @@ static void _sync_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 			{
 				ctrl = 0;	// remove SYN flag i.e. OK
 				_verbose(VERBOSE_COMMENT, "[sync] parameters agreement");
-			} 
+			}
 
 			ctrl |= IAP2_CONTROLF_ACK;
 		}
@@ -315,7 +319,26 @@ static void _sync_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 	}
 	else _verbose(VERBOSE_ERROR, "[sync] cannot allocate buffer!");
 
-	exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);
+	if (ctrl & IAP2_CONTROLF_SYN)	// NOTE: skip when agreement have been reached
+		exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);	// FIXME: use retransmit?
+}
+
+static void _parse_control(iap2_control_sess_message_t *ctrl_msg)
+{
+	unsigned msg_id = IAP2SHTOH(ctrl_msg->MessageId);
+	unsigned msg_len = IAP2SHTOH(ctrl_msg->MessageLength); 
+	unsigned offset = sizeof(iap2_control_sess_message_t);
+	
+	switch(msg_id)
+	{
+		case IAP2_CTRL_MSGID_RequestAuthenticationCertificate:
+			_verbose(VERBOSE_DEBUG, "got ctrl RequestAuthenticationCertificate (TODO)");
+			//////////////////////////////////////////////////////////
+			break;
+		default:
+			_verbose(VERBOSE_ERROR, "got unk control msg id=$%04x", msg_id);
+			break;
+	}
 }
 
 static void _rx_callback(dispatcher_context_t *context, dispatcher_t *dispatcher)
@@ -332,18 +355,37 @@ static void _rx_callback(dispatcher_context_t *context, dispatcher_t *dispatcher
 			_verbose(VERBOSE_DEBUG, "got packet [sess #%d] ctrl=$%02x, seq=$%02x, ack=$%02x, payload=%d bytes",
 				hdr->SessionId, hdr->Control, hdr->SequenceNumber, hdr->AckNumber, payload_len);
 		
-			iap2->Ack = hdr->SequenceNumber;
+			buf->Payload = payload_offset;
+			buf->Length = payload_len;
 
 			if (hdr->SessionId == 0)
 			{
-				buf->Payload = payload_offset;
-				buf->Length = payload_len;
+				iap2->Ack = hdr->SequenceNumber;
 				exos_fifo_queue(&iap2->SyncFifo, &buf->Node);
 			}
-			else
+			else 
 			{
-				// TODO
-				_verbose(VERBOSE_ERROR, "rx packet discarded (unk session)");
+				iap2_link_session1_t *sess0 = &iap2->Sessions[0];
+				ASSERT(sess0->Type == IAP2_SESSION_TYPE_CONTROL, KERNEL_ERROR_KERNEL_PANIC);
+
+				if (hdr->SessionId == sess0->Id)
+				{
+					iap2->Ack = hdr->SequenceNumber;
+					
+					iap2_control_sess_message_t *ctrl_msg = (iap2_control_sess_message_t *)(buf->Buffer + buf->Payload);
+					unsigned msg_len = IAP2SHTOH(ctrl_msg->MessageLength);
+					if (msg_len <= buf->Length && msg_len >= sizeof(iap2_control_sess_message_t))
+					{
+						//_verbose(VERBOSE_DEBUG, "got control message Id=$%04x (%d bytes)", IAP2SHTOH(ctrl_msg->MessageId), msg_len);
+						_parse_control(ctrl_msg);
+					}
+					else _verbose(VERBOSE_ERROR, "control message discarded (bad length)");
+				}
+				else
+				{
+					// TODO
+					_verbose(VERBOSE_ERROR, "rx packet discarded (unk session)");
+				}
 				pool_free(&_input_pool, &buf->Node);
 			}
 		}
@@ -365,7 +407,7 @@ static bool _loop(iap2_context_t *iap2)
 	ASSERT(link->RetransmitTimeout != 0, KERNEL_ERROR_KERNEL_PANIC);
 	ASSERT(link->CumulativeAckTimeout != 0, KERNEL_ERROR_KERNEL_PANIC);
 
-	// init params
+	// NOTE: init link params, the ones not provided by transport
 	link->MaxRcvPacketLength = IAP2_BUFFER_SIZE;	// our max input buffer
 	link->MaxNumOutstandingPackets = IAP2_BUFFERS;	// our max input buffers
 

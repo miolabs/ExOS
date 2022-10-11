@@ -81,7 +81,7 @@ static bool _parse_report_descriptor(iap2_hid_handler_t *iap2, hid_report_parser
 
 static bool _start(hid_function_handler_t *handler, hid_report_parser_t *parser)
 {
-#if 1//def IAP_ENABLE_IPAD_CHARGING
+#ifdef IAP_ENABLE_IPAD_CHARGING
 	usb_request_t setup = (usb_request_t) {
 		.RequestType = USB_REQTYPE_HOST_TO_DEVICE | USB_REQTYPE_VENDOR | USB_REQTYPE_RECIPIENT_DEVICE,
 		.RequestCode = USB_IAP2_REQ_POWER_CAPABILITY,
@@ -93,8 +93,13 @@ static bool _start(hid_function_handler_t *handler, hid_report_parser_t *parser)
 	iap2_hid_handler_t *iap2 = (iap2_hid_handler_t *)handler;
 	_parse_report_descriptor(iap2, parser);
 
-	iap2_transport_create(&iap2->Transport, "Hid - Device Mode", 0, &_iap2_driver);
-	iap2_start(&iap2->Transport);
+	iap2_transport_t *t = &iap2->Transport;
+	iap2_transport_create(t, "Hid - Device Mode", 0, &_iap2_driver);
+	t->LinkParams.MaxRetransmits = 1;
+	t->LinkParams.RetransmitTimeout = 1000;
+	t->LinkParams.MaxCumulativeAcks = 1;
+	t->LinkParams.CumulativeAckTimeout = 100;
+	iap2_start(t);
 }
 
 static void _stop(hid_function_handler_t *handler)
