@@ -2,6 +2,9 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
+#ifdef STDIO_FORMAT_UNICODE
+#include <wchar.h>
+#endif
 #include "posix.h"
 #include <kernel/mutex.h>
 #include <kernel/io.h>
@@ -280,6 +283,35 @@ static int _vformat(unsigned (*vputs)(void *state, const char *s, unsigned lengt
 			switch(c)
 			{
 				case 's':
+#ifdef STDIO_FORMAT_UNICODE
+					if (flags & fmt_long)
+					{
+						wchar_t *wstr = va_arg(args, wchar_t *);
+						if (wstr != NULL)
+						{
+							done = 0;
+							unsigned offset = 0;
+							while(true)
+							{
+								wchar_t c = (wchar_t)(((unsigned char *)wstr)[0] | (((unsigned char *)wstr)[1] << 8));	// always little-endian
+								buf[offset++] = ((c >> 8) == 0) ? (char)(c & 0xff) : '?';
+								if (done == (sizeof(buf) - 1))
+								{
+									buf[offset] = '\0';
+								}
+								else if (c != 0)
+								{
+									wstr++;
+									continue;
+								}
+								
+								done += vputs(state, buf, offset);
+								if (c == 0) break;
+							}
+						}
+						break;
+					}
+#endif
 					done = vputs(state, va_arg(args, char *), -1);
 					break;
 				case 'd':
