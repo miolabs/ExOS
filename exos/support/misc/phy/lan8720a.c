@@ -1,5 +1,6 @@
 #include "lan8720a.h"
-
+#include <kernel/verbose.h>
+ 
 static bool _reset(phy_t *phy);
 static bool _read_link_state(phy_t *phy);
 const phy_handler_t __phy_lan8720a = (phy_handler_t) {
@@ -8,7 +9,16 @@ const phy_handler_t __phy_lan8720a = (phy_handler_t) {
 
 static bool _reset(phy_t *phy)
 {
-	return (phy->Id & 0xFFFFFFF0) == 0x0007C0F0;
+	switch(phy->Id & 0xFFFFFFF0)
+	{
+		case PHY_ID_LAN8720A:	
+			verbose(VERBOSE_COMMENT, "lan87xx", "phy is LAN8720A");
+			return true;
+		case PHY_ID_LAN8742A:	
+			verbose(VERBOSE_COMMENT, "lan87xx", "phy is LAN8742A");
+			return true;
+	}
+	return false;
 }
 
 static bool _read_link_state(phy_t *phy)

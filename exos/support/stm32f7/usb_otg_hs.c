@@ -48,8 +48,10 @@ void usb_otg_hs_initialize()
 			break;
 		}
 	}
-	verbose(VERBOSE_DEBUG, "otg-hs", "ulpi phy vendor:id=%02x%02x:%02x%02x", 
-		ulpi_id[1], ulpi_id[0], ulpi_id[3], ulpi_id[2]);
+	unsigned short vendor_id = (ulpi_id[1] << 8) | ulpi_id[0];
+	const char *vendor = vendor_id == 0x0424 ? "Microchip" : "???";
+	verbose(VERBOSE_DEBUG, "otg-hs", "ulpi phy vendor=%04x (%s) id=%02x%02x", 
+		vendor_id, vendor, ulpi_id[3], ulpi_id[2]);
 #endif
 
 	otg_global->GINTMSK = USB_OTG_GINTMSK_MMISM;	// Mode MISmatch Mask

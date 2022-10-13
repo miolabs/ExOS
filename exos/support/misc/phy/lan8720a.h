@@ -3,6 +3,9 @@
 
 #include <kernel/driver/net/support/phy.h>
 
+#define PHY_ID_LAN8720A 0x0007C0F0
+#define PHY_ID_LAN8742A 0x0007C130
+
 // SMSC LAN8720A PHY
 typedef enum
 {
