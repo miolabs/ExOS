@@ -63,7 +63,7 @@ bool phy_read_link_state(phy_t *phy)
 {
 	ASSERT(phy != NULL, KERNEL_ERROR_NULL_POINTER);
 	const phy_handler_t *handler = phy->Handler;
-	ASSERT(handler != NULL && handler->RestartNeg, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(handler != NULL && handler->ReadLinkState, KERNEL_ERROR_NULL_POINTER);
 	return handler->ReadLinkState(phy);
 }
 

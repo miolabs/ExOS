@@ -46,6 +46,7 @@ typedef struct
 	//ip_addr_t NetMask;
 	//ip_addr_t Gateway;
 
+	event_t InputEvent;
 	//unsigned long InputSignal;
 	//exos_thread_t Thread;
 	//unsigned char Stack[NET_ADAPTER_THREAD_STACK];
@@ -60,6 +61,12 @@ typedef struct
 	unsigned short Length;
 } net_buffer_t;
 
+typedef enum
+{
+	NET_ADAPTER_CTRL_LINK_UPDATE = 0,
+	NET_ADAPTER_CTRL_LINK_RENEG,
+} net_adapter_ctrl_t;
+
 typedef struct
 {
 	event_t *CompletedEvent;
@@ -73,9 +80,9 @@ struct __net_driver
 	bool (*Initialize)(net_adapter_t *adapter, unsigned phy_unit, const phy_handler_t *handler);
 	void (*LinkUp)(net_adapter_t *adapter);
 	void (*LinkDown)(net_adapter_t *adapter);
-	void *(*GetInputBuffer)(net_adapter_t *adapter, unsigned long *plength);
+	void *(*GetInputBuffer)(net_adapter_t *adapter, unsigned *plength);
 	void (*DiscardInputBuffer)(net_adapter_t *adapter, void *buffer);
-	void *(*GetOutputBuffer)(net_adapter_t *adapter, unsigned long size);
+	void *(*GetOutputBuffer)(net_adapter_t *adapter, unsigned size);
 	int (*SendOutputBuffer)(net_adapter_t *adapter, net_mbuf_t *mbuf, NET_CALLBACK callback, void *state);
 };
 
@@ -96,13 +103,15 @@ bool net_adapter_enum(net_adapter_t **padapter);
 //NET_ADAPTER *net_adapter_find(IP_ADDR addr);
 //NET_ADAPTER *net_adapter_find_gateway(IP_ADDR addr);
 
-void net_adapter_input(net_adapter_t *adapter);
+bool net_adapter_control(net_adapter_t *adapter, net_adapter_ctrl_t ctrl);
+bool net_adapter_get_input(net_adapter_t *adapter, net_buffer_t *buf);
+void net_adapter_discard_input(net_buffer_t *buf);
+//void net_adapter_input(net_adapter_t *adapter);
 
 void *net_adapter_output(net_adapter_t *adapter, NET_OUTPUT_BUFFER *buf, unsigned hdr_size, const hw_addr_t *destination, eth_type_t type);
 int net_adapter_send_output(net_adapter_t *adapter, NET_OUTPUT_BUFFER *buf);
 
 net_buffer_t *net_adapter_alloc_buffer(net_adapter_t *adapter, void *buffer, void *data, unsigned long length);
-void net_adapter_discard_input_buffer(net_buffer_t *packet);
 
 
 #endif // NET_DRIVERS_H

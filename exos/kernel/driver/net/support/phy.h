@@ -85,6 +85,6 @@ struct __phy_handler
 // prototypes
 bool phy_create(phy_t *phy, const phy_driver_t *driver, unsigned unit, const phy_handler_t *handler);
 bool phy_restart_neg(phy_t *phy);
-eth_link_t phy_link_state(phy_t *phy);
+bool phy_read_link_state(phy_t *phy);
 
 #endif // SUPPORT_NET_PHY_H

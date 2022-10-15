@@ -37,6 +37,7 @@ void net_adapter_initialize()
 	int index = 0;
 	while(NULL != (adapter = net_board_get_adapter(index)))
 	{
+		// FIXME: board should provide phy addr (unit) and phy handler (driver)
 		if (net_adapter_create(adapter, adapter->Driver, 0, NULL))
 		{
 			net_board_set_mac_address(adapter, index);
@@ -59,6 +60,7 @@ bool net_adapter_create(net_adapter_t *adapter, const net_driver_t *driver, unsi
 	exos_mutex_create(&adapter->InputLock);
 	exos_mutex_create(&adapter->OutputLock);
 
+	exos_event_create(&adapter->InputEvent, EXOS_EVENTF_AUTORESET);
 	return driver->Initialize(adapter, phy_unit, handler);
 }
 
@@ -144,6 +146,38 @@ net_adapter_t *net_adapter_find_gateway(ip_addr_t addr)
 }
 #endif
 
+bool net_adapter_control(net_adapter_t *adapter, net_adapter_ctrl_t ctrl)
+{
+	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
+
+	bool done = false;
+	phy_t *phy = &adapter->Phy;
+	switch(ctrl)
+	{
+		case NET_ADAPTER_CTRL_LINK_UPDATE:
+			done = phy_read_link_state(phy);
+			break;
+	}
+	return done;
+}
+
+bool net_adapter_get_input(net_adapter_t *adapter, net_buffer_t *buf)
+{
+	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
+   	const net_driver_t *driver = adapter->Driver;
+	
+	unsigned length;
+	eth_header_t *frame = driver->GetInputBuffer(adapter, &length);
+	if (frame != NULL)
+	{
+		buf->Adapter = adapter;
+		buf->Buffer =  frame;
+		buf->Length = length;
+		return true;
+	}
+	return false;
+}
+
 void net_adapter_input(net_adapter_t *adapter)
 {
 	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
@@ -151,7 +185,7 @@ void net_adapter_input(net_adapter_t *adapter)
 
 	while(1)
 	{
-		unsigned long length;
+		unsigned length;
 		eth_header_t *buffer = driver->GetInputBuffer(adapter, &length);
 		if (buffer == NULL) break;
 
@@ -216,26 +250,26 @@ int net_adapter_send_output(net_adapter_t *adapter, NET_OUTPUT_BUFFER *output)
 	return done;
 }
 
-net_buffer_t *net_adapter_alloc_buffer(net_adapter_t *adapter, void *buffer, void *data, unsigned long length)
-{
-	net_buffer_t *packet = (net_buffer_t *)exos_fifo_wait(&_free_wrappers, EXOS_TIMEOUT_NEVER);
-	packet->Node = (node_t) { .Type = EXOS_NODE_IO_BUFFER };	// FIXME
-	packet->Adapter = adapter;
-	packet->Buffer = buffer;
-	packet->Offset = (unsigned short)(data - buffer);
-	packet->Length = length;
-	return packet;
-}
+//net_buffer_t *net_adapter_alloc_buffer(net_adapter_t *adapter, void *buffer, void *data, unsigned long length)
+//{
+//	net_buffer_t *packet = (net_buffer_t *)exos_fifo_wait(&_free_wrappers, EXOS_TIMEOUT_NEVER);
+//	packet->Node = (node_t) { .Type = EXOS_NODE_IO_BUFFER };	// FIXME
+//	packet->Adapter = adapter;
+//	packet->Buffer = buffer;
+//	packet->Offset = (unsigned short)(data - buffer);
+//	packet->Length = length;
+//	return packet;
+//}
 
-void net_adapter_discard_input_buffer(net_buffer_t *packet)
+void net_adapter_discard_input(net_buffer_t *buf)
 {
-	ASSERT(packet != NULL, KERNEL_ERROR_NULL_POINTER);
-	net_adapter_t *adapter = packet->Adapter;
+	ASSERT(buf != NULL, KERNEL_ERROR_NULL_POINTER);
+	net_adapter_t *adapter = buf->Adapter;
 	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
 	const net_driver_t *driver = adapter->Driver;
 	ASSERT(driver != NULL && driver->DiscardInputBuffer != NULL, KERNEL_ERROR_NULL_POINTER);
-	driver->DiscardInputBuffer(adapter, packet->Buffer);
+	driver->DiscardInputBuffer(adapter, buf->Buffer);
 
-	exos_fifo_queue(&_free_wrappers, (node_t *)packet);
+//	exos_fifo_queue(&_free_wrappers, (node_t *)packet);
 }
 
