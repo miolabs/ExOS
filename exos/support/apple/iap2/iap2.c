@@ -1,6 +1,6 @@
 #include "iap2.h"
 #include "../iap_fid.h"
-#include "../cp20.h"
+#include "../cp30.h"
 //#include "iap_comm.h"
 #include <support/misc/pools.h>
 #include <kernel/dispatch.h>
@@ -45,7 +45,7 @@ static event_t _input_event;
 
 void iap2_initialize()
 {
-	apple_cp20_initialize();
+	apple_cp30_initialize();
 
 //	iap_comm_initialize();
 }
