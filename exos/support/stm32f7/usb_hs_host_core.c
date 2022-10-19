@@ -41,6 +41,9 @@ static stm32_usbh_ep_t _common_control_ep;
 static usb_host_controller_t *_hc = nullptr;
 static enum { HPORT_DISABLED = 0, HPORT_POWERED, HPORT_RESET, HPORT_RESET_DONE, HPORT_SUSPEND, HPORT_READY } _port_state = HPORT_DISABLED;
 static enum { HPORT_FULL_SPEED = 1, HPORT_LOW_SPEED = 2 } _port_speed;
+static bool _role_switch_requested = false;
+
+static dispatcher_t _port_dispatcher;
 static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatcher);
 
 void usb_hs_host_initialize(usb_host_controller_t *hc, dispatcher_context_t *context)
@@ -75,9 +78,24 @@ void usb_hs_host_initialize(usb_host_controller_t *hc, dispatcher_context_t *con
 
 	pool_create(&_ep_pool, (node_t *)_ep_array, sizeof(stm32_usbh_ep_t), NUM_ENDPOINTS);
 
-	static dispatcher_t _port_dispatcher;
 	exos_dispatcher_create(&_port_dispatcher, &_hc->RootHubEvent, _port_callback, nullptr);
 	exos_dispatcher_add(context, &_port_dispatcher, EXOS_TIMEOUT_NEVER);
+
+	_role_switch_requested = false;
+}
+
+bool usb_hs_request_role_switch(usb_host_controller_t *hc)
+{
+	ASSERT(hc != nullptr, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(_hc == hc, KERNEL_ERROR_KERNEL_PANIC);
+	
+	if (_port_state == HPORT_READY)	// AKA idle
+	{
+		_role_switch_requested = true;
+		_verbose(VERBOSE_DEBUG, "role-switch requested");	
+		return true;
+	}
+	return false;
 }
 
 static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatcher)
@@ -103,10 +121,17 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 			}
 			break;
 		case HPORT_RESET:
+			otg_host->HPRT = hprt_const & ~USB_OTG_HPRT_PRST;
 			if (hprt & USB_OTG_HPRT_PCSTS)
 			{
 				_port_state = HPORT_RESET_DONE;
-				otg_host->HPRT = hprt_const & ~USB_OTG_HPRT_PRST;
+			}
+			else
+			{
+				// NOTE usually caused by a board power glitch or very slow devices, increase wait before hub port reset
+				verbose(VERBOSE_DEBUG, "usb-hs-roothub", "device disconnected during reset!");
+				_port_state = HPORT_POWERED;
+				timeout = 100;
 			}
 			break;
 		case HPORT_RESET_DONE:
@@ -158,11 +183,31 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 			verbose(VERBOSE_COMMENT, "usb-hs-roothub", "child %04x/%04x removed", child->Vendor, child->Product);
 			
 			exos_thread_sleep(10);	// NOTE: avoid glitchy re-connect
-			_port_state = HPORT_POWERED;
+
+			if (_role_switch_requested)
+			{				
+				usb_otg_fs_initialize();
+
+				// remove root hub dispatchers
+				exos_dispatcher_remove(context, &_port_dispatcher);
+				_port_state = HPORT_DISABLED;
+			}
+			else _port_state = HPORT_POWERED;
+			break;
+		default:
+			kernel_panic(KERNEL_ERROR_KERNEL_PANIC);
 			break;
 	}
 
-	exos_dispatcher_add(context, dispatcher, timeout);
+	if (_port_state != HPORT_DISABLED)
+	{
+		exos_dispatcher_add(context, dispatcher, timeout);
+	}
+	else 
+	{
+		verbose(VERBOSE_DEBUG, "usb-hs-roothub", "host root-hub disabled");
+		__usb_host_disabled(_hc);
+	}
 }
 
 void usb_hs_host_port_reset()
