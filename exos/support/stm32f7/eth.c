@@ -98,7 +98,7 @@ static bool _initialize(net_adapter_t *adapter, unsigned phy_unit, const phy_han
 		; 
 	// You must make sure the Transmit FIFO is deep enough to store a complete frame before that frame is transferred 
 	// to the MAC Core transmitter. If the FIFO depth is less than the input Ethernet frame size, the payload 
-	// (TCP/UDP/ICMP) checksum insertion function is bypassed and only the frame’s IPv4 Header checksum is modified, 
+	// (TCP/UDP/ICMP) checksum insertion function is bypassed and only the frame's IPv4 Header checksum is modified, 
 	// even in Store-and-forward mode.
 
 	ETH->DMATDLAR = (unsigned)_tx_desc;	// address of first transmit descriptor
@@ -170,7 +170,7 @@ static void *_get_input_buffer(net_adapter_t *adapter, unsigned *plength)
 			unsigned length = (rdes0 & RDES0_FL_MASK) >> RDES0_FL_BIT;
 			*plength = length;
 			done = true;
-		 } else _verbose(VERBOSE_ERROR, "rx frame didn't fit in a single desc");
+		} else _verbose(VERBOSE_ERROR, "rx frame didn't fit in a single desc");
 
 		 _rx_desc_ptr1 = (rx_edesc_t *)desc->rdes[3];
 	}

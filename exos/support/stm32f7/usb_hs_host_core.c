@@ -186,7 +186,7 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 
 			if (_role_switch_requested)
 			{				
-				usb_otg_fs_initialize();
+				usb_otg_hs_initialize();
 
 				// remove root hub dispatchers
 				exos_dispatcher_remove(context, &_port_dispatcher);
