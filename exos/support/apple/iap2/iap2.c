@@ -412,14 +412,22 @@ static void _send_auth_challenge_resp(iap2_context_t *iap2, iap2_control_sess_me
 			iap2_buffer_t *buf = _init_packet(iap2, IAP2_CONTROLF_ACK, sess0->Id);
 			if (buf != NULL)
 			{
-				iap2_control_sess_message_t *resp_msg = _init_control_msg(buf, IAP2_CTRL_MSGID_AuthenticationCertificate);
+				iap2_control_sess_message_t *resp_msg = _init_control_msg(buf, IAP2_CTRL_MSGID_AuthenticationResponse);
 
 				unsigned short resp_size;
 				if (apple_cp30_begin_challenge(ch->Data, ch_len - sizeof(iap2_control_session_message_parameter_t),
 					&resp_size))
 				{
 					void *payload = _add_parameter(resp_msg, 0, resp_size);
-					// TODO
+					if (apple_cp30_read_challenge_resp(payload, resp_size))
+					{
+						buf->Length += IAP2SHTOH(resp_msg->MessageLength);	// NOTE: fix buffer length 
+
+						buf->Buffer[buf->Length] = _checksum((unsigned char *)resp_msg, buf->Length - sizeof(iap2_header_t));
+						buf->Length++;
+						_send_packet(iap2, buf);
+					}
+					else _verbose(VERBOSE_ERROR, "[auth] CP challenge response read failure");
 				}
 				else _verbose(VERBOSE_ERROR, "[auth] CP challenge failed");
 				
@@ -449,7 +457,12 @@ static void _parse_control(iap2_context_t *iap2, iap2_control_sess_message_t *ct
 			else _verbose(VERBOSE_ERROR, "incorrect challenge size!");
 			break;
 		case IAP2_CTRL_MSGID_AuthenticationFailed:
-			_verbose(VERBOSE_DEBUG, "got ctrl AuthenticationFailed (error)");
+			_verbose(VERBOSE_DEBUG, "got ctrl AuthenticationFailed (ERROR)");
+			//TODO (should not happen)
+			break;
+		case IAP2_CTRL_MSGID_AuthenticationSucceeded:
+			_verbose(VERBOSE_DEBUG, "got ctrl AuthenticationSucceeded (OK)");
+			//TODO
 			break;
 		default:
 			_verbose(VERBOSE_ERROR, "got unk control msg id=$%04x", msg_id);

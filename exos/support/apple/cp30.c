@@ -52,7 +52,7 @@ static bool _read(cp30_reg_t reg, unsigned char *buffer, unsigned char length)
 		}
 		exos_thread_sleep(1);
 	}
-#elif DEBUG
+#elif defined DEBUG
 	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 #endif
 	return false;
@@ -71,7 +71,7 @@ static bool _write(cp30_reg_t reg, unsigned char *buffer, unsigned char length)
 		if (done) return true;
 		exos_thread_sleep(1);
 	}
-#elif DEBUG
+#elif defined DEBUG
 	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 #endif
 	return false;
@@ -145,18 +145,19 @@ bool apple_cp30_begin_challenge(unsigned char *challenge, unsigned short length,
 					if (1 == ((acas & CP30_ACAS_RESULT_MASK) >> CP30_ACAS_RESULT_BIT))
 					{
 						done = true;
-						break;
 					}
 				}
 				else
 				{
 					// TODO read error code
-					break;
 				}
 			}
-			else break;
-
-			break; // FIXME
+			else
+			{
+				exos_thread_sleep(1);
+				continue;
+			}
+			break;
 		}
 
 		if (done)
@@ -164,7 +165,7 @@ bool apple_cp30_begin_challenge(unsigned char *challenge, unsigned short length,
 			unsigned char buffer[2];
 			if (_read(CP30_REG_CHALLENGE_RESP_DATA_LENGTH, buffer, sizeof(buffer)))
 			{
-				*presp_len = (buffer[1] << 8) | buffer[0];
+				*presp_len = (buffer[0] << 8) | buffer[1];
 				return true;
 			}
 		}

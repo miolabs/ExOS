@@ -8,6 +8,8 @@
 
 #define SOFT_MAX_CLOCK_STRETCH 1000
 
+#pragma optimize(2)
+
 static void _delay()
 {
 	for(unsigned volatile i = 0; i  < SOFT_I2C_DELAY; i++);
