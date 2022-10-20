@@ -13,74 +13,81 @@ static void _delay()
 	for(unsigned volatile i = 0; i  < SOFT_I2C_DELAY; i++);
 }
 
-static bool _send_byte(unsigned char c)
+static bool _read_bit(bool out, bool *pin)
 {
-	for (unsigned i = 0; i < 8; i++)
-	{
-		soft_i2c_assert_clk(c & 0x80);
-		c <<= 1;
-		_delay();
-		soft_i2c_release_clk();
-		_delay();
-	}
-
-	soft_i2c_assert_clk(1);
+	soft_i2c_assert_clk(out);
 	_delay();
 	soft_i2c_release_clk();
 	_delay();
 
-	bool nack;
+	bool bit;
 	for(unsigned i = 0; i < SOFT_MAX_CLOCK_STRETCH; i++)
-		if (soft_i2c_read_data(&nack)) break;
+	{
+		if (soft_i2c_read_data(&bit)) 
+		{
+			if (pin != NULL) *pin = bit;
+			return true;
+		}
 		else _delay();
-		
-	return !nack;
+	}
+	return false;
+}
+
+static bool _send_byte(i2c_context_t *context, unsigned char c)
+{
+	bool input;
+	for (unsigned i = 0; i < 8; i++)
+	{
+		if (!_read_bit(0 != (c & 0x80), &input))
+		{
+			context->Error = I2C_BUS_ERROR;
+			return false;
+		}
+
+		c <<= 1;
+	}
+
+	if (!_read_bit(1, &input))
+	{
+		context->Error = I2C_BUS_ERROR;
+		return false;
+	}
+	if (input != 0)
+	{
+		context->Error = I2C_NACK;
+		return false;
+	}
+	return true;
 }
 
 static bool _send_seq(i2c_context_t *context, const unsigned char *buf, unsigned length)
 {
 	for(unsigned i = 0; i  < length; i++)
 	{
-		if (!_send_byte(buf[i]))
-		{
-			context->Error = I2C_NACK;
+		if (!_send_byte(context, buf[i]))
 			return false;
-		}
 	}
 	return true;
 }
+
 
 static bool _read_byte(unsigned char *pc, bool ack)
 {
 	unsigned char c = 0;
 	for (unsigned i = 0; i < 8; i++)
 	{
-		soft_i2c_assert_clk(1);
-		_delay();
-		soft_i2c_release_clk();
-		_delay();
-		
 		bool bit;
-		for(unsigned i = 0; i < SOFT_MAX_CLOCK_STRETCH; i++)
-			if (soft_i2c_read_data(&bit)) break;
-			else _delay();
-		
-		c = (c << 1) | (bit & 1);
+		if (!_read_bit(1, &bit))
+			return false;
+		c <<= 1;
+		if (bit) c |= 1;
  	}
 
-	soft_i2c_assert_clk(ack ? 0 : 1);
-	_delay();
-	soft_i2c_release_clk();
-	_delay();
+	if (!_read_bit(ack ? 0 : 1, NULL))
+		return false;
 
 	*pc = c;
-
-	bool nack;
-	for(unsigned i = 0; i < SOFT_MAX_CLOCK_STRETCH; i++)
-		if (soft_i2c_read_data(&nack)) return true;
-		else _delay();
-		
-	return false;	
+	return true;
 }
 
 static bool _read_seq(i2c_context_t *context, unsigned char *buf, unsigned length)
@@ -96,9 +103,20 @@ static bool _read_seq(i2c_context_t *context, unsigned char *buf, unsigned lengt
 	return true;
 }
 
+static bool _stop(i2c_context_t *context)
+{
+	if (!_read_bit(0, NULL))
+	{
+		context->Error = I2C_BUS_ERROR;
+		return false;
+	}
+	soft_i2c_start(false);	// NOTE: raise SDA
+	return true;
+}
+
 void hal_i2c_initialize(unsigned module, unsigned bitrate)
 {
-	// TODO
+	// NOTE: currently nothing
 }
 
 bool hal_i2c_write(unsigned module, i2c_context_t *context, const void *data, unsigned length)
@@ -109,32 +127,27 @@ bool hal_i2c_write(unsigned module, i2c_context_t *context, const void *data, un
 		_delay();
 		context->Error = I2C_OK;
 
-		if (_send_byte(context->Address << 1))
+		if (_send_byte(context, context->Address << 1))
 		{
-			do
+			while(1)
 			{
 				if (context->CmdLength != 0)
 				{
 					if (_send_seq(context, context->Cmd, context->CmdLength))
 					{
 						context->CmdLength = 0;
-						continue;
 					}
 				}
 				else if (length != 0)
 				{
 					_send_seq(context, data, length);
+					break;
 				}
-			} while(0);
+				else break;
+			} 
 		}
-		else context->Error = I2C_NACK;
-
-		soft_i2c_assert_clk(0);
-		_delay();
-		soft_i2c_release_clk();
-		_delay();
-
-		soft_i2c_start(false);
+		
+		_stop(context);
 	}
 	else context->Error = I2C_BUS_ERROR;
 
@@ -144,38 +157,24 @@ bool hal_i2c_write(unsigned module, i2c_context_t *context, const void *data, un
 bool hal_i2c_read(unsigned module, i2c_context_t *context, void *data, unsigned length)
 {
 	ASSERT(context != NULL, KERNEL_ERROR_NULL_POINTER);
+
+	// TODO: write cmd before reading
+	ASSERT(context->CmdLength == 0, KERNEL_ERROR_NOT_IMPLEMENTED);
+
 	if (soft_i2c_start(true))
 	{
 		_delay();
 		context->Error = I2C_OK;
 
-		if (_send_byte((context->Address << 1) | 1))
+		if (_send_byte(context, (context->Address << 1) | 1))
 		{
-			do
+			if (length != 0)
 			{
-				ASSERT(context->CmdLength == 0, KERNEL_ERROR_NOT_IMPLEMENTED);
-				if (context->CmdLength != 0)
-				{
-					if (_send_seq(context, context->Cmd, context->CmdLength))
-					{
-						context->CmdLength = 0;
-						continue;
-					}
-				}
-				else if (length != 0)
-				{
-					_read_seq(context, data, length);
-				}
-			} while(0);
+				_read_seq(context, data, length);
+			}
 		}
-		else context->Error = I2C_NACK;
 
-		soft_i2c_assert_clk(0);
-		_delay();
-		soft_i2c_release_clk();
-		_delay();
-
-		soft_i2c_start(false);
+		_stop(context);
 	}
 	else context->Error = I2C_BUS_ERROR;	
 
