@@ -225,7 +225,7 @@ static iap2_buffer_t *_init_packet(iap2_context_t *iap2, unsigned char control, 
 		*hdr = (iap2_header_t) { .Sop = HTOIAP2S(0xff5a),
 			.PacketLength = HTOIAP2S(sizeof(iap2_header_t)),
 			.Control = control, .SessionId = sess_id,
-			.SequenceNumber = iap2->Seq++, .AckNumber = iap2->Ack };
+			.SequenceNumber = iap2->Seq, .AckNumber = iap2->Ack };
 
 		buf->Length = buf->Payload = sizeof(iap2_header_t);
 		return buf;
@@ -239,8 +239,8 @@ static bool _send_packet(iap2_context_t *iap2, iap2_buffer_t *buf)
 	hdr->PacketLength = HTOIAP2S(buf->Length);
 	hdr->Checksum = _checksum((unsigned char *)hdr, sizeof(iap2_header_t) - 1);
 
-	_verbose(VERBOSE_DEBUG, "send packet [sess #%d] ctrl=$%02x, seq=$%02x", 
-		hdr->SessionId, hdr->Control, hdr->SequenceNumber);
+	_verbose(VERBOSE_DEBUG, "send packet [sess #%d] ctrl=$%02x, seq=$%02x, packet_length=%d", 
+		hdr->SessionId, hdr->Control, hdr->SequenceNumber, IAP2SHTOH(hdr->PacketLength));
 
 	return _send(iap2->Transport, buf->Buffer, buf->Length);
 }
@@ -315,25 +315,141 @@ static void _sync_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 
 		_send_packet(iap2, buf);
 		
-		pool_free(&_output_pool, &buf->Node);	// FIXME: remove when no longer needed!	
+		pool_free(&_output_pool, &buf->Node);	// FIXME: we should not dispose the buffer if it has been queued for output
 	}
-	else _verbose(VERBOSE_ERROR, "[sync] cannot allocate buffer!");
+	else _verbose(VERBOSE_ERROR, "[sync] cannot allocate output buffer!");
 
 	if (ctrl & IAP2_CONTROLF_SYN)	// NOTE: skip when agreement have been reached
 		exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);	// FIXME: use retransmit?
 }
 
-static void _parse_control(iap2_control_sess_message_t *ctrl_msg)
+static iap2_control_session_message_parameter_t *_find_param(iap2_control_sess_message_t *ctrl_msg, unsigned short id)
+{
+	ASSERT(ctrl_msg != NULL, KERNEL_ERROR_NULL_POINTER);
+	unsigned msg_len = IAP2SHTOH(ctrl_msg->MessageLength);
+	unsigned offset = sizeof(iap2_control_sess_message_t);
+	while(offset < msg_len)
+	{
+		iap2_control_session_message_parameter_t *p = (iap2_control_session_message_parameter_t *)
+			((void *)ctrl_msg + offset);
+		unsigned short pid = IAP2SHTOH(p->Id); 
+		if (pid == id)
+			return p;
+		
+		offset += IAP2SHTOH(p->Length);
+	}
+	return NULL;
+}
+
+static iap2_control_sess_message_t *_init_control_msg(iap2_buffer_t *buf, unsigned short msgid)
+{
+	iap2_control_sess_message_t *ctrl_msg = (iap2_control_sess_message_t *)(buf->Buffer + buf->Payload);
+	ctrl_msg->Sop = HTOIAP2S(IAP2_CTRL_SOF);
+	ctrl_msg->MessageLength = HTOIAP2S(sizeof(iap2_control_sess_message_t));	// NOTE: header only
+	ctrl_msg->MessageId = HTOIAP2S(msgid);
+	return ctrl_msg;
+}
+
+static void *_add_parameter(iap2_control_sess_message_t *ctrl_msg, unsigned short id, unsigned short length)
+{
+	unsigned short msg_length = IAP2SHTOH(ctrl_msg->MessageLength);
+	void *ptr = (void *)ctrl_msg + msg_length;
+	iap2_control_session_message_parameter_t *param = (iap2_control_session_message_parameter_t *)ptr;
+	unsigned short param_length = sizeof(iap2_control_session_message_parameter_t) + length;
+	param->Length = HTOIAP2S(param_length);
+	param->Id = HTOIAP2S(id);
+	ctrl_msg->MessageLength = HTOIAP2S(msg_length + param_length);
+	return ptr + sizeof(iap2_control_session_message_parameter_t);
+}
+
+static void _send_auth_certificate(iap2_context_t *iap2)
+{
+	iap2_link_session1_t *sess0 = &iap2->Sessions[0];
+	ASSERT(sess0->Type == IAP2_SESSION_TYPE_CONTROL, KERNEL_ERROR_KERNEL_PANIC);
+
+	iap2_buffer_t *buf = _init_packet(iap2, IAP2_CONTROLF_ACK, sess0->Id);
+	if (buf != NULL)
+	{
+		iap2_control_sess_message_t *ctrl_msg = _init_control_msg(buf, IAP2_CTRL_MSGID_AuthenticationCertificate);
+		
+		unsigned short cert_size;
+		if (apple_cp30_read_acc_cert_length(&cert_size))
+		{
+			ASSERT(cert_size < 800, KERNEL_ERROR_KERNEL_PANIC);
+			void *payload = _add_parameter(ctrl_msg, 0, cert_size);
+
+			if (apple_cp30_read_acc_cert(payload, cert_size))
+			{
+				buf->Length += IAP2SHTOH(ctrl_msg->MessageLength);	// NOTE: fix buffer length 
+
+				buf->Buffer[buf->Length] = _checksum((unsigned char *)ctrl_msg, buf->Length - sizeof(iap2_header_t));
+				buf->Length++;
+
+				_verbose(VERBOSE_DEBUG, "tx [auth] acc certificate (%d), msg_length = %d", cert_size, IAP2SHTOH(ctrl_msg->MessageLength));
+
+				_send_packet(iap2, buf);
+			}
+			else _verbose(VERBOSE_ERROR, "[auth] cannot read cert data from CP!");
+		}
+		else _verbose(VERBOSE_ERROR, "[auth] cannot read cert length from CP!");
+
+		pool_free(&_output_pool, &buf->Node);	// FIXME: we should not dispose the buffer if it has been queued for output
+	}
+	else _verbose(VERBOSE_ERROR, "[auth] cannot allocate output buffer!");
+}
+
+static void _send_auth_challenge_resp(iap2_context_t *iap2, iap2_control_sess_message_t *req_msg)
+{
+	iap2_link_session1_t *sess0 = &iap2->Sessions[0];
+	ASSERT(sess0->Type == IAP2_SESSION_TYPE_CONTROL, KERNEL_ERROR_KERNEL_PANIC);
+
+	iap2_control_session_message_parameter_t *ch = _find_param(req_msg, 0);
+	if (ch != NULL)
+	{
+		unsigned short ch_len = IAP2SHTOH(ch->Length);
+		if (ch_len == 36)
+		{
+			iap2_buffer_t *buf = _init_packet(iap2, IAP2_CONTROLF_ACK, sess0->Id);
+			if (buf != NULL)
+			{
+				iap2_control_sess_message_t *resp_msg = _init_control_msg(buf, IAP2_CTRL_MSGID_AuthenticationCertificate);
+
+				unsigned short resp_size;
+				if (apple_cp30_begin_challenge(ch->Data, ch_len - sizeof(iap2_control_session_message_parameter_t),
+					&resp_size))
+				{
+					void *payload = _add_parameter(resp_msg, 0, resp_size);
+					// TODO
+				}
+				else _verbose(VERBOSE_ERROR, "[auth] CP challenge failed");
+				
+				pool_free(&_output_pool, &buf->Node);	// FIXME: we should not dispose the buffer if it has been queued for output
+			}
+		}
+		else _verbose(VERBOSE_ERROR, "[auth] bad challenge param length (%d)", ch_len);
+	} else _verbose(VERBOSE_ERROR, "[auth] challenge param not found!");
+}
+
+static void _parse_control(iap2_context_t *iap2, iap2_control_sess_message_t *ctrl_msg)
 {
 	unsigned msg_id = IAP2SHTOH(ctrl_msg->MessageId);
 	unsigned msg_len = IAP2SHTOH(ctrl_msg->MessageLength); 
 	unsigned offset = sizeof(iap2_control_sess_message_t);
-	
+	int payload = msg_len - sizeof(iap2_control_sess_message_t);
+
 	switch(msg_id)
 	{
 		case IAP2_CTRL_MSGID_RequestAuthenticationCertificate:
-			_verbose(VERBOSE_DEBUG, "got ctrl RequestAuthenticationCertificate (TODO)");
-			//////////////////////////////////////////////////////////
+			_verbose(VERBOSE_DEBUG, "got ctrl RequestAuthenticationCertificate");
+			_send_auth_certificate(iap2);
+			break;
+		case IAP2_CTRL_MSGID_RequestAuthenticationChallengeResponse:
+			_verbose(VERBOSE_DEBUG, "got ctrl RequestAuthenticationChallengeResponse (%d bytes)", payload);
+			if (payload > 0) _send_auth_challenge_resp(iap2, ctrl_msg);
+			else _verbose(VERBOSE_ERROR, "incorrect challenge size!");
+			break;
+		case IAP2_CTRL_MSGID_AuthenticationFailed:
+			_verbose(VERBOSE_DEBUG, "got ctrl AuthenticationFailed (error)");
 			break;
 		default:
 			_verbose(VERBOSE_ERROR, "got unk control msg id=$%04x", msg_id);
@@ -354,6 +470,12 @@ static void _rx_callback(dispatcher_context_t *context, dispatcher_t *dispatcher
 		{
 			_verbose(VERBOSE_DEBUG, "got packet [sess #%d] ctrl=$%02x, seq=$%02x, ack=$%02x, payload=%d bytes",
 				hdr->SessionId, hdr->Control, hdr->SequenceNumber, hdr->AckNumber, payload_len);
+
+			if (hdr->Control & IAP2_CONTROLF_ACK)
+			{
+				if (hdr->AckNumber == iap2->Seq)
+					iap2->Seq++;
+			}
 		
 			buf->Payload = payload_offset;
 			buf->Length = payload_len;
@@ -377,7 +499,7 @@ static void _rx_callback(dispatcher_context_t *context, dispatcher_t *dispatcher
 					if (msg_len <= buf->Length && msg_len >= sizeof(iap2_control_sess_message_t))
 					{
 						//_verbose(VERBOSE_DEBUG, "got control message Id=$%04x (%d bytes)", IAP2SHTOH(ctrl_msg->MessageId), msg_len);
-						_parse_control(ctrl_msg);
+						_parse_control(iap2, ctrl_msg);
 					}
 					else _verbose(VERBOSE_ERROR, "control message discarded (bad length)");
 				}

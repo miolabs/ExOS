@@ -80,6 +80,8 @@ typedef struct __packed
 	} Parameter[0];
 } iap2_control_sess_message_t;
 
+#define IAP2_CTRL_SOF 0x4040
+
 typedef struct iap2_control_session_message_parameter iap2_control_session_message_parameter_t;
 
 typedef enum

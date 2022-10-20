@@ -81,28 +81,18 @@ bool apple_cp30_read_device_id(unsigned long *pdevice_id)
 {
 	int done;
     unsigned char buffer[4];
-	done = _read(CP20_REG_DEVICE_ID, buffer, 4);
+	done = _read(CP30_REG_DEVICE_ID, buffer, 4);
 	if (done)
 	{
 		*pdevice_id = (buffer[0] << 24) | (buffer[1] << 16) | (buffer[2] << 8) | buffer[3];
-
-#ifdef DEBUG
-		//done = _read(CP20_REG_ERROR_CODE, buffer, 1);
-		//buffer[0] = 0x01;
-		//done = _write(CP20_REG_SELFTEST_CONTROL_AND_STATUS, buffer, 1);
-		//exos_thread_sleep(10);
-		//done = _read(CP20_REG_SELFTEST_CONTROL_AND_STATUS, buffer, 1);
-		//ASSERT(done && ((buffer[0] & 0xf0) == 0xc0), KERNEL_ERROR_KERNEL_PANIC);
-#endif
 	}
 	return done;
 }
 
-#if 0
-bool apple_cp2_read_acc_cert_length(unsigned short *plength)
+bool apple_cp30_read_acc_cert_length(unsigned short *plength)
 {
     unsigned char buffer[2];
-	bool done = _read(CP20_REG_ACCESORY_CERTIFICATE_DATA_LENGTH, buffer, 2);
+	bool done = _read(CP30_REG_ACCESORY_CERTIFICATE_DATA_LENGTH, buffer, 2);
 	if (done)
 	{
 		*plength = (buffer[0] << 8) | buffer[1];
@@ -111,77 +101,81 @@ bool apple_cp2_read_acc_cert_length(unsigned short *plength)
 	return false;
 }
 
-bool apple_cp2_read_acc_cert_page(int page, unsigned char *buffer, int length)
+bool apple_cp30_read_acc_cert(unsigned char *buffer, unsigned short length)
 {
-	bool done = _read(CP20_REG_ACCESORY_CERTIFICATE_DATA_PAGE1 + page, buffer, length);
-	return done;
+	unsigned reg = CP30_REG_ACCESORY_CERTIFICATE_DATA1;
+	unsigned short done = 0;
+	while(done < length)
+	{
+		unsigned rem = length - done;
+		if (rem > 128) rem = 128;
+		if (_read(reg, buffer + done, rem))
+		{
+			done += rem;
+			reg ++;
+		}
+		else break;
+	}
+	return done == length;
 }
 
-int apple_cp2_get_auth_signature(unsigned char *challenge, int ch_len, unsigned char *sig)
+bool apple_cp30_begin_challenge(unsigned char *challenge, unsigned short length, unsigned short *presp_len)
 {
-	bool done;
-	unsigned char buffer[2];
-
-	done = _read(CP20_REG_ERROR_CODE, buffer, 1);
-	buffer[0] = 0;
-	done = _write(CP20_REG_AUTH_CONTROL_AND_STATUS, buffer, 1);
-	done = _read(CP20_REG_AUTH_CONTROL_AND_STATUS, buffer, 1);
-	done = _read(CP20_REG_ERROR_CODE, buffer, 1);
-
-	done = _write(CP20_REG_CHALLENGE_DATA, challenge, ch_len);
-	if (done)
+	if (length != 32)
 	{
-		buffer[0] = ch_len >> 8;
-		buffer[1] = ch_len;
-		done = _write(CP20_REG_CHALLENGE_DATA_LENGTH, buffer, 2);
+		_verbose(VERBOSE_ERROR, "bad challenge data length!");
+		return false;
+	}
+
+	unsigned char buffer[2];
+	if (_write(CP30_REG_CHALLENGE_DATA, challenge, length)
+		&& _read(CP30_REG_CHALLENGE_DATA_LENGTH, buffer, sizeof(buffer))
+		&& buffer[0] == 0 && buffer[1] == 32)
+	{
+		bool done = false;
+		unsigned char acas = CP30_ACAS_START;
+		_write(CP30_REG_AUTH_CONTROL_AND_STATUS, &acas, 1);
+		exos_thread_sleep(1);
+		while(1)
+		{
+			if (_read(CP30_REG_AUTH_CONTROL_AND_STATUS, &acas, 1))
+			{
+				if (0 == (acas & CP30_ACAS_ERROR))
+				{
+					if (1 == ((acas & CP30_ACAS_RESULT_MASK) >> CP30_ACAS_RESULT_BIT))
+					{
+						done = true;
+						break;
+					}
+				}
+				else
+				{
+					// TODO read error code
+					break;
+				}
+			}
+			else break;
+
+			break; // FIXME
+		}
+
 		if (done)
 		{
-			done = _read(CP20_REG_AUTH_CONTROL_AND_STATUS, buffer, 1);
-
-			buffer[0] = CP20_PROC_START_SIGNATURE_GENERATION;
-			done = _write(CP20_REG_AUTH_CONTROL_AND_STATUS, buffer, 1);
-
-			for(int i = 0; i < 15; i++)
+			unsigned char buffer[2];
+			if (_read(CP30_REG_CHALLENGE_RESP_DATA_LENGTH, buffer, sizeof(buffer)))
 			{
-				done = _read(CP20_REG_AUTH_CONTROL_AND_STATUS, buffer, 1);
-				if (done)
-				{
-					unsigned char status = buffer[0];
-					if (((status & 0x70) >> 4) == 1) // Accessory signature successfully generated
-						break;
-					else 
-					{
-						done = _read(CP20_REG_ERROR_CODE, buffer, 1);
-						_verbose(VERBOSE_ERROR, "Signature generation failed (status=$%02x, error=$%02x)!", 
-							status, buffer[0]);
-						done = 0;
-					}
-				}
-				exos_thread_sleep(1000);
-			}
-
-			if (done)
-			{
-				done = _read(CP20_REG_ERROR_CODE, buffer, 1);
-
-				if (done)
-				{
-					done = _read(CP20_REG_SIGNATURE_DATA_LENGTH, buffer, 2);
-					if (done)
-					{
-						int sig_len = (buffer[0] << 8) | buffer[1];
-						done = _read(CP20_REG_SIGNATURE_DATA, sig, sig_len);
-						if (done)
-							return sig_len;
-					}
-					else _verbose(VERBOSE_ERROR, "Could not read signature!");
-				}
+				*presp_len = (buffer[1] << 8) | buffer[0];
+				return true;
 			}
 		}
-		else _verbose(VERBOSE_ERROR, "Could not write challenge!");
 	}
-	_verbose(VERBOSE_ERROR, "Signature not done!");
-	return 0;
+	
+	return false;
 }
-#endif
+
+bool apple_cp30_read_challenge_resp(unsigned char *data, unsigned short length)
+{
+	bool done = _read(CP30_REG_CHALLENGE_RESP_DATA, data, length);
+	return done;
+}
 
