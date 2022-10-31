@@ -84,6 +84,13 @@ typedef struct __packed
 
 typedef struct iap2_control_session_message_parameter iap2_control_session_message_parameter_t;
 
+typedef struct
+{
+	unsigned short MaxLength; 
+	unsigned short Length;
+	void *Buffer;
+} iap2_control_parameters_t;
+
 typedef enum
 {
 	// Accessory Authentication
@@ -103,7 +110,43 @@ typedef enum
 	IAP2_CTRL_MSGID_IdentificationInformationUpdate = 0x1D06,	// accessory
 } iap2_ctrl_msgid_t;
 
+typedef enum
+{
+	IAP2_IIID_Name = 0,			// utf8
+	IAP2_IIID_ModelIdentifier,	// utf8
+	IAP2_IIID_Manufacturer,		// utf8
+	IAP2_IIID_SerialNumber,		// utf8
+	IAP2_IIID_FirmwareVersion,	// utf8
+	IAP2_IIID_HardwareVersion,	// utf8
+	IAP2_IIID_MsgSentByAccessory,		// uint16[0+]
+	IAP2_IIID_MsgReceivedByAccessory,	// uint16[0+]
+	IAP2_IIID_PowerProvidingCapability,	// enum
+	IAP2_IIID_MaximumCurrentDrawnFromDevice,	// uint16 (mA)
+	IAP2_IIID_SupportedExternalAccessoryProtocol,	// group
+	IAP2_IIID_AppTeamMatchID,	// utf8
+	IAP2_IIID_CurrentLanguage,	// utf8
+	IAP2_IIID_SupportedLanguage,	// utf8
+	IAP2_IIID_USBDeviceTransportComponent = 15,	// group
+	IAP2_IIID_USBHostTransportComponent,		// group
+	IAP2_IIID_BluetoothTransportComponent,		// group
+	IAP2_IIID_iAP2HIDComponent,
+	IAP2_IIID_ProductPlanUID = 34,	// utf8	
+} iap2_iiid_t;
 
+typedef enum
+{
+	IAP2_TCID_ComponentIdentifier = 0,	// uint16, unique per accessory
+	IAP2_TCID_ComponentName,			// utf8
+	IAP2_TCID_SupportsiAP2Connection,	// none
+	IAP2_TCID_USBDeviceSupportedAudioRate,	//enum (USDDevice only)
+} iap2_tcid_t;
+
+typedef enum
+{
+	IAP2_PPC_None = 0,
+	IAP2_PPC_LightningReceptaclePassthrough,
+	IAP2_PPC_Advanced,
+} iap2_power_providing_capability_t;
 
 // transport definitions
 
@@ -132,6 +175,7 @@ struct iap2_transport_driver
 {
 	bool (*Send)(iap2_transport_t *t, const unsigned char *data, unsigned length);
 	bool (*SwitchRole)(iap2_transport_t *t);
+	void *(*Identify)(iap2_transport_t *t, unsigned short *plen);
 };
 
 typedef struct
@@ -152,5 +196,11 @@ bool iap2_transport_create(iap2_transport_t *t, const char *id, unsigned char un
 bool iap2_start(iap2_transport_t *t);
 void iap2_input(iap2_transport_t *t, const unsigned char *packet, unsigned packet_length);
 void iap2_stop();
+
+// helper functions
+void iap2_helper_init_parameters(iap2_control_parameters_t *params, void *buffer, unsigned short length);
+void *iap2_helper_add_parameter(iap2_control_parameters_t *params, unsigned short id, unsigned short length);
+void iap2_helper_add_param_string(iap2_control_parameters_t *params, unsigned short id, const char *str);
+
 
 #endif // APPLE_IAP2_H

@@ -6,7 +6,8 @@
 #include <kernel/dispatch.h>
 #include <kernel/verbose.h>
 #include <kernel/panic.h>
-#include <string.h> 
+#include <string.h>
+#include <stdio.h>
 
 #ifdef IAP2_DEBUG
 #define _verbose(level, ...) verbose(level, "iAP2", __VA_ARGS__)
@@ -97,6 +98,13 @@ static bool _send(iap2_transport_t *t, const unsigned char *data, unsigned lengt
 	const iap2_transport_driver_t *driver = t->Driver;
 	ASSERT(driver != NULL && driver->Send != NULL, KERNEL_ERROR_NULL_POINTER);
 	return driver->Send(t, data, length);
+}
+
+static void *_get_transport_component_id(iap2_transport_t *t, unsigned short *plen)
+{
+	const iap2_transport_driver_t *driver = t->Driver;
+	ASSERT(driver != NULL && driver->Identify != NULL, KERNEL_ERROR_NULL_POINTER);
+	return driver->Identify(t, plen);
 }
 
 void iap2_input(iap2_transport_t *t, const unsigned char *packet, unsigned packet_length)
@@ -245,6 +253,17 @@ static bool _send_packet(iap2_context_t *iap2, iap2_buffer_t *buf)
 	return _send(iap2->Transport, buf->Buffer, buf->Length);
 }
 
+static void _send_ack(iap2_context_t *iap2)
+{
+	iap2_buffer_t *buf = _init_packet(iap2, IAP2_CONTROLF_ACK, 0);
+	if (buf != NULL)
+	{
+		_send_packet(iap2, buf);
+
+		pool_free(&_output_pool, &buf->Node);	// FIXME: we should not dispose the buffer if it has been queued for output
+	}
+}
+
 static void _sync_callback(dispatcher_context_t *context, dispatcher_t *dispatcher)
 {
 	iap2_context_t *iap2 = (iap2_context_t *)dispatcher->CallbackState;
@@ -341,6 +360,38 @@ static iap2_control_session_message_parameter_t *_find_param(iap2_control_sess_m
 	return NULL;
 }
 
+static void _debug_params(iap2_control_sess_message_t *ctrl_msg)
+{
+	ASSERT(ctrl_msg != NULL, KERNEL_ERROR_NULL_POINTER);
+	unsigned msg_len = IAP2SHTOH(ctrl_msg->MessageLength);
+	unsigned offset = sizeof(iap2_control_sess_message_t);
+	while(offset < msg_len)
+	{
+		static char hex_buf[80];
+		void *pp = (void *)ctrl_msg + offset;
+		iap2_control_session_message_parameter_t *p = (iap2_control_session_message_parameter_t *)pp;
+		unsigned short pid = IAP2SHTOH(p->Id);
+		unsigned short plen = IAP2SHTOH(p->Length);
+		
+		char *hex_ptr = hex_buf;
+		*hex_ptr = '\0';
+		unsigned payload = plen - sizeof(iap2_control_session_message_parameter_t); 
+		unsigned pay_off = 0;
+		for(unsigned i = 0; i < payload; i++)
+		{
+			hex_ptr += sprintf(hex_ptr, "%02x ", p->Data[pay_off++]);
+			if (i == 24)
+			{
+				hex_ptr += sprintf(hex_ptr, "...");
+				break;
+			}
+		}
+		ASSERT(hex_ptr < hex_buf + sizeof(hex_buf), KERNEL_ERROR_KERNEL_PANIC);
+		_verbose(VERBOSE_ERROR, "id=%d %s", pid, hex_buf);
+		offset += plen;
+	}
+}
+
 static iap2_control_sess_message_t *_init_control_msg(iap2_buffer_t *buf, unsigned short msgid)
 {
 	iap2_control_sess_message_t *ctrl_msg = (iap2_control_sess_message_t *)(buf->Buffer + buf->Payload);
@@ -360,6 +411,12 @@ static void *_add_parameter(iap2_control_sess_message_t *ctrl_msg, unsigned shor
 	param->Id = HTOIAP2S(id);
 	ctrl_msg->MessageLength = HTOIAP2S(msg_length + param_length);
 	return ptr + sizeof(iap2_control_session_message_parameter_t);
+}
+
+static void _add_param_string(iap2_control_sess_message_t *ctrl_msg, unsigned short id, const char *str)
+{
+	void *payload = _add_parameter(ctrl_msg, id, strlen(str) + 1);
+	strcpy((char *)payload, str);
 }
 
 static void _send_auth_certificate(iap2_context_t *iap2)
@@ -438,6 +495,69 @@ static void _send_auth_challenge_resp(iap2_context_t *iap2, iap2_control_sess_me
 	} else _verbose(VERBOSE_ERROR, "[auth] challenge param not found!");
 }
 
+static unsigned short _sent_msgs[] = { 
+	/*IAP2_CTRL_MSGID_AuthenticationCertificate,
+	IAP2_CTRL_MSGID_AuthenticationResponse,
+	IAP2_CTRL_MSGID_IdentificationInformation*/ };
+static unsigned short _rcvd_msgs[] = { /* none */ };
+
+#define PRODUCT_PLAN_UID  "e0fe14279ca847ad" // "252787-943744"
+
+static void _send_identification(iap2_context_t *iap2)
+{
+	iap2_link_session1_t *sess0 = &iap2->Sessions[0];
+	ASSERT(sess0->Type == IAP2_SESSION_TYPE_CONTROL, KERNEL_ERROR_KERNEL_PANIC);
+
+	iap2_buffer_t *buf = _init_packet(iap2, IAP2_CONTROLF_ACK, sess0->Id);
+	if (buf != NULL)
+	{
+		iap2_control_sess_message_t *resp_msg = _init_control_msg(buf, IAP2_CTRL_MSGID_IdentificationInformation);
+
+		_add_param_string(resp_msg, IAP2_IIID_Name, "iHub Interface");
+		_add_param_string(resp_msg, IAP2_IIID_ModelIdentifier, "iHub with USB-C");
+		_add_param_string(resp_msg, IAP2_IIID_Manufacturer, "MIO Labs");
+		_add_param_string(resp_msg, IAP2_IIID_SerialNumber, "82736223");
+		_add_param_string(resp_msg, IAP2_IIID_FirmwareVersion, "1.0");
+		_add_param_string(resp_msg, IAP2_IIID_HardwareVersion, "proto 1.0");
+
+		iap2_short_t *stm = _add_parameter(resp_msg, IAP2_IIID_MsgSentByAccessory, sizeof(_sent_msgs));
+		for (unsigned i = 0; i < (sizeof(_sent_msgs) / sizeof(iap2_short_t)); i++) stm[i] = HTOIAP2S(_sent_msgs[i]); 
+		iap2_short_t *rdm = _add_parameter(resp_msg, IAP2_IIID_MsgReceivedByAccessory, sizeof(_rcvd_msgs));
+		for (unsigned i = 0; i < (sizeof(_rcvd_msgs) / sizeof(iap2_short_t)); i++) rdm[i] = HTOIAP2S(_rcvd_msgs[i]); 
+
+		unsigned char *ppc = _add_parameter(resp_msg, IAP2_IIID_PowerProvidingCapability, 1);
+		*ppc = IAP2_PPC_None;	// FIXME
+
+		iap2_short_t *mcd = _add_parameter(resp_msg, IAP2_IIID_MaximumCurrentDrawnFromDevice, sizeof(unsigned short));
+		*mcd = HTOIAP2S(0);	// FIXME
+
+		// SupportedExternalAccessoryProtocol
+		// AppMatchTeamID
+
+		_add_param_string(resp_msg, IAP2_IIID_CurrentLanguage, "en");
+		_add_param_string(resp_msg, IAP2_IIID_SupportedLanguage, "en");
+
+		unsigned short tgc_len;
+		void *transport_group = _get_transport_component_id(iap2->Transport, &tgc_len);
+		ASSERT(transport_group != NULL && tgc_len != 0, KERNEL_ERROR_KERNEL_PANIC);
+		unsigned short tgc_iiid = IAP2_IIID_USBDeviceTransportComponent;	// FIXME!!!
+		void *tgc = _add_parameter(resp_msg, tgc_iiid, tgc_len);
+		memcpy(tgc, transport_group, tgc_len);
+		
+		_add_param_string(resp_msg, IAP2_IIID_ProductPlanUID, PRODUCT_PLAN_UID);
+
+#ifdef DEBUG
+		//_debug_params(resp_msg);
+#endif
+		buf->Length += IAP2SHTOH(resp_msg->MessageLength);	// NOTE: fix buffer length 
+		buf->Buffer[buf->Length] = _checksum((unsigned char *)resp_msg, buf->Length - sizeof(iap2_header_t));
+		buf->Length++;
+		_send_packet(iap2, buf);
+		
+		pool_free(&_output_pool, &buf->Node);	// FIXME: we should not dispose the buffer if it has been queued for output
+	}
+}
+
 static void _parse_control(iap2_context_t *iap2, iap2_control_sess_message_t *ctrl_msg)
 {
 	unsigned msg_id = IAP2SHTOH(ctrl_msg->MessageId);
@@ -458,11 +578,30 @@ static void _parse_control(iap2_context_t *iap2, iap2_control_sess_message_t *ct
 			break;
 		case IAP2_CTRL_MSGID_AuthenticationFailed:
 			_verbose(VERBOSE_DEBUG, "got ctrl AuthenticationFailed (ERROR)");
-			//TODO (should not happen)
+			// NOTE (should not happen)
+			_send_ack(iap2);
 			break;
 		case IAP2_CTRL_MSGID_AuthenticationSucceeded:
 			_verbose(VERBOSE_DEBUG, "got ctrl AuthenticationSucceeded (OK)");
-			//TODO
+			// TODO ?
+			break;
+
+		case IAP2_CTRL_MSGID_StartIdentification:
+			_verbose(VERBOSE_DEBUG, "got ctrl StartIdentification");
+			_send_identification(iap2);
+			break;
+		case IAP2_CTRL_MSGID_IdentificationRejected:
+			_verbose(VERBOSE_ERROR, "got ctrl IdentificationRejected (ERROR)");
+			// NOTE (should not happen)
+#ifdef DEBUG
+			_debug_params(ctrl_msg);
+#endif
+			_send_ack(iap2);
+			break;
+		case IAP2_CTRL_MSGID_IdentificationAccepted:
+			_verbose(VERBOSE_DEBUG, "got ctrl IdentificationAccepted (OK)");
+			// TODO ?
+			_send_ack(iap2);
 			break;
 		default:
 			_verbose(VERBOSE_ERROR, "got unk control msg id=$%04x", msg_id);
