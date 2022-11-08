@@ -142,11 +142,13 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 				{
 					case HPORT_FULL_SPEED:
 						otg_host->HFIR = 48000;
-						otg_host->HCFG = (1 << USB_OTG_HCFG_FSLSPCS_Pos);	// 48MHz core
+						otg_host->HCFG = (otg_host->HCFG & USB_OTG_HCFG_FSLSS) | 
+							(1 << USB_OTG_HCFG_FSLSPCS_Pos);	// 48MHz core
 						break;
 					case HPORT_LOW_SPEED:
 						otg_host->HFIR = 6000;
-						otg_host->HCFG = (2 << USB_OTG_HCFG_FSLSPCS_Pos);	// 6MHz core
+						otg_host->HCFG = (otg_host->HCFG & USB_OTG_HCFG_FSLSS) | 
+							(2 << USB_OTG_HCFG_FSLSPCS_Pos);	// 6MHz core
 						break;
 					default:
 						kernel_panic(KERNEL_ERROR_KERNEL_PANIC);
