@@ -108,6 +108,10 @@ typedef enum
 	IAP2_CTRL_MSGID_IdentificationRejected = 0x1D03,	// device
 	IAP2_CTRL_MSGID_CancelIdentification = 0x1D05,				// accessory
 	IAP2_CTRL_MSGID_IdentificationInformationUpdate = 0x1D06,	// accessory
+	// External Accesory
+	IAP2_CTRL_MSGID_StartExternalAccessoryProtocolSession = 0xEA00,	// device
+	IAP2_CTRL_MSGID_StopExternalAccessoryProtocolSession = 0xEA01,	// device
+	IAP2_CTRL_MSGID_StatusExternalAccessoryProtocolSession = 0xEA03,	// accessory?
 } iap2_ctrl_msgid_t;
 
 typedef enum
@@ -148,6 +152,15 @@ typedef enum
 	IAP2_PPC_Advanced,
 } iap2_power_providing_capability_t;
 
+typedef enum
+{
+	IAP2_MA_NoAction = 0,
+	IAP2_MA_OptionalAction,
+	IAP2_MA_NoAlert,
+	IAP2_MA_NoCommunicationProtocol,
+} iap2_match_action_t;
+
+
 // transport definitions
 
 typedef struct iap2_transport_driver iap2_transport_driver_t;
@@ -169,14 +182,22 @@ typedef struct
 	unsigned char Unit;
 	unsigned char Transaction;
 	iap2_link_params_t LinkParams;
+	unsigned short ComponentId;	// NOTE: shall be != 0 for usb host 
 } iap2_transport_t;
 
 struct iap2_transport_driver
 {
 	bool (*Send)(iap2_transport_t *t, const unsigned char *data, unsigned length);
 	bool (*SwitchRole)(iap2_transport_t *t);
-	void *(*Identify)(iap2_transport_t *t, unsigned short *plen);
+	bool (*Identify)(iap2_transport_t *t, iap2_control_parameters_t *params);
 };
+
+typedef struct
+{
+	node_t *Node;
+	const char *Url;
+	// TODO
+} iap2_protocol_t;
 
 typedef struct
 {
@@ -196,6 +217,9 @@ bool iap2_transport_create(iap2_transport_t *t, const char *id, unsigned char un
 bool iap2_start(iap2_transport_t *t);
 void iap2_input(iap2_transport_t *t, const unsigned char *packet, unsigned packet_length);
 void iap2_stop();
+
+// application callbacks
+
 
 // helper functions
 void iap2_helper_init_parameters(iap2_control_parameters_t *params, void *buffer, unsigned short length);

@@ -23,7 +23,7 @@ static hid_driver_node_t _hid_driver_node = { .Driver = &_hid_driver };
 
 static bool _iap2_send(iap2_transport_t *t, const unsigned char *data, unsigned length);
 static bool _iap2_switch(iap2_transport_t *t);
-static void *_iap2_identify(iap2_transport_t *t, unsigned short *plen);
+static bool _iap2_identify(iap2_transport_t *t, iap2_control_parameters_t *params);
 static const iap2_transport_driver_t _iap2_driver = {
 	.Send = _iap2_send,
 	.SwitchRole = _iap2_switch,
@@ -101,6 +101,8 @@ static bool _start(hid_function_handler_t *handler, hid_report_parser_t *parser)
 	t->LinkParams.RetransmitTimeout = 1000;
 	t->LinkParams.MaxCumulativeAcks = 1;
 	t->LinkParams.CumulativeAckTimeout = 100;
+
+	t->ComponentId = 0;	// FIXME: should be allocated to provide unique transport component ids
 	iap2_start(t);
 }
 
@@ -290,20 +292,16 @@ bool __iap2_hid_should_switch_role(iap2_hid_handler_t *iap2)
 	return false;
 }
 
-static void *_iap2_identify(iap2_transport_t *t, unsigned short *plen)
+static bool _iap2_identify(iap2_transport_t *t, iap2_control_parameters_t *params)
 {
-	static unsigned char buf[64];
-	iap2_control_parameters_t params;
-	iap2_helper_init_parameters(&params, buf, sizeof(buf));
-
 	// add transport component parameters
-	iap2_short_t *cid = iap2_helper_add_parameter(&params, IAP2_TCID_ComponentIdentifier, sizeof(unsigned short));
-	*cid = HTOIAP2S(0);	// FIXME!!!!
-	iap2_helper_add_param_string(&params, IAP2_TCID_ComponentName, "iAP2 USB-HID");
-	iap2_helper_add_parameter(&params, IAP2_TCID_SupportsiAP2Connection, 0);		 
-
-	*plen = params.Length;
-	return params.Buffer;
+	iap2_short_t *cid = iap2_helper_add_parameter(params, IAP2_TCID_ComponentIdentifier, sizeof(unsigned short));
+	*cid = HTOIAP2S(t->ComponentId);
+	iap2_helper_add_param_string(params, IAP2_TCID_ComponentName, "iAP2 USB-HID");
+	iap2_helper_add_parameter(params, IAP2_TCID_SupportsiAP2Connection, 0);		 
+	return true;
 }
+
+
 
 

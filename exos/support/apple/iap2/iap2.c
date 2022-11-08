@@ -51,6 +51,12 @@ void iap2_initialize()
 //	iap_comm_initialize();
 }
 
+bool iap2_protocol_create(iap2_protocol_t *p, const char *url)
+{
+	// TODO
+	return false;
+}
+
 bool iap2_transport_create(iap2_transport_t *t, const char *id, unsigned char unit, const iap2_transport_driver_t *driver)
 {
 	t->Id = id;
@@ -98,13 +104,6 @@ static bool _send(iap2_transport_t *t, const unsigned char *data, unsigned lengt
 	const iap2_transport_driver_t *driver = t->Driver;
 	ASSERT(driver != NULL && driver->Send != NULL, KERNEL_ERROR_NULL_POINTER);
 	return driver->Send(t, data, length);
-}
-
-static void *_get_transport_component_id(iap2_transport_t *t, unsigned short *plen)
-{
-	const iap2_transport_driver_t *driver = t->Driver;
-	ASSERT(driver != NULL && driver->Identify != NULL, KERNEL_ERROR_NULL_POINTER);
-	return driver->Identify(t, plen);
 }
 
 void iap2_input(iap2_transport_t *t, const unsigned char *packet, unsigned packet_length)
@@ -496,29 +495,79 @@ static void _send_auth_challenge_resp(iap2_context_t *iap2, iap2_control_sess_me
 }
 
 static unsigned short _sent_msgs[] = { 
-	/*IAP2_CTRL_MSGID_AuthenticationCertificate,
-	IAP2_CTRL_MSGID_AuthenticationResponse,
-	IAP2_CTRL_MSGID_IdentificationInformation*/ };
-static unsigned short _rcvd_msgs[] = { /* none */ };
+	/*IAP2_CTRL_MSGID_StartExternalAccessoryProtocolSession,
+	IAP2_CTRL_MSGID_StopExternalAccessoryProtocolSession*/ };
+static unsigned short _rcvd_msgs[] = { 
+	IAP2_CTRL_MSGID_StartExternalAccessoryProtocolSession,
+	IAP2_CTRL_MSGID_StopExternalAccessoryProtocolSession };
 
-#define PRODUCT_PLAN_UID  "e0fe14279ca847ad" // "252787-943744"
+#ifndef IAP2_ACCESORY_NAME
+#define IAP2_ACCESORY_NAME "MIO Labs Test Accesory"
+#endif
+#ifndef IAP2_ACCESORY_MODEL
+#define IAP2_ACCESORY_MODEL "undefined"
+#endif
+#ifndef IAP2_ACCESORY_SERIAL
+#define IAP2_ACCESORY_SERIAL "00000"
+#endif
+#ifndef IAP2_ACCESORY_FW_VERSION
+#define IAP2_ACCESORY_FW_VERSION "1.0"
+#endif
+#ifndef IAP2_ACCESORY_HW_VERSION
+#define IAP2_ACCESORY_HW_VERSION "prototype"
+#endif
+#ifndef IAP2_ACCESORY_MANUFACTURER
+#define IAP2_ACCESORY_MANUFACTURER "MIO Research Labs"
+#endif
 
+static unsigned short _get_transport_component_id(iap2_transport_t *t, unsigned char *param_buf, unsigned buf_size)
+{
+	iap2_control_parameters_t params;
+	iap2_helper_init_parameters(&params, param_buf, buf_size);
+
+	const iap2_transport_driver_t *driver = t->Driver;
+	ASSERT(driver != NULL && driver->Identify != NULL, KERNEL_ERROR_NULL_POINTER);
+	return driver->Identify(t, &params) ? params.Length : 0;
+}
+
+static unsigned short _get_protocol_definition(iap2_context_t *iap2, unsigned index, unsigned char *param_buf, unsigned buf_size)
+{
+	iap2_control_parameters_t params;
+	iap2_helper_init_parameters(&params, param_buf, buf_size);
+	unsigned char *id = iap2_helper_add_parameter(&params, 0, 1);
+	*id = index + 0xa0;	// NOTE: each protocol shall be unique
+	switch(index)
+	{
+#ifdef IAP2_PROTOCOL0_NAME
+		case 0:		iap2_helper_add_param_string(&params, 1, IAP2_PROTOCOL0_NAME);	break;
+#endif
+		default:
+			return 0;
+	}
+	unsigned char *ma = iap2_helper_add_parameter(&params, 2, 1);
+	*ma = IAP2_MA_NoAlert;	// FIXME
+	//iap2_short_t *tcid = iap2_helper_add_parameter(&params, 3, sizeof(iap2_short_t));
+	//*tcid = HTOIAP2S(iap2->Transport->ComponentId);
+	return params.Length;
+}
+  
 static void _send_identification(iap2_context_t *iap2)
 {
 	iap2_link_session1_t *sess0 = &iap2->Sessions[0];
 	ASSERT(sess0->Type == IAP2_SESSION_TYPE_CONTROL, KERNEL_ERROR_KERNEL_PANIC);
+	unsigned char param_buffer[64];
 
 	iap2_buffer_t *buf = _init_packet(iap2, IAP2_CONTROLF_ACK, sess0->Id);
 	if (buf != NULL)
 	{
 		iap2_control_sess_message_t *resp_msg = _init_control_msg(buf, IAP2_CTRL_MSGID_IdentificationInformation);
 
-		_add_param_string(resp_msg, IAP2_IIID_Name, "iHub Interface");
-		_add_param_string(resp_msg, IAP2_IIID_ModelIdentifier, "iHub with USB-C");
-		_add_param_string(resp_msg, IAP2_IIID_Manufacturer, "MIO Labs");
-		_add_param_string(resp_msg, IAP2_IIID_SerialNumber, "82736223");
-		_add_param_string(resp_msg, IAP2_IIID_FirmwareVersion, "1.0");
-		_add_param_string(resp_msg, IAP2_IIID_HardwareVersion, "proto 1.0");
+		_add_param_string(resp_msg, IAP2_IIID_Name, IAP2_ACCESORY_NAME);
+		_add_param_string(resp_msg, IAP2_IIID_ModelIdentifier, IAP2_ACCESORY_MODEL);
+		_add_param_string(resp_msg, IAP2_IIID_Manufacturer, IAP2_ACCESORY_MANUFACTURER);
+		_add_param_string(resp_msg, IAP2_IIID_SerialNumber, IAP2_ACCESORY_SERIAL);
+		_add_param_string(resp_msg, IAP2_IIID_FirmwareVersion, IAP2_ACCESORY_FW_VERSION);
+		_add_param_string(resp_msg, IAP2_IIID_HardwareVersion, IAP2_ACCESORY_HW_VERSION);
 
 		iap2_short_t *stm = _add_parameter(resp_msg, IAP2_IIID_MsgSentByAccessory, sizeof(_sent_msgs));
 		for (unsigned i = 0; i < (sizeof(_sent_msgs) / sizeof(iap2_short_t)); i++) stm[i] = HTOIAP2S(_sent_msgs[i]); 
@@ -531,20 +580,26 @@ static void _send_identification(iap2_context_t *iap2)
 		iap2_short_t *mcd = _add_parameter(resp_msg, IAP2_IIID_MaximumCurrentDrawnFromDevice, sizeof(unsigned short));
 		*mcd = HTOIAP2S(0);	// FIXME
 
-		// SupportedExternalAccessoryProtocol
-		// AppMatchTeamID
+		// TODO SupportedExternalAccessoryProtocol
+		unsigned short eap_len = _get_protocol_definition(iap2, 0, param_buffer, sizeof(param_buffer));
+		if (eap_len != 0)
+		{
+			void *eap = _add_parameter(resp_msg, IAP2_IIID_SupportedExternalAccessoryProtocol, eap_len);
+			memcpy(eap, param_buffer, eap_len);
+		} 
+
+		// TODO AppMatchTeamID
 
 		_add_param_string(resp_msg, IAP2_IIID_CurrentLanguage, "en");
 		_add_param_string(resp_msg, IAP2_IIID_SupportedLanguage, "en");
 
-		unsigned short tgc_len;
-		void *transport_group = _get_transport_component_id(iap2->Transport, &tgc_len);
-		ASSERT(transport_group != NULL && tgc_len != 0, KERNEL_ERROR_KERNEL_PANIC);
-		unsigned short tgc_iiid = IAP2_IIID_USBDeviceTransportComponent;	// FIXME!!!
+		unsigned short tgc_iiid = IAP2_IIID_USBDeviceTransportComponent;	// FIXME <<<<< 
+		unsigned short tgc_len = _get_transport_component_id(iap2->Transport, param_buffer, sizeof(param_buffer));
+		ASSERT(tgc_len != 0, KERNEL_ERROR_KERNEL_PANIC);
 		void *tgc = _add_parameter(resp_msg, tgc_iiid, tgc_len);
-		memcpy(tgc, transport_group, tgc_len);
+		memcpy(tgc, param_buffer, tgc_len);
 		
-		_add_param_string(resp_msg, IAP2_IIID_ProductPlanUID, PRODUCT_PLAN_UID);
+		_add_param_string(resp_msg, IAP2_IIID_ProductPlanUID, IAP2_PRODUCT_PLAN_UID);
 
 #ifdef DEBUG
 		//_debug_params(resp_msg);
@@ -565,6 +620,9 @@ static void _parse_control(iap2_context_t *iap2, iap2_control_sess_message_t *ct
 	unsigned offset = sizeof(iap2_control_sess_message_t);
 	int payload = msg_len - sizeof(iap2_control_sess_message_t);
 
+	iap2_control_session_message_parameter_t *param;
+	int protocol, session;
+
 	switch(msg_id)
 	{
 		case IAP2_CTRL_MSGID_RequestAuthenticationCertificate:
@@ -583,7 +641,7 @@ static void _parse_control(iap2_context_t *iap2, iap2_control_sess_message_t *ct
 			break;
 		case IAP2_CTRL_MSGID_AuthenticationSucceeded:
 			_verbose(VERBOSE_DEBUG, "got ctrl AuthenticationSucceeded (OK)");
-			// TODO ?
+			// NOTE: device proceeds with identification now 
 			break;
 
 		case IAP2_CTRL_MSGID_StartIdentification:
@@ -600,9 +658,31 @@ static void _parse_control(iap2_context_t *iap2, iap2_control_sess_message_t *ct
 			break;
 		case IAP2_CTRL_MSGID_IdentificationAccepted:
 			_verbose(VERBOSE_DEBUG, "got ctrl IdentificationAccepted (OK)");
-			// TODO ?
 			_send_ack(iap2);
 			break;
+
+		case IAP2_CTRL_MSGID_StartExternalAccessoryProtocolSession:
+			param = _find_param(ctrl_msg, 0);
+			protocol = (param != NULL) ? *(unsigned char *)param->Data : -1;
+			param = _find_param(ctrl_msg, 1);
+			session = (param != NULL) ? IAP2SHTOH(*(iap2_short_t *)param->Data) : -1;
+			 
+			_verbose(VERBOSE_DEBUG, "got ctrl StartEAProtocolSession, protocol=%02x, session=$%04x",
+				protocol, session);
+			// TODO
+			_send_ack(iap2);
+			break;
+		case IAP2_CTRL_MSGID_StopExternalAccessoryProtocolSession:
+			param = _find_param(ctrl_msg, 0);
+			session = (param != NULL) ? IAP2SHTOH(*(iap2_short_t *)param->Data) : -1;
+			 
+			_verbose(VERBOSE_DEBUG, "got ctrl StopEAProtocolSession, session=$%04x",
+				session);
+			// TODO
+			_send_ack(iap2);
+			break;
+
+
 		default:
 			_verbose(VERBOSE_ERROR, "got unk control msg id=$%04x", msg_id);
 			break;
