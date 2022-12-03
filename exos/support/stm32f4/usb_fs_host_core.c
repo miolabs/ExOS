@@ -164,7 +164,7 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 				usb_host_device_t *child = usb_host_create_root_device(_hc, 0, 
 					(_port_speed == HPORT_FULL_SPEED) ? USB_HOST_DEVICE_FULL_SPEED : USB_HOST_DEVICE_LOW_SPEED);
 				if (child != nullptr)
-					verbose(VERBOSE_COMMENT, "usb-fs-roothub", "child %04x/%04x added at port #%d", child->Vendor, child->Product, child->Port);
+					verbose(VERBOSE_COMMENT, "usb-fs-roothub", "child %04x:%04x added at port #%d", child->Vendor, child->Product, child->Port);
 				else	
 					verbose(VERBOSE_ERROR, "usb-fs-roothub", "device add failed");		
 			}
@@ -189,9 +189,9 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 			
 			ASSERT(_hc->Devices != nullptr, KERNEL_ERROR_NULL_POINTER);
 			usb_host_device_t *child = &_hc->Devices[0];	// single port
-			verbose(VERBOSE_DEBUG, "usb-fs-roothub", "child %04x/%04x removing at port #%d", child->Vendor, child->Product, child->Port);
+			verbose(VERBOSE_DEBUG, "usb-fs-roothub", "child %04x:%04x removing at port #%d", child->Vendor, child->Product, child->Port);
 			usb_host_destroy_device(child);
-			verbose(VERBOSE_COMMENT, "usb-fs-roothub", "child %04x/%04x removed", child->Vendor, child->Product);
+			verbose(VERBOSE_COMMENT, "usb-fs-roothub", "child %04x:%04x removed", child->Vendor, child->Product);
 			
 			exos_thread_sleep(10);	// NOTE: avoid glitchy re-connect
 

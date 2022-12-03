@@ -604,7 +604,7 @@ static void _send_identification(iap2_context_t *iap2)
 		unsigned short tgc_len = _get_transport_component_id(iap2->Transport, &tgc_iiid, param_buffer, sizeof(param_buffer));
 		ASSERT(tgc_len != 0, KERNEL_ERROR_KERNEL_PANIC);
 		ASSERT(tgc_iiid != 0, KERNEL_ERROR_KERNEL_PANIC);
-		_verbose(VERBOSE_DEBUG, "transport component id = %d", tgc_iiid);
+		_verbose(VERBOSE_DEBUG, "transport component id=%d", tgc_iiid);
 		void *tgc = _add_parameter(resp_msg, tgc_iiid, tgc_len);
 		memcpy(tgc, param_buffer, tgc_len);
 		
@@ -847,7 +847,7 @@ static void *_service(void *arg)
 
 	if (_initialize(t))
 	{
-		_verbose(VERBOSE_DEBUG, "Initialization procedure succeded!");
+		_verbose(VERBOSE_DEBUG, "initialization procedure succeeded!");
 
 		// NOTE: when we are NOT running in a hid host transport, this does nothing
 		bool done = _transport_switch_role(t);
@@ -872,7 +872,7 @@ static void *_service(void *arg)
 	}
 	else
 	{
-		_verbose(VERBOSE_ERROR, "Initialization procedure failed!");
+		_verbose(VERBOSE_ERROR, "initialization procedure failed!");
 	}
 
 	_verbose(VERBOSE_COMMENT, "service exiting (%s)...", t->Id);

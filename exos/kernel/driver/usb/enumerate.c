@@ -102,7 +102,7 @@ static unsigned _enum_interfaces(usb_host_device_t *device, usb_configuration_de
 		if (fn_desc->DescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE)
 		{
 			usb_interface_descriptor_t *if_desc = (usb_interface_descriptor_t *)fn_desc;
-			_verbose(VERBOSE_DEBUG, "checking conf #%d, if #%d (alt=%d, class=$%x/$%x, proto=%d) ...", 
+			_verbose(VERBOSE_DEBUG, "checking conf #%d, if #%d (alt=%d, class=$%x/$%x, proto=%d)...", 
 				conf_desc->ConfigurationIndex, if_desc->InterfaceNumber,
 				if_desc->AlternateSetting, if_desc->InterfaceClass, if_desc->InterfaceSubClass, if_desc->Protocol);
 			found_driver = usb_host_driver_enumerate(_check_interface, &enum_data);
