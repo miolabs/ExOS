@@ -23,7 +23,7 @@ static hid_driver_node_t _hid_driver_node = { .Driver = &_hid_driver };
 
 static bool _iap2_send(iap2_transport_t *t, const unsigned char *data, unsigned length);
 static bool _iap2_switch(iap2_transport_t *t);
-static bool _iap2_identify(iap2_transport_t *t, iap2_control_parameters_t *params);
+static unsigned short _iap2_identify(iap2_transport_t *t, iap2_control_parameters_t *params);
 static const iap2_transport_driver_t _iap2_driver = {
 	.Send = _iap2_send,
 	.SwitchRole = _iap2_switch,
@@ -292,14 +292,14 @@ bool __iap2_hid_should_switch_role(iap2_hid_handler_t *iap2)
 	return false;
 }
 
-static bool _iap2_identify(iap2_transport_t *t, iap2_control_parameters_t *params)
+static unsigned short _iap2_identify(iap2_transport_t *t, iap2_control_parameters_t *params)
 {
 	// add transport component parameters
 	iap2_short_t *cid = iap2_helper_add_parameter(params, IAP2_TCID_ComponentIdentifier, sizeof(unsigned short));
 	*cid = HTOIAP2S(t->ComponentId);
 	iap2_helper_add_param_string(params, IAP2_TCID_ComponentName, "iAP2 USB-HID");
 	iap2_helper_add_parameter(params, IAP2_TCID_SupportsiAP2Connection, 0);		 
-	return true;
+	return IAP2_IIID_USBDeviceTransportComponent;	// NOTE: In Apple usb-device mode, accessory is (HID) host
 }
 
 

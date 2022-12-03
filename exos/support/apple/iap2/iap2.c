@@ -520,14 +520,21 @@ static unsigned short _rcvd_msgs[] = {
 #define IAP2_ACCESORY_MANUFACTURER "MIO Research Labs"
 #endif
 
-static unsigned short _get_transport_component_id(iap2_transport_t *t, unsigned char *param_buf, unsigned buf_size)
+static unsigned short _get_transport_component_id(iap2_transport_t *t, unsigned short *pcid, unsigned char *param_buf, unsigned buf_size)
 {
 	iap2_control_parameters_t params;
 	iap2_helper_init_parameters(&params, param_buf, buf_size);
 
 	const iap2_transport_driver_t *driver = t->Driver;
 	ASSERT(driver != NULL && driver->Identify != NULL, KERNEL_ERROR_NULL_POINTER);
-	return driver->Identify(t, &params) ? params.Length : 0;
+	// NOTE: transport must return component id (group) on success or zero for failure. i.e. IAP2_IIID_USBDeviceTransportComponent
+	unsigned short cid = driver->Identify(t, &params);
+	if (cid != 0)
+	{
+		*pcid = cid;
+		return params.Length;
+	}
+	return 0;
 }
 
 static unsigned short _get_protocol_definition(iap2_context_t *iap2, unsigned index, unsigned char *param_buf, unsigned buf_size)
@@ -593,9 +600,11 @@ static void _send_identification(iap2_context_t *iap2)
 		_add_param_string(resp_msg, IAP2_IIID_CurrentLanguage, "en");
 		_add_param_string(resp_msg, IAP2_IIID_SupportedLanguage, "en");
 
-		unsigned short tgc_iiid = IAP2_IIID_USBDeviceTransportComponent;	// FIXME <<<<< 
-		unsigned short tgc_len = _get_transport_component_id(iap2->Transport, param_buffer, sizeof(param_buffer));
+		unsigned short tgc_iiid = 0;
+		unsigned short tgc_len = _get_transport_component_id(iap2->Transport, &tgc_iiid, param_buffer, sizeof(param_buffer));
 		ASSERT(tgc_len != 0, KERNEL_ERROR_KERNEL_PANIC);
+		ASSERT(tgc_iiid != 0, KERNEL_ERROR_KERNEL_PANIC);
+		_verbose(VERBOSE_DEBUG, "transport component id = %d", tgc_iiid);
 		void *tgc = _add_parameter(resp_msg, tgc_iiid, tgc_len);
 		memcpy(tgc, param_buffer, tgc_len);
 		
@@ -721,6 +730,8 @@ static void _rx_callback(dispatcher_context_t *context, dispatcher_t *dispatcher
 			{
 				iap2_link_session1_t *sess0 = &iap2->Sessions[0];
 				ASSERT(sess0->Type == IAP2_SESSION_TYPE_CONTROL, KERNEL_ERROR_KERNEL_PANIC);
+				iap2_link_session1_t *sess1 = &iap2->Sessions[1];
+				ASSERT(sess1->Type == IAP2_SESSION_TYPE_EXTERNAL_ACCESSORY, KERNEL_ERROR_KERNEL_PANIC);
 
 				if (hdr->SessionId == sess0->Id)
 				{
@@ -735,10 +746,28 @@ static void _rx_callback(dispatcher_context_t *context, dispatcher_t *dispatcher
 					}
 					else _verbose(VERBOSE_ERROR, "control message discarded (bad length)");
 				}
+				else if (hdr->SessionId == sess1->Id)
+				{
+					iap2->Ack = hdr->SequenceNumber;
+
+					iap2_ea_sess_message_t *ea_msg = (iap2_ea_sess_message_t *)(buf->Buffer + buf->Payload);
+					unsigned msg_len = payload_len - sizeof(iap2_ea_sess_message_t);
+					if (payload_len >= sizeof(iap2_ea_sess_message_t))
+					{
+						_verbose(VERBOSE_DEBUG, "got ea message, sid=$%04x (%d bytes)", IAP2SHTOH(ea_msg->SessionId), msg_len);
+						//_parse_ea(iap2, ctrl_msg);
+					}
+					else _verbose(VERBOSE_ERROR, "ea message discarded (bad length)");
+
+					_send_ack(iap2);
+				}
 				else
 				{
 					// TODO
 					_verbose(VERBOSE_ERROR, "rx packet discarded (unk session)");
+
+					iap2->Ack = hdr->SequenceNumber;
+					_send_ack(iap2);
 				}
 				pool_free(&_input_pool, &buf->Node);
 			}

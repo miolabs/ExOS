@@ -10,6 +10,10 @@
 #define IAP2_MAX_SESSIONS 2
 #endif
 
+#ifndef IAP2_BUFFER_SIZE
+#define IAP2_BUFFER_SIZE 4096
+#endif
+
 typedef enum
 {
 	IAP2_LINGO_GENERAL = 0,
@@ -160,6 +164,11 @@ typedef enum
 	IAP2_MA_NoCommunicationProtocol,
 } iap2_match_action_t;
 
+typedef struct __packed
+{
+	iap2_short_t SessionId;
+	unsigned char Data[0];
+} iap2_ea_sess_message_t;
 
 // transport definitions
 
@@ -189,7 +198,7 @@ struct iap2_transport_driver
 {
 	bool (*Send)(iap2_transport_t *t, const unsigned char *data, unsigned length);
 	bool (*SwitchRole)(iap2_transport_t *t);
-	bool (*Identify)(iap2_transport_t *t, iap2_control_parameters_t *params);
+	unsigned short (*Identify)(iap2_transport_t *t, iap2_control_parameters_t *params);
 };
 
 typedef struct

@@ -20,14 +20,6 @@ typedef enum
 
 #define IAP2_MAX_PACKET_LENGTH 64
 
-#ifndef IAP2_INPUT_BUFFER
-#define IAP2_INPUT_BUFFER 256
-#endif
-
-#ifndef IAP2_OUTPUT_BUFFER
-#define IAP2_OUTPUT_BUFFER 256
-#endif
-
 typedef struct
 {
 	node_t Node;
@@ -60,8 +52,8 @@ typedef struct
 	bool Ready;
 	bool Idle;
 
-	unsigned char OutputBuffer[IAP2_OUTPUT_BUFFER];
-	unsigned char InputBuffer[IAP2_INPUT_BUFFER];
+	unsigned char OutputBuffer[IAP2_BUFFER_SIZE];
+	unsigned char InputBuffer[IAP2_BUFFER_SIZE];
 
 	char DeviceName[16];
 } iap2_device_context_t;

@@ -37,9 +37,10 @@ static const io_driver_t _io_driver = {
 #endif
 
 static bool _iap2_send(iap2_transport_t *t, const unsigned char *data, unsigned length);
+static unsigned short _iap2_identify(iap2_transport_t *t, iap2_control_parameters_t *params);
 static const iap2_transport_driver_t _iap2_driver = {
 	.Send = _iap2_send,
-	 }; 
+	.Identify = _iap2_identify }; 
 
 static bool _initialized = false;
 static list_t _instance_list;
@@ -262,7 +263,7 @@ static bool _start(usb_device_interface_t *iface, unsigned char alternate_settin
 	iap2dev->TxIo = (usb_io_buffer_t) { .Event = &iap2dev->TxEvent };
 	exos_dispatcher_create(&iap2dev->TxDispatcher, &iap2dev->TxEvent, _tx_dispatch, iap2dev);
 	exos_dispatcher_add(iap2dev->DispatcherContext, &iap2dev->TxDispatcher, EXOS_TIMEOUT_NEVER);
-	exos_io_buffer_create(&iap2dev->Output, iap2dev->OutputBuffer, IAP2_OUTPUT_BUFFER, NULL, NULL);
+	exos_io_buffer_create(&iap2dev->Output, iap2dev->OutputBuffer, sizeof(iap2dev->OutputBuffer), NULL, NULL);
 
 	_verbose(VERBOSE_COMMENT, "[%d] USB start -------", iface->Index);
 	
@@ -317,6 +318,15 @@ static bool _iap2_send(iap2_transport_t *t, const unsigned char *data, unsigned 
 	return (done == length);
 }
 
+static unsigned short _iap2_identify(iap2_transport_t *t, iap2_control_parameters_t *params)
+{
+	// add transport component parameters
+	iap2_short_t *cid = iap2_helper_add_parameter(params, IAP2_TCID_ComponentIdentifier, sizeof(unsigned short));
+	*cid = HTOIAP2S(t->ComponentId);
+	iap2_helper_add_param_string(params, IAP2_TCID_ComponentName, "iAP2 USB-Host");
+	iap2_helper_add_parameter(params, IAP2_TCID_SupportsiAP2Connection, 0);		 
+	return IAP2_IIID_USBHostTransportComponent;
+}
 
 //static void _set_latency(ftdi_context_t *ftdi, unsigned latency)
 //{
