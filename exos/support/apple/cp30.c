@@ -53,7 +53,7 @@ static bool _read(cp30_reg_t reg, unsigned char *buffer, unsigned char length)
 		exos_thread_sleep(1);
 	}
 #elif defined DEBUG
-	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+	_verbose(VERBOSE_ERROR, "Apple CP read failed!");
 #endif
 	return false;
 }
@@ -72,7 +72,7 @@ static bool _write(cp30_reg_t reg, unsigned char *buffer, unsigned char length)
 		exos_thread_sleep(1);
 	}
 #elif defined DEBUG
-	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+	_verbose(VERBOSE_ERROR, "Apple CP write failed!");
 #endif
 	return false;
 }
