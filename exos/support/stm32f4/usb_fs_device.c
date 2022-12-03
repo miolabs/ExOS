@@ -51,7 +51,11 @@ void hal_usbd_connect(bool connect)
 		otg_global->GINTSTS = USB_OTG_GINTSTS_USBRST | USB_OTG_GINTSTS_ENUMDNE;
 		otg_global->GINTMSK |= USB_OTG_GINTMSK_USBRST | USB_OTG_GINTMSK_ENUMDNEM;
 
+#ifdef USB_FS_ENABLE_VBUS 
 		otg_global->GCCFG = USB_OTG_GCCFG_PWRDWN | USB_OTG_GCCFG_VBUSBSEN;	
+#else
+		otg_global->GCCFG = USB_OTG_GCCFG_PWRDWN | USB_OTG_GCCFG_NOVBUSSENS;	
+#endif
 		// NOTE: we should receive a reset now, when connected
 	}
 	else

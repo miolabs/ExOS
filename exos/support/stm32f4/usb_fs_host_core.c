@@ -39,7 +39,7 @@ static pool_t _ep_pool;
 static stm32_usbh_ep_t _common_control_ep;
 
 static usb_host_controller_t *_hc = nullptr;
-static enum { HPORT_DISABLED = 0, HPORT_POWERED, HPORT_RESET, HPORT_RESET_DONE, HPORT_SUSPEND, HPORT_READY } _port_state = HPORT_DISABLED;
+static enum { HPORT_DISABLED = 0, HPORT_POWERED, HPORT_RESET, HPORT_RESET_DONE, HPORT_SUSPEND, HPORT_ERROR, HPORT_READY } _port_state = HPORT_DISABLED;
 static enum { HPORT_FULL_SPEED = 1, HPORT_LOW_SPEED = 2 } _port_speed;
 static bool _role_switch_requested = false;
 
@@ -61,6 +61,9 @@ void usb_fs_host_initialize(usb_host_controller_t *hc, dispatcher_context_t *con
 	otg_power->PCGCCTL = 0;
 	otg_host->HCFG &= ~USB_OTG_HCFG_FSLSS_Msk;
 
+	otg_host->HCFG &= ~USB_OTG_HCFG_FSLSPCS_Msk;
+	otg_host->HCFG |= 1 << USB_OTG_HCFG_FSLSPCS_Pos;	// 48 Mhz
+
 	otg_global->GRXFSIZ = RX_WORDS;
 	otg_global->HNPTXFSIZ = (NPTX_WORDS << 16) | (RX_WORDS);
 	otg_global->HPTXFSIZ = (PTX_WORDS << 16) | (RX_WORDS + NPTX_WORDS);
@@ -70,7 +73,8 @@ void usb_fs_host_initialize(usb_host_controller_t *hc, dispatcher_context_t *con
 	otg_global->GINTMSK |= USB_OTG_GINTMSK_RXFLVLM
 		| USB_OTG_GINTMSK_SOFM
 		| USB_OTG_GINTMSK_HCIM		// Host Channels Int Mask
-		| USB_OTG_GINTMSK_PRTIM;	// host PoRT Int Mask
+		| USB_OTG_GINTMSK_PRTIM		// host PoRT Int Mask
+		| USB_OTG_GINTMSK_DISCINT;
 
 	otg_host->HPRT |= USB_OTG_HPRT_PPWR;
 	_port_state = HPORT_POWERED;	// FIXME
@@ -171,6 +175,14 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 				timeout = 500;
 			}
 			break;
+		case HPORT_ERROR:
+			verbose(VERBOSE_DEBUG, "usb-fs-roothub", "error state!");
+			// TODO: we should perform an usb controller reset now
+
+			_port_state = HPORT_READY;
+			timeout = 10;
+			break;
+
 		case HPORT_READY:
 			if (hprt & USB_OTG_HPRT_PENA)
 				kernel_panic(KERNEL_ERROR_KERNEL_PANIC);
@@ -276,35 +288,13 @@ static void _update_channel(stm32_usbh_channel_t *ch, uint8_t addr, usb_host_dev
 {
 	ASSERT(ch != nullptr, KERNEL_ERROR_NULL_POINTER);
 	ASSERT(ch->Index < 8, KERNEL_ERROR_KERNEL_PANIC);
+	// NOTE this is used only for EP0 channel to start a new control transfer (recycling) 
 
 	otg_host->HC[ch->Index].HCCHAR = 
 		(otg_host->HC[ch->Index].HCCHAR & ~(USB_OTG_HCCHAR_CHENA_Msk | USB_OTG_HCCHAR_DAD_Msk | USB_OTG_HCCHAR_LSDEV_Msk | USB_OTG_HCCHAR_MPSIZ_Msk))
 		| ((addr & 0x7f) << USB_OTG_HCCHAR_DAD_Pos)
 		| ((speed == USB_HOST_DEVICE_LOW_SPEED && _port_speed == HPORT_FULL_SPEED) ? USB_OTG_HCCHAR_LSDEV : 0)
 		| (max_packet_size << USB_OTG_HCCHAR_MPSIZ_Pos);
-}
-
-static void _halt_channel(stm32_usbh_channel_t *ch)
-{
-	unsigned sts;
-	unsigned cchar = otg_host->HC[ch->Index].HCCHAR & 
-		~(USB_OTG_HCCHAR_CHENA_Msk | USB_OTG_HCCHAR_CHDIS_Msk);
-
-	switch(ch->EndpointType)
-	{
-		case USB_TT_CONTROL:
-		case USB_TT_BULK:
-			sts = (otg_global->HNPTXSTS & USB_OTG_GNPTXSTS_NPTQXSAV_Msk) >> USB_OTG_GNPTXSTS_NPTQXSAV_Pos;
-			break;
-		default:
-			kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
-	}
-	
-	if (sts == 0)
-	{
-		usb_fs_host_flush_tx_fifo(ch->Index);
-	}
-	otg_host->HC[ch->Index].HCCHAR = cchar | USB_OTG_HCCHAR_CHENA; // halts channel
 }
 
 static bool _alloc_channel(unsigned *pindex, usb_host_pipe_t *pipe, usb_direction_t dir, unsigned char period)
@@ -449,24 +439,26 @@ void usb_fs_host_update_control_pipe(usb_host_pipe_t *pipe)
 	_update_channel(ep->Tx, pipe->Device->Address, pipe->Device->Speed, pipe->MaxPacketSize);
 }
 
-static void _xfer_complete(unsigned ch_num, urb_status_t status)
+static void _xfer_complete(unsigned ch_num, stm32_usbh_error_t err)
 {
 	stm32_usbh_channel_t *ch = &_ch_table[ch_num];
 	ASSERT(ch->EndpointNumber < NUM_ENDPOINTS, KERNEL_ERROR_KERNEL_PANIC);
 	stm32_usbh_ep_t *ep = _ch2ep[ch_num];
 	if (ep != nullptr && ep->Status != STM32_EP_STA_IDLE)
 	{
-
 		usb_request_buffer_t *urb = ch->Current.Request;
 		if (urb != nullptr)
 		{
-			if (status == URB_STATUS_DONE && urb->Pipe->Direction == USB_HOST_TO_DEVICE)
+			if (err == STM32_USBERR_OK && urb->Pipe->Direction == USB_HOST_TO_DEVICE)
 			{
 				urb->Done = urb->Length;
 			}
 
-			urb->Status = status;
-
+			urb->Status = (err == STM32_USBERR_OK) ? URB_STATUS_DONE : URB_STATUS_FAILED;
+#ifdef DEBUG
+			if (err != STM32_USBERR_OK)
+				urb->UserState = (void *)err;
+#endif
 			exos_event_reset(&urb->Event);
 			ch->Current.Request = nullptr;
 		}
@@ -486,14 +478,14 @@ static void _disable_channel(unsigned ch_num, bool wait)
 			stm32_usbh_ep_t *ep;
 			while(ep = _ch2ep[ch_num], ep != nullptr)
 			{
-				//ASSERT(ep->Status == STM32_EP_STA_STOPPING, KERNEL_ERROR_KERNEL_PANIC);
+				// TODO: debug timeout?
 			}
 		}
 	}
 	else
 	{
 		otg_host->HC[ch_num].HCINTMSK = 0;
-		_xfer_complete(ch_num, URB_STATUS_FAILED);
+		_xfer_complete(ch_num, STM32_USBERR_CANCEL);
 		_free_channel(ch_num);
 	}
 }
@@ -514,7 +506,7 @@ void usb_fs_host_stop_pipe(usb_host_pipe_t *pipe)
 	pool_free(&_ep_pool, &ep->Node);
 }
 
-static unsigned _write_fifo(unsigned ch_num, bool ack_done)
+static unsigned _write_fifo(unsigned ch_num)
 {
 	ASSERT(ch_num < NUM_CHANNELS, KERNEL_ERROR_KERNEL_PANIC);
 	stm32_usbh_channel_t *ch = &_ch_table[ch_num];
@@ -528,8 +520,8 @@ static unsigned _write_fifo(unsigned ch_num, bool ack_done)
 	
 	ASSERT(urb->Pipe != nullptr && urb->Pipe->Endpoint == ep, KERNEL_ERROR_KERNEL_PANIC);
 	ASSERT(urb->Pipe->EndpointNumber == ch->EndpointNumber, KERNEL_ERROR_KERNEL_PANIC);
-	if (ack_done)
-		urb->Done += xfer->LastPacketLength;
+	//if (ack_done)
+	//	urb->Done += xfer->LastPacketLength;
 
 	unsigned rem = (urb->Length > urb->Done) ? urb->Length - urb->Done : 0;
 	unsigned lenw = (rem + 3) >> 2;
@@ -555,7 +547,7 @@ static void _enable_channel(unsigned ch_num)
 
 	if (ch->Direction == USB_HOST_TO_DEVICE)
 	{
-		unsigned rem = _write_fifo(ch->Index, false);
+		unsigned rem = _write_fifo(ch->Index);
 		if (rem != 0)
 		{
 			switch(ch->EndpointType)
@@ -603,12 +595,10 @@ bool usb_fs_host_begin_xfer(usb_request_buffer_t *urb, usb_direction_t dir, bool
 	ASSERT(ch != nullptr, KERNEL_ERROR_KERNEL_PANIC);
 	unsigned ch_num = ch->Index;
 
-	ASSERT(ep->Status == STM32_EP_STA_IDLE, KERNEL_ERROR_NOT_IMPLEMENTED);	// TODO: queue
+	//ASSERT(ep->Status == STM32_EP_STA_IDLE, KERNEL_ERROR_NOT_SUPPORTED);	// TODO: queue
 	ep->Status = STM32_EP_STA_BUSY;
 	stm32_usbh_xfer_t *xfer = &ch->Current;	
 	xfer->Request = urb;
-
-//	otg_global->GAHBCFG &= ~USB_OTG_GAHBCFG_GINT;
 
 	switch(urb->Pipe->EndpointType)
 	{
@@ -621,7 +611,7 @@ bool usb_fs_host_begin_xfer(usb_request_buffer_t *urb, usb_direction_t dir, bool
 			ch->Toggle ^= num_packets & 1;
 
 			otg_host->HC[ch_num].HCCHAR = 
-				(otg_host->HC[ch_num].HCCHAR & ~(USB_OTG_HCCHAR_CHENA_Msk | USB_OTG_HCCHAR_ODDFRM_Msk))
+				(otg_host->HC[ch_num].HCCHAR & ~(USB_OTG_HCCHAR_CHENA_Msk | USB_OTG_HCCHAR_CHDIS_Msk | USB_OTG_HCCHAR_ODDFRM_Msk))
 				| ((otg_host->HFNUM & 1) ? 0 : USB_OTG_HCCHAR_ODDFRM);
 			break;
 		default:	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
@@ -632,8 +622,6 @@ bool usb_fs_host_begin_xfer(usb_request_buffer_t *urb, usb_direction_t dir, bool
 		| (ch->Pid << USB_OTG_HCTSIZ_DPID_Pos);
 
 	_enable_channel(ch_num);
-
-//	otg_global->GAHBCFG |= USB_OTG_GAHBCFG_GINT;
 	return true;
 }
 
@@ -709,7 +697,7 @@ void __usb_otg_nptxfe_irq_handler()
 	unsigned qtop = (sts & USB_OTG_GNPTXSTS_NPTXQTOP_Msk) >> USB_OTG_GNPTXSTS_NPTXQTOP_Pos;
 	unsigned ch_num = qtop >> 3;
 
-	unsigned rem = _write_fifo(ch_num, true);
+	unsigned rem = _write_fifo(ch_num);
 	if (rem == 0)
 	{
 		// disable int
@@ -733,17 +721,20 @@ void __usb_otg_hcint_irq_handler()
 
 				if (hcint & USB_OTG_HCINT_TXERR)
 				{
-					_xfer_complete(ch_num, URB_STATUS_FAILED);
+					_disable_channel(ch_num, false);	// NOTE: will trigger CHH interrupt
 					otg_host->HC[ch_num].HCINT = USB_OTG_HCINT_TXERR;
 				}
 				else if (hcint & USB_OTG_HCINT_STALL)
 				{
-					_xfer_complete(ch_num, URB_STATUS_FAILED);
+					_xfer_complete(ch_num, STM32_USBERR_STALL);
 					otg_host->HC[ch_num].HCINT = USB_OTG_HCINT_STALL;
 				}
 				else if (hcint & USB_OTG_HCINT_XFRC)
 				{
-					_xfer_complete(ch_num, URB_STATUS_DONE);
+					unsigned pktcnt = (otg_host->HC[ch_num].HCTSIZ & USB_OTG_HCTSIZ_PKTCNT_Msk) >> USB_OTG_HCTSIZ_PKTCNT_Pos;
+					ASSERT(pktcnt == 0, KERNEL_ERROR_KERNEL_PANIC);
+
+					_xfer_complete(ch_num, STM32_USBERR_OK);
 					otg_host->HC[ch_num].HCINT = USB_OTG_HCINT_XFRC | USB_OTG_HCINT_ACK;
 				}
 				else if (hcint & USB_OTG_HCINT_NAK)
@@ -797,7 +788,7 @@ void __usb_otg_hcint_irq_handler()
 								}
 								break;
 							case STM32_EP_STA_STOPPING:
-								_xfer_complete(ch_num, URB_STATUS_FAILED);
+								_xfer_complete(ch_num, STM32_USBERR_HALTED);
 								_free_channel(ch_num);
 								break;
 						}
@@ -859,5 +850,16 @@ void __usb_otg_host_irq_handler()
 			otg_host->HPRT = hprt_const | USB_OTG_HPRT_PENCHNG;	 // clear interrupt
 			exos_event_set(&_hc->RootHubEvent);
 		}
+	}
+
+	if (sta & USB_OTG_GINTMSK_DISCINT)
+	{
+		// TODO: somehow we should start a sw reset (they say)
+		// otg_global->GRSTCTL |= USB_OTG_GRSTCTL_CSRST; ??? 
+		
+//		_port_state = HPORT_ERROR;
+//		exos_event_set(&_hc->RootHubEvent);
+
+		otg_global->GINTSTS = USB_OTG_GINTSTS_DISCINT;
 	}
 }

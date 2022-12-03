@@ -45,8 +45,19 @@ typedef struct
 	stm32_usbh_channel_t *Rx;
 	stm32_usbh_ep_state_t Status;
 } stm32_usbh_ep_t;
- 
+
+typedef enum
+{
+	STM32_USBERR_OK = 0,
+	STM32_USBERR_CANCEL,
+	STM32_USBERR_TXERR,
+	STM32_USBERR_STALL,
+	STM32_USBERR_HALTED,
+} stm32_usbh_error_t;
+
 void usb_hs_host_initialize(usb_host_controller_t *hc, dispatcher_context_t *context);
+bool usb_hs_request_role_switch(usb_host_controller_t *hc);
+
 void usb_hs_host_port_reset();
 bool usb_hs_host_start_pipe(usb_host_pipe_t *pipe);
 void usb_hs_host_update_control_pipe(usb_host_pipe_t *pipe);
