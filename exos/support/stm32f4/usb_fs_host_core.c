@@ -92,10 +92,15 @@ bool usb_fs_request_role_switch(usb_host_controller_t *hc)
 	ASSERT(hc != nullptr, KERNEL_ERROR_NULL_POINTER);
 	ASSERT(_hc == hc, KERNEL_ERROR_KERNEL_PANIC);
 	
-	if (_port_state == HPORT_READY)	// AKA idle
+	if (_port_state == HPORT_READY ||	// AKA idle
+		_port_state == HPORT_POWERED)
 	{
 		_role_switch_requested = true;
-		_verbose(VERBOSE_DEBUG, "role-switch requested");	
+		_verbose(VERBOSE_DEBUG, "role-switch requested");
+
+		if (_port_state == HPORT_POWERED)
+			exos_event_set(&hc->RootHubEvent);
+
 		return true;
 	}
 	return false;
@@ -122,6 +127,9 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 				otg_host->HPRT = hprt_const | USB_OTG_HPRT_PRST;
 				timeout = 20;	// min 20ms
 			}
+			else if (_role_switch_requested)
+				_port_state = HPORT_DISABLED;
+
 			break;
 		case HPORT_RESET:
 			otg_host->HPRT = hprt_const & ~USB_OTG_HPRT_PRST;
@@ -195,15 +203,7 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 			
 			exos_thread_sleep(10);	// NOTE: avoid glitchy re-connect
 
-			if (_role_switch_requested)
-			{				
-				usb_otg_fs_initialize();
-
-				// remove root hub dispatchers
-				exos_dispatcher_remove(context, &_port_dispatcher);
-				_port_state = HPORT_DISABLED;
-			}
-			else _port_state = HPORT_POWERED;
+			_port_state = (_role_switch_requested) ? HPORT_DISABLED : HPORT_POWERED;
 			break;
 		default:
 			kernel_panic(KERNEL_ERROR_KERNEL_PANIC);
@@ -217,6 +217,12 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 	else 
 	{
 		verbose(VERBOSE_DEBUG, "usb-fs-roothub", "host root-hub disabled");
+
+		usb_otg_fs_initialize();
+
+		// remove root hub dispatchers
+		exos_dispatcher_remove(context, &_port_dispatcher);
+
 		__usb_host_disabled(_hc);
 	}
 }
