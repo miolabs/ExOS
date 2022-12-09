@@ -91,6 +91,9 @@ typedef struct __attribute__((__packed__))
 #define USB16TOH(u) (((u).Bytes[1] << 8) | ((u).Bytes[0]))
 #define HTOUSB16(h) (usb16_t){ (unsigned char)((h) & 0xFF), (unsigned char)((h) >> 8) }
 
+#define USB32TOH(u) (((u).Bytes[3] << 24) | ((u).Bytes[2] << 16) | ((u).Bytes[1] << 8) | ((u).Bytes[0]))
+#define HTOUSB32(h) (usb32_t){ (unsigned char)((h) & 0xFF), (unsigned char)((h) >> 8), (unsigned char)((h) >> 16), (unsigned char)((h) >> 24) }
+
 typedef struct __attribute__((__packed__))
 {
 	unsigned char Length;

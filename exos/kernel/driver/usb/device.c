@@ -393,8 +393,10 @@ static bool _setup_std_req(usb_request_t *req, void **pdata, unsigned *plength)
 		switch(code)
 		{
 			case USB_REQUEST_GET_DESCRIPTOR:
-				//_verbose("get_descriptor", req, 8);
+//				_verbose("get_descriptor", req, 8);
 				*pdata = usb_device_config_get_descriptor(req->Value, req->Index, plength); 
+				if (*pdata == nullptr)
+					_verbose("get_descriptor returned NULL", req, 8);
 				return (*pdata != nullptr);
 			case USB_REQUEST_SET_ADDRESS:
 				_verbose("set_address", &req->Value, 2);
