@@ -94,6 +94,7 @@ static void *_service(void *arg)
 	exos_dispatcher_create(&setup_dispatcher, &_control_event, _setup_handler, nullptr);
 
 	hal_usbd_initialize();
+	exos_thread_sleep(10);
 
 	_control_out = (usb_io_buffer_t) { .Event = &_control_event, .Flags = USB_IOF_SHORT_PACKET_END };
 	_control_in = (usb_io_buffer_t) { .Event = &_control_event, .Flags = USB_IOF_SHORT_PACKET_END };
@@ -103,10 +104,6 @@ static void *_service(void *arg)
 
 	while(1)
 	{
-		hal_usbd_prepare_setup_ep(&_setup_io);
-		hal_usbd_connect(true);
-		_verbose("connect! -----", nullptr, 0);
-
 		_address = _hal_addr = 0;
 		_configuration = nullptr;
 		_configuration_value = 0;
@@ -114,6 +111,10 @@ static void *_service(void *arg)
 		_error_state = false;
 
 		exos_dispatcher_add(&_context, &setup_dispatcher, EXOS_TIMEOUT_NEVER);
+
+		hal_usbd_prepare_setup_ep(&_setup_io);
+		hal_usbd_connect(true);
+		_verbose("connect! -----", nullptr, 0);
 
 		while(1)
 		{
@@ -459,8 +460,23 @@ static bool _setup_class_req(usb_request_t *req, void **pdata, unsigned *plength
 	usb_recipient_t recipient = req->RequestType & USB_REQTYPE_RECIPIENT_MASK;
 	if (recipient == USB_REQTYPE_RECIPIENT_DEVICE)
 	{
-		_verbose("class device request", req, 8);
-		return usb_device_setup_class_request(req, pdata, plength);
+		if (_configuration != NULL)
+		{
+			const usb_device_configuration_driver_t *driver = _configuration->Driver;
+			ASSERT(driver != nullptr, KERNEL_ERROR_NULL_POINTER);
+			if (driver->DeviceClassRequest != nullptr)
+			{
+				_verbose("class device request", req, 8);
+				return driver->DeviceClassRequest(req, pdata, plength);
+			}
+			_verbose("class device request unhandled (FAIL)", req, 8);
+			return false;
+		}
+		else 
+		{
+			_verbose("class device request called before SetConfiguration() (FAIL)", req, 8);
+			return false;
+		}
 	}
 	else if (recipient == USB_REQTYPE_RECIPIENT_INTERFACE)
 	{
@@ -480,8 +496,23 @@ static bool _setup_vendor_req(usb_request_t *req, void **pdata, unsigned *plengt
 	usb_recipient_t recipient = req->RequestType & USB_REQTYPE_RECIPIENT_MASK;
 	if (recipient == USB_REQTYPE_RECIPIENT_DEVICE)
 	{
-		_verbose("vendor device request", req, 8);
-		return usb_device_setup_vendor_request(req, pdata, plength);
+		if (_configuration != NULL)
+		{
+			const usb_device_configuration_driver_t *driver = _configuration->Driver;
+			ASSERT(driver != nullptr, KERNEL_ERROR_NULL_POINTER);
+			if (driver->DeviceVendorRequest != nullptr)
+			{
+				_verbose("vendor device request", req, 8);
+				return driver->DeviceVendorRequest(req, pdata, plength);
+			}
+			_verbose("vendor device request unhandled (FAIL)", req, 8);
+			return false;
+		}
+		else 
+		{
+			_verbose("vendor device request called before SetConfiguration() (FAIL)", req, 8);
+			return false;
+		}
 	}
 	else if (recipient == USB_REQTYPE_RECIPIENT_INTERFACE)
 	{

@@ -41,7 +41,22 @@ void hal_usbd_initialize()
 	otg_global->GUSBCFG |= USB_OTG_GUSBCFG_FDMOD;	// force usb-device mode
 #endif
 
-	// NOTE: we'll wait now until app calls connect(true) before enabling VBUSBSEN
+	otg_device->DCTL = USB_OTG_DCTL_SDIS;	// disable until app calls connect()
+
+#ifdef USB_FS_ENABLE_VBUS 
+	#ifdef USB_OTG_GCCFG_VBDEN
+		otg_global->GCCFG = USB_OTG_GCCFG_PWRDWN | USB_OTG_GCCFG_VBDEN;	
+#else
+		otg_global->GCCFG = USB_OTG_GCCFG_PWRDWN | USB_OTG_GCCFG_VBUSBSEN;	
+	#endif
+#else
+	#ifdef USB_OTG_GCCFG_NOVBUSSENS
+		otg_global->GCCFG = USB_OTG_GCCFG_PWRDWN | USB_OTG_GCCFG_NOVBUSSENS;	
+	#else
+		#warning "USB_OTG_GCCFG_NOVBUSSENS not defined"
+		otg_global->GCCFG = USB_OTG_GCCFG_PWRDWN | (1<<21);
+	#endif
+#endif
 }
 
 void hal_usbd_connect(bool connect)
@@ -51,11 +66,7 @@ void hal_usbd_connect(bool connect)
 		otg_global->GINTSTS = USB_OTG_GINTSTS_USBRST | USB_OTG_GINTSTS_ENUMDNE;
 		otg_global->GINTMSK |= USB_OTG_GINTMSK_USBRST | USB_OTG_GINTMSK_ENUMDNEM;
 
-#ifdef USB_FS_ENABLE_VBUS 
-		otg_global->GCCFG = USB_OTG_GCCFG_PWRDWN | USB_OTG_GCCFG_VBUSBSEN;	
-#else
-		otg_global->GCCFG = USB_OTG_GCCFG_PWRDWN | USB_OTG_GCCFG_NOVBUSSENS;	
-#endif
+		otg_device->DCTL = 0;	// clear USB_OTG_DCTL_SDIS
 		// NOTE: we should receive a reset now, when connected
 	}
 	else

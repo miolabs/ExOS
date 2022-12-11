@@ -118,24 +118,9 @@ void usb_device_config_add_interface(usb_device_configuration_t *conf, usb_devic
 	exos_mutex_unlock(&_configs_lock);
 }
 
-static int _measure_config(usb_device_configuration_t *conf, int conf_index)
+static unsigned _fill_config(usb_configuration_descriptor_t *desc, unsigned char index, unsigned *plength)
 {
-	int size = sizeof(usb_configuration_descriptor_t);
-	FOREACH(node, &conf->Interfaces)
-	{
-		usb_device_interface_t *iface = (usb_device_interface_t *)node;
-		const usb_device_interface_driver_t *driver = iface->Driver;
-		if (driver == nullptr || driver->MeasureInterfaceDescriptors == nullptr)
-			kernel_panic(KERNEL_ERROR_NULL_POINTER);
-
-		size += driver->MeasureInterfaceDescriptors(iface);
-	}
-	return size;
-}
-
-static int _fill_config(usb_configuration_descriptor_t *desc, unsigned char index, int *plength)
-{
-	int length = *plength;
+	unsigned conf_length = *plength;
 	usb_device_configuration_t *conf = usb_device_config_get(index);
 	if (conf == nullptr)
 	{
@@ -148,32 +133,35 @@ static int _fill_config(usb_configuration_descriptor_t *desc, unsigned char inde
 
 	desc->ConfigurationValue = conf->Value;
 	desc->ConfigurationIndex = index;
-	int total = 0;
-	int done = driver->FillConfigurationDescriptor(index, desc, USB_CONF_BUFFER_SIZE - total);
+	unsigned total = 0;
+	unsigned done = driver->FillConfigurationDescriptor(index, desc, USB_CONF_BUFFER_SIZE - total);
 	// NOTE: driver must fill Attributes/MaxPower fields
-	if (done != 0 && desc->MaxPower != 0)
+	ASSERT(done >= sizeof(usb_configuration_descriptor_t), KERNEL_ERROR_KERNEL_PANIC);
+	if (desc->MaxPower != 0)
 		desc->Attributes |= USB_CONFIG_BUS_POWERED;	// USB2.0 spec mandates bit set even when self-powered 
 
-	desc->TotalLength = HTOUSB16(_measure_config(conf, index));
-	desc->NumInterfaces = list_get_count(&conf->Interfaces);
 	total += done;
+	ASSERT(total <= USB_CONF_BUFFER_SIZE, KERNEL_ERROR_KERNEL_PANIC);
 
-	int if_index = 0;
+	unsigned if_index = 0;
 	FOREACH(node, &conf->Interfaces)
 	{
 		usb_device_interface_t *iface = (usb_device_interface_t *)node;
 		const usb_device_interface_driver_t *driver = iface->Driver;
-		if (driver == nullptr || driver->FillInterfaceDescriptor == nullptr || driver->FillEndpointDescriptor == nullptr)
-			kernel_panic(KERNEL_ERROR_NULL_POINTER);
+		ASSERT(driver != NULL, KERNEL_ERROR_NULL_POINTER);
+		ASSERT(driver->FillInterfaceDescriptor != NULL && driver->FillEndpointDescriptor != NULL, KERNEL_ERROR_NULL_POINTER);
 
-		if (total < length)
+		for(unsigned alt_setting = 0; alt_setting <= iface->AlternateSettings; alt_setting++)
 		{
 			void *ptr = (void *)desc + total;
 			usb_interface_descriptor_t *if_desc = (usb_interface_descriptor_t *)ptr;
-			*if_desc = (usb_interface_descriptor_t) { .InterfaceNumber = iface->Index };
-			int size = driver->FillInterfaceDescriptor(iface, if_desc, USB_CONF_BUFFER_SIZE - total);
-			if (size != 0) if_desc->Header = (usb_descriptor_header_t) { .Length = size, .DescriptorType = USB_DESCRIPTOR_TYPE_INTERFACE };
+			*if_desc = (usb_interface_descriptor_t) { .InterfaceNumber = iface->Index, .AlternateSetting = alt_setting };
+			unsigned size = driver->FillInterfaceDescriptor(iface, if_desc, USB_CONF_BUFFER_SIZE - total);
+			ASSERT(size != 0 && size >= sizeof(usb_interface_descriptor_t), KERNEL_ERROR_KERNEL_PANIC);
+
+			if_desc->Header = (usb_descriptor_header_t) { .Length = size, .DescriptorType = USB_DESCRIPTOR_TYPE_INTERFACE };
 			total += size;
+			ASSERT(total <= USB_CONF_BUFFER_SIZE, KERNEL_ERROR_KERNEL_PANIC);
 			ptr += size;
 
 			if (driver->FillClassDescriptor != nullptr)
@@ -189,22 +177,21 @@ static int _fill_config(usb_configuration_descriptor_t *desc, unsigned char inde
 				}
 			}
 
-			int ep_index = 0; 
-			while (total < length)
+			for(unsigned ep_index = 0; ep_index < if_desc->NumEndpoints; ep_index++) 
 			{
+				ASSERT(total < conf_length, KERNEL_ERROR_KERNEL_PANIC);
 				size = driver->FillEndpointDescriptor(iface, ep_index, (usb_endpoint_descriptor_t *)ptr, USB_CONF_BUFFER_SIZE - total);
-				if (size == 0)
-					break;
-
+				if (size == 0) break;
 				*(usb_descriptor_header_t *)ptr = (usb_descriptor_header_t) { .Length = size, .DescriptorType = USB_DESCRIPTOR_TYPE_ENDPOINT };
 				total += size;
 				ptr += size;
-
-				ep_index++;
 			}
-			if_index++;
 		}
+		if_index++;
 	}
+
+	desc->TotalLength = HTOUSB16(total);
+	desc->NumInterfaces = if_index;
 	*plength = total;
 	return sizeof(usb_configuration_descriptor_t);
 }
@@ -235,7 +222,7 @@ static int _fill_string(usb_string_descriptor_t *desc, unsigned char index)
 
 
 
-usb_descriptor_header_t *usb_device_config_get_descriptor(unsigned short req_value, unsigned short req_index, int *plength)
+usb_descriptor_header_t *usb_device_config_get_descriptor(unsigned short req_value, unsigned short req_index, unsigned *plength)
 {
 	usb_descriptor_type_t desc_type = req_value >> 8;
 	int desc_index = req_value & 0xFF;

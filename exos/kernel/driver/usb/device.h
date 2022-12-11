@@ -71,12 +71,12 @@ typedef struct
 	usb_device_string_t Name;
 	usb_if_status_t Status;
 	unsigned char Index;
+	unsigned char AlternateSettings;
 } usb_device_interface_t;
 
 struct usb_device_interface_driver
 {
 	bool (*Initialize)(usb_device_interface_t *iface, const void *instance_data);
-	unsigned (*MeasureInterfaceDescriptors)(usb_device_interface_t *iface);
 	unsigned (*FillInterfaceDescriptor)(usb_device_interface_t *iface, usb_interface_descriptor_t *if_desc, unsigned buffer_size);
 	unsigned (*FillClassDescriptor)(usb_device_interface_t *iface, usb_descriptor_header_t *class_desc, unsigned buffer_size);
 	unsigned (*FillEndpointDescriptor)(usb_device_interface_t *iface, unsigned ep_index, usb_endpoint_descriptor_t *ep_desc, unsigned buffer_size);

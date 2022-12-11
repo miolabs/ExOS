@@ -6,9 +6,10 @@
 
 typedef struct
 {
-	int (*FillConfigurationDescriptor)(int conf_index, usb_configuration_descriptor_t *conf_desc, int buffer_size);
-	void (*Configured)(int conf_index, bool configured);
-	//TODO
+	unsigned (*FillConfigurationDescriptor)(unsigned conf_index, usb_configuration_descriptor_t *conf_desc, unsigned buffer_size);
+	void (*Configured)(unsigned conf_index, bool configured);
+	bool (*DeviceClassRequest)(usb_request_t *req, void **pdata, int *plength);
+	bool (*DeviceVendorRequest)(usb_request_t *req, void **pdata, int *plength);
 } usb_device_configuration_driver_t;
 
 typedef struct
@@ -37,17 +38,13 @@ void usb_device_interface_create(usb_device_interface_t *iface, const usb_device
 unsigned usb_device_config_add_string(usb_device_string_t *str, const char *value);
 const char *usb_device_config_get_string(int index);
 
-usb_descriptor_header_t *usb_device_config_get_descriptor(unsigned short req_value, unsigned short req_index, int *plength);
+usb_descriptor_header_t *usb_device_config_get_descriptor(unsigned short req_value, unsigned short req_index, unsigned *plength);
 
 // optional customization callbacks
 void usb_device_add_configurations() __weak;
 int usb_device_fill_device_descriptor(usb_device_descriptor_t *desc);
 int usb_device_fill_class_descriptor(usb_descriptor_header_t *desc, unsigned short req_value, unsigned short req_index, int max_plength);
 int usb_device_fill_vendor_descriptor(usb_descriptor_header_t *desc, unsigned short req_value, unsigned short req_index, int max_plength);
-
-// FIXME: could this be moved to configuration driver? (i.e. are they used ONLY after SetConfiguration?)
-bool usb_device_setup_class_request(usb_request_t *req, void **pdata, int *plength);
-bool usb_device_setup_vendor_request(usb_request_t *req, void **pdata, int *plength);
 
 
 #endif // USB_DEVICE_CONFIG_H
