@@ -15,7 +15,7 @@ static bool _start(usb_device_interface_t *iface, unsigned char alternate_settin
 static void _stop(usb_device_interface_t *iface);
 
 static const usb_device_interface_driver_t _driver = { .Initialize = _initialize,
-	.MeasureInterfaceDescriptors = _measure_if_desc, .FillInterfaceDescriptor = _fill_if_desc, 
+	.FillInterfaceDescriptor = _fill_if_desc, 
 	.FillEndpointDescriptor = _fill_ep_desc,
 	.Start = _start, .Stop = _stop };
 const usb_device_interface_driver_t *__usb_ftdi_driver = &_driver;
@@ -156,11 +156,6 @@ static unsigned _fill_string(int *poffset, const char *s)
 		_eeprom[offset + i] = 0;
 	}
 	return 0;
-}
-
-static unsigned _measure_if_desc(usb_device_interface_t *iface)
-{
-	return sizeof(usb_interface_descriptor_t) + (2 * sizeof(usb_endpoint_descriptor_t));
 }
 
 static unsigned _fill_if_desc(usb_device_interface_t *iface, usb_interface_descriptor_t *if_desc, unsigned buffer_size)
