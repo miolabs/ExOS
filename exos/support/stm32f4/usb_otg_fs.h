@@ -23,8 +23,8 @@ typedef struct
 		volatile unsigned long DIEPTXF0;	// device mode
 	};
 	volatile unsigned long HNPTXSTS;
-	volatile unsigned long Reserved030;	
-	volatile unsigned long Reserved034;	
+	volatile unsigned long Reserved30;	
+	volatile unsigned long Reserved34;	
 	volatile unsigned long GCCFG;
 	volatile unsigned long CID;	
 	volatile unsigned long Reserved40[48];
@@ -32,6 +32,7 @@ typedef struct
 	volatile unsigned long DIEPTXF1;
 	volatile unsigned long DIEPTXF2;
 	volatile unsigned long DIEPTXF3;
+	volatile unsigned long DIEPTXF4;
 } usb_otg_crs_global_t;
 
 #define OTG_FS_GAHBCFG_GINTMASK (1<<0)

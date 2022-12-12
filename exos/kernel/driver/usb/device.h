@@ -61,11 +61,31 @@ typedef struct
 	const char *String;
 } usb_device_string_t;
 
+
+typedef struct
+{
+	unsigned (*FillConfigurationDescriptor)(unsigned conf_index, usb_configuration_descriptor_t *conf_desc, unsigned buffer_size);
+	void (*Configured)(unsigned conf_index, bool configured);
+	bool (*DeviceClassRequest)(usb_request_t *req, void **pdata, unsigned *plength);
+	bool (*DeviceVendorRequest)(usb_request_t *req, void **pdata, unsigned *plength);
+} usb_device_configuration_driver_t;
+
+typedef struct
+{
+	node_t Node;
+	const usb_device_configuration_driver_t *Driver;
+	list_t Interfaces;
+	unsigned char Value;
+	unsigned char Index;
+} usb_device_configuration_t;
+
+
 typedef struct usb_device_interface_driver usb_device_interface_driver_t;
 
 typedef struct
 {
 	node_t Node;
+	usb_device_configuration_t *Configuration;
 	const usb_device_interface_driver_t *Driver;
 	void *DriverContext;
 	usb_device_string_t Name;
@@ -77,16 +97,19 @@ typedef struct
 struct usb_device_interface_driver
 {
 	bool (*Initialize)(usb_device_interface_t *iface, const void *instance_data);
+	unsigned (*FillInterfaceAssociationDescriptor)(usb_device_interface_t *iface, usb_interface_association_descriptor_t *iad, unsigned buffer_size);
 	unsigned (*FillInterfaceDescriptor)(usb_device_interface_t *iface, usb_interface_descriptor_t *if_desc, unsigned buffer_size);
 	unsigned (*FillClassDescriptor)(usb_device_interface_t *iface, usb_descriptor_header_t *class_desc, unsigned buffer_size);
 	unsigned (*FillEndpointDescriptor)(usb_device_interface_t *iface, unsigned ep_index, usb_endpoint_descriptor_t *ep_desc, unsigned buffer_size);
 	bool (*Start)(usb_device_interface_t *iface, unsigned char alternate_setting, dispatcher_context_t *context);
 	void (*Stop)(usb_device_interface_t *iface);
+	bool (*SetInterface)(usb_device_interface_t *iface, unsigned short alternate_setting);
 
 	bool (*VendorRequest)(usb_device_interface_t *iface, usb_request_t *req, void **pdata, unsigned *plength);
 	bool (*InterfaceRequest)(usb_device_interface_t *iface, usb_request_t *req, void **pdata, unsigned *plength);
 	bool (*ClassRequest)(usb_device_interface_t *iface, usb_request_t *req, void **pdata, unsigned *plength);
 };
+
 
 // prototypes
 bool usb_device_initialize();

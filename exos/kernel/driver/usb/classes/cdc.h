@@ -66,6 +66,7 @@ typedef enum
     USB_CDC_FUNC_DESCRIPTOR_SUBTYPE_CSD = 0x17,
     USB_CDC_FUNC_DESCRIPTOR_SUBTYPE_TCM = 0x18,
     USB_CDC_FUNC_DESCRIPTOR_SUBTYPE_OBEX_SI = 0x19,
+	USB_CDC_FUNC_DESCRIPTOR_SUBTYPE_NCM = 0x1A,
 } usb_cdc_func_descriptor_subtype_t;
 
 typedef struct

@@ -78,12 +78,12 @@ typedef struct
 // descriptors info
 /////////////////////////
 
-typedef struct __attribute__((__packed__))
+typedef struct __packed
 {
 	unsigned char Bytes[2];
 } usb16_t;
 
-typedef struct __attribute__((__packed__))
+typedef struct __packed
 {
 	unsigned char Bytes[4];
 } usb32_t;
@@ -94,13 +94,13 @@ typedef struct __attribute__((__packed__))
 #define USB32TOH(u) (((u).Bytes[3] << 24) | ((u).Bytes[2] << 16) | ((u).Bytes[1] << 8) | ((u).Bytes[0]))
 #define HTOUSB32(h) (usb32_t){ (unsigned char)((h) & 0xFF), (unsigned char)((h) >> 8), (unsigned char)((h) >> 16), (unsigned char)((h) >> 24) }
 
-typedef struct __attribute__((__packed__))
+typedef struct __packed
 {
 	unsigned char Length;
 	unsigned char DescriptorType;
 } usb_descriptor_header_t;
 
-typedef struct __attribute__((__packed__))
+typedef struct __packed
 {
 	usb_descriptor_header_t Header;
 	usb16_t USBVersion;
@@ -117,17 +117,17 @@ typedef struct __attribute__((__packed__))
 	unsigned char NumConfigurations;
 } usb_device_descriptor_t;
 
-typedef struct __attribute__((__packed__))
+typedef struct __packed
 {
 	usb_descriptor_header_t Header;
 	usb16_t TotalLength;
 	unsigned char NumInterfaces;
 	unsigned char ConfigurationValue;
 	unsigned char ConfigurationIndex;
-	union __attribute__((__packed__))
+	union __packed
 	{
 		unsigned char Attributes;
-		struct __attribute__((__packed__))
+		struct __packed
 		{
 			unsigned :5;
 			unsigned RemoteWakeup:1;
@@ -138,7 +138,18 @@ typedef struct __attribute__((__packed__))
 	unsigned char MaxPower;	// bus-power, in 2mA units
 } usb_configuration_descriptor_t;
 
-typedef struct __attribute__((__packed__))
+typedef struct __packed
+{
+	usb_descriptor_header_t Header;
+	unsigned char FirstInterface;
+	unsigned char InterfaceCount;
+	unsigned char FunctionClass;
+	unsigned char FunctionSubclass;
+	unsigned char FunctionProtocol;
+	unsigned char FunctionNameIndex; 
+} usb_interface_association_descriptor_t;
+
+typedef struct __packed
 {
 	usb_descriptor_header_t Header;
 	unsigned char InterfaceNumber;
@@ -164,23 +175,23 @@ typedef enum
 	USB_DEVICE_TO_HOST = 1,
 } usb_direction_t;
 
-typedef struct __attribute__((__packed__))
+typedef struct __packed
 {
 	usb_descriptor_header_t Header;
-	union __attribute__((__packed__))
+	union __packed
 	{
 		unsigned char Address;
-		struct __attribute__((__packed__))
+		struct __packed
 		{
 			unsigned EndpointNumber:4;
 			unsigned :3;
 			unsigned Input:1;
 		} AddressBits;
 	};
-	union __attribute__((__packed__))
+	union __packed
 	{
 		unsigned char Attributes;
-		struct __attribute__((__packed__))
+		struct __packed
 		{
 			unsigned TransferType:2;
 			unsigned IsoSyncType:2;
@@ -192,13 +203,13 @@ typedef struct __attribute__((__packed__))
 	unsigned char Interval;
 } usb_endpoint_descriptor_t;
 
-typedef struct __attribute__((__packed__))
+typedef struct __packed
 {
 	usb_descriptor_header_t Header;
 	usb16_t String[0];
 } usb_string_descriptor_t;
 
-typedef struct __attribute__((__packed__))
+typedef struct __packed
 {
 	usb_descriptor_header_t Header;
 	unsigned char FirstInterface;

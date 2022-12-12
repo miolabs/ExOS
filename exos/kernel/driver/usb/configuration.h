@@ -4,23 +4,6 @@
 #include <usb/usb.h>
 #include <usb/device.h>
 
-typedef struct
-{
-	unsigned (*FillConfigurationDescriptor)(unsigned conf_index, usb_configuration_descriptor_t *conf_desc, unsigned buffer_size);
-	void (*Configured)(unsigned conf_index, bool configured);
-	bool (*DeviceClassRequest)(usb_request_t *req, void **pdata, int *plength);
-	bool (*DeviceVendorRequest)(usb_request_t *req, void **pdata, int *plength);
-} usb_device_configuration_driver_t;
-
-typedef struct
-{
-	node_t Node;
-	const usb_device_configuration_driver_t *Driver;
-	list_t Interfaces;
-	unsigned char Value;
-	unsigned char Index;
-} usb_device_configuration_t;
-
 #define USB_CONFIG_POWER(ma) (ma / 2)
 #define USB_EP_IN(ep) (ep | 0x80)
 #define USB_EP_OUT(ep) (ep | 0x00)

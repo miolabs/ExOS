@@ -20,6 +20,7 @@ static unsigned char _stack[USB_THREAD_STACK];
 #endif
 
 static void *_service(void *arg);
+static event_t _setup_event;
 static event_t _control_event;
 static mutex_t _device_lock;
 
@@ -61,7 +62,7 @@ bool usb_device_initialize()
 }
 
 #ifdef USB_DEVICE_DEBUG
-#define _verbose(prefix, data, length) _debug(prefix, data, length)
+#define _verbose(level, ...) verbose(level, "usb_device", __VA_ARGS__)
 
 static void _debug(const char *prefix, const void *data, unsigned length)
 {
@@ -79,7 +80,8 @@ static void _debug(const char *prefix, const void *data, unsigned length)
 }
 
 #else
-#define _verbose(prefix, data, length)  { /* nothing */ }
+#define _debug(prefix, data, length)  { /* nothing */ }
+#define _verbose(level, ...)  { /* nothing */ }
 #endif
 
 static void *_service(void *arg)
@@ -87,18 +89,19 @@ static void *_service(void *arg)
 	event_t *start_event = (event_t *)arg;
 
 	exos_mutex_create(&_device_lock);
+	exos_event_create(&_setup_event, EXOS_EVENTF_AUTORESET);
 	exos_event_create(&_control_event, EXOS_EVENTF_AUTORESET);
 
 	exos_dispatcher_context_create(&_context);
 	dispatcher_t setup_dispatcher;
-	exos_dispatcher_create(&setup_dispatcher, &_control_event, _setup_handler, nullptr);
+	exos_dispatcher_create(&setup_dispatcher, &_setup_event, _setup_handler, nullptr);
 
 	hal_usbd_initialize();
 	exos_thread_sleep(10);
 
 	_control_out = (usb_io_buffer_t) { .Event = &_control_event, .Flags = USB_IOF_SHORT_PACKET_END };
 	_control_in = (usb_io_buffer_t) { .Event = &_control_event, .Flags = USB_IOF_SHORT_PACKET_END };
-	_setup_io = (usb_io_buffer_t) { .Event = &_control_event, .Data = _setup_data, .Length = 8 };
+	_setup_io = (usb_io_buffer_t) { .Event = &_setup_event, .Data = _setup_data, .Length = 8 };
 
 	exos_event_set(start_event);
 
@@ -114,7 +117,7 @@ static void *_service(void *arg)
 
 		hal_usbd_prepare_setup_ep(&_setup_io);
 		hal_usbd_connect(true);
-		_verbose("connect! -----", nullptr, 0);
+		_verbose(VERBOSE_COMMENT, "connect! -----");
 
 		while(1)
 		{
@@ -126,12 +129,12 @@ static void *_service(void *arg)
 
     	if (_configuration != nullptr)
 		{
-			_verbose("disconnect!", nullptr, 0);
+			_verbose(VERBOSE_COMMENT, "disconnect!");
 			_stop_configuration(_configuration);
 		}
 		else
 		{
-			_verbose("reset!", nullptr, 0);
+			_verbose(VERBOSE_COMMENT, "reset!");
 		}
 	}
 }
@@ -143,7 +146,7 @@ static void _setup_handler(dispatcher_context_t *context, dispatcher_t *dispatch
 		exos_mutex_lock(&_device_lock);
 		memcpy(&_setup, _setup_data, 8); 
 		hal_usbd_prepare_setup_ep(&_setup_io);
-		//_verbose("setup", &_setup, 8);
+		//_debug("setup", &_setup, 8);
 
 		if ((_setup.RequestType & USB_REQTYPE_DIRECTION_MASK) == USB_REQTYPE_HOST_TO_DEVICE) 
 		{
@@ -152,12 +155,12 @@ static void _setup_handler(dispatcher_context_t *context, dispatcher_t *dispatch
 				_control_out.Data = _control_data;
 				_control_out.Length = _setup.Length;
 				hal_usbd_prepare_out_ep(0, &_control_out);
-				_verbose("-> data_out", nullptr, 0);
+				_verbose(VERBOSE_DEBUG, "-> data_out");
 
 				exos_event_wait(_control_out.Event, EXOS_TIMEOUT_NEVER);
 				if (_control_out.Status != USB_IOSTA_DONE)
 				{
-					_verbose("data out failed", nullptr, 0);
+					_verbose(VERBOSE_ERROR, "data out failed");
 					_error_state = true;
 				}
 			}
@@ -165,7 +168,7 @@ static void _setup_handler(dispatcher_context_t *context, dispatcher_t *dispatch
 
 		if (!_error_state)
 		{
-			//_verbose("-> process request", nullptr, 0);
+			//_verbose(VERBOSE_DEBUG, "-> process request");
 			unsigned length = _setup.Length;
 			void *data = _control_data;
 			bool done = _setup_req(&_setup, &data, &length);
@@ -178,18 +181,18 @@ static void _setup_handler(dispatcher_context_t *context, dispatcher_t *dispatch
 					_control_in.Data = data;
 					_control_in.Length = length;
 					hal_usbd_prepare_in_ep(0, &_control_in);
-					//_verbose("-> data_in", data, length);
+					//_debug("-> data_in", data, length);
 
 					exos_event_wait(_control_in.Event, EXOS_TIMEOUT_NEVER);
 					if (_control_in.Status != USB_IOSTA_DONE)
 					{
-						_verbose("data in failed", nullptr, 0);
+						_verbose(VERBOSE_ERROR, "data in failed");
                         _error_state = true;
 					}
 				}
 				else
 				{
-					_verbose("-> stall in (FAIL)", nullptr, 0);
+					_verbose(VERBOSE_ERROR, "-> stall in (FAIL)");
 					hal_usbd_stall_in_ep(0, true);
 				}
 			}
@@ -200,18 +203,18 @@ static void _setup_handler(dispatcher_context_t *context, dispatcher_t *dispatch
 					_control_in.Data = _control_data;
 					_control_in.Length = 0;
 					hal_usbd_prepare_in_ep(0, &_control_in);
-					//_verbose("-> status_in", nullptr, 0);
+					//_verbose(VERBOSE_DEBUG, "-> status_in");
 
 					exos_event_wait(_control_in.Event, EXOS_TIMEOUT_NEVER);
 					if (_control_in.Status != USB_IOSTA_DONE)
 					{
-						_verbose("status in failed", nullptr, 0);
+						_verbose(VERBOSE_ERROR, "status in failed");
                         _error_state = true;
 					}
 				}
 				else
 				{
-					_verbose("-> stall out (FAIL)", nullptr, 0);
+					_verbose(VERBOSE_ERROR, "-> stall out (FAIL)");
 					hal_usbd_stall_out_ep(0, true);
 				}
 			}
@@ -272,11 +275,18 @@ static void _stop_configuration(usb_device_configuration_t *conf)
 	hal_usbd_configure(false);
 }
 
+static void _set_interface(usb_device_interface_t *iface, unsigned alt_setting)
+{
+
+
+	// TODO
+}
+
 static void _set_configuration(unsigned char conf_value)
 {
     usb_device_configuration_t *conf;
 	unsigned conf_index = 0;
-	while (conf = usb_device_config_get(conf_index))
+	while (conf = usb_device_config_get(conf_index), conf != NULL)
 	{
 		if (conf->Value == conf_value)
 		{
@@ -288,6 +298,8 @@ static void _set_configuration(unsigned char conf_value)
 			FOREACH(node, &conf->Interfaces)
 			{
 				usb_device_interface_t *if_node = (usb_device_interface_t *)node;
+				_verbose(VERBOSE_DEBUG, "setting conf on if %d", if_node->Index);
+
 				const usb_device_interface_driver_t *if_driver = if_node->Driver;
 				if (if_driver == nullptr)
 					kernel_panic(KERNEL_ERROR_NULL_POINTER);
@@ -295,6 +307,7 @@ static void _set_configuration(unsigned char conf_value)
 				usb_endpoint_descriptor_t ep_desc;
 				for (int ep_index = 0; ; ep_index++)
 				{
+					ASSERT(driver->FillConfigurationDescriptor != nullptr, KERNEL_ERROR_NULL_POINTER);
 					int size = if_driver->FillEndpointDescriptor(if_node, ep_index, &ep_desc, sizeof(usb_endpoint_descriptor_t));
 					if (size == 0) break;
 
@@ -397,15 +410,15 @@ static bool _setup_std_req(usb_request_t *req, void **pdata, unsigned *plength)
 //				_verbose("get_descriptor", req, 8);
 				*pdata = usb_device_config_get_descriptor(req->Value, req->Index, plength); 
 				if (*pdata == nullptr)
-					_verbose("get_descriptor returned NULL", req, 8);
+					_debug("get_descriptor returned NULL", req, 8);
 				return (*pdata != nullptr);
 			case USB_REQUEST_SET_ADDRESS:
-				_verbose("set_address", &req->Value, 2);
+				_verbose(VERBOSE_DEBUG, "set_address $%x", req->Value);
 				_address = req->Value & 0x7f;			// NOTE: will call hal layer after request handshake
 				hal_usbd_set_address_early(_address);	// NOTE: some cores (lpc17/stm32_fs) use this call
 				return true;
 			case USB_REQUEST_SET_CONFIGURATION:
-				_verbose("set_configuration", &req->Value, 2);
+				_verbose(VERBOSE_DEBUG, "set_configuration $%x", req->Value);
 				_set_configuration(req->Value & 0xff);
 				return true;
 			case USB_REQUEST_GET_STATUS:
@@ -419,13 +432,25 @@ static bool _setup_std_req(usb_request_t *req, void **pdata, unsigned *plength)
 	}
 	else if (recipient == USB_REQTYPE_RECIPIENT_INTERFACE)
 	{
-		_verbose("interface request", req, 8);
 		usb_device_interface_t *iface = _get_interface(req->Index);
 		ASSERT(iface != nullptr, KERNEL_ERROR_KERNEL_PANIC);
+
 		const usb_device_interface_driver_t *driver = iface->Driver;
 		ASSERT(driver != nullptr, KERNEL_ERROR_NULL_POINTER);
-		if (driver->InterfaceRequest != nullptr)
-			return driver->InterfaceRequest(iface, req, pdata, plength);
+		if (req->RequestCode == USB_REQUEST_SET_INTERFACE)
+		{
+			_verbose(VERBOSE_DEBUG, "set_interface %d (alt=$%x)", iface->Index, req->Value);
+			if (driver->SetInterface != nullptr)
+				driver->SetInterface(iface, req->Value);
+			_set_interface(iface, req->Value);
+			return true;
+		}
+		else
+		{
+			_debug("interface request", req, 8);
+			if (driver->InterfaceRequest != nullptr)
+				return driver->InterfaceRequest(iface, req, pdata, plength);
+		}
 	}
 	else if (recipient == USB_REQTYPE_RECIPIENT_ENDPOINT)
 	{
@@ -437,12 +462,12 @@ static bool _setup_std_req(usb_request_t *req, void **pdata, unsigned *plength)
 				{
 					if (req->Index & 0x80)
 					{
-						_verbose("clear_halt in ep", nullptr, ep_num);
+						_verbose(VERBOSE_DEBUG, "clear_halt in ep %d", ep_num);
 						hal_usbd_stall_in_ep(ep_num, false);
 					}
 					else
 					{
-						_verbose("clear_halt out ep", nullptr, ep_num);
+						_verbose(VERBOSE_DEBUG, "clear_halt out ep %d", ep_num);
 						hal_usbd_stall_out_ep(ep_num, false);
 					}
 				}
@@ -466,21 +491,21 @@ static bool _setup_class_req(usb_request_t *req, void **pdata, unsigned *plength
 			ASSERT(driver != nullptr, KERNEL_ERROR_NULL_POINTER);
 			if (driver->DeviceClassRequest != nullptr)
 			{
-				_verbose("class device request", req, 8);
+				_debug("class device request", req, 8);
 				return driver->DeviceClassRequest(req, pdata, plength);
 			}
-			_verbose("class device request unhandled (FAIL)", req, 8);
+			_debug("class device request unhandled (FAIL)", req, 8);
 			return false;
 		}
 		else 
 		{
-			_verbose("class device request called before SetConfiguration() (FAIL)", req, 8);
+			_debug("class device request called before SetConfiguration() (FAIL)", req, 8);
 			return false;
 		}
 	}
 	else if (recipient == USB_REQTYPE_RECIPIENT_INTERFACE)
 	{
-		_verbose("class interface request", req, 8);
+		_debug("class interface request", req, 8);
 		usb_device_interface_t *iface = _get_interface(req->Index);
 		ASSERT(iface != nullptr, KERNEL_ERROR_KERNEL_PANIC);
 		const usb_device_interface_driver_t *driver = iface->Driver;
@@ -502,21 +527,21 @@ static bool _setup_vendor_req(usb_request_t *req, void **pdata, unsigned *plengt
 			ASSERT(driver != nullptr, KERNEL_ERROR_NULL_POINTER);
 			if (driver->DeviceVendorRequest != nullptr)
 			{
-				_verbose("vendor device request", req, 8);
+				_debug("vendor device request", req, 8);
 				return driver->DeviceVendorRequest(req, pdata, plength);
 			}
-			_verbose("vendor device request unhandled (FAIL)", req, 8);
+			_debug("vendor device request unhandled (FAIL)", req, 8);
 			return false;
 		}
 		else 
 		{
-			_verbose("vendor device request called before SetConfiguration() (FAIL)", req, 8);
+			_debug("vendor device request called before SetConfiguration() (FAIL)", req, 8);
 			return false;
 		}
 	}
 	else if (recipient == USB_REQTYPE_RECIPIENT_INTERFACE)
 	{
-		_verbose("vendor interface request", req, 8);
+		_debug("vendor interface request", req, 8);
 		usb_device_interface_t *iface = _get_interface(req->Index);
 		ASSERT(iface != nullptr, KERNEL_ERROR_KERNEL_PANIC);
 		const usb_device_interface_driver_t *driver = iface->Driver;

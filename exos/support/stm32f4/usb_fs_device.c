@@ -4,7 +4,7 @@
 #include <kernel/panic.h>
 #include <string.h>
 
-#define USB_DEV_EP_COUNT 4
+#define USB_DEV_EP_COUNT 5
 
 static usb_otg_crs_global_t * const otg_global = (usb_otg_crs_global_t *)(USB_OTG_FS_BASE + 0x000);
 static usb_otg_crs_device_t * const otg_device = (usb_otg_crs_device_t *)(USB_OTG_FS_BASE + 0x800);
@@ -21,6 +21,9 @@ static usb_io_buffer_t *_ep_in_io[USB_DEV_EP_COUNT];
 static unsigned char _ep_max_length[USB_DEV_EP_COUNT];
 static unsigned char _in_ep_last_packet[USB_DEV_EP_COUNT];
 
+// NOTE: total fifo size for OTG_FS is 320 words (1280 bytes)
+#define FIFO_RX_WORDS	240		// words shared for all OUT EP
+#define FIFO_TX_WORDS	16		// words for each IN EP (min 16) 
 
 void hal_usbd_initialize()
 {
@@ -46,7 +49,7 @@ void hal_usbd_initialize()
 #ifdef USB_FS_ENABLE_VBUS 
 	#ifdef USB_OTG_GCCFG_VBDEN
 		otg_global->GCCFG = USB_OTG_GCCFG_PWRDWN | USB_OTG_GCCFG_VBDEN;	
-#else
+	#else
 		otg_global->GCCFG = USB_OTG_GCCFG_PWRDWN | USB_OTG_GCCFG_VBUSBSEN;	
 	#endif
 #else
@@ -674,12 +677,12 @@ static void _reset(unsigned speed)
 		// setup data FIFOs
 		// NOTE: we have 4 tx fifos and 4 endpoints so we are going to use each tx fifo for the each in ep (with the same number)
 		unsigned word_ptr = 0;
-		unsigned rxf_size = 256;	// FIXME
+		unsigned rxf_size = FIFO_RX_WORDS;
 		otg_global->GRXFSIZ = rxf_size << USB_OTG_GRXFSIZ_RXFD_Pos;
 		word_ptr = rxf_size;
 		for (unsigned i = 0; i < USB_DEV_EP_COUNT; i++)
 		{
-			unsigned txf_size = 16;	 // FIXME
+			unsigned txf_size = FIFO_TX_WORDS;
 			unsigned txf_reg = (txf_size << USB_OTG_DIEPTXF_INEPTXFD_Pos) | 
 					(word_ptr << USB_OTG_DIEPTXF_INEPTXSA_Pos);
 			word_ptr += txf_size;
@@ -689,6 +692,8 @@ static void _reset(unsigned speed)
 				case 1:	otg_global->DIEPTXF1 = txf_reg;	break;
 				case 2:	otg_global->DIEPTXF2 = txf_reg;	break;
 				case 3:	otg_global->DIEPTXF3 = txf_reg;	break;
+				case 4:	otg_global->DIEPTXF4 = txf_reg;	break;
+				default:	kernel_panic(KERNEL_ERROR_NOT_SUPPORTED);
 			}
 		}
 

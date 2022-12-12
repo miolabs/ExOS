@@ -105,9 +105,11 @@ void usb_device_config_add_interface(usb_device_configuration_t *conf, usb_devic
 	if (list_find_node(&conf->Interfaces, (node_t *)iface))
 		kernel_panic(KERNEL_ERROR_LIST_ALREADY_CONTAINS_NODE);
 
+	ASSERT(!list_find_node(&conf->Interfaces, &iface->Node), KERNEL_ERROR_KERNEL_PANIC);
 	iface->Index = list_get_count(&conf->Interfaces);
-	list_add_tail(&conf->Interfaces, (node_t *)iface);
+	list_add_tail(&conf->Interfaces, &iface->Node);
 
+	iface->Configuration = conf;
 	const usb_device_interface_driver_t *driver = iface->Driver;
 	if (driver->Initialize != nullptr)
 	{
@@ -150,6 +152,17 @@ static unsigned _fill_config(usb_configuration_descriptor_t *desc, unsigned char
 		const usb_device_interface_driver_t *driver = iface->Driver;
 		ASSERT(driver != NULL, KERNEL_ERROR_NULL_POINTER);
 		ASSERT(driver->FillInterfaceDescriptor != NULL && driver->FillEndpointDescriptor != NULL, KERNEL_ERROR_NULL_POINTER);
+		if (driver->FillInterfaceAssociationDescriptor != nullptr)
+		{
+			void *ptr = (void *)desc + total;
+			usb_interface_association_descriptor_t *iad = (usb_interface_association_descriptor_t *)ptr;
+			unsigned size = driver->FillInterfaceAssociationDescriptor(iface, iad, USB_CONF_BUFFER_SIZE - total);
+			if (size != 0)
+			{
+				total += size;
+				ASSERT(total <= USB_CONF_BUFFER_SIZE, KERNEL_ERROR_KERNEL_PANIC);
+			}
+		}
 
 		for(unsigned alt_setting = 0; alt_setting <= iface->AlternateSettings; alt_setting++)
 		{
@@ -171,7 +184,8 @@ static unsigned _fill_config(usb_configuration_descriptor_t *desc, unsigned char
 				// NOTE: class driver must fill header fields
 				if (size != 0)
 				{
-					ASSERT(class_desc_hdr->Length == size, KERNEL_ERROR_KERNEL_PANIC);
+					ASSERT(class_desc_hdr->Length >= sizeof(usb_descriptor_header_t), KERNEL_ERROR_KERNEL_PANIC);
+					ASSERT(class_desc_hdr->Length <= size, KERNEL_ERROR_KERNEL_PANIC);
 					total += size;
 					ptr += size;
 				}
@@ -179,7 +193,7 @@ static unsigned _fill_config(usb_configuration_descriptor_t *desc, unsigned char
 
 			for(unsigned ep_index = 0; ep_index < if_desc->NumEndpoints; ep_index++) 
 			{
-				ASSERT(total < conf_length, KERNEL_ERROR_KERNEL_PANIC);
+				ASSERT(total < USB_CONF_BUFFER_SIZE, KERNEL_ERROR_KERNEL_PANIC);
 				size = driver->FillEndpointDescriptor(iface, ep_index, (usb_endpoint_descriptor_t *)ptr, USB_CONF_BUFFER_SIZE - total);
 				if (size == 0) break;
 				*(usb_descriptor_header_t *)ptr = (usb_descriptor_header_t) { .Length = size, .DescriptorType = USB_DESCRIPTOR_TYPE_ENDPOINT };
