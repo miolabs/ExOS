@@ -7,32 +7,32 @@
 
 typedef struct 
 {
-	volatile unsigned long GOTGCTL;		// offset $000
-	volatile unsigned long GOTGINT;
-	volatile unsigned long GAHBCFG;
-	volatile unsigned long GUSBCFG;
-	volatile unsigned long GRSTCTL;
-	volatile unsigned long GINTSTS;
-	volatile unsigned long GINTMSK;
-   	volatile unsigned long GRXSTSR;
-   	volatile unsigned long GRXSTSP;
-	volatile unsigned long GRXFSIZ;
+	volatile unsigned GOTGCTL;		// offset $000
+	volatile unsigned GOTGINT;
+	volatile unsigned GAHBCFG;
+	volatile unsigned GUSBCFG;
+	volatile unsigned GRSTCTL;
+	volatile unsigned GINTSTS;
+	volatile unsigned GINTMSK;
+   	volatile unsigned GRXSTSR;
+   	volatile unsigned GRXSTSP;
+	volatile unsigned GRXFSIZ;
 	union 
 	{
-		volatile unsigned long HNPTXFSIZ;	// host mode
-		volatile unsigned long DIEPTXF0;	// device mode
+		volatile unsigned HNPTXFSIZ;	// host mode
+		volatile unsigned DIEPTXF0;	// device mode
 	};
-	volatile unsigned long HNPTXSTS;
-	volatile unsigned long Reserved30;	
-	volatile unsigned long Reserved34;	
-	volatile unsigned long GCCFG;
-	volatile unsigned long CID;	
-	volatile unsigned long Reserved40[48];
-	volatile unsigned long HPTXFSIZ;	// offset $100
-	volatile unsigned long DIEPTXF1;
-	volatile unsigned long DIEPTXF2;
-	volatile unsigned long DIEPTXF3;
-	volatile unsigned long DIEPTXF4;
+	volatile unsigned HNPTXSTS;
+	volatile unsigned Reserved30;	
+	volatile unsigned Reserved34;	
+	volatile unsigned GCCFG;
+	volatile unsigned CID;	
+	volatile unsigned Reserved40[48];
+	volatile unsigned HPTXFSIZ;	// offset $100
+	volatile unsigned DIEPTXF1;
+	volatile unsigned DIEPTXF2;
+	volatile unsigned DIEPTXF3;
+	volatile unsigned DIEPTXF4;
 } usb_otg_crs_global_t;
 
 #define OTG_FS_GAHBCFG_GINTMASK (1<<0)
@@ -41,124 +41,142 @@ typedef struct
 
 typedef struct 
 {
-	volatile unsigned long HCFG;		// offset $400
-	volatile unsigned long HFIR;
-	volatile unsigned long HFNUM;
-   	volatile unsigned long Reserved40C;
-	volatile unsigned long HPTXSTS;
-	volatile unsigned long HAINT;
-	volatile unsigned long HAINTMSK;
-   	volatile unsigned long Reserved41C[9];
-   	volatile unsigned long HPRT;		// 0ffset $440
-	volatile unsigned long Reserved444[47];
+	volatile unsigned HCFG;		// offset $400
+	volatile unsigned HFIR;
+	volatile unsigned HFNUM;
+   	volatile unsigned Reserved40C;
+	volatile unsigned HPTXSTS;
+	volatile unsigned HAINT;
+	volatile unsigned HAINTMSK;
+   	volatile unsigned Reserved41C[9];
+   	volatile unsigned HPRT;		// 0ffset $440
+	volatile unsigned Reserved444[47];
 
 	struct {
-		volatile unsigned long HCCHAR;		// 0ffset $500
-		volatile unsigned long Reserved504;
-		volatile unsigned long HCINT;
-		volatile unsigned long HCINTMSK;
-		volatile unsigned long HCTSIZ;
-		volatile unsigned long Recerved514[3];
+		volatile unsigned HCCHAR;		// 0ffset $500
+		volatile unsigned Reserved504;
+		volatile unsigned HCINT;
+		volatile unsigned HCINTMSK;
+		volatile unsigned HCTSIZ;
+		volatile unsigned Recerved514[3];
 	} HC[8];
 
 } usb_otg_crs_host_t;
 
 typedef struct 
 {
-	volatile unsigned long DCFG;		// offset $800
-	volatile unsigned long DCTL;
-	volatile unsigned long DSTS;
-   	volatile unsigned long Reserved80C;
-	volatile unsigned long DIEPMSK;
-	volatile unsigned long DOEPMSK;
-	volatile unsigned long DAINT;
-	volatile unsigned long DAINTMSK;
-	volatile unsigned long Reserved820;
-	volatile unsigned long Reserved824;
-	volatile unsigned long DVBUSDIS;
-	volatile unsigned long DVBUSPULSE;
-	volatile unsigned long Reserved830;
-	volatile unsigned long DIEPEMPMSK;
-	volatile unsigned long Reserved838[50];
+	volatile unsigned DCFG;		// offset $800
+	volatile unsigned DCTL;
+	volatile unsigned DSTS;
+   	volatile unsigned Reserved80C;
+	volatile unsigned DIEPMSK;
+	volatile unsigned DOEPMSK;
+	volatile unsigned DAINT;
+	volatile unsigned DAINTMSK;
+	volatile unsigned Reserved820;
+	volatile unsigned Reserved824;
+	volatile unsigned DVBUSDIS;
+	volatile unsigned DVBUSPULSE;
+	volatile unsigned Reserved830;
+	volatile unsigned DIEPEMPMSK;
+	volatile unsigned Reserved838[50];
 
-   	volatile unsigned long DIEPCTL0;	// offset $900
-	volatile unsigned long Reserved904;
-	volatile unsigned long DIEPINT0;
-	volatile unsigned long Reserved90c;
-	volatile unsigned long DIEPTSIZ0;
-	volatile unsigned long Reserved914;
-	volatile unsigned long DTXFSTS0;	
-	volatile unsigned long Reserved91c;
+   	volatile unsigned DIEPCTL0;	// offset $900
+	volatile unsigned Reserved904;
+	volatile unsigned DIEPINT0;
+	volatile unsigned Reserved90c;
+	volatile unsigned DIEPTSIZ0;
+	volatile unsigned Reserved914;
+	volatile unsigned DTXFSTS0;	
+	volatile unsigned Reserved91c;
 
-   	volatile unsigned long DIEPCTL1;	// offset $920
-	volatile unsigned long Reserved924;
-	volatile unsigned long DIEPINT1;
-	volatile unsigned long Reserved92c;
-	volatile unsigned long DIEPTSIZ1;
-	volatile unsigned long Reserved934;
-	volatile unsigned long DTXFSTS1;	
-	volatile unsigned long Reserved93c;
+   	volatile unsigned DIEPCTL1;	// offset $920
+	volatile unsigned Reserved924;
+	volatile unsigned DIEPINT1;
+	volatile unsigned Reserved92c;
+	volatile unsigned DIEPTSIZ1;
+	volatile unsigned Reserved934;
+	volatile unsigned DTXFSTS1;	
+	volatile unsigned Reserved93c;
 
-   	volatile unsigned long DIEPCTL2;	// offset $940
-	volatile unsigned long Reserved944;
-	volatile unsigned long DIEPINT2;
-	volatile unsigned long Reserved94c;
-	volatile unsigned long DIEPTSIZ2;
-	volatile unsigned long Reserved954;
-	volatile unsigned long DTXFSTS2;	
-	volatile unsigned long Reserved95c;
+   	volatile unsigned DIEPCTL2;	// offset $940
+	volatile unsigned Reserved944;
+	volatile unsigned DIEPINT2;
+	volatile unsigned Reserved94c;
+	volatile unsigned DIEPTSIZ2;
+	volatile unsigned Reserved954;
+	volatile unsigned DTXFSTS2;	
+	volatile unsigned Reserved95c;
 
-   	volatile unsigned long DIEPCTL3;	// offset $960
-	volatile unsigned long Reserved964;
-	volatile unsigned long DIEPINT3;
-	volatile unsigned long Reserved96c;
-	volatile unsigned long DIEPTSIZ3;
-	volatile unsigned long Reserved974;
-	volatile unsigned long DTXFSTS3;	
-	volatile unsigned long Reserved97c;
+   	volatile unsigned DIEPCTL3;	// offset $960
+	volatile unsigned Reserved964;
+	volatile unsigned DIEPINT3;
+	volatile unsigned Reserved96c;
+	volatile unsigned DIEPTSIZ3;
+	volatile unsigned Reserved974;
+	volatile unsigned DTXFSTS3;	
+	volatile unsigned Reserved97c;
 
-	volatile unsigned long Reserved980[96];
+   	volatile unsigned DIEPCTL4;	// offset $980
+	volatile unsigned Reserved984;
+	volatile unsigned DIEPINT4;
+	volatile unsigned Reserved98c;
+	volatile unsigned DIEPTSIZ4;
+	volatile unsigned Reserved994;
+	volatile unsigned DTXFSTS4;	
+	volatile unsigned Reserved99c;
 
-	volatile unsigned long DOEPCTL0;	// offset $b00
-	volatile unsigned long Reservedb04;
-	volatile unsigned long DOEPINT0;
-	volatile unsigned long Reservedb0c;
-	volatile unsigned long DOEPTSIZ0;
-	volatile unsigned long Reservedb14;
-	volatile unsigned long Reservedb18;
-	volatile unsigned long Reservedb1c;
+	volatile unsigned Reserved9a0[88];
 
-	volatile unsigned long DOEPCTL1;	// offset $b20
-	volatile unsigned long Reservedb24;
-	volatile unsigned long DOEPINT1;
-	volatile unsigned long Reservedb2c;
-	volatile unsigned long DOEPTSIZ1;
-	volatile unsigned long Reservedb34;
-	volatile unsigned long Reservedb38;
-	volatile unsigned long Reservedb3c;
+	volatile unsigned DOEPCTL0;	// offset $b00
+	volatile unsigned Reservedb04;
+	volatile unsigned DOEPINT0;
+	volatile unsigned Reservedb0c;
+	volatile unsigned DOEPTSIZ0;
+	volatile unsigned Reservedb14;
+	volatile unsigned Reservedb18;
+	volatile unsigned Reservedb1c;
 
-	volatile unsigned long DOEPCTL2;	// offset $b40
-	volatile unsigned long Reservedb44;
-	volatile unsigned long DOEPINT2;
-	volatile unsigned long Reservedb4c;
-	volatile unsigned long DOEPTSIZ2;
-	volatile unsigned long Reservedb54;
-	volatile unsigned long Reservedb58;
-	volatile unsigned long Reservedb5c;
+	volatile unsigned DOEPCTL1;	// offset $b20
+	volatile unsigned Reservedb24;
+	volatile unsigned DOEPINT1;
+	volatile unsigned Reservedb2c;
+	volatile unsigned DOEPTSIZ1;
+	volatile unsigned Reservedb34;
+	volatile unsigned Reservedb38;
+	volatile unsigned Reservedb3c;
 
-	volatile unsigned long DOEPCTL3;	// offset $b60
-	volatile unsigned long Reservedb64;
-	volatile unsigned long DOEPINT3;
-	volatile unsigned long Reservedb6c;
-	volatile unsigned long DOEPTSIZ3;
-	volatile unsigned long Reservedb74;
-	volatile unsigned long Reservedb78;
-	volatile unsigned long Reservedb7c;
+	volatile unsigned DOEPCTL2;	// offset $b40
+	volatile unsigned Reservedb44;
+	volatile unsigned DOEPINT2;
+	volatile unsigned Reservedb4c;
+	volatile unsigned DOEPTSIZ2;
+	volatile unsigned Reservedb54;
+	volatile unsigned Reservedb58;
+	volatile unsigned Reservedb5c;
+
+	volatile unsigned DOEPCTL3;	// offset $b60
+	volatile unsigned Reservedb64;
+	volatile unsigned DOEPINT3;
+	volatile unsigned Reservedb6c;
+	volatile unsigned DOEPTSIZ3;
+	volatile unsigned Reservedb74;
+	volatile unsigned Reservedb78;
+	volatile unsigned Reservedb7c;
+
+	volatile unsigned DOEPCTL4;	// offset $b80
+	volatile unsigned Reservedb84;
+	volatile unsigned DOEPINT4;
+	volatile unsigned Reservedb8c;
+	volatile unsigned DOEPTSIZ4;
+	volatile unsigned Reservedb94;
+	volatile unsigned Reservedb98;
+	volatile unsigned Reservedb9c;
 } usb_otg_crs_device_t;
 
 typedef struct 
 {
-	volatile unsigned long PCGCCTL;		// offset $e00
+	volatile unsigned PCGCCTL;		// offset $e00
 } usb_otg_crs_power_t;
 
 

@@ -126,6 +126,9 @@ static void _configure_out_ep(unsigned ep_num, usb_transfer_type_t tt, unsigned 
 		case 1:	otg_device->DOEPCTL1 = doepctl;	break;
 		case 2:	otg_device->DOEPCTL2 = doepctl;	break;
 		case 3:	otg_device->DOEPCTL3 = doepctl;	break;
+		case 4:	otg_device->DOEPCTL4 = doepctl;	break;
+		default:	
+			kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 	}
 	_ep_max_length[ep_num] = max_packet_size;
 }
@@ -142,6 +145,9 @@ static void _configure_in_ep(unsigned ep_num, usb_transfer_type_t tt, unsigned m
 		case 1:	otg_device->DIEPCTL1 = diepctl;	break;
 		case 2:	otg_device->DIEPCTL2 = diepctl;	break;
 		case 3:	otg_device->DIEPCTL3 = diepctl;	break;
+		case 4:	otg_device->DIEPCTL4 = diepctl;	break;
+		default:	
+			kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 	}
 	_ep_max_length[ep_num] = max_packet_size;
 }
@@ -161,40 +167,76 @@ void hal_usbd_enable_in_ep(unsigned ep_num, usb_transfer_type_t tt, unsigned max
 
 void hal_usbd_stall_out_ep(unsigned ep_num, bool stall)
 {
-	// TODO
-	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
-}
-
-void hal_usbd_stall_in_ep(unsigned ep_num, bool stall)
-{
 	ASSERT(ep_num < USB_DEV_EP_COUNT, KERNEL_ERROR_KERNEL_PANIC);
 	if (stall)
 	{
 		switch(ep_num)
 		{
-			case 0:	otg_device->DIEPCTL0 |= USB_OTG_DIEPCTL_STALL;	break;
-			case 1:	otg_device->DIEPCTL1 |= USB_OTG_DIEPCTL_STALL;	break;
-			case 2:	otg_device->DIEPCTL2 |= USB_OTG_DIEPCTL_STALL;	break;
-			case 3:	otg_device->DIEPCTL3 |= USB_OTG_DIEPCTL_STALL;	break;
+			case 0:	otg_device->DOEPCTL0 |= USB_OTG_DOEPCTL_STALL;	break;
+			case 1:	otg_device->DIEPCTL1 |= USB_OTG_DOEPCTL_STALL;	break;
+			case 2:	otg_device->DIEPCTL2 |= USB_OTG_DOEPCTL_STALL;	break;
+			case 3:	otg_device->DIEPCTL3 |= USB_OTG_DOEPCTL_STALL;	break;
+			case 4:	otg_device->DIEPCTL4 |= USB_OTG_DOEPCTL_STALL;	break;
 		}
 	}
-	else 
+	else
 	{
-		switch(ep_num)
-		{
-			case 0:	// NOTE: ep0 stall can only be cleared by core, 
-					// it is cleared when when a setup packet is received 
-					break;
-			case 1:	otg_device->DIEPCTL1 &= ~USB_OTG_DIEPCTL_STALL;
-					otg_device->DIEPCTL1 |= USB_OTG_DIEPCTL_SD0PID_SEVNFRM | USB_OTG_DIEPCTL_SNAK;
-					break;
-			case 2:	otg_device->DIEPCTL2 &= ~USB_OTG_DIEPCTL_STALL;
-					otg_device->DIEPCTL2 |= USB_OTG_DIEPCTL_SD0PID_SEVNFRM | USB_OTG_DIEPCTL_SNAK;
-					break;
-			case 3:	otg_device->DIEPCTL3 &= ~USB_OTG_DIEPCTL_STALL;
-					otg_device->DIEPCTL3 |= USB_OTG_DIEPCTL_SD0PID_SEVNFRM | USB_OTG_DIEPCTL_SNAK;
-					break;
-		}
+		kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+	}
+}
+
+void hal_usbd_stall_in_ep(unsigned ep_num, bool stall)
+{
+	ASSERT(ep_num < USB_DEV_EP_COUNT, KERNEL_ERROR_KERNEL_PANIC);
+	switch(ep_num)
+	{
+		case 0:	
+			if (stall)
+				otg_device->DIEPCTL0 |= USB_OTG_DIEPCTL_STALL;	
+			else
+			{
+				// NOTE: ep0 stall can only be cleared by core, 
+				// it is cleared when when a setup packet is received 
+			}
+			break;
+		case 1:	
+			if (stall)
+				otg_device->DIEPCTL1 |= USB_OTG_DIEPCTL_STALL;
+			else
+			{
+				otg_device->DIEPCTL1 &= ~USB_OTG_DIEPCTL_STALL;
+				otg_device->DIEPCTL1 |= USB_OTG_DIEPCTL_SD0PID_SEVNFRM | USB_OTG_DIEPCTL_SNAK;
+			}
+			break;
+		case 2:	
+			if (stall)
+				otg_device->DIEPCTL2 |= USB_OTG_DIEPCTL_STALL;
+			else
+			{
+				otg_device->DIEPCTL2 &= ~USB_OTG_DIEPCTL_STALL;
+				otg_device->DIEPCTL2 |= USB_OTG_DIEPCTL_SD0PID_SEVNFRM | USB_OTG_DIEPCTL_SNAK;
+			}
+			break;
+		case 3:	
+			if (stall)
+				otg_device->DIEPCTL3 |= USB_OTG_DIEPCTL_STALL;
+			else
+			{
+				otg_device->DIEPCTL3 &= ~USB_OTG_DIEPCTL_STALL;
+				otg_device->DIEPCTL3 |= USB_OTG_DIEPCTL_SD0PID_SEVNFRM | USB_OTG_DIEPCTL_SNAK;
+			}
+			break;
+		case 4:	
+			if (stall)
+				otg_device->DIEPCTL4 |= USB_OTG_DIEPCTL_STALL;
+			else
+			{
+				otg_device->DIEPCTL4 &= ~USB_OTG_DIEPCTL_STALL;
+				otg_device->DIEPCTL4 |= USB_OTG_DIEPCTL_SD0PID_SEVNFRM | USB_OTG_DIEPCTL_SNAK;
+			}
+			break;
+		default:
+			kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 	}
 }
 
@@ -254,6 +296,11 @@ static void _prepare_out_ep(unsigned ep_num, usb_io_buffer_t *iob)
 		case 3:	otg_device->DOEPTSIZ3 = siz;
 				otg_device->DOEPCTL3 |= USB_OTG_DOEPCTL_EPENA | USB_OTG_DOEPCTL_CNAK;
 				break;
+		case 4:	otg_device->DOEPTSIZ4 = siz;
+				otg_device->DOEPCTL4 |= USB_OTG_DOEPCTL_EPENA | USB_OTG_DOEPCTL_CNAK;
+				break;
+		default:
+			kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 	}
 }
 
@@ -280,6 +327,9 @@ static void _disable_in_ep(unsigned ep_num)
 		case 1:	otg_device->DIEPCTL1 |= USB_OTG_DIEPCTL_EPDIS;	break;
 		case 2:	otg_device->DIEPCTL2 |= USB_OTG_DIEPCTL_EPDIS;	break;
 		case 3:	otg_device->DIEPCTL3 |= USB_OTG_DIEPCTL_EPDIS;	break;
+		case 4:	otg_device->DIEPCTL4 |= USB_OTG_DIEPCTL_EPDIS;	break;
+		default:
+			kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 	}
 	// NOTE: will trigger an ep disabled interrupt
 }
@@ -302,6 +352,9 @@ static void _write_fifo(unsigned ep_num, usb_io_buffer_t *iob, unsigned txlen)
 		case 1:	avail_words = otg_device->DTXFSTS1;	break;
 		case 2:	avail_words = otg_device->DTXFSTS2;	break;
 		case 3:	avail_words = otg_device->DTXFSTS3;	break;
+		case 4:	avail_words = otg_device->DTXFSTS4;	break;
+		default:
+			kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 	}
 
 	while(rem > 3 && avail_words != 0)
@@ -387,6 +440,12 @@ static void _prepare_in_ep(unsigned ep_num, usb_io_buffer_t *iob)
 			otg_device->DIEPTSIZ3 = dieptsiz;
 			otg_device->DIEPCTL3 |= USB_OTG_DIEPCTL_EPENA | USB_OTG_DIEPCTL_CNAK; 
 			break;
+		case 4:
+			otg_device->DIEPTSIZ4 = dieptsiz;
+			otg_device->DIEPCTL4 |= USB_OTG_DIEPCTL_EPENA | USB_OTG_DIEPCTL_CNAK; 
+			break;
+		default:
+			kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 	}
 
 	_write_fifo(ep_num, iob, txlen);	//// <---------------
@@ -543,6 +602,9 @@ static void _ep_out_handler(unsigned ep)
 		case 1:	intreq = otg_device->DOEPINT1;	break;
 		case 2:	intreq = otg_device->DOEPINT2;	break;
 		case 3:	intreq = otg_device->DOEPINT3;	break;
+		case 4:	intreq = otg_device->DOEPINT4;	break;
+		default:
+			kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 	}
 	intreq &= otg_device->DOEPMSK;
 
@@ -567,6 +629,7 @@ static void _ep_out_handler(unsigned ep)
 			case 1:	otg_device->DOEPINT1 = int_handled;	break;
 			case 2:	otg_device->DOEPINT2 = int_handled;	break;
 			case 3:	otg_device->DOEPINT3 = int_handled;	break;
+			case 4:	otg_device->DOEPINT4 = int_handled;	break;			
 		}
 	}
 	else
@@ -589,6 +652,9 @@ static void _ep_in_handler(unsigned ep)
 		case 1:	intreq = otg_device->DIEPINT1;	break;
 		case 2:	intreq = otg_device->DIEPINT2;	break;
 		case 3:	intreq = otg_device->DIEPINT3;	break;
+		case 4:	intreq = otg_device->DIEPINT4;	break;
+		default:
+			kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 	}
 	intreq &= otg_device->DIEPMSK;
 
@@ -649,6 +715,7 @@ static void _ep_in_handler(unsigned ep)
 			case 1:	otg_device->DIEPINT1 = int_handled;
 			case 2:	otg_device->DIEPINT2 = int_handled;
 			case 3:	otg_device->DIEPINT3 = int_handled;
+			case 4:	otg_device->DIEPINT4 = int_handled;
 		}
 	}
 	else 
@@ -668,6 +735,7 @@ static void _reset(unsigned speed)
 		otg_device->DOEPCTL1 |= USB_OTG_DOEPCTL_SNAK;
 		otg_device->DOEPCTL2 |= USB_OTG_DOEPCTL_SNAK;
 		otg_device->DOEPCTL3 |= USB_OTG_DOEPCTL_SNAK;
+		otg_device->DOEPCTL4 |= USB_OTG_DOEPCTL_SNAK;
 
 		// unmask ints for control 0 in/out
 		otg_device->DAINTMSK = ( 1 << USB_OTG_DAINTMSK_OEPM_Pos) | (1 << USB_OTG_DAINTMSK_IEPM_Pos); 
