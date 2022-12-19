@@ -47,7 +47,7 @@ static unsigned _device_count = 0;
 static unsigned _fill_string(int *poffset, const char *s);
 
 #ifndef IAP2_BULK_EP
-#define IAP2_BULK_EP 2	// FIXME: allocate
+#define IAP2_BULK_EP 1	// FIXME: allocate
 #endif
 
 

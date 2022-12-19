@@ -21,6 +21,11 @@ unsigned cpu_get_pclk2()
 	return pclk2;
 }
 
+#ifndef HSE_VALUE
+#warning  "HSE_VALUE not defined"
+#define HSE_VALUE 0
+#endif
+
 unsigned cpu_get_pll_input()
 {
 	unsigned pllsource = (RCC->PLLCFGR & RCC_PLLCFGR_PLLSRC) >> 22;

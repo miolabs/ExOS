@@ -4,7 +4,11 @@
 #include <kernel/panic.h>
 #include <string.h>
 
-#define USB_DEV_EP_COUNT 5
+#if defined STM32F469xx
+#define USB_DEV_EP_COUNT 5	// FIXME: maybe 6!
+#else
+#define USB_DEV_EP_COUNT 4
+#endif
 
 static usb_otg_crs_global_t * const otg_global = (usb_otg_crs_global_t *)(USB_OTG_FS_BASE + 0x000);
 static usb_otg_crs_device_t * const otg_device = (usb_otg_crs_device_t *)(USB_OTG_FS_BASE + 0x800);
