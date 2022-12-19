@@ -158,6 +158,7 @@ unsigned int __decl_uint(const char *src, unsigned int *pvalue)
 {
 	unsigned int done = 0;
 	unsigned int value = 0;
+	while(src[done] == ' ') done++;
 	while(1)
 	{
 		char c = src[done];
@@ -172,4 +173,28 @@ unsigned int __decl_uint(const char *src, unsigned int *pvalue)
 	return done;
 }
 
+unsigned int __decl_int(const char *src, int *pvalue)
+{
+	unsigned int done = 0;
+	int value = 0;
+	bool negative = false;
+	while(src[done] == ' ') done++;
+	if (src[done] == '-') 
+	{
+		done ++;
+		negative = true;
+	}
+	while(1)
+	{
+		char c = src[done];
+		if (c >= '0' && c <= '9')
+		{
+			value = (value * 10) + (c - '0');
+			done++;
+		}
+		else break;
+	}
+	*pvalue = value;
+	return negative ? -done : done;
+}
 

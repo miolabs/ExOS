@@ -48,5 +48,6 @@ unsigned int __long_decl(char *dst, long value);
 unsigned int __ulong_declz(char *dst, unsigned long value, int tz, char tc);
 unsigned int __ulong_decl(char *dst, unsigned long value);
 unsigned int __decl_uint(const char *src, unsigned int *pvalue);
+unsigned int __decl_int(const char *src, int *pvalue);
 
 #endif // EXOS_MACHINE_HAL_H
