@@ -155,24 +155,45 @@ static inline unsigned _ticks_elapsed()
 	return elapsed + _ticks;
 }
 
-static int ___ticks_elapsed(unsigned long *args)
+
+
+
+static int ___ticks(unsigned long *args)
 {
 	unsigned long *ptotal = (unsigned long *)args[0];
 	*ptotal = _ticks_elapsed();
 	return 0;
 }
 
+unsigned exos_timer_ticks()
+{
+	unsigned ticks;
+	__kernel_do(___ticks, &ticks);
+	return ticks;
+}
+
+unsigned exos_timer_elapsed_ticks(unsigned time)
+{
+	unsigned ticks = exos_timer_ticks();
+	return ticks - time;
+}
+
+
 static int ___uptime(unsigned long *args)
 {
-	static unsigned last_ticks;
+	static unsigned last_time;
 	static unsigned seconds, fraction_ticks;
 
 	unsigned long *puptime = (unsigned long *)args[0];
 	
-	unsigned add_ticks = _ticks_elapsed() - last_ticks;
+	unsigned time = _ticks_elapsed();
+	unsigned add_ticks = time - last_time;
+	last_time = time;
+
 	fraction_ticks += add_ticks;
 	seconds += fraction_ticks / EXOS_TICK_FREQ;
 	fraction_ticks = fraction_ticks % EXOS_TICK_FREQ;
+	 
 	*puptime = seconds;
 	return 0;
 }

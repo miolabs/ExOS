@@ -37,6 +37,8 @@ void exos_timer_dispose(exos_timer_t *timer);
 
 unsigned long exos_timer_time();
 unsigned long exos_timer_elapsed(unsigned long time);
+unsigned exos_timer_ticks();
+unsigned exos_timer_elapsed_ticks(unsigned time);
 
 #endif // EXOS_TIMER_H
 
