@@ -4,6 +4,7 @@
 #include "cpu.h"
 #include <usb/host.h>
 #include <usb/enumerate.h>
+#include <usb/device.h>
 #include <kernel/event.h>
 #include <kernel/panic.h>
 #include <kernel/verbose.h>
@@ -57,16 +58,6 @@ static bool _begin_xfer(usb_request_buffer_t *urb, usb_direction_t dir, bool set
 
 // HC driver
 //---------------------
-
-static bool _role_switch(usb_host_controller_t *hc)
-{
-	bool done = usb_fs_request_role_switch(hc);
-	if (!done)
-	{
-		_verbose(VERBOSE_ERROR, "request_role_switch() failed!");
-	}
-	return done;
-}
 
 static bool _start_pipe(usb_host_controller_t *hc, usb_host_pipe_t *pipe)
 {
@@ -261,6 +252,16 @@ static bool _ctrl_setup_write(usb_host_device_t *device, void *setup_data, unsig
     }
 
 	exos_mutex_unlock(&_mutex);
+	return done;
+}
+
+static bool _role_switch(usb_host_controller_t *hc)
+{
+	bool done = usb_fs_request_role_switch(hc);
+	if (!done)
+	{
+		_verbose(VERBOSE_ERROR, "request_role_switch() failed!");
+	}
 	return done;
 }
 

@@ -215,7 +215,12 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 	else 
 	{
 		verbose(VERBOSE_DEBUG, "usb-hs-roothub", "host root-hub disabled");
-		__usb_host_disabled(_hc);
+		usb_otg_hs_initialize(); // FIXME
+
+		// remove root hub dispatchers
+		exos_dispatcher_remove(context, &_port_dispatcher);
+
+		kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 	}
 }
 

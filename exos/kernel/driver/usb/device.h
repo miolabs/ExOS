@@ -112,7 +112,8 @@ struct usb_device_interface_driver
 
 
 // prototypes
-bool usb_device_initialize();
+bool usb_device_start();
+void usb_device_stop();
 void usb_set_rx_buffer(unsigned ep_num, usb_io_buffer_t *rx_buffer);
 void usb_set_tx_buffer(unsigned ep_num, usb_io_buffer_t *tx_buffer);
 

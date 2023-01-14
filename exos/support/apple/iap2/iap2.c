@@ -68,9 +68,9 @@ bool iap2_transport_create(iap2_transport_t *t, const char *id, unsigned char un
 
 bool iap2_start(iap2_transport_t *t)
 {
-	// TODO: support several instances
-	ASSERT(_service_run == false, KERNEL_ERROR_KERNEL_PANIC);
 	ASSERT(t != NULL && t->Driver != NULL, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(_service_run == nullptr, KERNEL_ERROR_KERNEL_PANIC);
+	// TODO: support several instances
 
 	t->Transaction = 1;
 
@@ -94,8 +94,8 @@ void iap2_stop()
 	_verbose(VERBOSE_COMMENT, "stopping thread...");
 	_service_exit = true;
 	exos_thread_join(&_thread);
-	_service_run = false;
 
+	ASSERT(_service_run == false, KERNEL_ERROR_KERNEL_PANIC);
 	_verbose(VERBOSE_DEBUG, "stopped!");
 }
 
@@ -875,5 +875,6 @@ static void *_service(void *arg)
 		_verbose(VERBOSE_ERROR, "initialization procedure failed!");
 	}
 
+	_service_run = false;
 	_verbose(VERBOSE_COMMENT, "service exiting (%s)...", t->Id);
 }

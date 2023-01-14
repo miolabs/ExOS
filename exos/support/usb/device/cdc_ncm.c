@@ -361,9 +361,7 @@ static void _stop2(usb_device_interface_t *iface)
 {
 	ncm_device_context_t *ncm_dev = (ncm_device_context_t *)iface->DriverContext;
 	ASSERT(ncm_dev != NULL, KERNEL_ERROR_NULL_POINTER);
-	ASSERT(ncm_dev->Interface == iface, KERNEL_ERROR_NULL_POINTER);
-
-	ASSERT(list_find_node(&_instance_list, &ncm_dev->Node), KERNEL_ERROR_KERNEL_PANIC);
+	ASSERT(&ncm_dev->SecondaryDataInterface == iface, KERNEL_ERROR_NULL_POINTER);
 
 	exos_mutex_lock(&ncm_dev->Lock);
 	//if (iap2dev->Entry != NULL)

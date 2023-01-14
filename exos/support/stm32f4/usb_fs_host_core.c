@@ -36,15 +36,18 @@ static stm32_usbh_channel_t _ch_table[NUM_CHANNELS];
 static stm32_usbh_ep_t *_ch2ep[NUM_CHANNELS];
 static stm32_usbh_ep_t _ep_array[NUM_ENDPOINTS];
 static pool_t _ep_pool;
-static stm32_usbh_ep_t _common_control_ep;
+static stm32_usbh_ep_t *_root_control_ep = nullptr;
 
 static usb_host_controller_t *_hc = nullptr;
 static enum { HPORT_DISABLED = 0, HPORT_POWERED, HPORT_RESET, HPORT_RESET_DONE, HPORT_SUSPEND, HPORT_ERROR, HPORT_READY } _port_state = HPORT_DISABLED;
 static enum { HPORT_FULL_SPEED = 1, HPORT_LOW_SPEED = 2 } _port_speed;
-static bool _role_switch_requested = false;
 
 static dispatcher_t _port_dispatcher;
 static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatcher);
+static dispatcher_t _otg_dispatcher;
+static void _otg_callback(dispatcher_context_t *context, dispatcher_t *dispatcher);
+
+static void _host_reset(dispatcher_context_t *context);
 
 void usb_fs_host_initialize(usb_host_controller_t *hc, dispatcher_context_t *context)
 {
@@ -52,6 +55,14 @@ void usb_fs_host_initialize(usb_host_controller_t *hc, dispatcher_context_t *con
 	ASSERT(_hc == nullptr, KERNEL_ERROR_NOT_ENOUGH_MEMORY);	// already in use
 	_hc = hc;
 
+	exos_dispatcher_create(&_otg_dispatcher, __otg_fs_event, _otg_callback, hc);
+	exos_dispatcher_add(context, &_otg_dispatcher, EXOS_TIMEOUT_NEVER);
+
+	_host_reset(context);
+}
+
+static void _host_reset(dispatcher_context_t *context)
+{
 	usb_otg_fs_initialize();
 
 	otg_global->GUSBCFG |= USB_OTG_GUSBCFG_FHMOD;	// Force Host MODe
@@ -80,11 +91,12 @@ void usb_fs_host_initialize(usb_host_controller_t *hc, dispatcher_context_t *con
 	_port_state = HPORT_POWERED;	// FIXME
 
 	pool_create(&_ep_pool, (node_t *)_ep_array, sizeof(stm32_usbh_ep_t), NUM_ENDPOINTS);
+	_root_control_ep = nullptr;
 
 	exos_dispatcher_create(&_port_dispatcher, &_hc->RootHubEvent, _port_callback, nullptr);
 	exos_dispatcher_add(context, &_port_dispatcher, EXOS_TIMEOUT_NEVER);
 
-	_role_switch_requested = false;
+	usb_otg_fs_notify(USB_HOST_ROLE_HOST);
 }
 
 bool usb_fs_request_role_switch(usb_host_controller_t *hc)
@@ -95,7 +107,7 @@ bool usb_fs_request_role_switch(usb_host_controller_t *hc)
 	if (_port_state == HPORT_READY ||	// AKA idle
 		_port_state == HPORT_POWERED)
 	{
-		_role_switch_requested = true;
+		usb_otg_fs_notify(USB_HOST_ROLE_HOST_CLOSING);
 		_verbose(VERBOSE_DEBUG, "role-switch requested");
 
 		if (_port_state == HPORT_POWERED)
@@ -106,9 +118,32 @@ bool usb_fs_request_role_switch(usb_host_controller_t *hc)
 	return false;
 }
 
+static void _otg_callback(dispatcher_context_t *context, dispatcher_t *dispatcher)
+{
+	usb_host_controller_t *hc = (usb_host_controller_t *)dispatcher->CallbackState;
+	ASSERT(hc != nullptr, KERNEL_ERROR_NULL_POINTER);
+
+	usb_host_role_state_t role_state = usb_otg_fs_role_state();
+	switch(role_state)
+	{
+		case USB_HOST_ROLE_DEVICE_CLOSING:
+			_verbose(VERBOSE_COMMENT, "ending role switch -> restart host");
+			exos_thread_sleep(1000);
+
+			_host_reset(context);
+			break; 
+		default:
+			_verbose(VERBOSE_DEBUG, "otg state %d", role_state);
+			break;
+	}
+
+	exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);
+}
+
 static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatcher)
 {
 	unsigned timeout = EXOS_TIMEOUT_NEVER;
+	usb_host_role_state_t role_state;
 
 	unsigned hprt = otg_host->HPRT;
 	unsigned hprt_const = USB_OTG_HPRT_PENA | 
@@ -127,9 +162,12 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 				otg_host->HPRT = hprt_const | USB_OTG_HPRT_PRST;
 				timeout = 20;	// min 20ms
 			}
-			else if (_role_switch_requested)
-				_port_state = HPORT_DISABLED;
-
+			else
+			{
+				role_state = usb_otg_fs_role_state();
+				if (role_state == USB_HOST_ROLE_HOST_CLOSING)
+					_port_state = HPORT_DISABLED;
+			}
 			break;
 		case HPORT_RESET:
 			otg_host->HPRT = hprt_const & ~USB_OTG_HPRT_PRST;
@@ -203,7 +241,8 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 			
 			exos_thread_sleep(10);	// NOTE: avoid glitchy re-connect
 
-			_port_state = (_role_switch_requested) ? HPORT_DISABLED : HPORT_POWERED;
+			role_state = usb_otg_fs_role_state();
+			_port_state = (role_state == USB_HOST_ROLE_HOST_CLOSING) ? HPORT_DISABLED : HPORT_POWERED;
 			break;
 		default:
 			kernel_panic(KERNEL_ERROR_KERNEL_PANIC);
@@ -218,12 +257,8 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 	{
 		verbose(VERBOSE_DEBUG, "usb-fs-roothub", "host root-hub disabled");
 
-		usb_otg_fs_initialize();
-
-		// remove root hub dispatchers
-		exos_dispatcher_remove(context, &_port_dispatcher);
-
-		__usb_host_disabled(_hc);
+		bool started = usb_host_start_device_mode(_hc);
+		ASSERT(started, KERNEL_ERROR_KERNEL_PANIC);
 	}
 }
 
@@ -344,8 +379,6 @@ static void _free_channel(unsigned index)
 
 bool usb_fs_host_start_pipe(usb_host_pipe_t *pipe)
 {
-	static stm32_usbh_ep_t *_root_control_ep = nullptr;
-
 	ASSERT(pipe != nullptr, KERNEL_ERROR_NULL_POINTER);
 	ASSERT(pipe->Device != nullptr, KERNEL_ERROR_NULL_POINTER);
 	unsigned chn, chn2;

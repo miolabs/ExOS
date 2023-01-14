@@ -6,6 +6,7 @@
 void hal_usbd_initialize();
 void hal_usbd_connect(bool connect);
 bool hal_usbd_is_connected();
+bool hal_usbd_disconnected();
 void hal_usbd_suspend();
 void hal_usbd_resume();
 void hal_usbd_set_address(unsigned char addr);

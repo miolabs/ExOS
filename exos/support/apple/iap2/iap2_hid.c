@@ -278,7 +278,8 @@ static bool _iap2_switch(iap2_transport_t *t)
 		done = usb_host_ctrl_setup(iap2->Hid.Function->Device, &setup, NULL, 0);
 		if (done)
 		{
-			done = usb_host_request_role_switch(iap2->Hid.Function->Device->Controller);
+			done = usb_host_begin_role_switch(iap2->Hid.Function->Device->Controller);
+			ASSERT(done, KERNEL_ERROR_KERNEL_PANIC);
 		}
 		else _verbose(VERBOSE_ERROR, "request DeviceToHostModeSwitch failed!");
 	}

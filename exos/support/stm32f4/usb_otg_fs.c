@@ -9,8 +9,19 @@
 static usb_otg_crs_global_t * const otg_global = (usb_otg_crs_global_t *)(USB_OTG_FS_BASE + 0x000);
 static usb_otg_crs_power_t * const otg_power = (usb_otg_crs_power_t *)(USB_OTG_FS_BASE + 0xe00);
 
+static event_t _otg_event;
+event_t *__otg_fs_event = &_otg_event;
+
+
 void usb_otg_fs_initialize()
 {
+	static bool init_done = false;
+	if (!init_done)
+	{
+		exos_event_create(&_otg_event, EXOS_EVENTF_AUTORESET);
+		init_done = true;
+	}
+
 	// core initialization
 	RCC->AHB2RSTR |= RCC_AHB2RSTR_OTGFSRST;
 	RCC->AHB2ENR |= RCC_AHB2ENR_OTGFSEN;	// enable peripheral clock
@@ -24,7 +35,7 @@ void usb_otg_fs_initialize()
 	for(unsigned volatile i = 0; i < 100; i++);	// wait 3 phy clks
 
 	// enable PHY
-	otg_global->GCCFG = USB_OTG_GCCFG_PWRDWN;	
+	otg_global->GCCFG = USB_OTG_GCCFG_PWRDWN | USB_OTG_GCCFG_NOVBUSSENS;
 	exos_thread_sleep(20);
 
 	otg_global->GINTMSK = USB_OTG_GINTMSK_MMISM;	// Mode MISmatch Mask
@@ -52,4 +63,16 @@ void OTG_FS_IRQHandler()
 	}
 }
 
+static usb_host_role_state_t _state;
+
+usb_host_role_state_t usb_otg_fs_role_state()
+{
+	return _state;
+}
+
+void usb_otg_fs_notify(usb_host_role_state_t state)
+{
+	_state = state;
+	exos_event_set(&_otg_event);
+}
 

@@ -1,7 +1,8 @@
-#ifndef STM32F1_USB_OTG_FS_H
-#define STM32F1_USB_OTG_FS_H
+#ifndef STM32F4_USB_OTG_FS_H
+#define STM32F4_USB_OTG_FS_H
 
 #include <kernel/types.h>
+#include <usb/host.h>
 
 #define USB_OTG_FS_BASE 0x50000000UL
 
@@ -179,11 +180,14 @@ typedef struct
 	volatile unsigned PCGCCTL;		// offset $e00
 } usb_otg_crs_power_t;
 
-
 extern void __usb_otg_host_irq_handler() __weak;
 extern void __usb_otg_device_irq_handler() __weak;
 
+extern event_t *__otg_fs_event;
+
 void usb_otg_fs_initialize();
+usb_host_role_state_t usb_otg_fs_role_state();
+void usb_otg_fs_notify(usb_host_role_state_t state);
 
 
-#endif // STM32F1_USB_OTG_FS_H
+#endif // STM32F4_USB_OTG_FS_H

@@ -2,6 +2,7 @@
 #include <kernel/mutex.h>
 #include <support/services/init.h>
 #include <kernel/panic.h>
+#include <usb/device.h>
 
 static void _register();
 EXOS_INITIALIZER(_init, EXOS_INIT_HW_DRIVER, _register);
@@ -28,17 +29,32 @@ void usb_host_controller_create(usb_host_controller_t *hc, const usb_host_contro
 	exos_event_create(&hc->RootHubEvent, EXOS_EVENTF_AUTORESET);
 }
 
-bool usb_host_request_role_switch(usb_host_controller_t *hc)
+bool usb_host_begin_role_switch(usb_host_controller_t *hc)
 {
 	ASSERT(hc != nullptr, KERNEL_ERROR_NULL_POINTER);
 	const usb_host_controller_driver_t *hcd = hc->Driver;
 	ASSERT(hcd != nullptr, KERNEL_ERROR_NULL_POINTER);
 	
 	bool done = false;
-	if (hcd->RequestRoleSwitch != nullptr)
+	if (hcd->BeginRoleSwitch != nullptr)
 	{
-		done = hcd->RequestRoleSwitch(hc);
+		done = hcd->BeginRoleSwitch(hc);
 	}
+	return done;
+}
+
+bool usb_host_start_device_mode(usb_host_controller_t *hc)
+{
+	ASSERT(hc != nullptr, KERNEL_ERROR_NULL_POINTER);
+	const usb_host_controller_driver_t *hcd = hc->Driver;
+	ASSERT(hcd != nullptr, KERNEL_ERROR_NULL_POINTER);
+
+	// FIXME: we have to use generic thread-based device mode api, because usb device is a service 
+	bool done = false;
+#ifdef USB_HOST_ROLE_USES_DEVICE_SERVICE
+//	exos_thread_sleep(500);
+	done = usb_device_start();
+#endif
 	return done;
 }
 

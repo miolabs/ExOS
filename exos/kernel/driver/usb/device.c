@@ -9,7 +9,7 @@
 #include <stdio.h>
 
 #ifndef USB_THREAD_STACK
-#define USB_THREAD_STACK 1280
+#define USB_THREAD_STACK 1536
 #endif
 
 static exos_thread_t _thread;
@@ -22,8 +22,10 @@ static unsigned char _stack[USB_THREAD_STACK];
 static void *_service(void *arg);
 static event_t _setup_event;
 static event_t _control_event;
+static event_t _exit_event;
 static mutex_t _device_lock;
 
+static void _exit_handler(dispatcher_context_t *context, dispatcher_t *dispatcher);
 static void _setup_handler(dispatcher_context_t *context, dispatcher_t *dispatcher);
 static bool _setup_req(usb_request_t *req, void **pdata, unsigned *plength);
 static bool _setup_std_req(usb_request_t *req, void **pdata, unsigned *plength);
@@ -47,18 +49,38 @@ static unsigned char _configuration_value = 0;
 static unsigned char _alternate_setting = 0;
 static usb_status_t _device_status = USB_STATUS_SELF_POWERED;
 static dispatcher_context_t _context;
-static bool _error_state;
+static bool _error_flag;
+static bool _started;
 
-bool usb_device_initialize()
+bool usb_device_start()
 {
-	usb_device_config_initialize();
+	static bool _init_done = false;
+
+	if (!_init_done)
+	{
+		usb_device_config_initialize();
+		_init_done = true;
+	}
+
+	ASSERT(!_started, KERNEL_ERROR_KERNEL_PANIC);
+
+	exos_event_create(&_exit_event, EXOS_EVENTF_AUTORESET);
 
 	event_t start_event;
 	exos_event_create(&start_event, EXOS_EVENTF_NONE);
 	exos_thread_create(&_thread, 1, _stack, USB_THREAD_STACK, _service, &start_event);
 	exos_event_wait(&start_event, EXOS_TIMEOUT_NEVER);
 
+	_started = true;
 	return true;
+}
+
+void usb_device_stop()
+{
+	ASSERT(_started, KERNEL_ERROR_KERNEL_PANIC);
+	exos_event_set(&_exit_event);
+	exos_thread_join(&_thread);
+	_started = false;
 }
 
 #ifdef USB_DEVICE_DEBUG
@@ -87,6 +109,7 @@ static void _debug(const char *prefix, const void *data, unsigned length)
 static void *_service(void *arg)
 {
 	event_t *start_event = (event_t *)arg;
+	bool exit_flag = false;
 
 	exos_mutex_create(&_device_lock);
 	exos_event_create(&_setup_event, EXOS_EVENTF_AUTORESET);
@@ -95,6 +118,10 @@ static void *_service(void *arg)
 	exos_dispatcher_context_create(&_context);
 	dispatcher_t setup_dispatcher;
 	exos_dispatcher_create(&setup_dispatcher, &_setup_event, _setup_handler, nullptr);
+
+	dispatcher_t exit_dispatcher;
+	exos_dispatcher_create(&exit_dispatcher, &_exit_event, _exit_handler, &exit_flag);
+	exos_dispatcher_add(&_context, &exit_dispatcher, EXOS_TIMEOUT_NEVER);
 
 	hal_usbd_initialize();
 	exos_thread_sleep(10);
@@ -105,13 +132,13 @@ static void *_service(void *arg)
 
 	exos_event_set(start_event);
 
-	while(1)
+	while(!exit_flag)
 	{
 		_address = _hal_addr = 0;
 		_configuration = nullptr;
 		_configuration_value = 0;
 		_alternate_setting = 0;
-		_error_state = false;
+		_error_flag = false;
 
 		exos_dispatcher_add(&_context, &setup_dispatcher, EXOS_TIMEOUT_NEVER);
 
@@ -123,7 +150,7 @@ static void *_service(void *arg)
 		{
 			exos_dispatch(&_context, EXOS_TIMEOUT_NEVER);
 		
-			if (_error_state)
+			if (_error_flag || exit_flag)
 				break;
 		}
 
@@ -136,7 +163,21 @@ static void *_service(void *arg)
 		{
 			_verbose(VERBOSE_COMMENT, "reset!");
 		}
+
+		if (!hal_usbd_disconnected())
+		{
+			_verbose(VERBOSE_DEBUG, "disconnected driver asked us to exit...");
+			break;
+		}
 	}
+	_verbose(VERBOSE_COMMENT, "exit -----");
+}
+
+static void _exit_handler(dispatcher_context_t *context, dispatcher_t *dispatcher)
+{
+	bool *pflag = (bool *)dispatcher->CallbackState;
+	ASSERT(pflag != NULL, KERNEL_ERROR_NULL_POINTER);
+	*pflag = true;
 }
 
 static void _setup_handler(dispatcher_context_t *context, dispatcher_t *dispatcher)
@@ -161,12 +202,12 @@ static void _setup_handler(dispatcher_context_t *context, dispatcher_t *dispatch
 				if (_control_out.Status != USB_IOSTA_DONE)
 				{
 					_verbose(VERBOSE_ERROR, "data out failed");
-					_error_state = true;
+					_error_flag = true;
 				}
 			}
 		}
 
-		if (!_error_state)
+		if (!_error_flag)
 		{
 			//_verbose(VERBOSE_DEBUG, "-> process request");
 			unsigned length = _setup.Length;
@@ -187,7 +228,7 @@ static void _setup_handler(dispatcher_context_t *context, dispatcher_t *dispatch
 					if (_control_in.Status != USB_IOSTA_DONE)
 					{
 						_verbose(VERBOSE_ERROR, "data in failed");
-                        _error_state = true;
+                        _error_flag = true;
 					}
 				}
 				else
@@ -209,7 +250,7 @@ static void _setup_handler(dispatcher_context_t *context, dispatcher_t *dispatch
 					if (_control_in.Status != USB_IOSTA_DONE)
 					{
 						_verbose(VERBOSE_ERROR, "status in failed");
-                        _error_state = true;
+                        _error_flag = true;
 					}
 				}
 				else
@@ -233,7 +274,7 @@ static void _setup_handler(dispatcher_context_t *context, dispatcher_t *dispatch
 	{
 		if (_setup_io.Status == USB_IOSTA_ERROR)
 		{
-			_error_state = true;
+			_error_flag = true;
 		}
 	}
 

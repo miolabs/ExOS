@@ -64,6 +64,8 @@ void hal_usbd_initialize()
 		otg_global->GCCFG = USB_OTG_GCCFG_PWRDWN | (1<<21);
 	#endif
 #endif
+
+	usb_otg_fs_notify(USB_HOST_ROLE_DEVICE);
 }
 
 void hal_usbd_connect(bool connect)
@@ -87,6 +89,16 @@ bool hal_usbd_is_connected()
 {
 	//TODO
 	return false;
+}
+
+bool hal_usbd_disconnected()
+{
+#ifdef USB_HOST_ROLE_USES_DEVICE_SERVICE
+	usb_otg_fs_notify(USB_HOST_ROLE_DEVICE_CLOSING);
+	return false;
+#else
+	return true;
+#endif
 }
 
 void hal_usbd_suspend()
