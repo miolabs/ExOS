@@ -179,6 +179,7 @@ typedef struct
 	usb_device_string_t EthernetMac;	// NOTE: for ECM func decsriptor (iMACAddress)
 	dispatcher_context_t *DispatcherContext;
 
+	ncm_notify_state_t NotifyState;
 	usb_io_buffer_t NotifyIo;
 	event_t NotifyEvent;
 	dispatcher_t NotifyDispatcher;

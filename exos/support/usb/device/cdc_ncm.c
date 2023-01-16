@@ -74,7 +74,7 @@ static bool _initialize(usb_device_interface_t *iface, const void *instance_data
 	ncm_device_context_t *ncm_dev = (ncm_device_context_t *)exos_mem_alloc(sizeof(ncm_device_context_t), EXOS_MEMF_CLEAR);
 	if (ncm_dev != nullptr)
 	{
-		// NOTE: only chars 0-9 nad A-F (upper case) (ECM Class 1.2, p. 5.4, iMACAddress)
+		// NOTE: only chars 0-9 and A-F (upper case) (ECM Class 1.2, p. 5.4, iMACAddress)
 		strcpy(ncm_dev->EthernetMacString, "1EA4AE41996F");	// FIXME: use actual hw address
 		usb_device_config_add_string(&ncm_dev->EthernetMac, ncm_dev->EthernetMacString);
 
@@ -194,18 +194,26 @@ static unsigned _fill_ep_desc(usb_device_interface_t *iface, unsigned ep_index, 
 
 static bool _start(usb_device_interface_t *iface, unsigned char alternate_setting, dispatcher_context_t *context)
 {
+	ASSERT(context != NULL, KERNEL_ERROR_NULL_POINTER);
+	ncm_device_context_t *ncm_dev = (ncm_device_context_t *)iface->DriverContext;
+
 	// NOTE: alternate setting is ignored
 
-	ncm_device_context_t *ncm_dev = (ncm_device_context_t *)iface->DriverContext;
+	exos_mutex_lock(&ncm_dev->Lock);
+
 	ASSERT(!list_find_node(&_instance_list, &ncm_dev->Node), KERNEL_ERROR_KERNEL_PANIC);
 	list_add_tail(&_instance_list, &ncm_dev->Node);
 	ncm_dev->DispatcherContext = context;
-	ASSERT(context != NULL, KERNEL_ERROR_NULL_POINTER);
 
 	exos_event_create(&ncm_dev->NotifyEvent, EXOS_EVENTF_AUTORESET);
 	ncm_dev->NotifyIo = (usb_io_buffer_t) { .Event = &ncm_dev->NotifyEvent };
 	exos_dispatcher_create(&ncm_dev->NotifyDispatcher, &ncm_dev->NotifyEvent, _notify_dispatch, ncm_dev);
 	exos_dispatcher_add(ncm_dev->DispatcherContext, &ncm_dev->NotifyDispatcher, 1000);	// NOTE: initial state notification
+	ncm_dev->NotifyState = (ncm_notify_state_t) { /* all-zero */ };
+
+	ncm_dev->Connected = false;
+
+	exos_mutex_unlock(&ncm_dev->Lock);
 
 	// transport link params
 	//t->LinkParams.RetransmitTimeout = 2000;
@@ -231,20 +239,15 @@ static void _stop(usb_device_interface_t *iface)
 	ASSERT(ncm_dev != NULL, KERNEL_ERROR_NULL_POINTER);
 	ASSERT(ncm_dev->Interface == iface, KERNEL_ERROR_NULL_POINTER);
 
-	ASSERT(list_find_node(&_instance_list, &ncm_dev->Node), KERNEL_ERROR_KERNEL_PANIC);
-
 	exos_mutex_lock(&ncm_dev->Lock);
-	//if (iap2dev->Entry != NULL)
-	//{
-	//	_verbose(VERBOSE_DEBUG, "[%d] closing io due to extraction", iap2dev->Interface->Index);
-	//	_close(iap2dev->Entry);
-	//}
-	ncm_dev->Ready = false;
-	exos_mutex_unlock(&ncm_dev->Lock);
 
+	ASSERT(list_find_node(&_instance_list, &ncm_dev->Node), KERNEL_ERROR_KERNEL_PANIC);
+	list_remove(&ncm_dev->Node);
+
+	ncm_dev->Ready = false;
 	exos_dispatcher_remove(ncm_dev->DispatcherContext, &ncm_dev->NotifyDispatcher);
 
-	list_remove(&ncm_dev->Node);
+	exos_mutex_unlock(&ncm_dev->Lock);
 
 	_verbose(VERBOSE_COMMENT, "[%d] USB stop comm if -------", iface->Index);
 }
@@ -301,13 +304,15 @@ static unsigned _fill_ep_desc2(usb_device_interface_t *iface, unsigned ep_index,
 static bool _enable_data_if(usb_device_interface_t *iface, bool enable)
 {
 	ncm_device_context_t *ncm_dev = (ncm_device_context_t *)iface->DriverContext;
-	ASSERT(list_find_node(&_instance_list, &ncm_dev->Node), KERNEL_ERROR_KERNEL_PANIC);
 
 	if (!enable)
 	{
 		// NOTE: alt=0 should cancel all activity AND reset settings (crc_mode, hw_address, etc.)
 
-		// TODO
+		// remove dispatchers
+		exos_dispatcher_remove(ncm_dev->DispatcherContext, &ncm_dev->RxDispatcher);
+		exos_dispatcher_remove(ncm_dev->DispatcherContext, &ncm_dev->TxDispatcher);
+
 		//t->LinkParams.RetransmitTimeout = 2000;
 		//t->LinkParams.CumulativeAckTimeout = 22;
 		//t->LinkParams.MaxRetransmits = 30;
@@ -363,20 +368,7 @@ static void _stop2(usb_device_interface_t *iface)
 	ASSERT(ncm_dev != NULL, KERNEL_ERROR_NULL_POINTER);
 	ASSERT(&ncm_dev->SecondaryDataInterface == iface, KERNEL_ERROR_NULL_POINTER);
 
-	exos_mutex_lock(&ncm_dev->Lock);
-	//if (iap2dev->Entry != NULL)
-	//{
-	//	_verbose(VERBOSE_DEBUG, "[%d] closing io due to extraction", iap2dev->Interface->Index);
-	//	_close(iap2dev->Entry);
-	//}
-//	ncm_dev->Ready = false;
-	exos_mutex_unlock(&ncm_dev->Lock);
-
-	// remove dispatchers
-	//exos_dispatcher_remove(ncm_dev->DispatcherContext, &ncm_dev->RxDispatcher);
-	//exos_dispatcher_remove(ncm_dev->DispatcherContext, &ncm_dev->TxDispatcher);
-
-	//list_remove(&ncm_dev->Node);
+	_enable_data_if(iface, false);
 
 	_verbose(VERBOSE_COMMENT, "[%d] USB stop data if -------", iface->Index);
 }
@@ -388,8 +380,6 @@ static void _notify_dispatch(dispatcher_context_t *context, dispatcher_t *dispat
 	ASSERT(ncm_dev != NULL, KERNEL_ERROR_NULL_POINTER);
 	ASSERT(list_find_node(&_instance_list, &ncm_dev->Node), KERNEL_ERROR_KERNEL_PANIC);
 
-	static ncm_notify_state_t _state = { /* all zero */ };
-
 	usb_io_status_t sta = ncm_dev->NotifyIo.Status;
 	if (sta == USB_IOSTA_DONE || sta == USB_IOSTA_UNKNOWN)
 	{
@@ -397,17 +387,17 @@ static void _notify_dispatch(dispatcher_context_t *context, dispatcher_t *dispat
 		usb_cdc_notify_header_t *hdr = (usb_cdc_notify_header_t *)ncm_dev->NotifyData;
 		*hdr = (usb_cdc_notify_header_t) { .RequestType = USB_REQTYPE_DEVICE_TO_HOST | USB_REQTYPE_CLASS | USB_REQTYPE_RECIPIENT_INTERFACE,
 			.Index = ncm_dev->Interface->Index };
-		if (_state.Connected != ncm_dev->Connected)
+		if (ncm_dev->NotifyState.Connected != ncm_dev->Connected)
 		{
-			_state.Connected = ncm_dev->Connected;
+			ncm_dev->NotifyState.Connected = ncm_dev->Connected;
 
 			hdr->RequestCode = USB_CDC_NOTIFY_NETWORK_CONNECTION; 
 			hdr->Value = ncm_dev->Connected ? 0x1 : 0x0;
 			size = sizeof(usb_cdc_notify_header_t);
 		}
-		else if (_state.SpeedMbps != ncm_dev->SpeedMbps)
+		else if (ncm_dev->NotifyState.SpeedMbps != ncm_dev->SpeedMbps)
 		{
-			_state.SpeedMbps = ncm_dev->SpeedMbps;
+			ncm_dev->NotifyState.SpeedMbps = ncm_dev->SpeedMbps;
 
 			hdr->RequestCode = USB_CDC_NOTIFY_CONNECTION_SPEED_CHANGE;
 			hdr->Length = sizeof(usb_cdc_notify_speed_t);
@@ -428,7 +418,8 @@ static void _notify_dispatch(dispatcher_context_t *context, dispatcher_t *dispat
 		}
 		else
 		{
-			_verbose(VERBOSE_DEBUG, "[%d] notify idle", ncm_dev->Interface->Index);
+			_verbose(VERBOSE_DEBUG, "[%d] notify idle (%s)", ncm_dev->Interface->Index,
+				ncm_dev->Ready ? "ready" : "not ready");
 		}
 	}
 	else if (sta == USB_IOSTA_ERROR)
