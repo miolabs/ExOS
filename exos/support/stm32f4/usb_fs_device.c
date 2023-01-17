@@ -489,7 +489,7 @@ void hal_usbd_prepare_in_ep(unsigned ep_num, usb_io_buffer_t *iob)
 
 	if (ep_num != 0)
 	{
-		unsigned mask  = 0x10001 << ep_num;
+		unsigned mask  = (1 << USB_OTG_DAINTMSK_IEPM_Pos) << ep_num;
 		otg_device->DAINTMSK |= mask;
 	}
 }
@@ -585,6 +585,10 @@ static void _handle_rxf()
 					otg_device->DIEPCTL0 |= USB_OTG_DIEPCTL_EPDIS;	// will trigger an IEP_DIS interrupt
 				}
 			}
+#ifdef DEBUG
+			// NOTE: unhandled non-control data out
+			else kernel_panic(KERNEL_ERROR_KERNEL_PANIC);
+#endif
 			break;
 		default:
 			kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);

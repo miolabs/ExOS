@@ -77,10 +77,12 @@ bool usb_device_start()
 
 void usb_device_stop()
 {
-	ASSERT(_started, KERNEL_ERROR_KERNEL_PANIC);
-	exos_event_set(&_exit_event);
-	exos_thread_join(&_thread);
-	_started = false;
+	if (_started)
+	{
+		exos_event_set(&_exit_event);
+		exos_thread_join(&_thread);
+		_started = false;
+	}
 }
 
 #ifdef USB_DEVICE_DEBUG

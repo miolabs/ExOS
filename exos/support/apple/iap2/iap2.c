@@ -69,7 +69,7 @@ bool iap2_transport_create(iap2_transport_t *t, const char *id, unsigned char un
 bool iap2_start(iap2_transport_t *t)
 {
 	ASSERT(t != NULL && t->Driver != NULL, KERNEL_ERROR_NULL_POINTER);
-	ASSERT(_service_run == nullptr, KERNEL_ERROR_KERNEL_PANIC);
+	ASSERT(!_service_run, KERNEL_ERROR_KERNEL_PANIC);
 	// TODO: support several instances
 
 	t->Transaction = 1;
