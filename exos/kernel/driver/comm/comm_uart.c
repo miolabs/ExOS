@@ -7,6 +7,7 @@
 #include <support/uart_hal.h>
 #include <support/services/init.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 static void _register();
 EXOS_INITIALIZER(_init, EXOS_INIT_IO_DRIVER, _register);
@@ -14,8 +15,8 @@ EXOS_INITIALIZER(_init, EXOS_INIT_IO_DRIVER, _register);
 #ifndef UART_BUFFER_SIZE 
 #define UART_BUFFER_SIZE 64
 #endif
-#ifndef UART_MODULE_COUNT
-#define UART_MODULE_COUNT 1
+#ifndef UART_DEVICE_COUNT
+#define UART_DEVICE_COUNT 1
 #endif
 
 typedef char uart_device_name_t[8];
@@ -32,16 +33,16 @@ static const io_driver_t _comm_driver = {
 //	.GetAttr = _get_attr, .SetAttr = _set_attr, 
 	.Read = _read, .Write = _write };
 
-static io_tree_device_t _devices[UART_MODULE_COUNT];
-static uart_control_block_t _cb[UART_MODULE_COUNT];
-static uart_device_name_t _dev_name[UART_MODULE_COUNT];
+static io_tree_device_t _devices[UART_DEVICE_COUNT];
+static uart_control_block_t _cb[UART_DEVICE_COUNT];
+static uart_device_name_t _dev_name[UART_DEVICE_COUNT];
 static mutex_t _lock;
 
 static void _register()
 {
 	exos_mutex_create(&_lock);
 
-	for(int i = 0; i < UART_MODULE_COUNT; i++)
+	for(int i = 0; i < UART_DEVICE_COUNT; i++)
 	{
 		_cb[i] = (uart_control_block_t) { .Baudrate = 9600 };
 		sprintf(_dev_name[i], "uart%d", i);
@@ -78,24 +79,27 @@ static void _free_uart_buffers(uart_control_block_t *cb)
 
 static io_error_t _open(io_entry_t *io, const char *path, io_flags_t flags)
 {
-	ASSERT(io->Port < UART_MODULE_COUNT, KERNEL_ERROR_KERNEL_PANIC);
+	ASSERT(io->Port < UART_DEVICE_COUNT, KERNEL_ERROR_KERNEL_PANIC);
 	uart_control_block_t *cb = (uart_control_block_t *)io->DriverContext;
 	ASSERT(cb != NULL, KERNEL_ERROR_NULL_POINTER);
 
 	bool done = false;
 	exos_mutex_lock(&_lock);
 
+	cb->Baudrate = atoi(path);
+	if (cb->Baudrate == 0) cb->Baudrate = 9600;
+
 	if (_alloc_uart_buffers(cb, io))
 	{
 		//cb->Handler = _handler;
 		//cb->HandlerState = io;
-		if (cb->Baudrate == 0) cb->Baudrate = 9600;
+		
 		if (uart_initialize(io->Port, cb))
 		{
 			exos_event_set(&io->OutputEvent);
-			done = 1;
+			done = true;
 		}
-		_free_uart_buffers(cb);
+		else _free_uart_buffers(cb);
 	}
 	exos_mutex_unlock(&_lock);
 	return done ? IO_OK : IO_ERROR_IO_ERROR;
@@ -104,7 +108,7 @@ static io_error_t _open(io_entry_t *io, const char *path, io_flags_t flags)
 //static int _get_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
 //{
 //	int done = 0;
-//	if (io->Port < UART_MODULE_COUNT)
+//	if (io->Port < UART_DEVICE_COUNT)
 //	{
 //		UART_CONTROL_BLOCK *cb = &_cb[io->Port];
 //		switch(attr)
@@ -126,7 +130,7 @@ static io_error_t _open(io_entry_t *io, const char *path, io_flags_t flags)
 //static int _set_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
 //{
 //	int done = 0;
-//	if (io->Port < UART_MODULE_COUNT)
+//	if (io->Port < UART_DEVICE_COUNT)
 //	{
 //		exos_mutex_lock(&_lock);
 //
@@ -162,7 +166,7 @@ static io_error_t _open(io_entry_t *io, const char *path, io_flags_t flags)
 
 static void _close(io_entry_t *io)
 {
-	if (io->Port < UART_MODULE_COUNT)
+	if (io->Port < UART_DEVICE_COUNT)
 	{
 		exos_mutex_lock(&_lock);
 		uart_control_block_t *cb = &_cb[io->Port];

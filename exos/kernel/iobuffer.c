@@ -15,6 +15,7 @@ void exos_io_buffer_create(io_buffer_t *iobuf, unsigned char *buffer, unsigned s
 unsigned exos_io_buffer_write(io_buffer_t *iobuf, const unsigned char *buffer, unsigned length)
 {
 	ASSERT(iobuf != NULL && buffer != NULL, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(iobuf->Buffer != NULL, KERNEL_ERROR_NULL_POINTER);
 
 	unsigned done;
 	for(done = 0; done < length; done++)
@@ -56,6 +57,7 @@ unsigned exos_io_buffer_write(io_buffer_t *iobuf, const unsigned char *buffer, u
 unsigned exos_io_buffer_read(io_buffer_t *iobuf, unsigned char *buffer, unsigned length)
 {
 	ASSERT(iobuf != NULL && buffer != NULL, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(iobuf->Buffer != NULL, KERNEL_ERROR_NULL_POINTER);
 
 	int done;
 	for(done = 0; done < length; done++)

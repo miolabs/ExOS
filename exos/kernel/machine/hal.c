@@ -194,7 +194,7 @@ unsigned int __decl_int(const char *src, int *pvalue)
 		}
 		else break;
 	}
-	*pvalue = value;
-	return negative ? -done : done;
+	*pvalue = negative ? -value : value;
+	return done;
 }
 
