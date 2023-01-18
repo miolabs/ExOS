@@ -4,9 +4,9 @@
 #include <usb/classes/cdc.h>
 #include <usb/configuration.h>
 #include <usb/device.h>
-#include <kernel/tree.h>
-#include <kernel/iobuffer.h>
-#include <kernel/io.h>
+#include <kernel/driver/net/adapter.h>
+
+extern const net_driver_t __usb_cdc_ncm_eth_driver;
 
 extern const usb_device_interface_driver_t *__usb_cdc_ncm_device_driver;
 
@@ -167,13 +167,15 @@ typedef struct
 	node_t Node;
 	usb_device_interface_t *Interface;
 	usb_device_interface_t SecondaryDataInterface;
-	mutex_t Lock;
+//	mutex_t Lock;
 
 	unsigned char Unit;
 	bool Ready;
 	bool Idle;
 	bool Connected;
 	unsigned short SpeedMbps;
+
+	net_adapter_t *Adapter;
 
 	char EthernetMacString[16];
 	usb_device_string_t EthernetMac;	// NOTE: for ECM func decsriptor (iMACAddress)
@@ -183,9 +185,6 @@ typedef struct
 	usb_io_buffer_t NotifyIo;
 	event_t NotifyEvent;
 	dispatcher_t NotifyDispatcher;
-
-	//io_buffer_t Output;
-	//io_buffer_t Input;
 	
 	usb_io_buffer_t TxIo;
 	event_t TxEvent;
@@ -199,8 +198,6 @@ typedef struct
 	unsigned char RxData[NCM_OUTPUT_EP_BUFFER];
 
 	unsigned char NotifyData[NCM_NOTIFY_EP_BUFFER];
-
-	//char DeviceName[16];
 } ncm_device_context_t;
 
 

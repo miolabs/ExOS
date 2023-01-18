@@ -13,13 +13,28 @@
 #define _verbose(level, ...) { /* nothing */ }
 #endif
 
+
+static bool _initialize(net_adapter_t *adapter, unsigned phy_unit, const phy_handler_t *handler);
+static void _link_up(net_adapter_t *adapter);
+static void _link_down(net_adapter_t *adapter);
+static void *_get_input_buffer(net_adapter_t *adapter, unsigned *plength);
+static void _discard_input_buffer(net_adapter_t *adapter, void *buffer);
+static void *_get_output_buffer(net_adapter_t *adapter, unsigned size);
+static int _send_output_buffer(net_adapter_t *adapter, net_mbuf_t *mbuf, NET_CALLBACK callback, void *state);
+const net_driver_t __usb_cdc_ncm_eth_driver = { .Initialize = _initialize,
+	.LinkUp = _link_up, .LinkDown = _link_down,
+	.GetInputBuffer = _get_input_buffer, .DiscardInputBuffer = _discard_input_buffer,
+	.GetOutputBuffer = _get_output_buffer, .SendOutputBuffer = _send_output_buffer }; 
+
+
+
 #define MAX_NTB_SIZE NCM_OUTPUT_EP_BUFFER
 
 static void _notify_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher);
 static void _tx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher);
 static void _rx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher);
 
-static bool _initialize(usb_device_interface_t *iface, const void *instance_data);
+static bool _init1(usb_device_interface_t *iface, const void *instance_data);
 static unsigned _fill_ia_desc(usb_device_interface_t *iface, usb_interface_association_descriptor_t *iad, unsigned buffer_size);
 static unsigned _fill_if_desc(usb_device_interface_t *iface, usb_interface_descriptor_t *if_desc, unsigned buffer_size);
 static unsigned _fill_class_desc(usb_device_interface_t *iface, usb_descriptor_header_t *class_desc, unsigned buffer_size);
@@ -28,7 +43,7 @@ static bool _start(usb_device_interface_t *iface, unsigned char alternate_settin
 static void _stop(usb_device_interface_t *iface);
 static bool _class_request(usb_device_interface_t *iface, usb_request_t *req, void **pdata, unsigned *plength);
 
-static const usb_device_interface_driver_t _driver = { .Initialize = _initialize,
+static const usb_device_interface_driver_t _driver = { .Initialize = _init1,
 	.FillInterfaceAssociationDescriptor = _fill_ia_desc,
 	.FillInterfaceDescriptor = _fill_if_desc, 
 	.FillClassDescriptor = _fill_class_desc,
@@ -49,10 +64,66 @@ static const usb_device_interface_driver_t _driver2 = { .Initialize = _init2,
 	.Start = _start2, .Stop = _stop2,
 	.SetInterface = _set_if2 };
 
-static bool _initialized = false;
+// instance tracking ---------------
+
+static mutex_t _mutex;
 static list_t _instance_list;
 static unsigned _device_count = 0;
-static unsigned _fill_string(int *poffset, const char *s);
+
+static void _initialize_all()
+{
+	static bool _initialized = false;
+
+	if (!_initialized)
+	{
+		exos_mutex_create(&_mutex);
+		list_initialize(&_instance_list);
+		_initialized = true;
+	}
+}
+
+
+// ethernet adapter -----------------
+
+static bool _initialize(net_adapter_t *adapter, unsigned phy_unit, const phy_handler_t *handler)
+{
+	_initialize_all();
+
+	return true;
+}
+
+static void _link_up(net_adapter_t *adapter)
+{
+	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+}
+
+static void _link_down(net_adapter_t *adapter)
+{
+	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+}
+
+static void *_get_input_buffer(net_adapter_t *adapter, unsigned *plength)
+{
+	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+}
+
+static void _discard_input_buffer(net_adapter_t *adapter, void *buffer)
+{
+	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+}
+
+static void *_get_output_buffer(net_adapter_t *adapter, unsigned size)
+{
+	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+}
+
+static int _send_output_buffer(net_adapter_t *adapter, net_mbuf_t *mbuf, NET_CALLBACK callback, void *state)
+{
+	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+}
+
+
+// usb driver -------------------------
 
 #ifndef NCM_BULK_EP
 #define NCM_BULK_EP 2	// FIXME: allocate
@@ -61,15 +132,14 @@ static unsigned _fill_string(int *poffset, const char *s);
 #define NCM_INT_EP 3	// FIXME: allocate
 #endif
 
-static bool _initialize(usb_device_interface_t *iface, const void *instance_data)
+static bool _init1(usb_device_interface_t *iface, const void *instance_data)
 {
+	net_adapter_t *adapter = (net_adapter_t *)instance_data;
+	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
+
 	usb_device_config_add_string(&iface->Name, "CDC-NCM Comm Interface");
 
-	if (!_initialized)
-	{
-		list_initialize(&_instance_list);
-		_initialized = true;
-	}
+	_initialize_all();
 
 	ncm_device_context_t *ncm_dev = (ncm_device_context_t *)exos_mem_alloc(sizeof(ncm_device_context_t), EXOS_MEMF_CLEAR);
 	if (ncm_dev != nullptr)
@@ -78,13 +148,11 @@ static bool _initialize(usb_device_interface_t *iface, const void *instance_data
 		strcpy(ncm_dev->EthernetMacString, "1EA4AE41996F");	// FIXME: use actual hw address
 		usb_device_config_add_string(&ncm_dev->EthernetMac, ncm_dev->EthernetMacString);
 
-		//exos_event_create(&ncm_dev->TxEvent, EXOS_EVENTF_AUTORESET);
-		//exos_event_create(&ncm_dev->RxEvent, EXOS_EVENTF_AUTORESET);
-
+		ncm_dev->Adapter = adapter;
 		ncm_dev->Interface = iface;
 		iface->DriverContext = ncm_dev;
 
-		exos_mutex_create(&ncm_dev->Lock);
+//		exos_mutex_create(&ncm_dev->Lock);
 
 		ncm_dev->Unit = _device_count++;
 
@@ -199,7 +267,7 @@ static bool _start(usb_device_interface_t *iface, unsigned char alternate_settin
 
 	// NOTE: alternate setting is ignored
 
-	exos_mutex_lock(&ncm_dev->Lock);
+//	exos_mutex_lock(&ncm_dev->Lock);
 
 	ASSERT(!list_find_node(&_instance_list, &ncm_dev->Node), KERNEL_ERROR_KERNEL_PANIC);
 	list_add_tail(&_instance_list, &ncm_dev->Node);
@@ -213,7 +281,7 @@ static bool _start(usb_device_interface_t *iface, unsigned char alternate_settin
 
 	ncm_dev->Connected = false;
 
-	exos_mutex_unlock(&ncm_dev->Lock);
+//	exos_mutex_unlock(&ncm_dev->Lock);
 
 	// transport link params
 	//t->LinkParams.RetransmitTimeout = 2000;
@@ -239,7 +307,7 @@ static void _stop(usb_device_interface_t *iface)
 	ASSERT(ncm_dev != NULL, KERNEL_ERROR_NULL_POINTER);
 	ASSERT(ncm_dev->Interface == iface, KERNEL_ERROR_NULL_POINTER);
 
-	exos_mutex_lock(&ncm_dev->Lock);
+//	exos_mutex_lock(&ncm_dev->Lock);
 
 	ASSERT(list_find_node(&_instance_list, &ncm_dev->Node), KERNEL_ERROR_KERNEL_PANIC);
 	list_remove(&ncm_dev->Node);
@@ -247,7 +315,7 @@ static void _stop(usb_device_interface_t *iface)
 	ncm_dev->Ready = false;
 	exos_dispatcher_remove(ncm_dev->DispatcherContext, &ncm_dev->NotifyDispatcher);
 
-	exos_mutex_unlock(&ncm_dev->Lock);
+//	exos_mutex_unlock(&ncm_dev->Lock);
 
 	_verbose(VERBOSE_COMMENT, "[%d] USB stop comm if -------", iface->Index);
 }
@@ -466,7 +534,8 @@ static void _tx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher
 	else
 	{
 		//unsigned done = exos_io_buffer_read(&ncm_dev->Output, ncm_dev->TxData, sizeof(ncm_dev->TxData));
-		unsigned done = 0;	// FIXME
+		unsigned done = 0;	// TODO
+
 		if (done != 0)
 		{
 #ifdef NCM_DEBUG
@@ -497,15 +566,32 @@ static void _tx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher
 	}
 }
 
+static bool _dissect(unsigned char *data, unsigned done, unsigned *poff, unsigned *plen)
+{
+	unsigned offset = *poff;
+	// TODO <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+	return false;
+}
+
 static void _rx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 {
 	ncm_device_context_t *ncm_dev = (ncm_device_context_t *)dispatcher->CallbackState;
 	if (ncm_dev->RxIo.Status == USB_IOSTA_DONE)
 	{
 #ifdef USB_DEVICE_DEBUG
-		_verbose(VERBOSE_DEBUG, "rx (%d bytes)", ncm_dev->RxIo.Done);
+		//_verbose(VERBOSE_DEBUG, "rx (%d bytes)", ncm_dev->RxIo.Done);
 #endif
-		// TODO: dissect usb buffer to find datagrams, then send them to ethernet framework
+
+		// NOTE: dissect usb buffer to find datagrams, then send them to ethernet framework
+		unsigned offset = 0;
+		unsigned length;
+		while(_dissect(ncm_dev->RxIo.Data, ncm_dev->RxIo.Done, &offset, &length))
+		{
+#ifdef USB_DEVICE_DEBUG
+			_verbose(VERBOSE_DEBUG, "rx (offset %d, %d bytes)", offset, length);
+#endif
+		}
 
 		// reset input ep
 		ncm_dev->RxIo.Data = ncm_dev->RxData;
