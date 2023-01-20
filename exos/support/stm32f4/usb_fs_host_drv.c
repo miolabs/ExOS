@@ -91,6 +91,11 @@ static int _end_transfer(usb_host_controller_t *hc, usb_request_buffer_t *urb, u
 {
 	ASSERT(urb != nullptr, KERNEL_ERROR_NULL_POINTER);
 	ASSERT(urb->Pipe != nullptr, KERNEL_ERROR_NULL_POINTER);
+
+	if (urb->Status == URB_STATUS_ISSUED)
+	{
+		exos_event_wait(&urb->Event, timeout);
+	}
 	return (urb->Status == URB_STATUS_DONE) ? urb->Done : -1;
 }
 

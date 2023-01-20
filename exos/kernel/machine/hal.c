@@ -5,6 +5,7 @@
 
 __weak void __mem_copy(void *start, void *stop, const void *source)
  {
+	ASSERT(start != NULL && stop != NULL && source != NULL, KERNEL_ERROR_NULL_POINTER);
 	if (source != start)
 	{
 		while(start != stop) *(unsigned char *)start++ = *(unsigned char *)source++;
@@ -13,6 +14,7 @@ __weak void __mem_copy(void *start, void *stop, const void *source)
 
 __weak void __mem_set(void *start, void *stop, unsigned char stuff)
 {
+	ASSERT(start != NULL && stop != NULL, KERNEL_ERROR_NULL_POINTER);
 	while(start != stop) *(unsigned char *)start++ = stuff;
 }
 
