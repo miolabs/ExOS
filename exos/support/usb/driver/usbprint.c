@@ -204,8 +204,8 @@ static int _write(io_entry_t *io, const unsigned char *buffer, unsigned length)
 				unsigned part = length - offset;
 				if (part > USBPRINT_USB_BUFFER) part = USBPRINT_USB_BUFFER;
 				memcpy(func->Buffer, buffer + offset, part);
-				bool done = usb_host_do_transfer(&func->BulkOutputPipe, func->Buffer, part, EXOS_TIMEOUT_NEVER);
-				if (!done) return -1;
+				int done = usb_host_do_transfer(&func->BulkOutputPipe, func->Buffer, part, EXOS_TIMEOUT_NEVER);
+				if (done <= 0) return -1;
 				offset += part;
 			} while(offset < length);
 			return offset;
