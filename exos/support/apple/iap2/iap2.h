@@ -2,6 +2,7 @@
 #define APPLE_IAP2_H
 
 #include <kernel/types.h>
+#include <kernel/io.h>
 #include <kernel/iobuffer.h>
 #include <kernel/fifo.h>
 #include <stdbool.h>
@@ -141,6 +142,15 @@ typedef enum
 	IAP2_IIID_ProductPlanUID = 34,	// utf8	
 } iap2_iiid_t;
 
+// ExternalAccessoryProtocol
+typedef enum
+{
+	IAP2_EAPID_ProtocolIdentifier = 0,	// uint8, unique per accessory
+	IAP2_EAPID_ProtocolName,			// utf8
+	IAP2_EAPID_ProtocolMatchAction,		// enum (iap2_match_action_t)
+	IAP2_EAPID_NativeTransportComponentIdentifier,
+} iap2_eapid_t;
+
 typedef enum
 {
 	IAP2_TCID_ComponentIdentifier = 0,	// uint16, unique per accessory
@@ -203,9 +213,12 @@ struct iap2_transport_driver
 
 typedef struct
 {
-	node_t *Node;
+	io_entry_t IoEntry;
+	unsigned short CurrentSessionId;
+	unsigned char ProtocolId;
 	const char *Url;
-	// TODO
+	const char *Filename;
+	void *DriverState;
 } iap2_protocol_t;
 
 typedef struct
@@ -222,12 +235,11 @@ typedef struct
 } iap2_context_t;
 
 void iap2_initialize();
+bool iap2_protocol_create(iap2_protocol_t *p, const char *url, const char *filename);
 bool iap2_transport_create(iap2_transport_t *t, const char *id, unsigned char unit, const iap2_transport_driver_t *driver);
 bool iap2_start(iap2_transport_t *t);
-void iap2_input(iap2_transport_t *t, const unsigned char *packet, unsigned packet_length);
+bool iap2_input(iap2_transport_t *t, const unsigned char *packet, unsigned packet_length);
 void iap2_stop();
-
-// application callbacks
 
 
 // helper functions

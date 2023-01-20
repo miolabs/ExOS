@@ -46,14 +46,11 @@ typedef struct
 	dispatcher_t RxDispatcher;
 	
 	unsigned char TxData[IAP2_MAX_PACKET_LENGTH];
-	unsigned char RxData[IAP2_MAX_PACKET_LENGTH];
-//	unsigned char TxSize;
-//	unsigned char Latency;
+	unsigned char RxData[IAP2_BUFFER_SIZE];
 	bool Ready;
 	bool Idle;
 
 	unsigned char OutputBuffer[IAP2_BUFFER_SIZE];
-	unsigned char InputBuffer[IAP2_BUFFER_SIZE];
 
 	char DeviceName[16];
 } iap2_device_context_t;

@@ -15,6 +15,9 @@
 #define _verbose(level, ...) { /* nothing */ }
 #endif
 
+#define IAP2_MAX_PROTOCOL_COUNT 4
+static iap2_protocol_t *_protocols[IAP2_MAX_PROTOCOL_COUNT];
+static unsigned _protocol_count = 0;
 
 #define THREAD_STACK 2048
 static exos_thread_t _thread;
@@ -24,10 +27,6 @@ static volatile bool _service_run = false;
 static bool _service_exit = false;
 
 #define IAP2_BUFFERS 5
-
-#ifndef IAP2_BUFFER_SIZE
-#define IAP2_BUFFER_SIZE 4096
-#endif
 
 typedef struct 
 { 
@@ -46,14 +45,23 @@ static event_t _input_event;
 
 void iap2_initialize()
 {
-	apple_cp30_initialize();
-
-//	iap_comm_initialize();
+	static bool _init_done = false;
+	if (!_init_done)
+	{
+		apple_cp30_initialize();
+		_init_done = true;
+	}
 }
 
-bool iap2_protocol_create(iap2_protocol_t *p, const char *url)
+bool iap2_protocol_create(iap2_protocol_t *p, const char *url, const char *filename)
 {
-	// TODO
+	ASSERT(p != NULL && url != NULL && filename != NULL, KERNEL_ERROR_NULL_POINTER);
+	if (_protocol_count < IAP2_MAX_PROTOCOL_COUNT)
+	{
+		*p = (iap2_protocol_t) { .Url = url, .Filename = filename };
+		_protocols[_protocol_count++] = p;
+		return true;	
+	}
 	return false;
 }
 
@@ -106,7 +114,7 @@ static bool _send(iap2_transport_t *t, const unsigned char *data, unsigned lengt
 	return driver->Send(t, data, length);
 }
 
-void iap2_input(iap2_transport_t *t, const unsigned char *packet, unsigned packet_length)
+bool iap2_input(iap2_transport_t *t, const unsigned char *packet, unsigned packet_length)
 {
 	// FIXME: allow transport to allocate the buffer prior to filling it (zero copy)
 	iap2_buffer_t *buf = (iap2_buffer_t *)pool_allocate(&_input_pool);
@@ -117,8 +125,13 @@ void iap2_input(iap2_transport_t *t, const unsigned char *packet, unsigned packe
 		buf->Length = packet_length;
 
 		exos_fifo_queue(&_input_fifo, &buf->Node);
+		return true;
 	}
-	else _verbose(VERBOSE_ERROR, "cannot allocate input buffer");
+	else 
+	{
+		_verbose(VERBOSE_ERROR, "cannot allocate input buffer");
+		return false;
+	}
 }
 
 
@@ -539,25 +552,99 @@ static unsigned short _get_transport_component_id(iap2_transport_t *t, unsigned 
 
 static unsigned short _get_protocol_definition(iap2_context_t *iap2, unsigned index, unsigned char *param_buf, unsigned buf_size)
 {
+	// NOTE: fill ExternalAccessoryProtocol group...
 	iap2_control_parameters_t params;
 	iap2_helper_init_parameters(&params, param_buf, buf_size);
-	unsigned char *id = iap2_helper_add_parameter(&params, 0, 1);
-	*id = index + 0xa0;	// NOTE: each protocol shall be unique
-	switch(index)
+
+	ASSERT(index < IAP2_MAX_PROTOCOL_COUNT, KERNEL_ERROR_KERNEL_PANIC);
+	if (index < _protocol_count)
 	{
-#ifdef IAP2_PROTOCOL0_NAME
-		case 0:		iap2_helper_add_param_string(&params, 1, IAP2_PROTOCOL0_NAME);	break;
-#endif
-		default:
-			return 0;
+		iap2_protocol_t *p = _protocols[index];
+		ASSERT(p != NULL, KERNEL_ERROR_NULL_POINTER);
+		p->ProtocolId = index + 0xa0;	// NOTE: each protocol shall be unique
+
+		unsigned char *id = iap2_helper_add_parameter(&params, IAP2_EAPID_ProtocolIdentifier, 1);
+		*id = p->ProtocolId;
+
+		ASSERT(p->Url != NULL && p->Filename, KERNEL_ERROR_NULL_POINTER);
+		iap2_helper_add_param_string(&params, IAP2_EAPID_ProtocolName, p->Url);
+
+		unsigned char *ma = iap2_helper_add_parameter(&params, IAP2_EAPID_ProtocolMatchAction, 1);
+		*ma = IAP2_MA_NoAlert;	// FIXME: configurable
+
+		//iap2_short_t *tcid = iap2_helper_add_parameter(&params, IAP2_EAPID_NativeTransportComponentIdentifier, sizeof(iap2_short_t));
+		//*tcid = HTOIAP2S(iap2->Transport->ComponentId);
 	}
-	unsigned char *ma = iap2_helper_add_parameter(&params, 2, 1);
-	*ma = IAP2_MA_NoAlert;	// FIXME
-	//iap2_short_t *tcid = iap2_helper_add_parameter(&params, 3, sizeof(iap2_short_t));
-	//*tcid = HTOIAP2S(iap2->Transport->ComponentId);
 	return params.Length;
 }
-  
+
+static bool _start_ea_session(unsigned short sess_id, unsigned char proto_id)
+{
+	ASSERT(_protocol_count <= IAP2_MAX_PROTOCOL_COUNT, KERNEL_ERROR_KERNEL_PANIC);
+	iap2_protocol_t *p = NULL;
+	for (unsigned index	= 0; index < _protocol_count; index++)
+	{
+		if (_protocols[index]->ProtocolId == proto_id)
+		{
+			p = _protocols[index];
+			break;
+		}
+	}
+	
+	if (p != NULL)
+	{
+		if (p->CurrentSessionId == 0)
+		{
+			io_error_t err = exos_io_open_path(&p->IoEntry, p->Filename, IOF_WRITE);
+			if (err == IO_OK)
+			{
+				ASSERT(sess_id != 0, KERNEL_ERROR_KERNEL_PANIC);
+				p->CurrentSessionId = sess_id;
+			}
+			else _verbose(VERBOSE_ERROR, "StartEAProtocolSession(): can't open stream file '%s'", p->Filename);
+		}
+		else _verbose(VERBOSE_ERROR, "StartEAProtocolSession(): protocol '%s' already busy", p->Url);
+	}
+	else _verbose(VERBOSE_ERROR, "StartEAProtocolSession(): unk protocol_id $%x!", proto_id);
+	return false;
+}
+
+static bool _find_ea_sess_protocol(unsigned short sess_id, iap2_protocol_t **pp)
+{
+	ASSERT(_protocol_count <= IAP2_MAX_PROTOCOL_COUNT, KERNEL_ERROR_KERNEL_PANIC);
+	iap2_protocol_t *p = NULL;
+	for (unsigned index	= 0; index < _protocol_count; index++)
+	{
+		if (_protocols[index]->CurrentSessionId == sess_id)
+		{
+			p = _protocols[index];
+			break;
+		}
+	}
+	if (p != NULL)
+	{
+		*pp = p;
+		return true;
+	}
+	return false;
+}
+
+static void _stop_ea_session(unsigned short sess_id)
+{
+	ASSERT(sess_id != 0, KERNEL_ERROR_KERNEL_PANIC);
+
+	iap2_protocol_t *p = NULL;
+	if (_find_ea_sess_protocol(sess_id, &p))
+	{
+		ASSERT(p != NULL, KERNEL_ERROR_NULL_POINTER);
+		p->CurrentSessionId = 0;
+
+		exos_io_close(&p->IoEntry); //NOTE: close stream
+	}
+	else _verbose(VERBOSE_ERROR, "StopEAProtocolSession(): unk session_id $%x", sess_id);
+}
+
+
 static void _send_identification(iap2_context_t *iap2)
 {
 	iap2_link_session1_t *sess0 = &iap2->Sessions[0];
@@ -587,14 +674,18 @@ static void _send_identification(iap2_context_t *iap2)
 		iap2_short_t *mcd = _add_parameter(resp_msg, IAP2_IIID_MaximumCurrentDrawnFromDevice, sizeof(unsigned short));
 		*mcd = HTOIAP2S(0);	// FIXME
 
-		// TODO SupportedExternalAccessoryProtocol
-		unsigned short eap_len = _get_protocol_definition(iap2, 0, param_buffer, sizeof(param_buffer));
-		if (eap_len != 0)
+		// SupportedExternalAccessoryProtocol (0+)
+		for(unsigned pi = 0; pi < IAP2_MAX_PROTOCOL_COUNT; pi++)
 		{
-			void *eap = _add_parameter(resp_msg, IAP2_IIID_SupportedExternalAccessoryProtocol, eap_len);
-			memcpy(eap, param_buffer, eap_len);
-		} 
-
+			unsigned short eap_len = _get_protocol_definition(iap2, pi, param_buffer, sizeof(param_buffer));
+			if (eap_len != 0)
+			{
+				void *eap = _add_parameter(resp_msg, IAP2_IIID_SupportedExternalAccessoryProtocol, eap_len);
+				memcpy(eap, param_buffer, eap_len);
+			} 
+			else break;
+		}
+			
 		// TODO AppMatchTeamID
 
 		_add_param_string(resp_msg, IAP2_IIID_CurrentLanguage, "en");
@@ -678,7 +769,7 @@ static void _parse_control(iap2_context_t *iap2, iap2_control_sess_message_t *ct
 			 
 			_verbose(VERBOSE_DEBUG, "got ctrl StartEAProtocolSession, protocol=%02x, session=$%04x",
 				protocol, session);
-			// TODO
+			_start_ea_session(session, protocol);
 			_send_ack(iap2);
 			break;
 		case IAP2_CTRL_MSGID_StopExternalAccessoryProtocolSession:
@@ -687,7 +778,7 @@ static void _parse_control(iap2_context_t *iap2, iap2_control_sess_message_t *ct
 			 
 			_verbose(VERBOSE_DEBUG, "got ctrl StopEAProtocolSession, session=$%04x",
 				session);
-			// TODO
+			_stop_ea_session(session);
 			_send_ack(iap2);
 			break;
 
@@ -754,8 +845,16 @@ static void _rx_callback(dispatcher_context_t *context, dispatcher_t *dispatcher
 					unsigned msg_len = payload_len - sizeof(iap2_ea_sess_message_t);
 					if (payload_len >= sizeof(iap2_ea_sess_message_t))
 					{
-						_verbose(VERBOSE_DEBUG, "got ea message, sid=$%04x (%d bytes)", IAP2SHTOH(ea_msg->SessionId), msg_len);
-						//_parse_ea(iap2, ctrl_msg);
+						unsigned short ea_sess_id = IAP2SHTOH(ea_msg->SessionId);
+						//_verbose(VERBOSE_COMMENT, "got ea message, ea_sid=$%04x (%d bytes)", ea_sess_id, msg_len);
+						
+						iap2_protocol_t *eap = NULL;
+						if (_find_ea_sess_protocol(ea_sess_id, &eap))
+						{
+							ASSERT(eap != NULL, KERNEL_ERROR_NULL_POINTER);
+							exos_io_write(&eap->IoEntry, ea_msg->Data, msg_len);
+						}
+						else _verbose(VERBOSE_ERROR, "can't relay ea message data (ea_sid=$%04x, %d bytes)", ea_sess_id, msg_len);
 					}
 					else _verbose(VERBOSE_ERROR, "ea message discarded (bad length)");
 
