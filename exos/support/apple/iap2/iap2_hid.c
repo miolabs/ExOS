@@ -50,6 +50,7 @@ static hid_function_handler_t *_match_device(usb_host_device_t *device, usb_conf
 			iap2->ReportsCount = 0;
 			return &iap2->Hid;
 		}
+		else _verbose(VERBOSE_ERROR, "single instance already in use!");
 	}
 	return NULL;
 }

@@ -363,6 +363,7 @@ static void _stop(usb_host_function_t *usb_func)
 {
 	hid_function_t *func = (hid_function_t *)usb_func;
 
+	_verbose(VERBOSE_DEBUG, "stopping instance #%d", func->InstanceIndex);
 	func->ExitFlag = 1;
 
 	usb_host_stop_pipe(&func->InputPipe);
@@ -378,7 +379,7 @@ static void _stop(usb_host_function_t *usb_func)
 		ASSERT(driver != NULL && driver->Stop != NULL, KERNEL_ERROR_NULL_POINTER);
 		driver->Stop(handler);
 
-		_function->Handler = NULL;
+		func->Handler = NULL;
 	}
 
 	_function_busy[func->InstanceIndex] = 0;
@@ -390,10 +391,7 @@ static void _dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 {
 	hid_function_t *func = (hid_function_t *)dispatcher->CallbackState;
 	ASSERT(func != nullptr, KERNEL_ERROR_NULL_POINTER);
-	hid_function_handler_t *handler = func->Handler;
-	ASSERT(handler != nullptr, KERNEL_ERROR_NULL_POINTER);
-	const hid_driver_t *driver = handler->Driver;
-	ASSERT(driver != nullptr, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(&func->Dispatcher == dispatcher, KERNEL_ERROR_KERNEL_PANIC);
 
 	if (dispatcher->State == DISPATCHER_TIMEOUT)
 	{
@@ -409,6 +407,10 @@ static void _dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 		int done = usb_host_end_transfer(&func->Request, EXOS_TIMEOUT_NEVER);
 		if (done >= 0)
 		{
+			hid_function_handler_t *handler = func->Handler;
+			ASSERT(handler != nullptr, KERNEL_ERROR_NULL_POINTER);
+			const hid_driver_t *driver = handler->Driver;
+			ASSERT(driver != nullptr, KERNEL_ERROR_NULL_POINTER);
 			driver->Notify(handler, func->InputBuffer, done);
 		}
 		else 

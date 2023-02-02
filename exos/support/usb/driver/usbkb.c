@@ -10,6 +10,10 @@
 #define _verbose(level, ...) { /* nothing */ }
 #endif
 
+#ifndef USB_KEYBOARD_MAX_INSTANCES
+#define USB_KEYBOARD_MAX_INSTANCES 1
+#endif
+
 static pool_t _handler_pool;
 
 static hid_function_handler_t *_match_device(usb_host_device_t *device, usb_configuration_descriptor_t *conf_desc, usb_interface_descriptor_t *if_desc, 
@@ -22,31 +26,16 @@ static const hid_driver_t _driver = {
 	.Start = _start, .Stop = _stop,
 	.Notify = _notify };
 
-static io_error_t _open(io_entry_t *io, const char *path, io_flags_t flags);
-static void _close(io_entry_t *io);
-//static int _get_attr(io_entry_t *io, COMM_ATTR_ID attr, void *value);
-//static int _set_attr(io_entry_t *io, COMM_ATTR_ID attr, void *value);
-static int _read(io_entry_t *io, unsigned char *buffer, unsigned length);
-static int _write(io_entry_t *io, const unsigned char *buffer, unsigned length);
-
-static const io_driver_t _io_driver = {
-	.Open = _open, .Close = _close,
-//	.GetAttr = _get_attr, .SetAttr = _set_attr, 
-	.Read = _read, .Write = _write };
-
 void usbkb_initialize()
 {
-	static usb_kb_function_handler_t _handler_heap[USB_KEYBOARD_MAX_INSTANCES];
+	static usbkb_function_handler_t _handler_heap[USB_KEYBOARD_MAX_INSTANCES];
 
-	pool_create(&_handler_pool, (node_t *)_handler_heap, sizeof(usb_kb_function_handler_t), USB_KEYBOARD_MAX_INSTANCES);
+	pool_create(&_handler_pool, (node_t *)_handler_heap, sizeof(usbkb_function_handler_t), USB_KEYBOARD_MAX_INSTANCES);
 	for (unsigned i = 0; i < USB_KEYBOARD_MAX_INSTANCES; i++) 
 	{
-		usb_kb_function_handler_t *kb = (usb_kb_function_handler_t *)&_handler_heap[i];
+		usbkb_function_handler_t *kb = (usbkb_function_handler_t *)&_handler_heap[i];
 		kb->InstanceIndex = i;
-		kb->State = USB_KB_DETACHED;
-		kb->IOEntry = NULL; 
-		sprintf(kb->DeviceName, "usbkb%d", i);
-		exos_io_add_device(&kb->Device, kb->DeviceName, &_io_driver, kb);
+//		kb->State = USB_KB_DETACHED;
 	}
 
 	static hid_driver_node_t node = (hid_driver_node_t) { .Driver = &_driver };
@@ -60,11 +49,11 @@ static hid_function_handler_t *_match_device(usb_host_device_t *device,
 	if (if_desc->InterfaceSubClass == USB_HID_SUBCLASS_BOOT && 
 		if_desc->Protocol == USB_HID_PROTOCOL_KEYBOARD)
 	{
-		usb_kb_function_handler_t *kb_handler = (usb_kb_function_handler_t *)pool_allocate(&_handler_pool);
+		usbkb_function_handler_t *kb_handler = (usbkb_function_handler_t *)pool_allocate(&_handler_pool);
 
 		if (kb_handler != NULL)
 		{
-			kb_handler->State = USB_KB_STARTING;
+//			kb_handler->State = USB_KB_STARTING;
 			return (hid_function_handler_t *)kb_handler;
 		}
 		else _verbose(VERBOSE_ERROR, "handler instance not available for new device"); 
@@ -72,7 +61,7 @@ static hid_function_handler_t *_match_device(usb_host_device_t *device,
 	return NULL;
 }
 
-static bool _parse_report_descriptor(usb_kb_function_handler_t *handler, hid_report_parser_t *parser)
+static bool _parse_report_descriptor(usbkb_function_handler_t *handler, hid_report_parser_t *parser)
 {
 	hid_report_parser_global_state_t *state = parser->Global;
 	ASSERT(state != NULL, KERNEL_ERROR_NULL_POINTER);
@@ -99,16 +88,16 @@ static bool _parse_report_descriptor(usb_kb_function_handler_t *handler, hid_rep
 				{
 					if (usage_min != usage_max)
 					{
-						_verbose(VERBOSE_DEBUG, "input report id #%d, keyboard page, usages 0x%02x-0x%02x (offset %d)", 
-							state->ReportId, usage_min, usage_max, state->InputOffset);
+						//_verbose(VERBOSE_DEBUG, "input report id #%d, keyboard page, usages 0x%02x-0x%02x (offset %d)", 
+						//	state->ReportId, usage_min, usage_max, state->InputOffset);
 					}
 				
 					usage_ok = true; 
 				}
 				break;
 			case HID_PARSE_FOUND_OUTPUT:
-				_verbose(VERBOSE_DEBUG, "output report id #%d, keyboard page, usages 0x%02x-0x%02x (offset %d)", 
-					state->ReportId, usage_min, usage_max, state->InputOffset);
+				//_verbose(VERBOSE_DEBUG, "output report id #%d, keyboard page, usages 0x%02x-0x%02x (offset %d)", 
+				//	state->ReportId, usage_min, usage_max, state->InputOffset);
 				break;
 		}
 	}
@@ -118,7 +107,7 @@ static bool _parse_report_descriptor(usb_kb_function_handler_t *handler, hid_rep
 
 static bool _start(hid_function_handler_t *handler, hid_report_parser_t *parser)
 {
-	usb_kb_function_handler_t *kb = (usb_kb_function_handler_t *)handler;
+	usbkb_function_handler_t *kb = (usbkb_function_handler_t *)handler;
 
 	_verbose(VERBOSE_COMMENT, "starting...");
 	
@@ -135,21 +124,14 @@ static bool _start(hid_function_handler_t *handler, hid_report_parser_t *parser)
 	unsigned char leds[] = { 0x0f };
 	usb_hid_set_report(handler->Function, USB_HID_REPORT_OUTPUT, 0, leds, sizeof(leds));
 
-	kb->State = USB_KB_READY;
+//	kb->State = USB_KB_READY;
 }
 
 static void _stop(hid_function_handler_t *handler)
 {
-	usb_kb_function_handler_t *kb = (usb_kb_function_handler_t *)handler;
+	usbkb_function_handler_t *kb = (usbkb_function_handler_t *)handler;
 	
-	if (kb->State == USB_KB_OPEN)
-	{
-		_verbose(VERBOSE_DEBUG, "closing kb io on detaching..."); 
-		ASSERT(kb->IOEntry != NULL, KERNEL_ERROR_KERNEL_PANIC);
-		exos_io_close(kb->IOEntry);
-	}
-	ASSERT(kb->IOEntry == NULL, KERNEL_ERROR_KERNEL_PANIC);
-	kb->State = USB_KB_DETACHED;
+//	kb->State = USB_KB_DETACHED;
 	_verbose(VERBOSE_COMMENT, "stopped");
 
 	pool_free(&_handler_pool, &handler->Node);
@@ -157,32 +139,28 @@ static void _stop(hid_function_handler_t *handler)
 
 static void _notify(hid_function_handler_t *handler, unsigned char *data, unsigned length)
 {
-	usb_kb_function_handler_t *kb = (usb_kb_function_handler_t *)handler;
+	usbkb_function_handler_t *kb = (usbkb_function_handler_t *)handler;
 
-//	int packet_size = ((input->Size * input->Count) >> 3);
-//	USB_KEYBOARD_HANDLER *kb = (USB_KEYBOARD_HANDLER *)handler;
-
-#if 1
+#if 0
 	static unsigned char buffer[32];
 	sprintf(buffer, "%02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x",
 		data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]);
 	_verbose(VERBOSE_DEBUG, "notify (%d) %s", length, buffer); 
 #endif
 
-	//if (input == kb->Report0)
-	//{
-	//	kb->Modifiers = data[0];
-	//}
-	//else if (input == kb->Report1)
-	//{
-	//	for (int i = 0; i < packet_size; i++)
-	//	{
-	//		unsigned char key = data[i];
-	//		if (key != 0)
-	//			usbkb_translate(kb, key);
-	//		else break;
-	//	}
-	//}
+	if (length >= 2)
+	{
+		unsigned char rp = data[0];
+		usbkb_modifier_t mask = data[1];
+		unsigned keys = 0;
+		for (unsigned i = 2; i < length; i++)
+		{
+			if (data[i] != 0) keys++;
+			else break;
+		}
+
+		usbkb_translate(kb, mask, &data[2], keys);
+	}
 }
 
 //void usbkb_push_text(USB_KEYBOARD_HANDLER *kb, char *text, int length)
@@ -194,87 +172,9 @@ static void _notify(hid_function_handler_t *handler, unsigned char *data, unsign
 //	}
 //}
 
-//__attribute__((__weak__))
-//void usbkb_translate(USB_KEYBOARD_HANDLER *kb, unsigned char key)
-//{
-//	char buffer[4];
-//	int length = sprintf(buffer, "%x ", key);
-//	usbkb_push_text(kb, buffer, length);
-//}
-
-
-//  IO interface
-
-static io_error_t _open(io_entry_t *io, const char *path, io_flags_t flags)
+__attribute__((__weak__))
+void usbkb_translate(usbkb_function_handler_t *kb, usbkb_modifier_t mask, unsigned char *keys, unsigned char length)
 {
-	usb_kb_function_handler_t *kb = (usb_kb_function_handler_t *)io->DriverContext;
-	ASSERT(kb != NULL, KERNEL_ERROR_NULL_POINTER);
-
-	switch(kb->State)
-	{
-		case USB_KB_READY:
-			exos_io_buffer_create(&kb->IOBuffer, kb->Buffer, sizeof(kb->Buffer), &io->InputEvent, NULL);
-			kb->State = USB_KB_OPEN;
-			return IO_OK;
-		case USB_KB_OPEN:
-			return IO_ERROR_ALREADY_LOCKED;
-		case USB_KB_DETACHED:
-			return IO_ERROR_DEVICE_NOT_MOUNTED;
-	}
-	return IO_ERROR_UNKNOWN;
+	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 }
-
-//static int _get_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
-//{
-//	// TODO: support baud rate, etc.
-//	return -1;
-//}
-
-//static int _set_attr(COMM_IO_ENTRY *io, COMM_ATTR_ID attr, void *value)
-//{
-//	// TODO: support baud rate, etc.
-//	return -1;
-//}
-
-static void _close(io_entry_t *io)
-{
-	usb_kb_function_handler_t *kb = (usb_kb_function_handler_t *)io->DriverContext;
-	ASSERT(kb != NULL, KERNEL_ERROR_NULL_POINTER);
-
-	if (kb->State == USB_KB_OPEN)
-	{
-		kb->State = USB_KB_READY;
-		ASSERT(kb->IOEntry != NULL, KERNEL_ERROR_NULL_POINTER);
-		exos_event_reset(&io->OutputEvent);
-		exos_event_set(&io->InputEvent);
-		kb->IOEntry = NULL;
-	}
-}
-
-static int _read(io_entry_t *io, unsigned char *buffer, unsigned length)
-{
-	usb_kb_function_handler_t *kb = (usb_kb_function_handler_t *)io->DriverContext;
-	ASSERT(kb != NULL, KERNEL_ERROR_NULL_POINTER);
-
-	if (kb->IOEntry == io && kb->State == USB_KB_OPEN)
-	{
-		int done = exos_io_buffer_read(&kb->IOBuffer, buffer, length);
-		return done;
-	}
-	return -1;
-}
-
-static int _write(io_entry_t *io, const unsigned char *buffer, unsigned length)
-{
-	usb_kb_function_handler_t *kb = (usb_kb_function_handler_t *)io->DriverContext;
-	ASSERT(kb != NULL, KERNEL_ERROR_NULL_POINTER);
-
-	if (kb->IOEntry == io && kb->State == USB_KB_OPEN)
-	{
-		// FAKE writing
-		return length;
-	}
-	return -1;
-}
-
 
