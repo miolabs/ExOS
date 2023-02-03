@@ -351,7 +351,14 @@ static void _sync_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 	else _verbose(VERBOSE_ERROR, "[sync] cannot allocate output buffer!");
 
 	if (ctrl & IAP2_CONTROLF_SYN)	// NOTE: skip when agreement have been reached
+	{
 		exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);	// FIXME: use retransmit?
+	}
+	else 
+	{
+		// NOTE:don't send more messages to this dispatcher!
+		iap2->SyncDone = true;
+	}
 }
 
 static iap2_control_session_message_parameter_t *_find_param(iap2_control_sess_message_t *ctrl_msg, unsigned short id)
@@ -578,7 +585,48 @@ static unsigned short _get_protocol_definition(iap2_context_t *iap2, unsigned in
 	return params.Length;
 }
 
-static bool _start_ea_session(unsigned short sess_id, unsigned char proto_id)
+static void _ea_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
+{
+	static unsigned char buffer[16];
+	iap2_protocol_t *p = (iap2_protocol_t *)dispatcher->CallbackState;
+	ASSERT(p != NULL, KERNEL_ERROR_NULL_POINTER);
+	iap2_context_t *iap2 = (iap2_context_t *)p->Context;
+	ASSERT(iap2 != NULL, KERNEL_ERROR_NULL_POINTER);
+	iap2_link_session1_t *sess1 = &iap2->Sessions[1];
+	ASSERT(sess1->Type == IAP2_SESSION_TYPE_EXTERNAL_ACCESSORY, KERNEL_ERROR_KERNEL_PANIC);
+
+	while(1)
+	{
+		unsigned offset = 0;
+		unsigned rem = 256;	// FIXME: IAP2_BUFFER_SIZE - (haeder + footer)
+
+		iap2_buffer_t *buf = _init_packet(iap2, IAP2_CONTROLF_ACK, sess1->Id);
+		if (buf != NULL)
+		{
+			iap2_ea_sess_message_t *ea_msg = (iap2_ea_sess_message_t *)(buf->Buffer + buf->Payload);
+			while(rem != 0)
+			{
+				unsigned done = exos_io_read(&p->IoEntry, &ea_msg->Data[offset], rem);
+				if (done <= 0) break;
+				offset += done;
+				rem -= done;
+			}
+			_verbose(VERBOSE_DEBUG, "ea %s got %d bytes -> send_packet", p->Url, offset);
+
+			buf->Length += (sizeof(iap2_ea_sess_message_t) + offset);
+			buf->Buffer[buf->Length] = _checksum((unsigned char *)ea_msg, buf->Length - sizeof(iap2_header_t));
+			buf->Length++;
+			_send_packet(iap2, buf);
+
+			pool_free(&_output_pool, &buf->Node);	// FIXME: we should not dispose the buffer if it has been queued for output
+		}
+		
+		/*if (rem == 0)*/ break;
+	}
+	exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);
+}
+
+static bool _start_ea_session(unsigned short sess_id, unsigned char proto_id, iap2_context_t *iap2)
 {
 	ASSERT(_protocol_count <= IAP2_MAX_PROTOCOL_COUNT, KERNEL_ERROR_KERNEL_PANIC);
 	iap2_protocol_t *p = NULL;
@@ -600,6 +648,10 @@ static bool _start_ea_session(unsigned short sess_id, unsigned char proto_id)
 			{
 				ASSERT(sess_id != 0, KERNEL_ERROR_KERNEL_PANIC);
 				p->CurrentSessionId = sess_id;
+				p->Context = iap2;
+
+				exos_dispatcher_create(&p->IoDispatcher, &p->IoEntry.InputEvent, _ea_dispatch, p);
+				exos_dispatcher_add(&iap2->DispatcherContext, &p->IoDispatcher, EXOS_TIMEOUT_NEVER);
 			}
 			else _verbose(VERBOSE_ERROR, "StartEAProtocolSession(): can't open stream file '%s'", p->Filename);
 		}
@@ -638,6 +690,11 @@ static void _stop_ea_session(unsigned short sess_id)
 	{
 		ASSERT(p != NULL, KERNEL_ERROR_NULL_POINTER);
 		p->CurrentSessionId = 0;
+		
+		iap2_context_t *iap2 = p->Context;
+		ASSERT(iap2 != NULL, KERNEL_ERROR_KERNEL_PANIC);
+		exos_dispatcher_remove(&iap2->DispatcherContext, &p->IoDispatcher);
+		p->Context = NULL;
 
 		exos_io_close(&p->IoEntry); //NOTE: close stream
 	}
@@ -713,7 +770,7 @@ static void _send_identification(iap2_context_t *iap2)
 	}
 }
 
-static void _parse_control(iap2_context_t *iap2, iap2_control_sess_message_t *ctrl_msg)
+static void _parse_control(iap2_context_t *iap2, iap2_control_sess_message_t *ctrl_msg, dispatcher_context_t *context)
 {
 	unsigned msg_id = IAP2SHTOH(ctrl_msg->MessageId);
 	unsigned msg_len = IAP2SHTOH(ctrl_msg->MessageLength); 
@@ -769,7 +826,7 @@ static void _parse_control(iap2_context_t *iap2, iap2_control_sess_message_t *ct
 			 
 			_verbose(VERBOSE_DEBUG, "got ctrl StartEAProtocolSession, protocol=%02x, session=$%04x",
 				protocol, session);
-			_start_ea_session(session, protocol);
+			_start_ea_session(session, protocol, iap2);
 			_send_ack(iap2);
 			break;
 		case IAP2_CTRL_MSGID_StopExternalAccessoryProtocolSession:
@@ -815,7 +872,11 @@ static void _rx_callback(dispatcher_context_t *context, dispatcher_t *dispatcher
 			if (hdr->SessionId == 0)
 			{
 				iap2->Ack = hdr->SequenceNumber;
-				exos_fifo_queue(&iap2->SyncFifo, &buf->Node);
+				if (!iap2->SyncDone)
+				{
+					exos_fifo_queue(&iap2->SyncFifo, &buf->Node);
+				}
+				else pool_free(&_input_pool, &buf->Node);
 			}
 			else 
 			{
@@ -833,7 +894,7 @@ static void _rx_callback(dispatcher_context_t *context, dispatcher_t *dispatcher
 					if (msg_len <= buf->Length && msg_len >= sizeof(iap2_control_sess_message_t))
 					{
 						//_verbose(VERBOSE_DEBUG, "got control message Id=$%04x (%d bytes)", IAP2SHTOH(ctrl_msg->MessageId), msg_len);
-						_parse_control(iap2, ctrl_msg);
+						_parse_control(iap2, ctrl_msg, context);
 					}
 					else _verbose(VERBOSE_ERROR, "control message discarded (bad length)");
 				}
@@ -868,6 +929,7 @@ static void _rx_callback(dispatcher_context_t *context, dispatcher_t *dispatcher
 					iap2->Ack = hdr->SequenceNumber;
 					_send_ack(iap2);
 				}
+	
 				pool_free(&_input_pool, &buf->Node);
 			}
 		}
@@ -893,21 +955,20 @@ static bool _loop(iap2_context_t *iap2)
 	link->MaxRcvPacketLength = IAP2_BUFFER_SIZE;	// our max input buffer
 	link->MaxNumOutstandingPackets = IAP2_BUFFERS;	// our max input buffers
 
-	dispatcher_context_t context;
-	exos_dispatcher_context_create(&context);
+	exos_dispatcher_context_create(&iap2->DispatcherContext);
 	
 	dispatcher_t rx_dispatcher;
 	exos_dispatcher_create(&rx_dispatcher, _input_fifo.Event, _rx_callback, iap2);
-	exos_dispatcher_add(&context, &rx_dispatcher, EXOS_TIMEOUT_NEVER);
+	exos_dispatcher_add(&iap2->DispatcherContext, &rx_dispatcher, EXOS_TIMEOUT_NEVER);
 
 	dispatcher_t sync_dispatcher;
 	exos_dispatcher_create(&sync_dispatcher, &iap2->SyncEvent, _sync_callback, iap2);
-	exos_dispatcher_add(&context, &sync_dispatcher, 500);
+	exos_dispatcher_add(&iap2->DispatcherContext, &sync_dispatcher, 500);
 
 	while(!_service_exit)
 	{
 		// NOTE: timeout provides loop exit when theres no activity
-		exos_dispatch(&context, 1000);
+		exos_dispatch(&iap2->DispatcherContext, 1000);
 	}
 
 	return true;
@@ -953,7 +1014,7 @@ static void *_service(void *arg)
 		if (done)
 		{
 			// TODO: notify the app that we, the 12 monkeys, did it
-			_verbose(VERBOSE_COMMENT, "role-swith done...");
+			_verbose(VERBOSE_COMMENT, "role-switch done...");
 			_service_exit = true;
 			_role_switched = true;
 		}
@@ -964,10 +1025,11 @@ static void *_service(void *arg)
 			{
 				if (_service_exit) break;
 				_verbose(VERBOSE_ERROR, "reset!");
+				kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);	// re-entry kills dispatcher context!
 			}
 		}
 
-//		iap_close_all();
+//		iap_close_all();	// TODO! <<<<<<<<<<<<<<<<<<<<<
 	}
 	else
 	{

@@ -4,6 +4,7 @@
 #include <kernel/types.h>
 #include <kernel/io.h>
 #include <kernel/iobuffer.h>
+#include <kernel/dispatch.h>
 #include <kernel/fifo.h>
 #include <stdbool.h>
 
@@ -213,26 +214,30 @@ struct iap2_transport_driver
 
 typedef struct
 {
-	io_entry_t IoEntry;
-	unsigned short CurrentSessionId;
-	unsigned char ProtocolId;
-	const char *Url;
-	const char *Filename;
-	void *DriverState;
-} iap2_protocol_t;
-
-typedef struct
-{
 	iap2_transport_t *Transport;
 	unsigned char Seq;
 	unsigned char Ack;
+	bool SyncDone;
 
+	dispatcher_context_t DispatcherContext;
 	event_t SyncEvent;
 	fifo_t SyncFifo;
 
 	// NOTE: first session in this array should be a control session i. e. Type == IAP2_SESSION_TYPE_CONTROL (0)
 	iap2_link_session1_t Sessions[IAP2_MAX_SESSIONS];
 } iap2_context_t;
+
+typedef struct
+{
+	iap2_context_t *Context;
+	io_entry_t IoEntry;
+	dispatcher_t IoDispatcher;
+	unsigned short CurrentSessionId;
+	unsigned char ProtocolId;
+	const char *Url;
+	const char *Filename;
+	void *DriverState;
+} iap2_protocol_t;
 
 void iap2_initialize();
 bool iap2_protocol_create(iap2_protocol_t *p, const char *url, const char *filename);
