@@ -56,6 +56,15 @@ void iap2_initialize()
 bool iap2_protocol_create(iap2_protocol_t *p, const char *url, const char *filename)
 {
 	ASSERT(p != NULL && url != NULL && filename != NULL, KERNEL_ERROR_NULL_POINTER);
+
+	for(unsigned i = 0; i < _protocol_count; i++)
+	{
+		iap2_protocol_t *pp = _protocols[i];
+		ASSERT(pp != NULL, KERNEL_ERROR_NULL_POINTER);
+		if (pp == p)
+			kernel_panic(KERNEL_ERROR_LIST_ALREADY_CONTAINS_NODE);
+	}
+
 	if (_protocol_count < IAP2_MAX_PROTOCOL_COUNT)
 	{
 		*p = (iap2_protocol_t) { .Url = url, .Filename = filename };
@@ -770,7 +779,7 @@ static void _send_identification(iap2_context_t *iap2)
 	}
 }
 
-static void _parse_control(iap2_context_t *iap2, iap2_control_sess_message_t *ctrl_msg, dispatcher_context_t *context)
+static void _parse_control(iap2_context_t *iap2, iap2_control_sess_message_t *ctrl_msg)
 {
 	unsigned msg_id = IAP2SHTOH(ctrl_msg->MessageId);
 	unsigned msg_len = IAP2SHTOH(ctrl_msg->MessageLength); 
@@ -894,7 +903,7 @@ static void _rx_callback(dispatcher_context_t *context, dispatcher_t *dispatcher
 					if (msg_len <= buf->Length && msg_len >= sizeof(iap2_control_sess_message_t))
 					{
 						//_verbose(VERBOSE_DEBUG, "got control message Id=$%04x (%d bytes)", IAP2SHTOH(ctrl_msg->MessageId), msg_len);
-						_parse_control(iap2, ctrl_msg, context);
+						_parse_control(iap2, ctrl_msg);
 					}
 					else _verbose(VERBOSE_ERROR, "control message discarded (bad length)");
 				}
