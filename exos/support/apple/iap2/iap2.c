@@ -613,6 +613,7 @@ static void _ea_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher
 		if (buf != NULL)
 		{
 			iap2_ea_sess_message_t *ea_msg = (iap2_ea_sess_message_t *)(buf->Buffer + buf->Payload);
+			ea_msg->SessionId = HTOIAP2S(p->CurrentSessionId);
 			while(rem != 0)
 			{
 				unsigned done = exos_io_read(&p->IoEntry, &ea_msg->Data[offset], rem);
@@ -620,7 +621,7 @@ static void _ea_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher
 				offset += done;
 				rem -= done;
 			}
-			_verbose(VERBOSE_DEBUG, "ea %s got %d bytes -> send_packet", p->Url, offset);
+			_verbose(VERBOSE_DEBUG, "ea %s got %d bytes -> send_packet", p->Url, offset);					
 
 			buf->Length += (sizeof(iap2_ea_sess_message_t) + offset);
 			buf->Buffer[buf->Length] = _checksum((unsigned char *)ea_msg, buf->Length - sizeof(iap2_header_t));
