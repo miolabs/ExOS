@@ -134,9 +134,10 @@ static void _event(unsigned module)
 	}
 	else if (sr1 & I2C_SR1_RXNE)
 	{
-		ASSERT(instance->Context != nullptr, KERNEL_ERROR_NULL_POINTER);
 		if (instance->ReadRem != 0)
 		{
+			ASSERT(instance->Context != nullptr, KERNEL_ERROR_NULL_POINTER);
+
 			*instance->Ptr++ = i2c->DR;
 			instance->ReadRem--;
 			switch(instance->ReadRem)
