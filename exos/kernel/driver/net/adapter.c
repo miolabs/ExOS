@@ -5,33 +5,38 @@
 #include "arp_tables.h"
 #include "ip.h"
 #include "net_service.h"
-#include <kernel/fifo.h>
+#include <support/misc/pools.h>
+#include <kernel/verbose.h>
 #include <kernel/panic.h>
-
-#ifdef ENABLE_ETHERCAT
-#include <support/ethercat/ethercat.h>
-#endif
 
 static mutex_t _adapters_lock;
 static list_t _adapters;
-static fifo_t _free_wrappers;
-static event_t _free_wrapper_event;
+static pool_t _buffer_pool;
+static dispatcher_context_t *_context;
 
-#define NET_PACKET_WRAPPERS 16
-static net_buffer_t _wrappers[NET_PACKET_WRAPPERS];
+#define BUFFER_MAX_FRAME_SIZE ETH_MAX_FRAME_SIZE
+#define POOL_ITEM_SIZE (sizeof(net_buffer_t) + BUFFER_MAX_FRAME_SIZE)
+#define POOL_ITEM_COUNT 16
+static unsigned char _pool_buffer[POOL_ITEM_COUNT * POOL_ITEM_SIZE];
+static event_t _flush_event;
+static dispatcher_t _flush_dispatcher;
 
-void net_adapter_initialize()
+static void _flush(dispatcher_context_t *context, dispatcher_t *dispatcher);
+
+void net_adapter_initialize(dispatcher_context_t *context)
 {
+	ASSERT(context != NULL, KERNEL_ERROR_NULL_POINTER);
+
 	list_initialize(&_adapters);
-	exos_event_create(&_free_wrapper_event, EXOS_EVENTF_AUTORESET);
-	exos_fifo_create(&_free_wrappers, &_free_wrapper_event);
-	for(int i = 0; i < NET_PACKET_WRAPPERS; i++)
-	{
-		_wrappers[i] = (net_buffer_t) { .Adapter = NULL }; 
-		exos_fifo_queue(&_free_wrappers, (node_t *)&_wrappers[i]);
-	}
+	pool_create(&_buffer_pool, (node_t *)_pool_buffer, POOL_ITEM_SIZE, POOL_ITEM_COUNT);
 
 	exos_mutex_create(&_adapters_lock);
+	exos_event_create(&_flush_event, EXOS_EVENTF_AUTORESET);
+	exos_dispatcher_create(&_flush_dispatcher, &_flush_event, _flush, NULL);
+	exos_dispatcher_add(context, &_flush_dispatcher, EXOS_TIMEOUT_NEVER);
+
+	_context = context;	
+/*
 	net_adapter_t *adapter;
 	const phy_handler_t *handler;
 	int index = 0;
@@ -49,13 +54,22 @@ void net_adapter_initialize()
 
 		index++;
 	}
+*/
+}
+
+static void _flush(dispatcher_context_t *context, dispatcher_t *dispatcher)
+{
+	verbose(VERBOSE_ERROR, "net_adapter", "automatic flush event!");
+	net_adapter_flush(NULL);
+	exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);
 }
 
 bool net_adapter_create(net_adapter_t *adapter, const net_driver_t *driver, unsigned phy_unit, const phy_handler_t *handler)
 {
 	ASSERT(adapter != NULL && driver != NULL, KERNEL_ERROR_NULL_POINTER);
-	*adapter = (net_adapter_t) { .Driver = driver, 
-		.Node = (node_t) { .Type = EXOS_NODE_IO_DEVICE } };
+	ASSERT(_context != NULL, KERNEL_ERROR_KERNEL_PANIC);
+	*adapter = (net_adapter_t) { .Node = (node_t) { .Type = EXOS_NODE_IO_DEVICE },
+		.Driver = driver, .Context = _context };
 
 	exos_mutex_create(&adapter->InputLock);
 	exos_mutex_create(&adapter->OutputLock);
@@ -72,7 +86,8 @@ void net_adapter_install(net_adapter_t *adapter)
 	ASSERT(!list_find_node(&_adapters, &adapter->Node), KERNEL_ERROR_KERNEL_PANIC);
 	list_add_tail(&_adapters, &adapter->Node);
 
-	net_service_start(adapter);
+	// FIXME_ make it WEAK
+//	net_service_start(adapter);
 	exos_mutex_unlock(&_adapters_lock);
 }
 
@@ -87,7 +102,7 @@ void net_adapter_list_unlock()
 	exos_mutex_unlock(&_adapters_lock);
 }
 
-int net_adapter_enum(net_adapter_t **padapter)
+bool net_adapter_enum(net_adapter_t **padapter)
 {
 	net_adapter_t *adapter = *padapter;
 #ifdef DEBUG
@@ -95,7 +110,7 @@ int net_adapter_enum(net_adapter_t **padapter)
 		NULL == list_find_node(&_adapters, &adapter->Node))
 	{
 		*padapter = NULL;
-		return 0;
+		return false;
 	}
 #endif
 
@@ -161,23 +176,88 @@ bool net_adapter_control(net_adapter_t *adapter, net_adapter_ctrl_t ctrl)
 	return done;
 }
 
-bool net_adapter_get_input(net_adapter_t *adapter, net_buffer_t *buf)
+net_buffer_t *net_adapter_alloc_buffer(net_adapter_t *adapter)
 {
 	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
    	const net_driver_t *driver = adapter->Driver;
-	
-	unsigned length;
-	eth_header_t *frame = driver->GetInputBuffer(adapter, &length);
-	if (frame != NULL)
+	ASSERT(driver != NULL, KERNEL_ERROR_NULL_POINTER);
+
+	unsigned maxframesize = adapter->MaxFrameSize;
+	ASSERT(maxframesize != 0 && maxframesize <= BUFFER_MAX_FRAME_SIZE, KERNEL_ERROR_KERNEL_PANIC);
+	net_buffer_t *buf = (net_buffer_t *)pool_allocate(&_buffer_pool);
+	if (buf != NULL)
 	{
+#ifdef DEBUG
+		buf->Node = (node_t) { /* all zero */ };
+#endif
 		buf->Adapter = adapter;
-		buf->Buffer =  frame;
-		buf->Length = length;
-		return true;
+		net_mbuf_init(&buf->Root, (unsigned char *)buf + sizeof(net_buffer_t), 0, maxframesize);
 	}
-	return false;
+	else
+	{
+		exos_event_set(&_flush_event);
+	}
+	return buf;
 }
 
+void net_adapter_free_buffer(net_buffer_t *buf)
+{
+	ASSERT(buf != NULL, KERNEL_ERROR_NULL_POINTER);
+
+	bool done = false;
+	if (buf->Adapter != NULL)
+	{
+		const net_driver_t *driver = buf->Adapter->Driver;
+		ASSERT(driver != NULL, KERNEL_ERROR_NULL_POINTER);
+		if (driver->FreeBuffer != NULL)
+			done = driver->FreeBuffer(buf->Adapter, buf);
+	}
+	if (!done)
+		pool_free(&_buffer_pool, &buf->Node);
+}
+
+void net_adapter_flush(net_adapter_t *adapter)
+{
+	if (adapter != NULL)
+	{
+		const net_driver_t *driver = adapter->Driver;
+		ASSERT(driver != NULL, KERNEL_ERROR_NULL_POINTER);
+		if (driver->Flush != NULL)
+			driver->Flush(adapter);
+	}
+	else
+	{
+		exos_mutex_lock(&_adapters_lock);
+		net_adapter_t *adi = NULL;
+		while(net_adapter_enum(&adi))
+		{
+			net_adapter_flush(adi);
+		}
+		exos_mutex_unlock(&_adapters_lock);	
+	}
+}
+
+net_buffer_t *net_adapter_get_input(net_adapter_t *adapter)
+{
+	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
+	const net_driver_t *driver = adapter->Driver;
+	ASSERT(driver != NULL && driver->GetInputBuffer != NULL, KERNEL_ERROR_NULL_POINTER);
+	net_buffer_t *buf = driver->GetInputBuffer(adapter);
+	return buf;
+}
+
+bool net_adapter_send_output(net_adapter_t *adapter, net_buffer_t *buf)
+{
+	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(buf != NULL, KERNEL_ERROR_NULL_POINTER);
+	const net_driver_t *driver = adapter->Driver;
+	ASSERT(driver != NULL && driver->SendOutputBuffer != NULL, KERNEL_ERROR_NULL_POINTER);
+	bool done = driver->SendOutputBuffer(adapter, buf);
+	return done;
+}
+
+
+#if 0
 void net_adapter_input(net_adapter_t *adapter)
 {
 	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
@@ -208,7 +288,10 @@ void net_adapter_input(net_adapter_t *adapter)
 #endif
 		}
 		if (!queued) 
-			driver->DiscardInputBuffer(adapter, buffer);
+		{
+			//NOTE: API changed and you can't keep buffers and discard out-of-order so "queue" is not a good idea... [WIP]
+			driver->DiscardInputBuffer(adapter);
+		}
 	}
 }
 
@@ -249,27 +332,6 @@ int net_adapter_send_output(net_adapter_t *adapter, NET_OUTPUT_BUFFER *output)
 		output->CompletedEvent != NULL ? _send_callback : NULL, output->CompletedEvent);
 	return done;
 }
+#endif
 
-//net_buffer_t *net_adapter_alloc_buffer(net_adapter_t *adapter, void *buffer, void *data, unsigned long length)
-//{
-//	net_buffer_t *packet = (net_buffer_t *)exos_fifo_wait(&_free_wrappers, EXOS_TIMEOUT_NEVER);
-//	packet->Node = (node_t) { .Type = EXOS_NODE_IO_BUFFER };	// FIXME
-//	packet->Adapter = adapter;
-//	packet->Buffer = buffer;
-//	packet->Offset = (unsigned short)(data - buffer);
-//	packet->Length = length;
-//	return packet;
-//}
-
-void net_adapter_discard_input(net_buffer_t *buf)
-{
-	ASSERT(buf != NULL, KERNEL_ERROR_NULL_POINTER);
-	net_adapter_t *adapter = buf->Adapter;
-	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
-	const net_driver_t *driver = adapter->Driver;
-	ASSERT(driver != NULL && driver->DiscardInputBuffer != NULL, KERNEL_ERROR_NULL_POINTER);
-	driver->DiscardInputBuffer(adapter, buf->Buffer);
-
-//	exos_fifo_queue(&_free_wrappers, (node_t *)packet);
-}
 

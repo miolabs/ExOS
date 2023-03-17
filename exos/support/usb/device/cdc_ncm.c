@@ -13,22 +13,19 @@
 #define _verbose(level, ...) { /* nothing */ }
 #endif
 
-
+// (virtual) ethernet adapter driver
 static bool _initialize(net_adapter_t *adapter, unsigned phy_unit, const phy_handler_t *handler);
 static void _link_up(net_adapter_t *adapter);
 static void _link_down(net_adapter_t *adapter);
-static void *_get_input_buffer(net_adapter_t *adapter, unsigned *plength);
-static void _discard_input_buffer(net_adapter_t *adapter, void *buffer);
-static void *_get_output_buffer(net_adapter_t *adapter, unsigned size);
-static int _send_output_buffer(net_adapter_t *adapter, net_mbuf_t *mbuf, NET_CALLBACK callback, void *state);
+static void _flush(net_adapter_t *adapter);
+static net_buffer_t *_get_input_buffer(net_adapter_t *adapter);
+static bool _send_output_buffer(net_adapter_t *adapter, net_buffer_t *buf);
 const net_driver_t __usb_cdc_ncm_eth_driver = { .Initialize = _initialize,
 	.LinkUp = _link_up, .LinkDown = _link_down,
-	.GetInputBuffer = _get_input_buffer, .DiscardInputBuffer = _discard_input_buffer,
-	.GetOutputBuffer = _get_output_buffer, .SendOutputBuffer = _send_output_buffer }; 
+	.Flush = _flush,
+	.GetInputBuffer = _get_input_buffer, .SendOutputBuffer = _send_output_buffer }; 
 
-
-
-#define MAX_NTB_SIZE NCM_OUTPUT_EP_BUFFER
+#define MAX_FRAME_SIZE 1514 // not including CRC
 
 static void _notify_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher);
 static void _tx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher);
@@ -89,6 +86,7 @@ static bool _initialize(net_adapter_t *adapter, unsigned phy_unit, const phy_han
 {
 	_initialize_all();
 
+	adapter->MaxFrameSize = MAX_FRAME_SIZE;
 	return true;
 }
 
@@ -102,24 +100,74 @@ static void _link_down(net_adapter_t *adapter)
 	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 }
 
-static void *_get_input_buffer(net_adapter_t *adapter, unsigned *plength)
+static void _flush(net_adapter_t *adapter)
 {
-	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
+
+	exos_mutex_lock(&adapter->OutputLock);
+
+	ncm_device_context_t *ncm_dev = (ncm_device_context_t *)adapter->DriverData;
+	if (ncm_dev != NULL && ncm_dev->Ready)	// NOTE: usb function is running
+	{
+		unsigned done = 0;
+		net_buffer_t *buf;
+		while(buf = (net_buffer_t *)exos_fifo_dequeue(&ncm_dev->TxFifo), buf != NULL)
+		{
+			net_adapter_free_buffer(buf);
+			done++;
+		}
+		_verbose(VERBOSE_DEBUG, "flushed %d tx buffers", done);
+	}
+
+	exos_mutex_unlock(&adapter->OutputLock);
 }
 
-static void _discard_input_buffer(net_adapter_t *adapter, void *buffer)
+static net_buffer_t *_get_input_buffer(net_adapter_t *adapter)
 {
-	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
+	ncm_device_context_t *ncm_dev = (ncm_device_context_t *)adapter->DriverData;
+	ASSERT(ncm_dev != NULL, KERNEL_ERROR_NULL_POINTER);
+	
+	unsigned short flags;
+	unsigned length = net_packet_buffer_peek(&ncm_dev->RxPackets, &flags);
+	if (length != 0)
+	{
+		net_buffer_t *buf = net_adapter_alloc_buffer(adapter);
+		if (buf != NULL)
+		{
+			unsigned length = net_packet_buffer_pop(&ncm_dev->RxPackets, buf->Root.Buffer, buf->Root.Length);
+			ASSERT(length != 0, KERNEL_ERROR_KERNEL_PANIC);
+			buf->Root.Offset = 0;
+			buf->Root.Length = length;
+			return buf;
+		}
+		else
+		{
+			_verbose(VERBOSE_ERROR, "dropped input packet (couldn't allocate buffer)");
+		}
+	}
+	return NULL;
 }
 
-static void *_get_output_buffer(net_adapter_t *adapter, unsigned size)
+static bool _send_output_buffer(net_adapter_t *adapter, net_buffer_t *buf)
 {
-	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
-}
+	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
 
-static int _send_output_buffer(net_adapter_t *adapter, net_mbuf_t *mbuf, NET_CALLBACK callback, void *state)
-{
-	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+	bool done = false;
+	exos_mutex_lock(&adapter->OutputLock);
+
+	ncm_device_context_t *ncm_dev = (ncm_device_context_t *)adapter->DriverData;
+	if (ncm_dev != NULL && ncm_dev->Ready)	// NOTE: usb function is running
+	{
+		exos_fifo_queue(&ncm_dev->TxFifo, &buf->Node);
+		done = true;
+
+		if (ncm_dev->Idle)
+			exos_event_set(&ncm_dev->TxEvent);	// NOTE: wake up tx dispatcher
+	}
+
+	exos_mutex_unlock(&adapter->OutputLock);
+	return done;
 }
 
 
@@ -152,13 +200,15 @@ static bool _init1(usb_device_interface_t *iface, const void *instance_data)
 		ncm_dev->Interface = iface;
 		iface->DriverContext = ncm_dev;
 
-//		exos_mutex_create(&ncm_dev->Lock);
+		net_packet_buffer_initialize(&ncm_dev->RxPackets, ncm_dev->RxBuffer, sizeof(ncm_dev->RxBuffer));
+		exos_fifo_create(&ncm_dev->TxFifo, NULL);
 
 		ncm_dev->Unit = _device_count++;
 
 		usb_device_interface_create(&ncm_dev->SecondaryDataInterface, &_driver2);
 		usb_device_config_add_interface(iface->Configuration, &ncm_dev->SecondaryDataInterface, ncm_dev); 
 
+		adapter->DriverData = ncm_dev;
 		return true;
 	}
 	else _verbose(VERBOSE_ERROR, "not enough memory!");
@@ -225,7 +275,7 @@ static unsigned _fill_class_desc(usb_device_interface_t *iface, usb_descriptor_h
 	enf->DescriptorSubtype = USB_CDC_FUNC_DESCRIPTOR_SUBTYPE_ENFD;
 	enf->iMACAddress = ncm_dev->EthernetMac.Index;
 	enf->bmEthernetStatistics = HTOUSB32(0);	// FIXME
-	enf->wMaxSegmentSize = HTOUSB16(1514);		// FIXME
+	enf->wMaxSegmentSize = HTOUSB16(MAX_FRAME_SIZE);
 	enf->wNumberMCFilters = HTOUSB16(0);		// FIXME
 	enf->bNumberPowerFilters = 0;
 	size += enf->Header.Length;
@@ -281,14 +331,6 @@ static bool _start(usb_device_interface_t *iface, unsigned char alternate_settin
 
 	ncm_dev->Connected = false;
 
-//	exos_mutex_unlock(&ncm_dev->Lock);
-
-	// transport link params
-	//t->LinkParams.RetransmitTimeout = 2000;
-	//t->LinkParams.CumulativeAckTimeout = 22;
-	//t->LinkParams.MaxRetransmits = 30;
-	//t->LinkParams.MaxCumulativeAcks = 3;
-
 	#ifdef DEBUG
 	// NOTE: fake!
 	ncm_dev->Connected = true;
@@ -307,15 +349,11 @@ static void _stop(usb_device_interface_t *iface)
 	ASSERT(ncm_dev != NULL, KERNEL_ERROR_NULL_POINTER);
 	ASSERT(ncm_dev->Interface == iface, KERNEL_ERROR_NULL_POINTER);
 
-//	exos_mutex_lock(&ncm_dev->Lock);
-
 	ASSERT(list_find_node(&_instance_list, &ncm_dev->Node), KERNEL_ERROR_KERNEL_PANIC);
 	list_remove(&ncm_dev->Node);
 
 	ncm_dev->Ready = false;
 	exos_dispatcher_remove(ncm_dev->DispatcherContext, &ncm_dev->NotifyDispatcher);
-
-//	exos_mutex_unlock(&ncm_dev->Lock);
 
 	_verbose(VERBOSE_COMMENT, "[%d] USB stop comm if -------", iface->Index);
 }
@@ -381,11 +419,6 @@ static bool _enable_data_if(usb_device_interface_t *iface, bool enable)
 		exos_dispatcher_remove(ncm_dev->DispatcherContext, &ncm_dev->RxDispatcher);
 		exos_dispatcher_remove(ncm_dev->DispatcherContext, &ncm_dev->TxDispatcher);
 
-		//t->LinkParams.RetransmitTimeout = 2000;
-		//t->LinkParams.CumulativeAckTimeout = 22;
-		//t->LinkParams.MaxRetransmits = 30;
-		//t->LinkParams.MaxCumulativeAcks = 3;
-
 		_verbose(VERBOSE_COMMENT, "[%d] data if disabled/reset!", iface->Index);
 	}
 	else
@@ -402,7 +435,8 @@ static bool _enable_data_if(usb_device_interface_t *iface, bool enable)
 		exos_event_create(&ncm_dev->TxEvent, EXOS_EVENTF_AUTORESET);
 		ncm_dev->TxIo = (usb_io_buffer_t) { .Event = &ncm_dev->TxEvent };
 		exos_dispatcher_create(&ncm_dev->TxDispatcher, &ncm_dev->TxEvent, _tx_dispatch, ncm_dev);
-		//exos_dispatcher_add(ncm_dev->DispatcherContext, &ncm_dev->TxDispatcher, EXOS_TIMEOUT_NEVER);
+		exos_dispatcher_add(ncm_dev->DispatcherContext, &ncm_dev->TxDispatcher, EXOS_TIMEOUT_NEVER);
+		ncm_dev->Idle = true;
 
 		_verbose(VERBOSE_COMMENT, "[%d] data if enabled!", iface->Index);
 	}
@@ -415,7 +449,7 @@ static bool _start2(usb_device_interface_t *iface, unsigned char alternate_setti
 	// NOTE: both interface should run in the same context
 	ASSERT(ncm_dev->DispatcherContext == context, KERNEL_ERROR_KERNEL_PANIC);
 
-	// NOTE: usb device stack is supposed to have enabled / disabled our endpoints before calling us...
+	// NOTE: usb device stack have enabled/disabled our endpoints before calling us...
 	_verbose(VERBOSE_COMMENT, "[%d] USB start data if ------- (alt=%d)", iface->Index, alternate_setting);
 	_enable_data_if(iface, alternate_setting != 0);
 	return true;
@@ -502,6 +536,97 @@ static void _notify_dispatch(dispatcher_context_t *context, dispatcher_t *dispat
 	exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);
 }
 
+static unsigned _mbuf_count(net_mbuf_t *mbuf)
+{
+	unsigned count = 0;
+	while(mbuf != NULL && mbuf->Buffer != NULL && mbuf->Length != 0)
+	{
+		count++;
+		mbuf = mbuf->Next;
+	}
+	return count;
+}
+
+static unsigned _assemble(ncm_device_context_t *ncm_dev)
+{
+	net_adapter_t *adapter = ncm_dev->Adapter;
+	ASSERT(adapter != NULL && adapter->DriverData == ncm_dev, KERNEL_ERROR_KERNEL_PANIC);
+
+	exos_mutex_lock(&adapter->OutputLock);
+
+	ncm_transfer_header16_t *nth16 = (ncm_transfer_header16_t *)ncm_dev->TxData;
+	unsigned pkt_cnt = 0;
+	unsigned offset = 0;
+	usb16_t *prev_ndp_next_index = NULL;
+	net_buffer_t *buf;
+	while(buf = (net_buffer_t *)exos_fifo_dequeue(&ncm_dev->TxFifo), buf != NULL)
+	{
+		pkt_cnt++;
+
+		if (offset == 0)
+		{
+			offset = sizeof(ncm_transfer_header16_t);
+			ASSERT((offset & 3) == 0, KERNEL_ERROR_KERNEL_PANIC);
+
+			nth16->dwSignature = HTOUSB32(SIG_NTH16);
+			nth16->wHeaderLength = HTOUSB16(sizeof(ncm_transfer_header16_t));
+			nth16->wSequence = HTOUSB16(ncm_dev->TxSequence);
+			// NOTE: wBlockLength is set later
+			nth16->wNdpIndex = HTOUSB16(offset >> 2);
+			ncm_dev->TxSequence++;
+		}
+
+		net_mbuf_t *mbuf = &buf->Root;
+		unsigned seg_cnt = _mbuf_count(mbuf);
+		ASSERT(seg_cnt != 0, KERNEL_ERROR_KERNEL_PANIC);
+		unsigned seg_done = 0;
+
+		ncm_datagram_pointer16_t *ndp16 = (ncm_datagram_pointer16_t *)((unsigned char *)nth16 + offset);
+		unsigned ndp_length = sizeof(ncm_datagram_pointer16_t) + ((seg_cnt + 1) * sizeof(struct ncm_datagram16));
+		offset += ndp_length;
+		ASSERT((offset & 3) == 0, KERNEL_ERROR_KERNEL_PANIC);
+		if (offset < sizeof(ncm_dev->TxData)) 
+		{
+			if (prev_ndp_next_index != NULL) *prev_ndp_next_index = HTOUSB16(offset >> 2);
+			ndp16->dwSignature = HTOUSB32(SIG_NDP16);
+			ndp16->wLength = HTOUSB16(ndp_length);
+			ndp16->wNextNdpIndex = HTOUSB16(0);	// NOTE: re-written later if needed
+			prev_ndp_next_index = &ndp16->wNextNdpIndex;
+			do
+			{
+				ndp16->array[seg_done] = (struct ncm_datagram16) { 
+					.wDatagramIndex = HTOUSB16(offset >> 2), 
+					.wDatagramLength =HTOUSB16(mbuf->Length) };
+
+				unsigned word_count = (mbuf->Length + 3) >> 2;
+				if ((offset + (word_count << 2)) > sizeof(ncm_dev->TxData))
+					break;
+
+				memcpy((unsigned char *)nth16 + offset, mbuf->Buffer + mbuf->Offset, mbuf->Length);
+				offset += word_count << 2;
+				mbuf = mbuf->Next;
+				seg_done++;
+			} while (mbuf != NULL && mbuf->Buffer != NULL && mbuf->Length != 0);
+		
+			ndp16->array[seg_done] = (struct ncm_datagram16) { .wDatagramLength = 0 };
+		}
+
+		net_adapter_free_buffer(buf);
+		_verbose(VERBOSE_DEBUG, "asm freed buffer %d ($%x)", pkt_cnt, (unsigned)buf & 0xffff);
+
+		if (seg_cnt != seg_done)
+		{
+			_verbose(VERBOSE_ERROR, "output packet truncated!");
+			break;
+		}
+	}
+	nth16->wBlockLength = HTOUSB16(offset);
+	exos_mutex_unlock(&adapter->OutputLock);
+
+	_verbose(VERBOSE_DEBUG, "assembled %d packets", pkt_cnt);
+	return offset;
+}
+
 static void _tx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 {
 	ncm_device_context_t *ncm_dev = (ncm_device_context_t *)dispatcher->CallbackState;
@@ -533,8 +658,7 @@ static void _tx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher
 	}
 	else
 	{
-		//unsigned done = exos_io_buffer_read(&ncm_dev->Output, ncm_dev->TxData, sizeof(ncm_dev->TxData));
-		unsigned done = 0;	// TODO
+		unsigned done = _assemble(ncm_dev);
 
 		if (done != 0)
 		{
@@ -549,7 +673,7 @@ static void _tx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher
 			//_verbose(VERBOSE_DEBUG,"[%d] tx '%s'", iap2dev->Interface->Index, vbuf);
 #endif
 			ncm_dev->Idle = false;
-
+ 
 			ncm_dev->TxIo.Data = ncm_dev->TxData;
 			ncm_dev->TxIo.Length = done;
 			usb_set_tx_buffer(NCM_BULK_EP, &ncm_dev->TxIo);
@@ -566,10 +690,108 @@ static void _tx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher
 	}
 }
 
-static bool _dissect(unsigned char *data, unsigned done, unsigned *poff, unsigned *plen)
+struct dissect_state {
+	ncm_transfer_header16_t *nth;
+	ncm_datagram_pointer16_t *ndp;
+	unsigned short index;
+	};
+
+static bool _validate_ndp(ncm_transfer_header16_t *hth16, ncm_datagram_pointer16_t *ndp16)
 {
-	unsigned offset = *poff;
-	// TODO <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+	unsigned sig = USB32TOH(ndp16->dwSignature);
+	unsigned short hdr_len = USB16TOH(ndp16->wLength);
+
+	if ((sig & 0xffffff) != SIG_NDP16)
+	{
+		_verbose(VERBOSE_ERROR, "dissect ndp is not NDP16");
+		return false;
+	}
+	if ((hdr_len & 3) != 0 || (hdr_len >> 2) < 2)	// must be 8+k*4 bytes
+	{
+		_verbose(VERBOSE_ERROR, "dissect NDP16 has wrong header length");
+		return false;
+	}
+	return true;
+}
+
+static bool _dissect_start(struct dissect_state *state, unsigned char *data, unsigned data_length)
+{
+	ncm_transfer_header16_t *hdr16 = (ncm_transfer_header16_t *)data;
+	unsigned sig = USB32TOH(hdr16->dwSignature);
+	unsigned hdr_len = USB16TOH(hdr16->wHeaderLength);
+
+	if (sig != SIG_NTH16)
+	{
+		_verbose(VERBOSE_ERROR, "dissect packet is not NTB16");
+		return false;
+	}
+	if (hdr_len != sizeof(ncm_transfer_header16_t))	// 12 bytes
+	{
+		_verbose(VERBOSE_ERROR, "dissect packet NTB16 has wrong header length");
+		return false;
+	}
+
+	// TODO: input Sequence is ignored
+	//unsigned short seq = USB16TOH(hdr16->wSequence);
+	unsigned short length = USB16TOH(hdr16->wBlockLength);
+	if (length < hdr_len || length > data_length)
+	{
+		_verbose(VERBOSE_ERROR, "dissect packet NTB16 has wrong total length");
+		return false;
+	}
+
+	unsigned short ndp_offset = USB16TOH(hdr16->wNdpIndex);
+	if (ndp_offset <  hdr_len ||
+		(ndp_offset + sizeof(ncm_datagram_pointer16_t)) > length)
+	{
+		_verbose(VERBOSE_ERROR, "dissect packet NTB16 has index out of range");
+		return false;
+	}
+
+	ncm_datagram_pointer16_t *ndp = (ncm_datagram_pointer16_t *)(data + ndp_offset);
+	if (_validate_ndp(hdr16, ndp))
+	{
+		*state = (struct dissect_state) { .nth = hdr16, .ndp = ndp, .index = 0 };
+		return true;
+	} 
+
+	return false;
+}
+
+static void *_dissect(struct dissect_state *state, unsigned *plen)
+{
+	ASSERT(state != NULL, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(state->nth != NULL, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(state->ndp != NULL, KERNEL_ERROR_NULL_POINTER);
+
+	unsigned short ndp_len = USB16TOH(state->ndp->wLength);
+	ASSERT(ndp_len >= sizeof(ncm_datagram_pointer16_t), KERNEL_ERROR_KERNEL_PANIC); 
+	unsigned count = (ndp_len - sizeof(ncm_datagram_pointer16_t)) >> 2;
+
+	if (state->index < count)
+	{
+		unsigned offset = USB16TOH(state->ndp->array[state->index].wDatagramIndex);
+		unsigned length = USB16TOH(state->ndp->array[state->index].wDatagramLength);
+		
+		state->index++;
+		if (state->index == count)
+		{
+			unsigned index = USB16TOH(state->ndp->wNextNdpIndex);
+			if (index != 0)
+			{
+				ncm_datagram_pointer16_t *next = (ncm_datagram_pointer16_t *)
+					((unsigned char *)state->nth + index);
+				if (_validate_ndp(state->nth, next))
+				{
+					state->ndp = next;
+					state->index = 0;
+				}
+			}
+		}
+
+		*plen = length;
+		return length != 0 ? (unsigned char *)state->nth + offset : NULL; 
+	}
 
 	return false;
 }
@@ -579,18 +801,23 @@ static void _rx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher
 	ncm_device_context_t *ncm_dev = (ncm_device_context_t *)dispatcher->CallbackState;
 	if (ncm_dev->RxIo.Status == USB_IOSTA_DONE)
 	{
-#ifdef USB_DEVICE_DEBUG
-		//_verbose(VERBOSE_DEBUG, "rx (%d bytes)", ncm_dev->RxIo.Done);
-#endif
-
 		// NOTE: dissect usb buffer to find datagrams, then send them to ethernet framework
-		unsigned offset = 0;
-		unsigned length;
-		while(_dissect(ncm_dev->RxIo.Data, ncm_dev->RxIo.Done, &offset, &length))
+		struct dissect_state dis;
+		if (_dissect_start(&dis, ncm_dev->RxIo.Data, ncm_dev->RxIo.Done))
 		{
+			unsigned length;
+			void *data;
+			while(data = _dissect(&dis, &length), data != NULL)
+			{
 #ifdef USB_DEVICE_DEBUG
-			_verbose(VERBOSE_DEBUG, "rx (offset %d, %d bytes)", offset, length);
+				//_verbose(VERBOSE_DEBUG, "rx (%d bytes)", length);
 #endif
+				if (!net_packet_buffer_push(&ncm_dev->RxPackets, data, length, 0))
+					_verbose(VERBOSE_ERROR, "failed to push rx data");
+			}
+
+			ASSERT(ncm_dev->Adapter != NULL, KERNEL_ERROR_NULL_POINTER);
+			exos_event_set(&ncm_dev->Adapter->InputEvent);
 		}
 
 		// reset input ep
@@ -641,11 +868,11 @@ static void _init_parameters(ncm_ntb_parameter_structure_t *nps)
 	*nps = (ncm_ntb_parameter_structure_t) {
 		.wLength = HTOUSB16(sizeof(ncm_ntb_parameter_structure_t)),
 		.bmNtbFormatsSupported = HTOUSB16(NCM_NTB_FORMAT_SUPP_NTB16),
-		.dwNtbInMaxSize = HTOUSB32(MAX_NTB_SIZE),
+		.dwNtbInMaxSize = HTOUSB32(NCM_MAX_NTB_SIZE),
 		.wNdpInDivisor = HTOUSB16(4),
 		.wNdpInPayloadRemainder = HTOUSB16(0),
 		.wNdpInAlignment = HTOUSB16(4),
-		.dwNtbOutMaxSize = HTOUSB32(MAX_NTB_SIZE),
+		.dwNtbOutMaxSize = HTOUSB32(NCM_MAX_NTB_SIZE),
 		.wNdpOutDivisor = HTOUSB16(4),
 		.wNdpOutPayloadRemainder = HTOUSB16(0),
 		.wNdpOutAlignment = HTOUSB16(4),

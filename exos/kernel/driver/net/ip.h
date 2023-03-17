@@ -102,8 +102,8 @@ typedef ip_addr_t IP_ADDR;
 // prototypes
 void net_ip_initialize();
 int net_ip_input(net_adapter_t *adapter, eth_header_t *eth, IP_HEADER *ip);
-void *net_ip_output(net_adapter_t *adapter, NET_OUTPUT_BUFFER *output, unsigned hdr_size, const IP_ENDPOINT *destination, IP_PROTOCOL protocol);
-int net_ip_send_output(net_adapter_t *adapter, NET_OUTPUT_BUFFER *output, unsigned payload);
+void *net_ip_output(net_adapter_t *adapter, net_buffer_t *output, unsigned hdr_size, const IP_ENDPOINT *destination, IP_PROTOCOL protocol);
+int net_ip_send_output(net_adapter_t *adapter, net_buffer_t *output, unsigned payload);
 void *net_ip_get_payload(IP_HEADER *ip, unsigned short *plength);
 
 int net_ip_get_adapter_and_resolve(net_adapter_t **padapter, IP_ENDPOINT *ep);

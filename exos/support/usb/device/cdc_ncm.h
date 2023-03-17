@@ -4,7 +4,9 @@
 #include <usb/classes/cdc.h>
 #include <usb/configuration.h>
 #include <usb/device.h>
-#include <kernel/driver/net/adapter.h>
+#include <net/adapter.h>
+#include <net/support/packet_buffer.h>
+#include <kernel/fifo.h>
 
 extern const net_driver_t __usb_cdc_ncm_eth_driver;
 
@@ -60,11 +62,11 @@ typedef struct
 #define USB_CDC_NCM_NETCAPSF_SetGetCrcMode				(1<<4)
 
 
-#define NCMSIG(a, b, c, d) (((a) << 24)|((b) << 16)|((c) << 8)|(d)
+#define NCMSIG(a, b, c, d) (((d) << 24)|((c) << 16)|((b) << 8)|(a))
 #define SIG_NTH16 NCMSIG('N', 'C', 'M', 'H')
-#define SIG_NDP16 NCMSIG('N', 'C', 'M', 'x')
+#define SIG_NDP16 NCMSIG('N', 'C', 'M', '\0')
 #define SIG_NTH32 NCMSIG('n', 'c', 'm', 'h')
-#define SIG_NDP32 NCMSIG('n', 'c', 'm', 'x')
+#define SIG_NDP32 NCMSIG('n', 'c', 'm', '\0')
 
 // NOTE: each usb transfer is transfer block (ntb) and begins with an ncm transfer header (nth)
 // NOTE: nth points to the head of a list of datagram pointers (ndp)
@@ -92,7 +94,7 @@ typedef struct
 typedef struct
 {
 	usb32_t dwSignature;	// NDP16
-	usb16_t wHeaderLength;	// header length (=8+k*4, k>=2)
+	usb16_t wLength;		// header length (=8+k*4, k>=2)
 	usb16_t wNextNdpIndex;	// offset of next DP (or zero, for last one)
 	struct ncm_datagram16
 	{
@@ -104,7 +106,7 @@ typedef struct
 typedef struct
 {
 	usb32_t dwSignature;	// NDP32
-	usb16_t wHeaderLength;	// header length (=16+k*8, k>=2)
+	usb16_t wLength;		// header length (=16+k*8, k>=2)
 	usb16_t wPad;
 	usb32_t dwNextNdpIndex;	// offset of next DP (or zero, for last one)
 	usb32_t dwPad;
@@ -158,16 +160,21 @@ typedef struct
 
 #define NCM_MAX_PACKET_LENGTH 64
 
-#define NCM_OUTPUT_EP_BUFFER	4096
-#define NCM_INPUT_EP_BUFFER		4096
+// NOTE: NCM_MAX_NTB_SIZE is used to fill the NTB_Parameter_Structure, which host uses to limit both the OUT and IN NTB size
+//  Maximum NTB size for IN transaction can be further reduced using class SetNtbInputSize command
+#ifndef NCM_MAX_NTB_SIZE
+#define NCM_MAX_NTB_SIZE 2048
+#endif
+
 #define NCM_NOTIFY_EP_BUFFER	NCM_MAX_PACKET_LENGTH
+
+#define NCM_RX_BUFFER_SIZE	8192
 
 typedef struct
 {
 	node_t Node;
 	usb_device_interface_t *Interface;
 	usb_device_interface_t SecondaryDataInterface;
-//	mutex_t Lock;
 
 	unsigned char Unit;
 	bool Ready;
@@ -178,7 +185,7 @@ typedef struct
 	net_adapter_t *Adapter;
 
 	char EthernetMacString[16];
-	usb_device_string_t EthernetMac;	// NOTE: for ECM func decsriptor (iMACAddress)
+	usb_device_string_t EthernetMac;	// NOTE: for ECM func descriptor (iMACAddress)
 	dispatcher_context_t *DispatcherContext;
 
 	ncm_notify_state_t NotifyState;
@@ -189,15 +196,21 @@ typedef struct
 	usb_io_buffer_t TxIo;
 	event_t TxEvent;
 	dispatcher_t TxDispatcher;
-	
+
 	usb_io_buffer_t RxIo;
 	event_t RxEvent;
 	dispatcher_t RxDispatcher;
 	
-	unsigned char TxData[NCM_INPUT_EP_BUFFER];
-	unsigned char RxData[NCM_OUTPUT_EP_BUFFER];
+	unsigned char TxData[NCM_MAX_NTB_SIZE];
+	unsigned char RxData[NCM_MAX_NTB_SIZE];
 
 	unsigned char NotifyData[NCM_NOTIFY_EP_BUFFER];
+
+	net_packet_buffer_t RxPackets;
+	unsigned char RxBuffer[NCM_RX_BUFFER_SIZE];
+	fifo_t TxFifo;
+	unsigned short TxSequence;
+
 } ncm_device_context_t;
 
 

@@ -35,8 +35,8 @@ typedef enum
 // prototypes
 void net_arp_initialize();
 void net_arp_input(net_adapter_t *adapter, ARP_HEADER *arp);
-ARP_HEADER *net_arp_output(net_adapter_t *adapter, NET_OUTPUT_BUFFER *output, hw_addr_t *destination);
-int net_arp_send_output(net_adapter_t *adapter, NET_OUTPUT_BUFFER *output);
+ARP_HEADER *net_arp_output(net_adapter_t *adapter, net_buffer_t *output, hw_addr_t *destination);
+int net_arp_send_output(net_adapter_t *adapter, net_buffer_t *output);
 
 int net_arp_obtain_hw_addr(net_adapter_t *adapter, ip_addr_t *ip, hw_addr_t *mac);
 int net_arp_set_hw_addr(ip_addr_t *ip, hw_addr_t *mac);

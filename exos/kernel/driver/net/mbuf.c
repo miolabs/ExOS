@@ -4,7 +4,7 @@
 #include "mbuf.h"
 #include "net.h"
 
-void net_mbuf_init(NET_MBUF *buf, void *data, int offset, int length)
+void net_mbuf_init(net_mbuf_t *buf, void *data, int offset, int length)
 {
 	buf->Next = NULL;
 	buf->Buffer = data;
@@ -12,7 +12,7 @@ void net_mbuf_init(NET_MBUF *buf, void *data, int offset, int length)
 	buf->Length = length;
 }
 
-int net_mbuf_append(NET_MBUF *buf, NET_MBUF *append)
+int net_mbuf_append(net_mbuf_t *buf, net_mbuf_t *append)
 {
 	while(1)
 	{
@@ -24,7 +24,7 @@ int net_mbuf_append(NET_MBUF *buf, NET_MBUF *append)
 	return 1;
 }
 
-int net_mbuf_length(NET_MBUF *mbuf)
+int net_mbuf_length(net_mbuf_t *mbuf)
 {
 	int length = 0;
 	while(mbuf != NULL)
@@ -35,10 +35,10 @@ int net_mbuf_length(NET_MBUF *mbuf)
 	return length;
 }
 
-int net_mbuf_seek(NET_MBUF *mbuf_seek, NET_MBUF *mbuf_base, int seek)
+int net_mbuf_seek(net_mbuf_t *mbuf_seek, net_mbuf_t *mbuf_base, int seek)
 {
 	int done = 0;
-	NET_MBUF *mbuf = mbuf_base;
+	net_mbuf_t *mbuf = mbuf_base;
 	while (mbuf != NULL)
 	{
 		if ((mbuf->Offset + seek) < mbuf->Length)
@@ -54,7 +54,7 @@ int net_mbuf_seek(NET_MBUF *mbuf_seek, NET_MBUF *mbuf_base, int seek)
 	return done;
 }
 
-int net_mbuf_copy_contents(NET_MBUF *target, NET_MBUF *source)
+int net_mbuf_copy_contents(net_mbuf_t *target, net_mbuf_t *source)
 {
 	int target_len, source_len;
 	unsigned char *target_ptr;
