@@ -352,7 +352,7 @@ static void _disable_in_ep(unsigned ep_num)
 
 static void _write_fifo(unsigned ep_num, usb_io_buffer_t *iob, unsigned txlen)
 {
-	static volatile bool _busy = false;
+	static volatile unsigned _busy = false;
 	ASSERT(!_busy, KERNEL_ERROR_KERNEL_PANIC);
 	_busy = true;
 
@@ -399,8 +399,11 @@ static void _write_fifo(unsigned ep_num, usb_io_buffer_t *iob, unsigned txlen)
 		iob->Status = USB_IOSTA_IN_COMPLETE;
 		// NOTE: core will generate a XFRCM (transfer complete) int later
 	}
-	else kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);	// fifo refill is not implemented
-
+	else 
+	{
+		otg_device->DIEPEMPMSK |= (1 << ep_num);
+//		kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);	// fifo refill is not implemented
+	}
 	_busy = false;
 }
 
@@ -664,6 +667,7 @@ static void _ep_in_handler(unsigned ep)
 
 	ASSERT(ep < USB_DEV_EP_COUNT, KERNEL_ERROR_KERNEL_PANIC);
 	usb_io_buffer_t *iob = _ep_in_io[ep];
+	unsigned ep_mask = 1 << ep;
 
 	unsigned intreq;
 	switch(ep)
@@ -676,18 +680,19 @@ static void _ep_in_handler(unsigned ep)
 		default:
 			kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 	}
-	intreq &= otg_device->DIEPMSK;
+	unsigned intmsk = otg_device->DIEPMSK;
+	if (otg_device->DIEPEMPMSK & ep_mask) intmsk |= USB_OTG_DIEPINT_TXFE;
+	intreq &= intmsk;
 
 	unsigned int_handled = 0;
 	if (intreq & USB_OTG_DIEPINT_XFRC)	// transfer complete
 	{
 		// NOTE: if data-in was canceled (in-ep disabled), we should not get here
 		ASSERT(iob != nullptr, KERNEL_ERROR_NULL_POINTER);
-		ASSERT(iob->Status == USB_IOSTA_IN_COMPLETE, KERNEL_ERROR_KERNEL_PANIC);
 		ASSERT(_ep_max_length[ep] != 0, KERNEL_ERROR_KERNEL_PANIC);
 
-		if (_in_ep_last_packet[ep] == _ep_max_length[ep] 
-			&& (iob->Flags & USB_IOF_SHORT_PACKET_END))
+		if (_in_ep_last_packet[ep] == _ep_max_length[ep] && 
+			((iob->Flags & USB_IOF_SHORT_PACKET_END) || iob->Done < iob->Length))
 		{
 			if (ep != 0)
 				_debug1++;
@@ -697,6 +702,7 @@ static void _ep_in_handler(unsigned ep)
 		}
 		else
 		{
+			ASSERT(iob->Status == USB_IOSTA_IN_COMPLETE, KERNEL_ERROR_KERNEL_PANIC);
 			ASSERT(iob->Done == iob->Length, KERNEL_ERROR_KERNEL_PANIC);
 			iob->Status = USB_IOSTA_DONE;
 			exos_event_set(iob->Event);
@@ -706,7 +712,7 @@ static void _ep_in_handler(unsigned ep)
 
         int_handled = USB_OTG_DIEPINT_XFRC;
 	}
-	else if (intreq & USB_OTG_DIEPINT_EPDISD)
+	else if (intreq & USB_OTG_DIEPINT_EPDISD)	// ep disabled
 	{
 		if (iob != nullptr)
 		{
@@ -724,6 +730,22 @@ static void _ep_in_handler(unsigned ep)
 		else kernel_panic(KERNEL_ERROR_NULL_POINTER);
 
 		int_handled = USB_OTG_DIEPINT_EPDISD;
+	}
+	else if (intreq & USB_OTG_DIEPINT_TXFE)
+	{
+		if (iob != nullptr && iob->Status != USB_IOSTA_DONE)
+		{
+			if (iob->Done < iob->Length)
+			{
+				_write_fifo(ep, iob, iob->Length - iob->Done);
+			}
+			else
+			{
+				// clear int mask
+				otg_device->DIEPEMPMSK &= ~ep_mask;
+			}
+		}
+		int_handled = USB_OTG_DIEPINT_TXFE; 
 	}
 
 	if (int_handled != 0)
@@ -761,6 +783,8 @@ static void _reset(unsigned speed)
 		otg_device->DAINTMSK = ( 1 << USB_OTG_DAINTMSK_OEPM_Pos) | (1 << USB_OTG_DAINTMSK_IEPM_Pos); 
 		otg_device->DOEPMSK = USB_OTG_DOEPMSK_STUPM | USB_OTG_DOEPMSK_XFRCM;
 		otg_device->DIEPMSK = USB_OTG_DIEPMSK_XFRCM | USB_OTG_DIEPMSK_EPDM /*| USB_OTG_DIEPMSK_TOM*/;
+		// NOTE: IEPx enable bits for TXFE are in a sperate register (DIEPEMPMSK)
+		otg_device->DIEPEMPMSK = 0;
 
 		// setup data FIFOs
 		// NOTE: we have 4 tx fifos and 4 endpoints so we are going to use each tx fifo for the each in ep (with the same number)
