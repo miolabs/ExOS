@@ -14,29 +14,29 @@ typedef struct __attribute__((__packed__))
 	ip_addr_t spa;
 	hw_addr_t	tha;
 	ip_addr_t tpa;
-} ARP_HEADER;
+} arp_header_t;
 
 typedef enum
 {
 	ARP_HTYPE_ETHERNET = 1
-} ARP_HTYPE;
+} arp_hw_t;
 
 typedef enum
 {
 	ARP_PTYPE_IPV4 = 0x0800
-} ARP_PTYPE;
+} arp_protocol_t;
 
 typedef enum
 {
 	ARP_OPER_REQUEST = 1,
 	ARP_OPER_REPLY = 2,
-} ARP_OPER;
+} arp_operation_t;
 
 // prototypes
 void net_arp_initialize();
-void net_arp_input(net_adapter_t *adapter, ARP_HEADER *arp);
-ARP_HEADER *net_arp_output(net_adapter_t *adapter, net_buffer_t *output, hw_addr_t *destination);
-int net_arp_send_output(net_adapter_t *adapter, net_buffer_t *output);
+bool net_arp_input(net_adapter_t *adapter, arp_header_t *arp);
+arp_header_t *net_arp_output(net_adapter_t *adapter, net_buffer_t *output, hw_addr_t *destination);
+//int net_arp_send_output(net_adapter_t *adapter, net_buffer_t *output);
 
 int net_arp_obtain_hw_addr(net_adapter_t *adapter, ip_addr_t *ip, hw_addr_t *mac);
 int net_arp_set_hw_addr(ip_addr_t *ip, hw_addr_t *mac);

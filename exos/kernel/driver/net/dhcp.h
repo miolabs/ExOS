@@ -2,6 +2,7 @@
 #define NET_DHCP_H
 
 #include <net/adapter.h>
+#include <net/ip.h>
 
 typedef struct __attribute__((__packed__))
 {
@@ -10,12 +11,12 @@ typedef struct __attribute__((__packed__))
 	unsigned char HardwareAddressLength;
 	unsigned char HopCount;
 	unsigned long TransactionId;
-	NET16_T Seconds;
-	NET16_T Flags;
-	IP_ADDR ClientIP;
-	IP_ADDR YourIP;
-	IP_ADDR ServerIP;
-	IP_ADDR GatewayIP;
+	net16_t Seconds;
+	net16_t Flags;
+	ip_addr_t ClientIP;
+	ip_addr_t YourIP;
+	ip_addr_t ServerIP;
+	ip_addr_t GatewayIP;
 	unsigned char ClientHardwareAddress[16];
 	unsigned char ServerHostName[64];
 	unsigned char BootFilename[128];
@@ -33,7 +34,7 @@ typedef enum
 	NET_DHCP_HW_ETHERNET = 1,
 } NET_DHCP_HW_TYPE;
 
-#define NET_DHCP_MAGIC (NET32_T){99, 130, 83, 99}
+#define NET_DHCP_MAGIC (net32_t){99, 130, 83, 99}
 
 typedef enum
 {
@@ -71,7 +72,7 @@ typedef enum
 #define NET_UDP_PORT_CLIENT 68
 
 // prototypes
-void net_dhcp_init_header(NET_DHCP_HEADER *dhcp, NET_ADAPTER *adapter, NET_DHCP_OPCODE opcode, unsigned long transaction);
+void net_dhcp_init_header(NET_DHCP_HEADER *dhcp, net_adapter_t *adapter, NET_DHCP_OPCODE opcode, unsigned long transaction);
 void net_dhcp_iterate(int elapsed);
 
 #endif // NET_DHCP_H

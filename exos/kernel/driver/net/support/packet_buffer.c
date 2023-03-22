@@ -69,6 +69,8 @@ bool net_packet_buffer_push(net_packet_buffer_t *npb, void *data, unsigned short
 			length -= chunk;
 		}
 		ASSERT(length == 0, KERNEL_ERROR_KERNEL_PANIC);
+
+		exos_event_set(&npb->Notify);
 		return true;
 	}
 	return false;

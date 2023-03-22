@@ -180,9 +180,9 @@ typedef struct
 	bool Ready;
 	bool Idle;
 	bool Connected;
-	unsigned short SpeedMbps;
+	unsigned short SpeedMbps;			// NOTE: underlying (ethernet) speed
 
-	net_adapter_t *Adapter;
+	net_adapter_t *BoundAdapter;
 
 	char EthernetMacString[16];
 	usb_device_string_t EthernetMac;	// NOTE: for ECM func descriptor (iMACAddress)
@@ -206,8 +206,10 @@ typedef struct
 
 	unsigned char NotifyData[NCM_NOTIFY_EP_BUFFER];
 
+	dispatcher_t ServiceDispatcher;
 	net_packet_buffer_t RxPackets;
 	unsigned char RxBuffer[NCM_RX_BUFFER_SIZE];
+
 	fifo_t TxFifo;
 	unsigned short TxSequence;
 

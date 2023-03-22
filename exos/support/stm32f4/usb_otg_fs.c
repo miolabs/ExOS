@@ -35,7 +35,11 @@ void usb_otg_fs_initialize()
 	for(unsigned volatile i = 0; i < 100; i++);	// wait 3 phy clks
 
 	// enable PHY
+#ifdef USB_OTG_GCCFG_NOVBUSSENS 
 	otg_global->GCCFG = USB_OTG_GCCFG_PWRDWN | USB_OTG_GCCFG_NOVBUSSENS;
+#else
+	otg_global->GCCFG = USB_OTG_GCCFG_PWRDWN;
+#endif
 	exos_thread_sleep(20);
 
 	otg_global->GINTMSK = USB_OTG_GINTMSK_MMISM;	// Mode MISmatch Mask

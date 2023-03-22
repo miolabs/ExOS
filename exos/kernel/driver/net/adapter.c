@@ -1,13 +1,12 @@
 #include "adapter.h"
 #include "board.h"
 #include "mbuf.h"
-#include "arp.h"
-#include "arp_tables.h"
-#include "ip.h"
 #include "net_service.h"
 #include <support/misc/pools.h>
 #include <kernel/verbose.h>
 #include <kernel/panic.h>
+
+#define _verbose(level, ...) verbose(level, "net_adapter", __VA_ARGS__)
 
 static mutex_t _adapters_lock;
 static list_t _adapters;
@@ -18,24 +17,18 @@ static dispatcher_context_t *_context;
 #define POOL_ITEM_SIZE (sizeof(net_buffer_t) + BUFFER_MAX_FRAME_SIZE)
 #define POOL_ITEM_COUNT 16
 static unsigned char _pool_buffer[POOL_ITEM_COUNT * POOL_ITEM_SIZE];
+
 static event_t _flush_event;
-static dispatcher_t _flush_dispatcher;
+//static dispatcher_t _flush_dispatcher;
 
 static void _flush(dispatcher_context_t *context, dispatcher_t *dispatcher);
 
-void net_adapter_initialize(dispatcher_context_t *context)
+void net_adapter_initialize()
 {
-	ASSERT(context != NULL, KERNEL_ERROR_NULL_POINTER);
-
 	list_initialize(&_adapters);
 	pool_create(&_buffer_pool, (node_t *)_pool_buffer, POOL_ITEM_SIZE, POOL_ITEM_COUNT);
-
 	exos_mutex_create(&_adapters_lock);
-	exos_event_create(&_flush_event, EXOS_EVENTF_AUTORESET);
-	exos_dispatcher_create(&_flush_dispatcher, &_flush_event, _flush, NULL);
-	exos_dispatcher_add(context, &_flush_dispatcher, EXOS_TIMEOUT_NEVER);
 
-	_context = context;	
 /*
 	net_adapter_t *adapter;
 	const phy_handler_t *handler;
@@ -59,7 +52,7 @@ void net_adapter_initialize(dispatcher_context_t *context)
 
 static void _flush(dispatcher_context_t *context, dispatcher_t *dispatcher)
 {
-	verbose(VERBOSE_ERROR, "net_adapter", "automatic flush event!");
+	_verbose(VERBOSE_ERROR, "automatic flush event!");
 	net_adapter_flush(NULL);
 	exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);
 }
@@ -67,7 +60,6 @@ static void _flush(dispatcher_context_t *context, dispatcher_t *dispatcher)
 bool net_adapter_create(net_adapter_t *adapter, const net_driver_t *driver, unsigned phy_unit, const phy_handler_t *handler)
 {
 	ASSERT(adapter != NULL && driver != NULL, KERNEL_ERROR_NULL_POINTER);
-	ASSERT(_context != NULL, KERNEL_ERROR_KERNEL_PANIC);
 	*adapter = (net_adapter_t) { .Node = (node_t) { .Type = EXOS_NODE_IO_DEVICE },
 		.Driver = driver, .Context = _context };
 
@@ -75,10 +67,16 @@ bool net_adapter_create(net_adapter_t *adapter, const net_driver_t *driver, unsi
 	exos_mutex_create(&adapter->OutputLock);
 
 	exos_event_create(&adapter->InputEvent, EXOS_EVENTF_AUTORESET);
-	return driver->Initialize(adapter, phy_unit, handler);
+	bool done = driver->Initialize(adapter, phy_unit, handler);
+	if (done)
+	{
+		ASSERT(adapter->Name != NULL, KERNEL_ERROR_NULL_POINTER);
+		ASSERT(adapter->MaxFrameSize != 0, KERNEL_ERROR_NULL_POINTER);
+	}
+	return done;
 }
 
-void net_adapter_install(net_adapter_t *adapter)
+void net_adapter_install(net_adapter_t *adapter, bool enable_network)
 {
 	ASSERT(adapter != NULL && adapter->Driver != NULL, KERNEL_ERROR_NULL_POINTER);
 	exos_mutex_lock(&_adapters_lock);
@@ -86,8 +84,9 @@ void net_adapter_install(net_adapter_t *adapter)
 	ASSERT(!list_find_node(&_adapters, &adapter->Node), KERNEL_ERROR_KERNEL_PANIC);
 	list_add_tail(&_adapters, &adapter->Node);
 
-	// FIXME_ make it WEAK
-//	net_service_start(adapter);
+	if (enable_network)
+		net_service_start(adapter);
+
 	exos_mutex_unlock(&_adapters_lock);
 }
 
@@ -119,6 +118,7 @@ bool net_adapter_enum(net_adapter_t **padapter)
 	*padapter = adapter;
 	return (adapter != NULL);
 }
+
 
 #if 0
 net_adapter_t *net_adapter_find(ip_addr_t addr)
@@ -256,82 +256,25 @@ bool net_adapter_send_output(net_adapter_t *adapter, net_buffer_t *buf)
 	return done;
 }
 
-
-#if 0
-void net_adapter_input(net_adapter_t *adapter)
+bool net_adapter_push_input(net_adapter_t *adapter, net_buffer_t *buf)
 {
 	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
-   	const net_driver_t *driver = adapter->Driver;
-
-	while(1)
-	{
-		unsigned length;
-		eth_header_t *buffer = driver->GetInputBuffer(adapter, &length);
-		if (buffer == NULL) break;
-
-		eth_type_t packet_type = NTOH16(buffer->Type);
-		void *payload = (void *)buffer + sizeof(eth_header_t);
-
-		int queued = 0;
-		switch(packet_type)
-		{
-			case ETH_TYPE_ARP:
-				net_arp_input(adapter, (ARP_HEADER *)payload);
-				break;
-			case ETH_TYPE_IP:
-				queued = net_ip_input(adapter, buffer, (IP_HEADER *)payload);
-				break;
-#ifdef ENABLE_ETHERCAT
-			case ETH_TYPE_ETHERCAT:
-				queued = net_ecat_input(adapter, buffer, (ECAT_HEADER *)payload);
-				break;
-#endif
-		}
-		if (!queued) 
-		{
-			//NOTE: API changed and you can't keep buffers and discard out-of-order so "queue" is not a good idea... [WIP]
-			driver->DiscardInputBuffer(adapter);
-		}
-	}
-}
-
-void *net_adapter_output(net_adapter_t *adapter, NET_OUTPUT_BUFFER *output, unsigned hdr_size, const hw_addr_t *destination, eth_type_t type)
-{
-	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(buf != NULL, KERNEL_ERROR_NULL_POINTER);
 	const net_driver_t *driver = adapter->Driver;
+	ASSERT(driver != NULL, KERNEL_ERROR_NULL_POINTER);
 
-	hdr_size += sizeof(eth_header_t);
-	eth_header_t *buffer = driver->GetOutputBuffer(adapter, hdr_size);
-	if (buffer != NULL)
-	{
-		buffer->Sender = adapter->MAC;
-		buffer->Destination = *destination;
-		buffer->Type = HTON16(type);
-		
-		// initialize mbuf
-		net_mbuf_init(&output->Buffer, buffer, 0, hdr_size);
+	bool done = false;
+	if (driver->PushInputBuffer != NULL)
+		done = driver->PushInputBuffer(adapter, buf);
+	else _verbose(VERBOSE_ERROR, "adapter '%s' cant push input!", adapter->Name);
 
-		return (void *)buffer + sizeof(eth_header_t);
-	}
-	return NULL;
-}
-
-static void _send_callback(void *state)
-{
-	event_t *event = (event_t *)state;
-	if (event == NULL)
-		kernel_panic(KERNEL_ERROR_NULL_POINTER);
-	
-	exos_event_set(event);
-}
-
-int net_adapter_send_output(net_adapter_t *adapter, NET_OUTPUT_BUFFER *output)
-{
-	const net_driver_t *driver = adapter->Driver;
-	int done = driver->SendOutputBuffer(adapter, &output->Buffer, 
-		output->CompletedEvent != NULL ? _send_callback : NULL, output->CompletedEvent);
 	return done;
 }
-#endif
 
 
+
+__weak
+void net_service_start(net_adapter_t *adapter)
+{
+	_verbose(VERBOSE_ERROR, "adapter '%s' added without net service!", adapter->Name);
+}

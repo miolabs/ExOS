@@ -7,9 +7,9 @@ typedef struct
 {
 	unsigned char Type;
 	unsigned char Code;
-	NET16_T Checksum;
-	NET16_T Id;
-	NET16_T Sequence;
+	net16_t Checksum;
+	net16_t Id;
+	net16_t Sequence;
 	unsigned char Data[0];
 } ICMP_HEADER;
 
@@ -21,6 +21,6 @@ typedef enum
 
 
 // prototypes
-void net_icmp_input(NET_ADAPTER *adapter, ETH_HEADER *eth, IP_HEADER *ip);
+bool net_icmp_input(net_adapter_t *adapter, eth_header_t *eth, ip_header_t *ip);
 
 #endif // NET_ICMP_H

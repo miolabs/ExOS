@@ -1,7 +1,7 @@
 #ifndef NET_IP_H
 #define NET_IP_H
 
-#include "net.h"
+#include "net_service.h"
 #include "adapter.h"
 
 typedef union __attribute__((__packed__))
@@ -10,13 +10,21 @@ typedef union __attribute__((__packed__))
 	unsigned long Value;
 } ip_addr_t;
 
+typedef struct
+{
+	net_config_t Base;
+	ip_addr_t IP;
+	ip_addr_t Mask;
+	// TODO
+} net_ip_config_t;
+
 typedef enum
 {
 	IP_VER_RESERVED = 0,
 	IP_VER_IPv4 = 4,
 	IP_VER_ST = 5,
 	IP_VER_IPv6 = 6,
-} IP_VER;
+} ip_version_t;
 
 typedef enum
 {
@@ -25,25 +33,25 @@ typedef enum
 	IP_PROTOCOL_TCP = 6,
 	IP_PROTOCOL_UDP = 17,
 	IP_PROTOCOL_UDP_LITE = 136,
-} IP_PROTOCOL;
+} ip_protocol_t;
 
 typedef struct __attribute__((__packed__))
 {
 	struct __attribute__((__packed__))
 	{
 		unsigned HeaderLength:4;
-		IP_VER Version:4;
+		ip_version_t Version:4;
 	};
 	unsigned char DiffServ;
 	net16_t TotalLength;
 	net16_t Id;
 	net16_t Fragment;
 	unsigned char TTL;
-	IP_PROTOCOL Protocol:8;
+	ip_protocol_t Protocol:8;
 	net16_t HeaderChecksum;
 	ip_addr_t SourceIP;
 	ip_addr_t DestinationIP;
-} IP_HEADER;
+} ip_header_t;
 
 #define IP_FRAGF_RF		0x8000	// Reserved Fragment
 #define IP_FRAGF_DF		0x4000	// Don't Fragment
@@ -86,14 +94,14 @@ typedef struct __attribute__((__packed__))
 extern const IP_ENDPOINT __ep_broadcast;
 
 #define IP_ENDPOINT_BROADCAST ((IP_ENDPOINT *)&__ep_broadcast)
-#define IP_ADDR_BROADCAST (IP_ADDR){255, 255, 255, 255}
-#define IP_ADDR_ANY (IP_ADDR){0, 0, 0, 0}
+#define IP_ADDR_BROADCAST (ip_addr_t){255, 255, 255, 255}
+#define IP_ADDR_ANY (ip_addr_t){0, 0, 0, 0}
 
 typedef struct
 {
 	ip_addr_t Address;
 	unsigned short Port;
-} IP_PORT_ADDR;
+} ip_port_addr_t;
 
 #ifdef EXOS_OLD
 typedef ip_addr_t IP_ADDR;
@@ -101,10 +109,12 @@ typedef ip_addr_t IP_ADDR;
 
 // prototypes
 void net_ip_initialize();
-int net_ip_input(net_adapter_t *adapter, eth_header_t *eth, IP_HEADER *ip);
-void *net_ip_output(net_adapter_t *adapter, net_buffer_t *output, unsigned hdr_size, const IP_ENDPOINT *destination, IP_PROTOCOL protocol);
+void net_ip_init_config(net_adapter_t *adapter);
+bool net_ip_get_config(net_adapter_t *adapter, net_ip_config_t **pconfig); 
+bool net_ip_input(net_adapter_t *adapter, eth_header_t *eth, ip_header_t *ip);
+void *net_ip_output(net_adapter_t *adapter, net_buffer_t *output, unsigned hdr_size, const IP_ENDPOINT *destination, ip_protocol_t protocol);
 int net_ip_send_output(net_adapter_t *adapter, net_buffer_t *output, unsigned payload);
-void *net_ip_get_payload(IP_HEADER *ip, unsigned short *plength);
+void *net_ip_get_payload(ip_header_t *ip, unsigned short *plength);
 
 int net_ip_get_adapter_and_resolve(net_adapter_t **padapter, IP_ENDPOINT *ep);
 int net_ip_resolve(net_adapter_t *adapter, IP_ENDPOINT *ep);

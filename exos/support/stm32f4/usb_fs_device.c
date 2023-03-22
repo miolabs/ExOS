@@ -44,7 +44,7 @@ void hal_usbd_initialize()
 	usb_otg_fs_initialize();
 
 #ifndef USB_FS_ENABLE_ID
-	otg_global->GUSBCFG &= ~USB_OTG_GUSBCFG_HNPCAP;
+	otg_global->GUSBCFG &= ~(USB_OTG_GUSBCFG_HNPCAP | USB_OTG_GUSBCFG_SRPCAP);
 	otg_global->GUSBCFG |= USB_OTG_GUSBCFG_FDMOD;	// force usb-device mode
 #endif
 

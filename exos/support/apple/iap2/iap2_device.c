@@ -57,8 +57,6 @@ static bool _initialize(usb_device_interface_t *iface, const void *instance_data
 	iap2_device_context_t *iap2dev = (iap2_device_context_t *)exos_mem_alloc(sizeof(iap2_device_context_t), EXOS_MEMF_CLEAR);
 	if (iap2dev != nullptr)
 	{
-		//iap2dev->Latency = 16;
-		//iap2dev->TxSize = 0;
 		exos_event_create(&iap2dev->TxEvent, EXOS_EVENTF_AUTORESET);
 		exos_event_create(&iap2dev->RxEvent, EXOS_EVENTF_AUTORESET);
 

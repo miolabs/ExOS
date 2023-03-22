@@ -10,10 +10,6 @@
 void __io_initialize()
 {
 	__tree_initialize();
-//	comm_initialize();
-#ifndef EXOS_NO_NET
-	net_initialize();
-#endif
 }
 
 

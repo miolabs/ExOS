@@ -13,17 +13,9 @@
 #define _verbose(level, ...) { /* nothing */ }
 #endif
 
-// (virtual) ethernet adapter driver
-static bool _initialize(net_adapter_t *adapter, unsigned phy_unit, const phy_handler_t *handler);
-static void _link_up(net_adapter_t *adapter);
-static void _link_down(net_adapter_t *adapter);
-static void _flush(net_adapter_t *adapter);
-static net_buffer_t *_get_input_buffer(net_adapter_t *adapter);
-static bool _send_output_buffer(net_adapter_t *adapter, net_buffer_t *buf);
-const net_driver_t __usb_cdc_ncm_eth_driver = { .Initialize = _initialize,
-	.LinkUp = _link_up, .LinkDown = _link_down,
-	.Flush = _flush,
-	.GetInputBuffer = _get_input_buffer, .SendOutputBuffer = _send_output_buffer }; 
+static exos_thread_t _service_thread;
+static unsigned char _stack[1024] __aligned(32);
+static void *_service(void *arg);
 
 #define MAX_FRAME_SIZE 1514 // not including CRC
 
@@ -66,108 +58,73 @@ static const usb_device_interface_driver_t _driver2 = { .Initialize = _init2,
 static mutex_t _mutex;
 static list_t _instance_list;
 static unsigned _device_count = 0;
+static dispatcher_context_t *_context = NULL;
 
 static void _initialize_all()
 {
-	static bool _initialized = false;
+	static bool initialized = false;
 
-	if (!_initialized)
+	if (!initialized)
 	{
 		exos_mutex_create(&_mutex);
 		list_initialize(&_instance_list);
-		_initialized = true;
+
+		event_t init;
+		exos_event_create(&init, EXOS_EVENTF_NONE);
+		exos_thread_create(&_service_thread, 0, _stack, sizeof(_stack), _service, &init);
+		exos_event_wait(&init, EXOS_TIMEOUT_NEVER);
+
+		ASSERT(_context != NULL, KERNEL_ERROR_KERNEL_PANIC);
+		initialized = true;
 	}
 }
 
-
-// ethernet adapter -----------------
-
-static bool _initialize(net_adapter_t *adapter, unsigned phy_unit, const phy_handler_t *handler)
+static void *_service(void *arg)
 {
-	_initialize_all();
+	static dispatcher_context_t context;
+	exos_dispatcher_context_create(&context);
+	_context = &context;
 
-	adapter->MaxFrameSize = MAX_FRAME_SIZE;
-	return true;
-}
+	event_t *init = (event_t *)arg;
+	exos_event_set(init);
 
-static void _link_up(net_adapter_t *adapter)
-{
-	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
-}
-
-static void _link_down(net_adapter_t *adapter)
-{
-	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
-}
-
-static void _flush(net_adapter_t *adapter)
-{
-	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
-
-	exos_mutex_lock(&adapter->OutputLock);
-
-	ncm_device_context_t *ncm_dev = (ncm_device_context_t *)adapter->DriverData;
-	if (ncm_dev != NULL && ncm_dev->Ready)	// NOTE: usb function is running
+	while(1)
 	{
-		unsigned done = 0;
-		net_buffer_t *buf;
-		while(buf = (net_buffer_t *)exos_fifo_dequeue(&ncm_dev->TxFifo), buf != NULL)
-		{
-			net_adapter_free_buffer(buf);
-			done++;
-		}
-		_verbose(VERBOSE_DEBUG, "flushed %d tx buffers", done);
+		exos_dispatch(&context, EXOS_TIMEOUT_NEVER);
 	}
-
-	exos_mutex_unlock(&adapter->OutputLock);
 }
 
-static net_buffer_t *_get_input_buffer(net_adapter_t *adapter)
+static void _service_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 {
-	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
-	ncm_device_context_t *ncm_dev = (ncm_device_context_t *)adapter->DriverData;
+	ncm_device_context_t *ncm_dev = (ncm_device_context_t *)dispatcher->CallbackState;
 	ASSERT(ncm_dev != NULL, KERNEL_ERROR_NULL_POINTER);
 	
 	unsigned short flags;
 	unsigned length = net_packet_buffer_peek(&ncm_dev->RxPackets, &flags);
 	if (length != 0)
 	{
-		net_buffer_t *buf = net_adapter_alloc_buffer(adapter);
+		net_buffer_t *buf = net_adapter_alloc_buffer(ncm_dev->BoundAdapter);
 		if (buf != NULL)
 		{
 			unsigned length = net_packet_buffer_pop(&ncm_dev->RxPackets, buf->Root.Buffer, buf->Root.Length);
 			ASSERT(length != 0, KERNEL_ERROR_KERNEL_PANIC);
 			buf->Root.Offset = 0;
 			buf->Root.Length = length;
-			return buf;
+
+			bool done = net_adapter_send_output(ncm_dev->BoundAdapter, buf);
+			if (!done)
+			{
+				_verbose(VERBOSE_ERROR, "send_output() failed on bound adapter");
+				net_adapter_free_buffer(buf);
+			}
 		}
 		else
 		{
 			_verbose(VERBOSE_ERROR, "dropped input packet (couldn't allocate buffer)");
 		}
 	}
-	return NULL;
-}
 
-static bool _send_output_buffer(net_adapter_t *adapter, net_buffer_t *buf)
-{
-	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
-
-	bool done = false;
-	exos_mutex_lock(&adapter->OutputLock);
-
-	ncm_device_context_t *ncm_dev = (ncm_device_context_t *)adapter->DriverData;
-	if (ncm_dev != NULL && ncm_dev->Ready)	// NOTE: usb function is running
-	{
-		exos_fifo_queue(&ncm_dev->TxFifo, &buf->Node);
-		done = true;
-
-		if (ncm_dev->Idle)
-			exos_event_set(&ncm_dev->TxEvent);	// NOTE: wake up tx dispatcher
-	}
-
-	exos_mutex_unlock(&adapter->OutputLock);
-	return done;
+	exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);
 }
 
 
@@ -193,10 +150,11 @@ static bool _init1(usb_device_interface_t *iface, const void *instance_data)
 	if (ncm_dev != nullptr)
 	{
 		// NOTE: only chars 0-9 and A-F (upper case) (ECM Class 1.2, p. 5.4, iMACAddress)
-		strcpy(ncm_dev->EthernetMacString, "1EA4AE41996F");	// FIXME: use actual hw address
+		sprintf(ncm_dev->EthernetMacString, "%02X%02X%02X%02X%02X%02X",
+			adapter->MAC.Bytes[0], adapter->MAC.Bytes[1], adapter->MAC.Bytes[2], adapter->MAC.Bytes[3], adapter->MAC.Bytes[4], adapter->MAC.Bytes[5]);
 		usb_device_config_add_string(&ncm_dev->EthernetMac, ncm_dev->EthernetMacString);
 
-		ncm_dev->Adapter = adapter;
+		ncm_dev->BoundAdapter = adapter;
 		ncm_dev->Interface = iface;
 		iface->DriverContext = ncm_dev;
 
@@ -207,8 +165,6 @@ static bool _init1(usb_device_interface_t *iface, const void *instance_data)
 
 		usb_device_interface_create(&ncm_dev->SecondaryDataInterface, &_driver2);
 		usb_device_config_add_interface(iface->Configuration, &ncm_dev->SecondaryDataInterface, ncm_dev); 
-
-		adapter->DriverData = ncm_dev;
 		return true;
 	}
 	else _verbose(VERBOSE_ERROR, "not enough memory!");
@@ -330,9 +286,12 @@ static bool _start(usb_device_interface_t *iface, unsigned char alternate_settin
 	ncm_dev->NotifyState = (ncm_notify_state_t) { /* all-zero */ };
 
 	ncm_dev->Connected = false;
+	
+	exos_dispatcher_create(&ncm_dev->ServiceDispatcher, &ncm_dev->RxPackets.Notify, _service_dispatch, ncm_dev);
+	exos_dispatcher_add(_context, &ncm_dev->ServiceDispatcher, EXOS_TIMEOUT_NEVER);
 
 	#ifdef DEBUG
-	// NOTE: fake!
+	// NOTE: fake status will trigger notification
 	ncm_dev->Connected = true;
 	ncm_dev->SpeedMbps = 100U;
 	#endif
@@ -549,10 +508,8 @@ static unsigned _mbuf_count(net_mbuf_t *mbuf)
 
 static unsigned _assemble(ncm_device_context_t *ncm_dev)
 {
-	net_adapter_t *adapter = ncm_dev->Adapter;
-	ASSERT(adapter != NULL && adapter->DriverData == ncm_dev, KERNEL_ERROR_KERNEL_PANIC);
-
-	exos_mutex_lock(&adapter->OutputLock);
+//	net_adapter_t *adapter = ncm_dev->Adapter;
+//	ASSERT(adapter != NULL && adapter->DriverData == ncm_dev, KERNEL_ERROR_KERNEL_PANIC);
 
 	ncm_transfer_header16_t *nth16 = (ncm_transfer_header16_t *)ncm_dev->TxData;
 	unsigned pkt_cnt = 0;
@@ -621,7 +578,6 @@ static unsigned _assemble(ncm_device_context_t *ncm_dev)
 		}
 	}
 	nth16->wBlockLength = HTOUSB16(offset);
-	exos_mutex_unlock(&adapter->OutputLock);
 
 	_verbose(VERBOSE_DEBUG, "assembled %d packets", pkt_cnt);
 	return offset;
@@ -815,9 +771,6 @@ static void _rx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher
 				if (!net_packet_buffer_push(&ncm_dev->RxPackets, data, length, 0))
 					_verbose(VERBOSE_ERROR, "failed to push rx data");
 			}
-
-			ASSERT(ncm_dev->Adapter != NULL, KERNEL_ERROR_NULL_POINTER);
-			exos_event_set(&ncm_dev->Adapter->InputEvent);
 		}
 
 		// reset input ep

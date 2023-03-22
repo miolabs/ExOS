@@ -52,7 +52,7 @@ node_t *list_find_node(list_t *list, node_t *node)
 	node_t *found = NULL;
 	FOREACH(node_i, list)
 	{
-		ASSERT(node_i != NULL, KERNEL_ERROR_NULL_POINTER);
+		ASSERT(node_i != NULL, KERNEL_ERROR_NULL_POINTER);	// NOTE: usually this a non-initialized list
 		if (node_i == node)
 		{
 			found = node_i;

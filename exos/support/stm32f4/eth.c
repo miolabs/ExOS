@@ -18,7 +18,7 @@
 #endif
 
 static struct _rx_buffer { unsigned char data[ETH_MAX_FRAME_SIZE]; } _rx_buffers[RX_DESCRIPTORS];
-/*static*/ rx_edesc_t _rx_desc[RX_DESCRIPTORS] __aligned(32);
+static rx_edesc_t _rx_desc[RX_DESCRIPTORS] __aligned(32);
 static tx_edesc_t _tx_desc[TX_DESCRIPTORS] __aligned(32);
 
 static rx_edesc_t * volatile _rx_desc_ptr;
@@ -162,10 +162,12 @@ static unsigned short _phy_read(unsigned unit, phy_reg_t reg)
 
 static void _link_up(net_adapter_t *adapter)
 {
+	_verbose(VERBOSE_DEBUG, "link_up() ignored");
 }
 
 static void _link_down(net_adapter_t *adapter)
 {
+	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 }
 
 static net_buffer_t *_get_input_buffer(net_adapter_t *adapter)

@@ -19,7 +19,7 @@ int net_arp_tables_initialize()
 }
 
 
-ARP_ENTRY *net_arp_tables_set_entry(IP_ADDR *ip, HW_ADDR *mac, ARP_ENTRY_STATE state, EXOS_EVENT *event)
+ARP_ENTRY *net_arp_tables_set_entry(ip_addr_t *ip, hw_addr_t *mac, ARP_ENTRY_STATE state, event_t *event)
 {
 	ARP_ENTRY *target = NULL;
 	int matches_pending = 0;
@@ -48,7 +48,7 @@ ARP_ENTRY *net_arp_tables_set_entry(IP_ADDR *ip, HW_ADDR *mac, ARP_ENTRY_STATE s
 
 	if (target != NULL)
 	{
-		EXOS_EVENT *pending_event = target->State == ARP_ENTRY_PENDING ? target->Event : NULL;
+		event_t *pending_event = target->State == ARP_ENTRY_PENDING ? target->Event : NULL;
 		
 		target->MAC = *mac;
 		target->IP.Value = ip->Value;
@@ -62,7 +62,7 @@ ARP_ENTRY *net_arp_tables_set_entry(IP_ADDR *ip, HW_ADDR *mac, ARP_ENTRY_STATE s
 	return target;
 }
 
-int net_arp_tables_get_hw_addr(IP_ADDR *ip, HW_ADDR *mac)
+bool net_arp_tables_get_hw_addr(ip_addr_t *ip, hw_addr_t *mac)
 {
 	for(int i = 0; i < NET_ARP_TABLE_SIZE; i++)
 	{
@@ -70,9 +70,9 @@ int net_arp_tables_get_hw_addr(IP_ADDR *ip, HW_ADDR *mac)
 		if (entry->State == ARP_ENTRY_VALID && entry->IP.Value == ip->Value)
 		{
 			*mac = entry->MAC;
-			return 1;
+			return true;
 		}
 	}
-	return 0;
+	return false;
 }
 
