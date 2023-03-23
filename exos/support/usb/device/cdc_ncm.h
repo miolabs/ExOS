@@ -64,9 +64,9 @@ typedef struct
 
 #define NCMSIG(a, b, c, d) (((d) << 24)|((c) << 16)|((b) << 8)|(a))
 #define SIG_NTH16 NCMSIG('N', 'C', 'M', 'H')
-#define SIG_NDP16 NCMSIG('N', 'C', 'M', '\0')
+#define SIG_NDP16 NCMSIG('N', 'C', 'M', '0')
 #define SIG_NTH32 NCMSIG('n', 'c', 'm', 'h')
-#define SIG_NDP32 NCMSIG('n', 'c', 'm', '\0')
+#define SIG_NDP32 NCMSIG('n', 'c', 'm', '0')
 
 // NOTE: each usb transfer is transfer block (ntb) and begins with an ncm transfer header (nth)
 // NOTE: nth points to the head of a list of datagram pointers (ndp)
@@ -206,10 +206,11 @@ typedef struct
 
 	unsigned char NotifyData[NCM_NOTIFY_EP_BUFFER];
 
-	dispatcher_t ServiceDispatcher;
+	dispatcher_t FwdRxDispatcher;
 	net_packet_buffer_t RxPackets;
 	unsigned char RxBuffer[NCM_RX_BUFFER_SIZE];
 
+	dispatcher_t FwdTxDispatcher;
 	fifo_t TxFifo;
 	unsigned short TxSequence;
 

@@ -94,7 +94,7 @@ static void *_service(void *arg)
 	}
 }
 
-static void _service_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
+static void _fwdrx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 {
 	ncm_device_context_t *ncm_dev = (ncm_device_context_t *)dispatcher->CallbackState;
 	ASSERT(ncm_dev != NULL, KERNEL_ERROR_NULL_POINTER);
@@ -127,6 +127,22 @@ static void _service_dispatch(dispatcher_context_t *context, dispatcher_t *dispa
 	exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);
 }
 
+static void _fwdtx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
+{
+	ncm_device_context_t *ncm_dev = (ncm_device_context_t *)dispatcher->CallbackState;
+	ASSERT(ncm_dev != NULL, KERNEL_ERROR_NULL_POINTER);
+	net_adapter_t *adapter = ncm_dev->BoundAdapter;
+	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
+
+	net_buffer_t *buf;
+	while(buf = net_adapter_get_input(adapter), buf != NULL)
+	{
+		exos_fifo_queue(&ncm_dev->TxFifo, &buf->Node);
+	}
+	exos_event_set(&ncm_dev->TxEvent);
+		
+	exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);
+}
 
 // usb driver -------------------------
 
@@ -285,8 +301,13 @@ static bool _start(usb_device_interface_t *iface, unsigned char alternate_settin
 
 	ncm_dev->Connected = false;
 	
-	exos_dispatcher_create(&ncm_dev->ServiceDispatcher, &ncm_dev->RxPackets.Notify, _service_dispatch, ncm_dev);
-	exos_dispatcher_add(_context, &ncm_dev->ServiceDispatcher, EXOS_TIMEOUT_NEVER);
+	exos_dispatcher_create(&ncm_dev->FwdRxDispatcher, &ncm_dev->RxPackets.Notify, _fwdrx_dispatch, ncm_dev);
+	exos_dispatcher_add(_context, &ncm_dev->FwdRxDispatcher, EXOS_TIMEOUT_NEVER);
+
+	net_adapter_t *adapter = ncm_dev->BoundAdapter;
+	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
+	exos_dispatcher_create(&ncm_dev->FwdTxDispatcher, &adapter->InputEvent, _fwdtx_dispatch, ncm_dev);
+	exos_dispatcher_add(_context, &ncm_dev->FwdTxDispatcher, EXOS_TIMEOUT_NEVER);
 
 	#ifdef DEBUG
 	// NOTE: fake status will trigger notification
@@ -524,7 +545,7 @@ static unsigned _assemble(ncm_device_context_t *ncm_dev)
 			nth16->wHeaderLength = HTOUSB16(sizeof(ncm_transfer_header16_t));
 			nth16->wSequence = HTOUSB16(ncm_dev->TxSequence);
 			// NOTE: wBlockLength is set later
-			nth16->wNdpIndex = HTOUSB16(offset >> 2);
+			nth16->wNdpIndex = HTOUSB16(offset);
 			ncm_dev->TxSequence++;
 		}
 
@@ -539,7 +560,8 @@ static unsigned _assemble(ncm_device_context_t *ncm_dev)
 		ASSERT((offset & 3) == 0, KERNEL_ERROR_KERNEL_PANIC);
 		if (offset < sizeof(ncm_dev->TxData)) 
 		{
-			if (prev_ndp_next_index != NULL) *prev_ndp_next_index = HTOUSB16(offset >> 2);
+			if (prev_ndp_next_index != NULL) *prev_ndp_next_index = HTOUSB16(offset);
+
 			ndp16->dwSignature = HTOUSB32(SIG_NDP16);
 			ndp16->wLength = HTOUSB16(ndp_length);
 			ndp16->wNextNdpIndex = HTOUSB16(0);	// NOTE: re-written later if needed
@@ -547,8 +569,8 @@ static unsigned _assemble(ncm_device_context_t *ncm_dev)
 			do
 			{
 				ndp16->array[seg_done] = (struct ncm_datagram16) { 
-					.wDatagramIndex = HTOUSB16(offset >> 2), 
-					.wDatagramLength =HTOUSB16(mbuf->Length) };
+					.wDatagramIndex = HTOUSB16(offset), 
+					.wDatagramLength = HTOUSB16(mbuf->Length) };
 
 				unsigned word_count = (mbuf->Length + 3) >> 2;
 				if ((offset + (word_count << 2)) > sizeof(ncm_dev->TxData))
@@ -564,7 +586,7 @@ static unsigned _assemble(ncm_device_context_t *ncm_dev)
 		}
 
 		net_adapter_free_buffer(buf);
-		_verbose(VERBOSE_DEBUG, "asm freed buffer %d ($%x)", pkt_cnt, (unsigned)buf & 0xffff);
+		_verbose(VERBOSE_DEBUG, "asm freed buffer %d (@$%x)", pkt_cnt, (unsigned)buf & 0xffff);
 
 		if (seg_cnt != seg_done)
 		{
@@ -574,7 +596,10 @@ static unsigned _assemble(ncm_device_context_t *ncm_dev)
 	}
 	nth16->wBlockLength = HTOUSB16(offset);
 
-	_verbose(VERBOSE_DEBUG, "assembled %d packets", pkt_cnt);
+	if (offset != 0)
+	{
+		_verbose(VERBOSE_DEBUG, "assembled %d packets (%d bytes)", pkt_cnt, offset);
+	}
 	return offset;
 }
 
@@ -652,7 +677,7 @@ static bool _validate_ndp(ncm_transfer_header16_t *hth16, ncm_datagram_pointer16
 	unsigned sig = USB32TOH(ndp16->dwSignature);
 	unsigned short hdr_len = USB16TOH(ndp16->wLength);
 
-	if ((sig & 0xffffff) != SIG_NDP16)
+	if (sig != SIG_NDP16)	// NOTE: CRC-32 append is NOT supported
 	{
 		_verbose(VERBOSE_ERROR, "dissect ndp is not NDP16");
 		return false;
