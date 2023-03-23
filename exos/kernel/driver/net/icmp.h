@@ -3,7 +3,7 @@
 
 #include "ip.h"
 
-typedef struct
+typedef struct __packed
 {
 	unsigned char Type;
 	unsigned char Code;

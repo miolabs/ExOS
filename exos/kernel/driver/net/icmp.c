@@ -33,6 +33,7 @@ bool net_icmp_input(net_adapter_t *adapter, eth_header_t *eth, ip_header_t *ip)
 					icmp_resp->Checksum = HTON16(0);
 					icmp_resp->Id = icmp->Id;
 					icmp_resp->Sequence = icmp->Sequence;
+					_verbose(VERBOSE_DEBUG, "icmp req (seq=%d) replied", icmp->Sequence);
 
 					// copy msg data
 					int data_length = msg_length - sizeof(ICMP_HEADER); 
@@ -42,12 +43,14 @@ bool net_icmp_input(net_adapter_t *adapter, eth_header_t *eth, ip_header_t *ip)
 					icmp_resp->Checksum = HTON16(checksum);
 					done = net_ip_send_output(adapter, resp, msg_length);
 				}
+				else _verbose(VERBOSE_ERROR, "net_ip_output() failed!");
 			}
 			if (!done)
 				net_adapter_free_buffer(resp);
 		}
 		else _verbose(VERBOSE_ERROR, "could not allocate response!");
 	}
+	else _verbose(VERBOSE_DEBUG, "incoming icmp with bad checksum");
 	return false;
 }
 
