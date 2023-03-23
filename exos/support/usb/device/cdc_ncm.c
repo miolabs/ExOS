@@ -406,12 +406,12 @@ static bool _enable_data_if(usb_device_interface_t *iface, bool enable)
 		exos_event_create(&ncm_dev->RxEvent, EXOS_EVENTF_AUTORESET);
 		exos_dispatcher_create(&ncm_dev->RxDispatcher, &ncm_dev->RxEvent, _rx_dispatch, ncm_dev);
 		exos_dispatcher_add(ncm_dev->DispatcherContext, &ncm_dev->RxDispatcher, EXOS_TIMEOUT_NEVER);
-		ncm_dev->RxIo = (usb_io_buffer_t) { .Event = &ncm_dev->RxEvent,
+		ncm_dev->RxIo = (usb_io_buffer_t) { .Event = &ncm_dev->RxEvent, .Flags = USB_IOF_SHORT_PACKET_END,
 			.Data = ncm_dev->RxData, .Length = sizeof(ncm_dev->RxData) };
 		usb_set_rx_buffer(NCM_BULK_EP, &ncm_dev->RxIo);
 
 		exos_event_create(&ncm_dev->TxEvent, EXOS_EVENTF_AUTORESET);
-		ncm_dev->TxIo = (usb_io_buffer_t) { .Event = &ncm_dev->TxEvent };
+		ncm_dev->TxIo = (usb_io_buffer_t) { .Event = &ncm_dev->TxEvent, .Flags = USB_IOF_SHORT_PACKET_END };
 		exos_dispatcher_create(&ncm_dev->TxDispatcher, &ncm_dev->TxEvent, _tx_dispatch, ncm_dev);
 		exos_dispatcher_add(ncm_dev->DispatcherContext, &ncm_dev->TxDispatcher, EXOS_TIMEOUT_NEVER);
 		ncm_dev->Idle = true;
@@ -586,7 +586,7 @@ static unsigned _assemble(ncm_device_context_t *ncm_dev)
 		}
 
 		net_adapter_free_buffer(buf);
-		_verbose(VERBOSE_DEBUG, "asm freed buffer %d (@$%x)", pkt_cnt, (unsigned)buf & 0xffff);
+//		_verbose(VERBOSE_DEBUG, "asm freed buffer %d (@$%x)", pkt_cnt, (unsigned)buf & 0xffff);
 
 		if (seg_cnt != seg_done)
 		{
@@ -657,7 +657,7 @@ static void _tx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher
 		else
 		{
 #ifdef NCM_DEBUG
-			if (!ncm_dev->Idle) _verbose(VERBOSE_DEBUG, "[%d] idle", ncm_dev->Interface->Index);
+//			if (!ncm_dev->Idle) _verbose(VERBOSE_DEBUG, "[%d] idle", ncm_dev->Interface->Index);
 #endif
 			ncm_dev->Idle = true;
 		}
