@@ -49,7 +49,6 @@ struct __net_driver
 	bool (*Initialize)(net_adapter_t *adapter, unsigned phy_unit, const phy_handler_t *handler);
 	void (*LinkUp)(net_adapter_t *adapter);
 	void (*LinkDown)(net_adapter_t *adapter);
-	bool (*PushInputBuffer)(net_adapter_t *adapter, net_buffer_t *buf);
 	net_buffer_t *(*GetInputBuffer)(net_adapter_t *adapter);
 	bool (*SendOutputBuffer)(net_adapter_t *adapter, net_buffer_t *buf);
 	bool (*FreeBuffer)(net_adapter_t *adapter, net_buffer_t *buf);
@@ -82,7 +81,6 @@ void net_adapter_flush(net_adapter_t *adapter);
 
 net_buffer_t *net_adapter_get_input(net_adapter_t *adapter);
 bool net_adapter_send_output(net_adapter_t *adapter, net_buffer_t *buf);
-bool net_adapter_push_input(net_adapter_t *adapter, net_buffer_t *buf);
 
 #endif // NET_DRIVERS_H
 

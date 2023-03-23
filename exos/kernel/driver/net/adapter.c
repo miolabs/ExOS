@@ -256,22 +256,6 @@ bool net_adapter_send_output(net_adapter_t *adapter, net_buffer_t *buf)
 	return done;
 }
 
-bool net_adapter_push_input(net_adapter_t *adapter, net_buffer_t *buf)
-{
-	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
-	ASSERT(buf != NULL, KERNEL_ERROR_NULL_POINTER);
-	const net_driver_t *driver = adapter->Driver;
-	ASSERT(driver != NULL, KERNEL_ERROR_NULL_POINTER);
-
-	bool done = false;
-	if (driver->PushInputBuffer != NULL)
-		done = driver->PushInputBuffer(adapter, buf);
-	else _verbose(VERBOSE_ERROR, "adapter '%s' cant push input!", adapter->Name);
-
-	return done;
-}
-
-
 
 __weak
 void net_service_start(net_adapter_t *adapter)

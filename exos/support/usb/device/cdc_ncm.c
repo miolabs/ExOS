@@ -273,8 +273,6 @@ static bool _start(usb_device_interface_t *iface, unsigned char alternate_settin
 
 	// NOTE: alternate setting is ignored
 
-//	exos_mutex_lock(&ncm_dev->Lock);
-
 	ASSERT(!list_find_node(&_instance_list, &ncm_dev->Node), KERNEL_ERROR_KERNEL_PANIC);
 	list_add_tail(&_instance_list, &ncm_dev->Node);
 	ncm_dev->DispatcherContext = context;
@@ -508,9 +506,6 @@ static unsigned _mbuf_count(net_mbuf_t *mbuf)
 
 static unsigned _assemble(ncm_device_context_t *ncm_dev)
 {
-//	net_adapter_t *adapter = ncm_dev->Adapter;
-//	ASSERT(adapter != NULL && adapter->DriverData == ncm_dev, KERNEL_ERROR_KERNEL_PANIC);
-
 	ncm_transfer_header16_t *nth16 = (ncm_transfer_header16_t *)ncm_dev->TxData;
 	unsigned pkt_cnt = 0;
 	unsigned offset = 0;

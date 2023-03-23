@@ -1,4 +1,5 @@
 #include "net_hub.h"
+#include <net/support/macgen.h>
 #include <kernel/memory.h>
 #include <kernel/verbose.h>
 #include <kernel/panic.h>
@@ -24,16 +25,14 @@ static bool _initialize(net_adapter_t *adapter, unsigned phy_unit, const phy_han
 	adapter->Name = "hub";
 	adapter->MaxFrameSize = ETH_MAX_FRAME_SIZE;
 	adapter->Speed = 1000U;
+	macgen_generate(&adapter->MAC, MAC_OUI_LOCAL, 0);
 
 	hub_adapter_data_t *dd = (hub_adapter_data_t *)exos_mem_alloc(sizeof(hub_adapter_data_t), EXOS_MEMF_CLEAR);
 	ASSERT(dd != NULL, KERNEL_ERROR_NOT_ENOUGH_MEMORY);
 	adapter->DriverData = dd;
 
 	exos_fifo_create(&dd->InputFifo, &adapter->InputEvent);
-	// TODO: add reference to OutputFifo
-
-	net_hw_addr_parse(&adapter->MAC, "1EA4AE41996F");	// FIXME
-
+	// NOTE: output fifo is null and has to be filled later
 	return true;
 }
 
