@@ -26,13 +26,16 @@ static tx_edesc_t * volatile _tx_desc_ptr1;
 static tx_edesc_t * volatile _tx_desc_ptr2;
 
 static bool _initialize(net_adapter_t *adapter, unsigned phy_unit, const phy_handler_t *handler);
+static void _eth_start(net_adapter_t *adapter, dispatcher_context_t *context);
 static void _link_up(net_adapter_t *adapter);
 static void _link_down(net_adapter_t *adapter);
 static net_buffer_t *_get_input_buffer(net_adapter_t *adapter);
 static bool _send_output_buffer(net_adapter_t *adapter, net_buffer_t *buf);
-const net_driver_t __stm32_eth_driver = { .Initialize = _initialize,
+static void _flush(net_adapter_t *adapter);
+const net_driver_t __stm32_eth_driver = { .Initialize = _initialize, .Start = _eth_start,
 	.LinkUp = _link_up, .LinkDown = _link_down,
-	.GetInputBuffer = _get_input_buffer, .SendOutputBuffer = _send_output_buffer }; 
+	.GetInputBuffer = _get_input_buffer, .SendOutputBuffer = _send_output_buffer,
+	.Flush = _flush }; 
 
 static void _phy_write(unsigned unit, phy_reg_t reg, unsigned short value);
 static unsigned short _phy_read(unsigned unit, phy_reg_t reg);
@@ -51,6 +54,7 @@ static bool _initialize(net_adapter_t *adapter, unsigned phy_unit, const phy_han
 
 	ASSERT(_adapter == NULL, KERNEL_ERROR_KERNEL_PANIC);
 	_adapter = adapter;
+	adapter->Name = "eth";
 	adapter->MaxFrameSize = ETH_MAX_FRAME_SIZE;
 
 	exos_event_create(&_output_event, EXOS_EVENTF_AUTORESET);
@@ -124,9 +128,13 @@ static bool _initialize(net_adapter_t *adapter, unsigned phy_unit, const phy_han
 		| ETH_MACCR_DM	// full Duplex Mode enable (phy negotiated)
 		| ETH_MACCR_TE | ETH_MACCR_RE;	// Tx, Rx Enable
 
-	exos_dispatcher_add(adapter->Context, &_output_dispatcher, EXOS_TIMEOUT_NEVER);
 	NVIC_EnableIRQ(ETH_IRQn);
 	return true;
+}
+
+static void _eth_start(net_adapter_t *adapter, dispatcher_context_t *context)
+{
+	exos_dispatcher_add(context, &_output_dispatcher, EXOS_TIMEOUT_NEVER);
 }
 
 static void _phy_write(unsigned unit, phy_reg_t reg, unsigned short value)
@@ -269,39 +277,72 @@ static bool _send_output_buffer(net_adapter_t *adapter, net_buffer_t *buf)
 
 		// write TransmitPollDemandRegister to wake up the descriptor parsing
 		ETH->DMATPDR = 0;
+		
+		_verbose(VERBOSE_DEBUG, "send_output() queued buffer @$%x", (unsigned)buf & 0xffff);
 		return true;
 	}
+	_verbose(VERBOSE_ERROR, "send_output() failed!");
 	return false;
 }
 
-static void _output_callback(dispatcher_context_t *context, dispatcher_t *dispatcher)
+static net_buffer_t *_reclaim_tx_buffer(bool flush)
 {
 	tx_edesc_t *desc = _tx_desc_ptr2;
-	while (desc != _tx_desc_ptr1)
+	unsigned tdes0 = desc->tdes[0];
+	net_buffer_t *buf = (net_buffer_t *)desc->tdes[4];
+	if (buf != NULL && 
+		(!(tdes0 & TDES0_OWN) || flush))
 	{
-		net_buffer_t *buf = (net_buffer_t *)desc->tdes[4];
-		ASSERT(buf != NULL, KERNEL_ERROR_NULL_POINTER);
 		ASSERT(buf == (net_buffer_t *)desc->tdes[5], KERNEL_ERROR_KERNEL_PANIC);
 		ASSERT(buf->Root.Buffer == (void *)desc->tdes[2], KERNEL_ERROR_KERNEL_PANIC);
 		ASSERT((desc->tdes[0] & TDES0_FS) != 0, KERNEL_ERROR_KERNEL_PANIC);
 		
+		desc->tdes[0] = 0;
+		desc->tdes[4] = (unsigned)NULL;	// clear buffer reference
+
 		tx_edesc_t *next = (tx_edesc_t *)desc->tdes[3];
-		while((desc->tdes[0] & TDES0_LS) == 0)
+		ASSERT(next != NULL, KERNEL_ERROR_NULL_POINTER);
+		while((tdes0 & TDES0_LS) == 0)
 		{
-			ASSERT(next != _tx_desc_ptr1, KERNEL_ERROR_KERNEL_PANIC);
 			desc = next;
+			tdes0 = desc->tdes[0];
+			desc->tdes[0] = 0;
+			desc->tdes[4] = (unsigned)NULL;	// clear buffer reference
+
 			tx_edesc_t *next = (tx_edesc_t *)desc->tdes[3];
 			ASSERT(next != NULL, KERNEL_ERROR_NULL_POINTER);
 		}
 		desc = next;
 		_tx_desc_ptr2 = desc;
+		return buf;
+	}
+	return NULL;
+}
 
+static void _output_callback(dispatcher_context_t *context, dispatcher_t *dispatcher)
+{
+	net_adapter_t *adapter = (net_adapter_t *)dispatcher->CallbackState;
+	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
+
+	net_buffer_t *buf;
+	while(buf = _reclaim_tx_buffer(false), buf != NULL)
+	{
+		_verbose(VERBOSE_DEBUG, "freed buf @$%x", (unsigned)buf & 0xffff);
 		net_adapter_free_buffer(buf);
 	}
 
 	exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);
 }
 
+static void _flush(net_adapter_t *adapter)
+{
+	net_buffer_t *buf;
+	while(buf = _reclaim_tx_buffer(true), buf != NULL)
+	{
+		_verbose(VERBOSE_DEBUG, "flushed buf @$%x", (unsigned)buf & 0xffff);
+		net_adapter_free_buffer(buf);
+	}
+}
 
 void ETH_IRQHandler()
 {

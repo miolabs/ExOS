@@ -20,7 +20,6 @@ typedef struct
 	const char *Name;
 	const net_driver_t *Driver;
 	void *DriverData;
-	dispatcher_context_t *Context;
 	phy_t Phy;
 	event_t InputEvent;
 	mutex_t InputLock;
@@ -47,6 +46,7 @@ typedef enum
 struct __net_driver
 {
 	bool (*Initialize)(net_adapter_t *adapter, unsigned phy_unit, const phy_handler_t *handler);
+	void (*Start)(net_adapter_t *adapter, dispatcher_context_t *context);
 	void (*LinkUp)(net_adapter_t *adapter);
 	void (*LinkDown)(net_adapter_t *adapter);
 	net_buffer_t *(*GetInputBuffer)(net_adapter_t *adapter);
@@ -66,7 +66,7 @@ typedef net_buffer_t NET_BUFFER;
 // prototypes
 void net_adapter_initialize();
 bool net_adapter_create(net_adapter_t *adapter, const net_driver_t *driver, unsigned unit, const phy_handler_t *handler);
-void net_adapter_install(net_adapter_t *adapter, bool enable_network);
+void net_adapter_install(net_adapter_t *adapter, dispatcher_context_t *context, bool enable_network);
 void net_adapter_list_lock();
 void net_adapter_list_unlock();
 bool net_adapter_enum(net_adapter_t **padapter);

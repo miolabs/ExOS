@@ -304,7 +304,7 @@ static int ___resume_all(unsigned long *args)
 		_resume(handle);
 		count++;
 	}
-	*pcount = count;	// FIXME: use retuen value
+	*pcount = count;	// FIXME: use return value
 
 	ASSERT(LIST_ISEMPTY(list), KERNEL_ERROR_KERNEL_PANIC);
 	return 0;
@@ -313,6 +313,7 @@ static int ___resume_all(unsigned long *args)
 unsigned exos_thread_resume_all(list_t *wait_handles)
 {
 	ASSERT(wait_handles != NULL, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(wait_handles->Head != NULL && wait_handles->TailPred != NULL, KERNEL_ERROR_NULL_POINTER);
 	unsigned count = 0;
 	__kernel_do(___resume_all, wait_handles, &count);
 	return count;

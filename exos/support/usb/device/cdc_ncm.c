@@ -134,13 +134,20 @@ static void _fwdtx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatc
 	net_adapter_t *adapter = ncm_dev->BoundAdapter;
 	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
 
+	unsigned count = 0;
 	net_buffer_t *buf;
 	while(buf = net_adapter_get_input(adapter), buf != NULL)
 	{
-		exos_fifo_queue(&ncm_dev->TxFifo, &buf->Node);
+		if (ncm_dev->Enabled)
+		{
+			exos_fifo_queue(&ncm_dev->TxFifo, &buf->Node);
+			count++;
+		}	
+		else _verbose(VERBOSE_DEBUG, "tx dropped (not enabled yet)");
 	}
-	exos_event_set(&ncm_dev->TxEvent);
-		
+	if (count != 0)
+		exos_event_set(&ncm_dev->TxEvent);
+
 	exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);
 }
 
@@ -300,6 +307,7 @@ static bool _start(usb_device_interface_t *iface, unsigned char alternate_settin
 	ncm_dev->NotifyState = (ncm_notify_state_t) { /* all-zero */ };
 
 	ncm_dev->Connected = false;
+	ncm_dev->Enabled = false;
 	
 	exos_dispatcher_create(&ncm_dev->FwdRxDispatcher, &ncm_dev->RxPackets.Notify, _fwdrx_dispatch, ncm_dev);
 	exos_dispatcher_add(_context, &ncm_dev->FwdRxDispatcher, EXOS_TIMEOUT_NEVER);
@@ -397,6 +405,7 @@ static bool _enable_data_if(usb_device_interface_t *iface, bool enable)
 		exos_dispatcher_remove(ncm_dev->DispatcherContext, &ncm_dev->RxDispatcher);
 		exos_dispatcher_remove(ncm_dev->DispatcherContext, &ncm_dev->TxDispatcher);
 
+		ncm_dev->Enabled = false;
 		_verbose(VERBOSE_COMMENT, "[%d] data if disabled/reset!", iface->Index);
 	}
 	else
@@ -414,8 +423,9 @@ static bool _enable_data_if(usb_device_interface_t *iface, bool enable)
 		ncm_dev->TxIo = (usb_io_buffer_t) { .Event = &ncm_dev->TxEvent, .Flags = USB_IOF_SHORT_PACKET_END };
 		exos_dispatcher_create(&ncm_dev->TxDispatcher, &ncm_dev->TxEvent, _tx_dispatch, ncm_dev);
 		exos_dispatcher_add(ncm_dev->DispatcherContext, &ncm_dev->TxDispatcher, EXOS_TIMEOUT_NEVER);
-		ncm_dev->Idle = true;
 
+		ncm_dev->Idle = true;
+		ncm_dev->Enabled = true;
 		_verbose(VERBOSE_COMMENT, "[%d] data if enabled!", iface->Index);
 	}
 }

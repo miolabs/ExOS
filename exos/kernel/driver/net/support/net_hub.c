@@ -20,8 +20,6 @@ const net_driver_t __net_hub_driver = { .Initialize = _initialize,
 
 static bool _initialize(net_adapter_t *adapter, unsigned phy_unit, const phy_handler_t *handler)
 {
-//	_initialize_all();
-
 	adapter->Name = "hub";
 	adapter->MaxFrameSize = ETH_MAX_FRAME_SIZE;
 	adapter->Speed = 1000U;

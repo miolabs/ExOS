@@ -11,7 +11,6 @@
 static mutex_t _adapters_lock;
 static list_t _adapters;
 static pool_t _buffer_pool;
-static dispatcher_context_t *_context;
 
 #define BUFFER_MAX_FRAME_SIZE ETH_MAX_FRAME_SIZE
 #define POOL_ITEM_SIZE (sizeof(net_buffer_t) + BUFFER_MAX_FRAME_SIZE)
@@ -19,7 +18,7 @@ static dispatcher_context_t *_context;
 static unsigned char _pool_buffer[POOL_ITEM_COUNT * POOL_ITEM_SIZE];
 
 static event_t _flush_event;
-//static dispatcher_t _flush_dispatcher;
+static dispatcher_t _flush_dispatcher;
 
 static void _flush(dispatcher_context_t *context, dispatcher_t *dispatcher);
 
@@ -61,7 +60,8 @@ bool net_adapter_create(net_adapter_t *adapter, const net_driver_t *driver, unsi
 {
 	ASSERT(adapter != NULL && driver != NULL, KERNEL_ERROR_NULL_POINTER);
 	*adapter = (net_adapter_t) { .Node = (node_t) { .Type = EXOS_NODE_IO_DEVICE },
-		.Driver = driver, .Context = _context };
+		.Name = "unnamed",
+		.Driver = driver };
 
 	exos_mutex_create(&adapter->InputLock);
 	exos_mutex_create(&adapter->OutputLock);
@@ -76,13 +76,29 @@ bool net_adapter_create(net_adapter_t *adapter, const net_driver_t *driver, unsi
 	return done;
 }
 
-void net_adapter_install(net_adapter_t *adapter, bool enable_network)
+void net_adapter_install(net_adapter_t *adapter, dispatcher_context_t *context, bool enable_network)
 {
+	static bool _init_done = false;
+
 	ASSERT(adapter != NULL && adapter->Driver != NULL, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(context != NULL, KERNEL_ERROR_NULL_POINTER);
 	exos_mutex_lock(&_adapters_lock);
+
+	if (!_init_done)
+	{
+		exos_event_create(&_flush_event, EXOS_EVENTF_AUTORESET);
+		exos_dispatcher_create(&_flush_dispatcher, &_flush_event, _flush, NULL);
+		exos_dispatcher_add(context, &_flush_dispatcher, EXOS_TIMEOUT_NEVER);
+		_init_done = true;
+	}
 
 	ASSERT(!list_find_node(&_adapters, &adapter->Node), KERNEL_ERROR_KERNEL_PANIC);
 	list_add_tail(&_adapters, &adapter->Node);
+
+	const net_driver_t *driver = adapter->Driver;
+	ASSERT(driver != NULL, KERNEL_ERROR_NULL_POINTER);
+	if (driver->Start != NULL)
+		driver->Start(adapter, context);
 
 	if (enable_network)
 		net_service_start(adapter);
@@ -224,6 +240,7 @@ void net_adapter_flush(net_adapter_t *adapter)
 		ASSERT(driver != NULL, KERNEL_ERROR_NULL_POINTER);
 		if (driver->Flush != NULL)
 			driver->Flush(adapter);
+		else _verbose(VERBOSE_DEBUG, "adapter '%s' does not support flush!", adapter->Name);
 	}
 	else
 	{

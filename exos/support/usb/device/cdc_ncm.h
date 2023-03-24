@@ -180,6 +180,7 @@ typedef struct
 	bool Ready;
 	bool Idle;
 	bool Connected;
+	bool Enabled;
 	unsigned short SpeedMbps;			// NOTE: underlying (ethernet) speed
 
 	net_adapter_t *BoundAdapter;
