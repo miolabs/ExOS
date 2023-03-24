@@ -5,7 +5,6 @@
 #include <usb/configuration.h>
 #include <usb/device.h>
 #include <net/adapter.h>
-#include <net/support/packet_buffer.h>
 #include <kernel/fifo.h>
 
 extern const net_driver_t __usb_cdc_ncm_eth_driver;
@@ -168,8 +167,6 @@ typedef struct
 
 #define NCM_NOTIFY_EP_BUFFER	NCM_MAX_PACKET_LENGTH
 
-#define NCM_RX_BUFFER_SIZE	8192
-
 typedef struct
 {
 	node_t Node;
@@ -206,10 +203,6 @@ typedef struct
 	unsigned char RxData[NCM_MAX_NTB_SIZE];
 
 	unsigned char NotifyData[NCM_NOTIFY_EP_BUFFER];
-
-	dispatcher_t FwdRxDispatcher;
-	net_packet_buffer_t RxPackets;
-	unsigned char RxBuffer[NCM_RX_BUFFER_SIZE];
 
 	dispatcher_t FwdTxDispatcher;
 	fifo_t TxFifo;

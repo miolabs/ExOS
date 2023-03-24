@@ -13,10 +13,6 @@
 #define _verbose(level, ...) { /* nothing */ }
 #endif
 
-static exos_thread_t _service_thread;
-static unsigned char _stack[1024] __aligned(32);
-static void *_service(void *arg);
-
 #define MAX_FRAME_SIZE 1514 // not including CRC
 
 static void _notify_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher);
@@ -58,7 +54,6 @@ static const usb_device_interface_driver_t _driver2 = { .Initialize = _init2,
 static mutex_t _mutex;
 static list_t _instance_list;
 static unsigned _device_count = 0;
-static dispatcher_context_t *_context = NULL;
 
 static void _initialize_all()
 {
@@ -69,63 +64,10 @@ static void _initialize_all()
 		exos_mutex_create(&_mutex);
 		list_initialize(&_instance_list);
 
-		event_t init;
-		exos_event_create(&init, EXOS_EVENTF_NONE);
-		exos_thread_create(&_service_thread, 0, _stack, sizeof(_stack), _service, &init);
-		exos_event_wait(&init, EXOS_TIMEOUT_NEVER);
-
-		ASSERT(_context != NULL, KERNEL_ERROR_KERNEL_PANIC);
 		initialized = true;
 	}
 }
 
-static void *_service(void *arg)
-{
-	static dispatcher_context_t context;
-	exos_dispatcher_context_create(&context);
-	_context = &context;
-
-	event_t *init = (event_t *)arg;
-	exos_event_set(init);
-
-	while(1)
-	{
-		exos_dispatch(&context, EXOS_TIMEOUT_NEVER);
-	}
-}
-
-static void _fwdrx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
-{
-	ncm_device_context_t *ncm_dev = (ncm_device_context_t *)dispatcher->CallbackState;
-	ASSERT(ncm_dev != NULL, KERNEL_ERROR_NULL_POINTER);
-	
-	unsigned short flags;
-	unsigned length = net_packet_buffer_peek(&ncm_dev->RxPackets, &flags);
-	if (length != 0)
-	{
-		net_buffer_t *buf = net_adapter_alloc_buffer(ncm_dev->BoundAdapter);
-		if (buf != NULL)
-		{
-			unsigned length = net_packet_buffer_pop(&ncm_dev->RxPackets, buf->Root.Buffer, buf->Root.Length);
-			ASSERT(length != 0, KERNEL_ERROR_KERNEL_PANIC);
-			buf->Root.Offset = 0;
-			buf->Root.Length = length;
-
-			bool done = net_adapter_send_output(ncm_dev->BoundAdapter, buf);
-			if (!done)
-			{
-				_verbose(VERBOSE_ERROR, "send_output() failed on bound adapter");
-				net_adapter_free_buffer(buf);
-			}
-		}
-		else
-		{
-			_verbose(VERBOSE_ERROR, "dropped input packet (couldn't allocate buffer)");
-		}
-	}
-
-	exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);
-}
 
 static void _fwdtx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher)
 {
@@ -143,7 +85,7 @@ static void _fwdtx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatc
 			exos_fifo_queue(&ncm_dev->TxFifo, &buf->Node);
 			count++;
 		}	
-		else _verbose(VERBOSE_DEBUG, "tx dropped (not enabled yet)");
+		else _verbose(VERBOSE_COMMENT, "tx dropped (not enabled yet)");
 	}
 	if (count != 0)
 		exos_event_set(&ncm_dev->TxEvent);
@@ -181,7 +123,6 @@ static bool _init1(usb_device_interface_t *iface, const void *instance_data)
 		ncm_dev->Interface = iface;
 		iface->DriverContext = ncm_dev;
 
-		net_packet_buffer_initialize(&ncm_dev->RxPackets, ncm_dev->RxBuffer, sizeof(ncm_dev->RxBuffer));
 		exos_fifo_create(&ncm_dev->TxFifo, NULL);
 
 		ncm_dev->Unit = _device_count++;
@@ -309,15 +250,12 @@ static bool _start(usb_device_interface_t *iface, unsigned char alternate_settin
 	ncm_dev->Connected = false;
 	ncm_dev->Enabled = false;
 	
-	exos_dispatcher_create(&ncm_dev->FwdRxDispatcher, &ncm_dev->RxPackets.Notify, _fwdrx_dispatch, ncm_dev);
-	exos_dispatcher_add(_context, &ncm_dev->FwdRxDispatcher, EXOS_TIMEOUT_NEVER);
-
 	net_adapter_t *adapter = ncm_dev->BoundAdapter;
 	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
 	exos_dispatcher_create(&ncm_dev->FwdTxDispatcher, &adapter->InputEvent, _fwdtx_dispatch, ncm_dev);
-	exos_dispatcher_add(_context, &ncm_dev->FwdTxDispatcher, EXOS_TIMEOUT_NEVER);
+	exos_dispatcher_add(ncm_dev->DispatcherContext, &ncm_dev->FwdTxDispatcher, EXOS_TIMEOUT_NEVER);
 
-	#ifdef DEBUG
+	#if 1
 	// NOTE: fake status will trigger notification
 	ncm_dev->Connected = true;
 	ncm_dev->SpeedMbps = 100U;
@@ -648,16 +586,6 @@ static void _tx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher
 
 		if (done != 0)
 		{
-#ifdef NCM_DEBUG
-			//static unsigned char vbuf[IAP2_MAX_PACKET_LENGTH + 1];
-			//for(unsigned i = 0; i < done; i++)
-			//{
-			//	unsigned char c = iap2dev->TxData[2 + i];
-			//	vbuf[i] = (c >= ' ' && c <= 'z') ? c : '.';
-			//}
-			//vbuf[done] = '\0';	
-			//_verbose(VERBOSE_DEBUG,"[%d] tx '%s'", iap2dev->Interface->Index, vbuf);
-#endif
 			ncm_dev->Idle = false;
  
 			ncm_dev->TxIo.Data = ncm_dev->TxData;
@@ -795,11 +723,31 @@ static void _rx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher
 			void *data;
 			while(data = _dissect(&dis, &length), data != NULL)
 			{
-#ifdef USB_DEVICE_DEBUG
-				//_verbose(VERBOSE_DEBUG, "rx (%d bytes)", length);
-#endif
-				if (!net_packet_buffer_push(&ncm_dev->RxPackets, data, length, 0))
-					_verbose(VERBOSE_ERROR, "failed to push rx data");
+				ASSERT(length != 0, KERNEL_ERROR_KERNEL_PANIC);
+				_verbose(VERBOSE_DEBUG, "dissected packet (%d bytes)", length);
+
+				net_buffer_t *buf = net_adapter_alloc_buffer(ncm_dev->BoundAdapter);
+				if (buf != NULL)
+				{
+					if (length <= buf->Root.Length)
+					{
+						memcpy(buf->Root.Buffer + buf->Root.Offset, data, buf->Root.Length);
+						bool done = net_adapter_send_output(ncm_dev->BoundAdapter, buf);
+						if (done)
+						{
+							continue;
+						}
+					
+						_verbose(VERBOSE_ERROR, "send_output() failed on bound adapter");
+					}
+					else _verbose(VERBOSE_ERROR, "ndp packet doesnt fit in buffer!");
+				
+					net_adapter_free_buffer(buf);
+				}
+				else
+				{
+					_verbose(VERBOSE_ERROR, "dropped input packet (couldn't allocate buffer)");
+				}		
 			}
 		}
 
@@ -893,7 +841,5 @@ static bool _ncm_request(usb_device_interface_t *iface, usb_request_t *req, void
 	}
 	return false;
 }
-
-
 
 
