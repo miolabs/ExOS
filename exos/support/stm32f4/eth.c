@@ -277,12 +277,14 @@ static bool _send_output_buffer(net_adapter_t *adapter, net_buffer_t *buf)
 			desc->tdes[0] |= TDES0_OWN;
 			desc = (tx_edesc_t *)desc->tdes[3];
 		}
+		_verbose(VERBOSE_COMMENT, "send_output() queued buffer @$%x; desc=$%x; count=%d", 
+			(unsigned)buf & 0xffff, (unsigned)_tx_desc_ptr1 & 0xffff, count);
+
 		_tx_desc_ptr1 = desc;
 
 		// write TransmitPollDemandRegister to wake up the descriptor parsing
 		ETH->DMATPDR = 0;
 		
-		_verbose(VERBOSE_COMMENT, "send_output() queued buffer @$%x", (unsigned)buf & 0xffff);
 		return true;
 	}
 	_verbose(VERBOSE_ERROR, "send_output() failed!");
@@ -316,6 +318,21 @@ static net_buffer_t *_reclaim_tx_buffer(bool flush)
 			tx_edesc_t *next = (tx_edesc_t *)desc->tdes[3];
 			ASSERT(next != NULL, KERNEL_ERROR_NULL_POINTER);
 		}
+		
+		unsigned err_mask = tdes0 & (TDES0_IHE | TDES0_ES | TDES0_JT | TDES0_FF | TDES0_IPE | TDES0_LCA | TDES0_NC | TDES0_LCO | TDES0_EC);
+		if (err_mask != 0)
+		{
+			if (err_mask & TDES0_IHE) _verbose(VERBOSE_ERROR, "tx IHE (ip header error)");
+			if (err_mask & TDES0_JT) _verbose(VERBOSE_ERROR, "tx JT (jabber timeout)");
+			if (err_mask & TDES0_FF) _verbose(VERBOSE_ERROR, "tx FF (frame flushed)");
+			if (err_mask & TDES0_IPE) _verbose(VERBOSE_ERROR, "tx IPE (ip payload error)");
+			if (err_mask & TDES0_LCA) _verbose(VERBOSE_ERROR, "tx LCA (loss of carrier)");
+			if (err_mask & TDES0_NC) _verbose(VERBOSE_ERROR, "tx NC (no carrier)");
+			if (err_mask & TDES0_LCA) _verbose(VERBOSE_ERROR, "tx LCA (loss of carrier)");
+			if (err_mask & TDES0_LCO) _verbose(VERBOSE_ERROR, "tx LCO (late collision)");
+			if (err_mask & TDES0_EC) _verbose(VERBOSE_ERROR, "tx EC (excessive collision)");
+		} 
+		
 		desc = next;
 		_tx_desc_ptr2 = desc;
 		return buf;
@@ -362,6 +379,7 @@ void ETH_IRQHandler()
 		exos_event_set(&_output_event);
 		ETH->DMASR = ETH_DMASR_TS | ETH_DMASR_NIS;	// clear 
 	}
+	//TODO: service underflow?  
 }
 
 void ETH_WKUP_IRQHandler()
