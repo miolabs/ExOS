@@ -737,7 +737,8 @@ static void _rx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher
 				{
 					if (length <= buf->Root.Length)
 					{
-						memcpy(buf->Root.Buffer + buf->Root.Offset, data, buf->Root.Length);
+						memcpy(buf->Root.Buffer + buf->Root.Offset, data, length);
+						buf->Root.Length = length;
 						bool done = net_adapter_send_output(ncm_dev->BoundAdapter, buf);
 						if (done)
 						{
