@@ -479,6 +479,7 @@ static unsigned _assemble(ncm_device_context_t *ncm_dev)
 	unsigned pkt_cnt = 0;
 	unsigned offset = 0;
 	usb16_t *prev_ndp_next_index = NULL;
+
 	net_buffer_t *buf;
 	while(buf = (net_buffer_t *)exos_fifo_dequeue(&ncm_dev->TxFifo), buf != NULL)
 	{
@@ -504,9 +505,9 @@ static unsigned _assemble(ncm_device_context_t *ncm_dev)
 
 		ncm_datagram_pointer16_t *ndp16 = (ncm_datagram_pointer16_t *)((unsigned char *)nth16 + offset);
 		unsigned ndp_length = sizeof(ncm_datagram_pointer16_t) + ((seg_cnt + 1) * sizeof(struct ncm_datagram16));
-		offset += ndp_length;
-		ASSERT((offset & 3) == 0, KERNEL_ERROR_KERNEL_PANIC);
-		if (offset < sizeof(ncm_dev->TxData)) 
+		unsigned data_offset = offset + ndp_length;
+		ASSERT((data_offset & 3) == 0, KERNEL_ERROR_KERNEL_PANIC);
+		if (data_offset < sizeof(ncm_dev->TxData)) 
 		{
 			if (prev_ndp_next_index != NULL) *prev_ndp_next_index = HTOUSB16(offset);
 
@@ -517,21 +518,24 @@ static unsigned _assemble(ncm_device_context_t *ncm_dev)
 			do
 			{
 				ndp16->array[seg_done] = (struct ncm_datagram16) { 
-					.wDatagramIndex = HTOUSB16(offset), 
+					.wDatagramIndex = HTOUSB16(data_offset), 
 					.wDatagramLength = HTOUSB16(mbuf->Length) };
 
 				unsigned word_count = (mbuf->Length + 3) >> 2;
-				if ((offset + (word_count << 2)) > sizeof(ncm_dev->TxData))
+				if ((data_offset + (word_count << 2)) > sizeof(ncm_dev->TxData))
 					break;
 
-				memcpy((unsigned char *)nth16 + offset, mbuf->Buffer + mbuf->Offset, mbuf->Length);
-				offset += word_count << 2;
-				mbuf = mbuf->Next;
+				memcpy((unsigned char *)nth16 + data_offset, mbuf->Buffer + mbuf->Offset, mbuf->Length);
+				data_offset += word_count << 2;
+
 				seg_done++;
-			} while (mbuf != NULL && mbuf->Buffer != NULL && mbuf->Length != 0);
-		
-			ndp16->array[seg_done] = (struct ncm_datagram16) { .wDatagramLength = 0 };
+				mbuf = mbuf->Next;
+				if (mbuf == NULL || mbuf->Buffer == NULL || mbuf->Length == 0)
+					break;
+	
+			} while (seg_done < seg_cnt);
 		}
+		ndp16->array[seg_done] = (struct ncm_datagram16) { .wDatagramLength = 0 };
 
 		net_adapter_free_buffer(buf);
 //		_verbose(VERBOSE_DEBUG, "asm freed buffer %d (@$%x)", pkt_cnt, (unsigned)buf & 0xffff);
@@ -541,6 +545,8 @@ static unsigned _assemble(ncm_device_context_t *ncm_dev)
 			_verbose(VERBOSE_ERROR, "output packet truncated!");
 			break;
 		}
+
+		offset = data_offset;
 	}
 	nth16->wBlockLength = HTOUSB16(offset);
 
