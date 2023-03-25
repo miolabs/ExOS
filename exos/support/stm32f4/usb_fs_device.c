@@ -23,7 +23,6 @@ static usb_io_buffer_t *_ep_setup_io = nullptr;
 static usb_io_buffer_t *_ep_out_io[USB_DEV_EP_COUNT];
 static usb_io_buffer_t *_ep_in_io[USB_DEV_EP_COUNT];
 static unsigned char _ep_max_length[USB_DEV_EP_COUNT];
-static unsigned char _in_ep_last_packet[USB_DEV_EP_COUNT];
 
 // NOTE: total fifo size for OTG_FS is 320 words (1280 bytes)
 #define FIFO_RX_WORDS	240		// words shared for all OUT EP
@@ -350,14 +349,19 @@ static void _disable_in_ep(unsigned ep_num)
 	// NOTE: will trigger an ep disabled interrupt
 }
 
-static void _write_fifo(unsigned ep_num, usb_io_buffer_t *iob, unsigned txlen)
+
+static unsigned char _in_ep_last_packet[USB_DEV_EP_COUNT];
+static unsigned short _in_ep_rem_length[USB_DEV_EP_COUNT];
+
+static void _write_fifo(unsigned ep_num, usb_io_buffer_t *iob)
 {
-	static volatile unsigned _busy = false;
-	ASSERT(!_busy, KERNEL_ERROR_KERNEL_PANIC);
-	_busy = true;
+	static volatile unsigned busy = false;
+	ASSERT(!busy, KERNEL_ERROR_KERNEL_PANIC);
+	busy = true;
 
 	ASSERT(ep_num < USB_DEV_EP_COUNT, KERNEL_ERROR_KERNEL_PANIC);
 	ASSERT(iob != nullptr, KERNEL_ERROR_NULL_POINTER);
+	unsigned txlen = _in_ep_rem_length[ep_num];
 	unsigned rem = txlen;
 	unsigned char *ptr = (unsigned char *)iob->Data + iob->Done; 
 
@@ -373,38 +377,45 @@ static void _write_fifo(unsigned ep_num, usb_io_buffer_t *iob, unsigned txlen)
 			kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 	}
 
-	while(rem > 3 && avail_words != 0)
+	if (rem != 0)
 	{
-		*otg_fifo[ep_num] = ptr[0] | (ptr[1] << 8) | (ptr[2] << 16) | (ptr[3] << 24);
-		rem -= 4;
-		ptr += 4;
-		avail_words--;
-	}
-	if (rem < 4 && avail_words != 0)
-	{
-		switch(rem)
+		volatile uint32_t *fifo = otg_fifo[ep_num];
+		unsigned rem_words = avail_words;
+		while(rem > 3 && rem_words != 0)
 		{
-			case 1:	*otg_fifo[ep_num] = ptr[0];	break;
-			case 2: *otg_fifo[ep_num] = ptr[0] | (ptr[1] << 8);	break;
-			case 3: *otg_fifo[ep_num] = ptr[0] | (ptr[1] << 8) | (ptr[2] << 16);	break;
+			*fifo = ptr[0] | (ptr[1] << 8) | (ptr[2] << 16) | (ptr[3] << 24);
+			rem -= 4;
+			ptr += 4;
+			rem_words--;
 		}
-		rem = 0;
+		if (rem < 4 && rem_words != 0)
+		{
+			switch(rem)
+			{
+				case 1:	*fifo = ptr[0];	break;
+				case 2: *fifo = ptr[0] | (ptr[1] << 8);	break;
+				case 3: *fifo = ptr[0] | (ptr[1] << 8) | (ptr[2] << 16);	break;
+			}
+			rem = 0;
+		}
+
+		unsigned done = txlen - rem;
+		ASSERT(done != 0, KERNEL_ERROR_KERNEL_PANIC);
+		iob->Done += done;
+		ASSERT(iob->Done <= iob->Length, KERNEL_ERROR_KERNEL_PANIC);
+
+		_in_ep_rem_length[ep_num] = rem;
 	}
 
-	iob->Done += (txlen - rem);
-	ASSERT(iob->Done <= iob->Length, KERNEL_ERROR_KERNEL_PANIC);
-
+	unsigned ep_mask = (1 << ep_num);
 	if (rem == 0)
 	{
+		otg_device->DIEPEMPMSK &= ~ep_mask;	// NOTE: disable tx-fifo interrupt
+		
 		iob->Status = USB_IOSTA_IN_COMPLETE;
 		// NOTE: core will generate a XFRCM (transfer complete) int later
 	}
-	else 
-	{
-		otg_device->DIEPEMPMSK |= (1 << ep_num);
-//		kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);	// fifo refill is not implemented
-	}
-	_busy = false;
+	busy = false;
 }
 
 static void _prepare_in_ep(unsigned ep_num, usb_io_buffer_t *iob)
@@ -420,22 +431,23 @@ static void _prepare_in_ep(unsigned ep_num, usb_io_buffer_t *iob)
 		// ep0 can only do 3 packets 
 		packet_cnt = 3;
 		sp = 0;
-		txlen = packet_cnt * max_packet_length;
 	}
 
 	// NOTE: sp==0 and packet_cnt!=1 is not supported by core!
 	if (packet_cnt == 0)
 	{
 		packet_cnt = 1;
-		_in_ep_last_packet[ep_num] = sp;
 		txlen = sp;
+		_in_ep_last_packet[ep_num] = sp;
 	}
 	else 
 	{
-		_in_ep_last_packet[ep_num] = max_packet_length;
+		// NOTE: we are doing first full packets
 		txlen = packet_cnt * max_packet_length;
+		_in_ep_last_packet[ep_num] = max_packet_length;
 	}
 
+	_in_ep_rem_length[ep_num] = txlen;
 	unsigned dieptsiz = (1 << USB_OTG_DIEPTSIZ_MULCNT_Pos) | (packet_cnt << USB_OTG_DIEPTSIZ_PKTCNT_Pos) 
 		| (txlen << USB_OTG_DIEPTSIZ_XFRSIZ_Pos);
 
@@ -467,7 +479,7 @@ static void _prepare_in_ep(unsigned ep_num, usb_io_buffer_t *iob)
 			kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 	}
 
-	_write_fifo(ep_num, iob, txlen);	//// <---------------
+	otg_device->DIEPEMPMSK |= (1 << ep_num);
 }
 
 void hal_usbd_prepare_in_ep(unsigned ep_num, usb_io_buffer_t *iob)
@@ -534,7 +546,7 @@ static void _handle_rxf()
 {
 	static unsigned _fail = 0;
 
-	otg_global->GINTMSK &= ~USB_OTG_GINTMSK_RXFLVLM;
+//	otg_global->GINTMSK &= ~USB_OTG_GINTMSK_RXFLVLM; remove - we run in interrupt only
 
 	unsigned stsp = otg_global->GRXSTSP;
 	unsigned pktsts = (stsp & USB_OTG_GRXSTSP_PKTSTS_Msk) >> USB_OTG_GRXSTSP_PKTSTS_Pos;
@@ -611,7 +623,7 @@ static void _handle_rxf()
 		ASSERT(bcnt == 0, KERNEL_ERROR_NULL_POINTER);
 	}
 
-	otg_global->GINTMSK |= USB_OTG_GINTMSK_RXFLVLM;
+//	otg_global->GINTMSK |= USB_OTG_GINTMSK_RXFLVLM; remove - we run in interrupt only
 }
 
 static void _ep_out_handler(unsigned ep)
@@ -685,7 +697,15 @@ static void _ep_in_handler(unsigned ep)
 	intreq &= intmsk;
 
 	unsigned int_handled = 0;
-	if (intreq & USB_OTG_DIEPINT_XFRC)	// transfer complete
+	if (intreq & USB_OTG_DIEPINT_TXFE)	// handle tx-fifo
+	{
+		ASSERT(iob != nullptr, KERNEL_ERROR_NULL_POINTER);
+		ASSERT(iob->Status != USB_IOSTA_DONE, KERNEL_ERROR_KERNEL_PANIC);
+		_write_fifo(ep, iob);
+
+		int_handled = USB_OTG_DIEPINT_TXFE; // NOTE: this is not needed, DIEPINTx won't clear flag
+	}
+	else if (intreq & USB_OTG_DIEPINT_XFRC)	// transfer complete
 	{
 		// NOTE: if data-in was canceled (in-ep disabled), we should not get here
 		ASSERT(iob != nullptr, KERNEL_ERROR_NULL_POINTER);
@@ -730,22 +750,6 @@ static void _ep_in_handler(unsigned ep)
 		else kernel_panic(KERNEL_ERROR_NULL_POINTER);
 
 		int_handled = USB_OTG_DIEPINT_EPDISD;
-	}
-	else if (intreq & USB_OTG_DIEPINT_TXFE)
-	{
-		if (iob != nullptr && iob->Status != USB_IOSTA_DONE)
-		{
-			if (iob->Done < iob->Length)
-			{
-				_write_fifo(ep, iob, iob->Length - iob->Done);
-			}
-			else
-			{
-				// clear int mask
-				otg_device->DIEPEMPMSK &= ~ep_mask;
-			}
-		}
-		int_handled = USB_OTG_DIEPINT_TXFE; 
 	}
 
 	if (int_handled != 0)
@@ -846,7 +850,7 @@ void __usb_otg_device_irq_handler()
 	unsigned intreq = otg_global->GINTMSK & otg_global->GINTSTS;
 	unsigned daint = otg_device->DAINT & otg_device->DAINTMSK;
 
-	if (intreq & USB_OTG_GINTSTS_RXFLVL)
+	if (intreq & USB_OTG_GINTSTS_RXFLVL)	// rx-fifo
 	{
 		_handle_rxf();
 	
