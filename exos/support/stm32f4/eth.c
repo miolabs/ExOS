@@ -7,7 +7,11 @@
 #include <kernel/verbose.h>
 #include <string.h>
 
+#ifdef STM32_ETH_DEBUG
 #define _verbose(level, ...) verbose(level, "eth", __VA_ARGS__)
+#else
+#define _verbose(level, ...)	{ /* nothing */ }
+#endif
 
 #ifndef TX_DESCRIPTORS
 #define TX_DESCRIPTORS 16
@@ -278,7 +282,7 @@ static bool _send_output_buffer(net_adapter_t *adapter, net_buffer_t *buf)
 		// write TransmitPollDemandRegister to wake up the descriptor parsing
 		ETH->DMATPDR = 0;
 		
-		_verbose(VERBOSE_DEBUG, "send_output() queued buffer @$%x", (unsigned)buf & 0xffff);
+		_verbose(VERBOSE_COMMENT, "send_output() queued buffer @$%x", (unsigned)buf & 0xffff);
 		return true;
 	}
 	_verbose(VERBOSE_ERROR, "send_output() failed!");
@@ -327,7 +331,7 @@ static void _output_callback(dispatcher_context_t *context, dispatcher_t *dispat
 	net_buffer_t *buf;
 	while(buf = _reclaim_tx_buffer(false), buf != NULL)
 	{
-		_verbose(VERBOSE_DEBUG, "freed buf @$%x", (unsigned)buf & 0xffff);
+		_verbose(VERBOSE_COMMENT, "freed buf @$%x", (unsigned)buf & 0xffff);
 		net_adapter_free_buffer(buf);
 	}
 
