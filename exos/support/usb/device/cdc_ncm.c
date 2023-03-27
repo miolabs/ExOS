@@ -277,6 +277,7 @@ static void _stop(usb_device_interface_t *iface)
 	list_remove(&ncm_dev->Node);
 
 	ncm_dev->Ready = false;
+	exos_dispatcher_remove(ncm_dev->DispatcherContext, &ncm_dev->FwdTxDispatcher);
 	exos_dispatcher_remove(ncm_dev->DispatcherContext, &ncm_dev->NotifyDispatcher);
 
 	_verbose(VERBOSE_COMMENT, "[%d] USB stop comm if -------", iface->Index);
