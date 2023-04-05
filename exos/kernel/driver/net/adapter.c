@@ -12,10 +12,12 @@ static mutex_t _adapters_lock;
 static list_t _adapters;
 static pool_t _buffer_pool;
 
+#ifndef ADAPTER_NET_BUFFERS
+#define ADAPTER_NET_BUFFERS 16
+#endif
 #define BUFFER_MAX_FRAME_SIZE ETH_MAX_FRAME_SIZE
 #define POOL_ITEM_SIZE (sizeof(net_buffer_t) + BUFFER_MAX_FRAME_SIZE)
-#define POOL_ITEM_COUNT 16
-static unsigned char _pool_buffer[POOL_ITEM_COUNT * POOL_ITEM_SIZE];
+static unsigned char _pool_buffer[ADAPTER_NET_BUFFERS * POOL_ITEM_SIZE];
 
 static event_t _flush_event;
 static dispatcher_t _flush_dispatcher;
@@ -25,7 +27,7 @@ static void _flush(dispatcher_context_t *context, dispatcher_t *dispatcher);
 void net_adapter_initialize()
 {
 	list_initialize(&_adapters);
-	pool_create(&_buffer_pool, (node_t *)_pool_buffer, POOL_ITEM_SIZE, POOL_ITEM_COUNT);
+	pool_create(&_buffer_pool, (node_t *)_pool_buffer, POOL_ITEM_SIZE, sizeof(_pool_buffer)/POOL_ITEM_SIZE);
 	exos_mutex_create(&_adapters_lock);
 
 /*
