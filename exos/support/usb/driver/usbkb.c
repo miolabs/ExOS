@@ -35,7 +35,6 @@ void usbkb_initialize()
 	{
 		usbkb_function_handler_t *kb = (usbkb_function_handler_t *)&_handler_heap[i];
 		kb->InstanceIndex = i;
-//		kb->State = USB_KB_DETACHED;
 	}
 
 	static hid_driver_node_t node = (hid_driver_node_t) { .Driver = &_driver };
@@ -53,7 +52,6 @@ static hid_function_handler_t *_match_device(usb_host_device_t *device,
 
 		if (kb_handler != NULL)
 		{
-//			kb_handler->State = USB_KB_STARTING;
 			return (hid_function_handler_t *)kb_handler;
 		}
 		else _verbose(VERBOSE_ERROR, "handler instance not available for new device"); 
@@ -121,10 +119,12 @@ static bool _start(hid_function_handler_t *handler, hid_report_parser_t *parser)
 	if (!done) 
 		_verbose(VERBOSE_ERROR, "set report idle failed!"); 
 
-	unsigned char leds[] = { 0x0f };
-	usb_hid_set_report(handler->Function, USB_HID_REPORT_OUTPUT, 0, leds, sizeof(leds));
-
-//	kb->State = USB_KB_READY;
+	if (done)
+	{
+		unsigned char leds[] = { 0x0f };
+		usb_hid_set_report(handler->Function, USB_HID_REPORT_OUTPUT, 0, leds, sizeof(leds));
+	}
+	return done; 
 }
 
 static void _stop(hid_function_handler_t *handler)

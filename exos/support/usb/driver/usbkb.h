@@ -27,7 +27,6 @@ typedef struct
 	hid_function_handler_t Hid;
 	unsigned char InstanceIndex;
 	unsigned char MaxReportId;
-//	enum { USB_KB_DETACHED, USB_KB_STARTING, USB_KB_READY, USB_KB_OPEN, USB_KB_ERROR } State;
 	usbkb_report_t Report;
 } usbkb_function_handler_t; 
 
