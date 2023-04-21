@@ -118,6 +118,7 @@ static bool _init1(usb_device_interface_t *iface, const void *instance_data)
 		sprintf(ncm_dev->EthernetMacString, "%02X%02X%02X%02X%02X%02X",
 			adapter->MAC.Bytes[0], adapter->MAC.Bytes[1], adapter->MAC.Bytes[2], adapter->MAC.Bytes[3], adapter->MAC.Bytes[4], adapter->MAC.Bytes[5]);
 		usb_device_config_add_string(&ncm_dev->EthernetMac, ncm_dev->EthernetMacString);
+		_verbose(VERBOSE_COMMENT, "hw_addr=%s", ncm_dev->EthernetMacString);
 
 		ncm_dev->BoundAdapter = adapter;
 		ncm_dev->Interface = iface;

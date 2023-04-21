@@ -78,6 +78,9 @@ typedef struct { unsigned tdes[8]; } tx_edesc_t;
 
 extern const net_driver_t __stm32_eth_driver;
 
+// overridable
+void stm32_eth_get_hw_addr(hw_addr_t *mac);
+
 #endif // STM32F4_ETH_H
 
 

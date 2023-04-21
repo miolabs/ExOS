@@ -1,7 +1,8 @@
 #include "eth.h"
 #include "cpu.h"
 #include "gpio.h"
-#include <kernel/driver/net/adapter.h>
+#include <net/adapter.h>
+#include <net/support/macgen.h>
 #include <kernel/machine/hal.h>
 #include <kernel/panic.h>
 #include <kernel/verbose.h>
@@ -60,6 +61,7 @@ static bool _initialize(net_adapter_t *adapter, unsigned phy_unit, const phy_han
 	_adapter = adapter;
 	adapter->Name = "eth";
 	adapter->MaxFrameSize = ETH_MAX_FRAME_SIZE;
+	stm32_eth_get_hw_addr(&adapter->MAC);
 
 	exos_event_create(&_output_event, EXOS_EVENTF_AUTORESET);
 	exos_dispatcher_create(&_output_dispatcher, &_output_event, _output_callback, adapter);
@@ -134,6 +136,12 @@ static bool _initialize(net_adapter_t *adapter, unsigned phy_unit, const phy_han
 
 	NVIC_EnableIRQ(ETH_IRQn);
 	return true;
+}
+
+__weak
+void stm32_eth_get_hw_addr(hw_addr_t *mac)
+{
+	macgen_generate(mac, MAC_OUI_LOCAL, 0);
 }
 
 static void _eth_start(net_adapter_t *adapter, dispatcher_context_t *context)

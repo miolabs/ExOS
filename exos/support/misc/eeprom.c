@@ -1,110 +1,116 @@
 #include "eeprom.h"
+#include <kernel/panic.h>
 #include <support/i2c_hal.h>
-#include <support/board_hal.h>
 
-#ifndef EEPROM_I2C_ADDRESS
-#define EEPROM_I2C_ADDRESS 0x50
-#endif
 
-#ifndef EEPROM_I2C_CLOCK
-#define EEPROM_I2C_CLOCK 400000
-#endif
-
-#ifndef EEPROM_PAGE_SIZE // must be a power of 2
-#define EEPROM_PAGE_SIZE 64
-#endif
-
-#if EEPROM_SIZE > 256
-#define EEPROM_ADDR_LEN 2
-#else
-#define EEPROM_ADDR_LEN 1
-#endif
-
-int eeprom_initialize()
+bool eeprom_read(const eeprom_context_t *context, void *data, unsigned addr, unsigned length)
 {
-	hal_i2c_initialize(EEPROM_I2C_MODULE, EEPROM_I2C_CLOCK);
-	return 1;	// FIXME: check i2c port availability
+	ASSERT(context != NULL, KERNEL_ERROR_NULL_POINTER);
+	const eeprom_driver_t *driver = context->Driver;
+	ASSERT(driver != NULL, KERNEL_ERROR_NULL_POINTER);
+	unsigned pagesize = context->Geometry.PageSize != 0 ? context->Geometry.PageSize : 256;
+
+	unsigned done = 0;
+	while(done < length)
+	{
+		unsigned max_length = pagesize - (addr & (pagesize - 1));
+		unsigned partial = (length - done) < max_length ? (length - done) : max_length;
+		if (!driver->Read(context, data + done, addr, partial))
+			return false;
+		addr += partial;
+		done += partial;
+	}
+	return true;
+} 
+
+bool eeprom_write(const eeprom_context_t *context, void *data, unsigned addr, unsigned length)
+{
+	ASSERT(context != NULL, KERNEL_ERROR_NULL_POINTER);
+	const eeprom_driver_t *driver = context->Driver;
+	ASSERT(driver != NULL, KERNEL_ERROR_NULL_POINTER);
+	unsigned pagesize = context->Geometry.PageSize != 0 ? context->Geometry.PageSize : 256;
+
+	unsigned done = 0;
+	while(done < length)
+	{
+		unsigned max_length = pagesize - (addr & (pagesize - 1));
+		unsigned partial = (length - done) < max_length ? (length - done) : max_length;
+		if (!driver->Write(context, data + done, addr, partial))
+			return false;
+		addr += partial;
+		done += partial;
+		exos_thread_sleep(5);
+	}
+	return true;
 }
 
-int eeprom_read_geometry(int *psize, int *ppagesize)
+bool eeprom_clear_all(const eeprom_context_t *context)
 {
-	*psize = EEPROM_SIZE;
-	*ppagesize = EEPROM_PAGE_SIZE;
-	return 1;
-}
+	ASSERT(context != NULL, KERNEL_ERROR_NULL_POINTER);
+	const eeprom_driver_t *driver = context->Driver;
+	ASSERT(driver != NULL, KERNEL_ERROR_NULL_POINTER);
 
-EEPROM_RESULT eeprom_read(unsigned char *buf, int offset, int length)
-{
-	EEPROM_RESULT error = 0;
-	unsigned char frame[EEPROM_ADDR_LEN + EEPROM_PAGE_SIZE];
+	if (driver->Clear == NULL)
+		return false;
+	if (!driver->Clear(context))
+		return false;
 	
-	eeprom_lock_i2c();
-	while (length > 0)
-	{
-#if EEPROM_ADDR_LEN == 2
-		frame[0] = (unsigned char)(offset >> 8);
-		frame[1] = (unsigned char)offset;
-#else
-		frame[0] = (unsigned char)offset;
+	exos_thread_sleep(5);
+	return true;
+}
+
+#ifdef EEPROM_I2C_MODULE
+
+static bool _read_small(const eeprom_context_t *context, unsigned char *data, unsigned addr, unsigned length)
+{
+	i2c_context_t i2c;
+	unsigned char cmd[] = { addr & 0xFF };
+	hal_i2c_init_context(&i2c, context->Geometry.Address | (addr >> 8), cmd, 1);
+	bool done = hal_i2c_read(EEPROM_I2C_MODULE, &i2c, data, length);
+	return done;
+}
+
+static bool _write_small(const eeprom_context_t *context, unsigned char *data, unsigned addr, unsigned length)
+{
+	i2c_context_t i2c;
+	unsigned char cmd[] = { addr & 0xFF };
+	hal_i2c_init_context(&i2c, context->Geometry.Address | (addr >> 8), cmd, 1);
+	bool done = hal_i2c_write(EEPROM_I2C_MODULE, &i2c, data, length);
+	return done;
+}
+
+static bool _read(const eeprom_context_t *context, unsigned char *data, unsigned addr, unsigned length)
+{
+	i2c_context_t i2c;
+	unsigned char cmd[] = { addr >> 8, addr & 0xFF };
+	hal_i2c_init_context(&i2c, context->Geometry.Address, cmd, 2);
+	bool done = hal_i2c_read(EEPROM_I2C_MODULE, &i2c, data, length);
+	return done;
+}
+
+static bool _write(const eeprom_context_t *context, unsigned char *data, unsigned addr, unsigned length)
+{
+	i2c_context_t i2c;
+	unsigned char cmd[] = { addr >> 8, addr & 0xFF };
+	hal_i2c_init_context(&i2c, context->Geometry.Address, cmd, 2);
+	bool done = hal_i2c_write(EEPROM_I2C_MODULE, &i2c, data, length);
+	return done;
+}
+
+static const eeprom_driver_t _driver_i2c_small = { .Read = _read_small, .Write = _write_small };
+static const eeprom_driver_t _driver_i2c = { .Read = _read, .Write = _write };
+
+void eeprom_i2c_context_create(eeprom_context_t *context, const eeprom_geometry_t *geo)
+{
+	ASSERT(context != NULL, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(geo != NULL, KERNEL_ERROR_NULL_POINTER);
+	
+	if (geo->Size < 1024)
+		eeprom_context_create(context, geo, &_driver_i2c_small, NULL);
+	else
+		eeprom_context_create(context, geo, &_driver_i2c, NULL);
+}
+
 #endif
-		int max_length = EEPROM_PAGE_SIZE - (offset & (EEPROM_PAGE_SIZE - 1));
-		int frame_length = length > max_length ? max_length : length;
-		error = hal_i2c_master_frame(EEPROM_I2C_MODULE, EEPROM_I2C_ADDRESS, frame, EEPROM_ADDR_LEN, frame_length);
-		if (error == EEPROM_RES_OK)
-		{
-			for (int i = 0; i < frame_length; i++) *buf++ = frame[i + EEPROM_ADDR_LEN];
-			offset += frame_length;
-			length -= frame_length;
-		}
-		else break;
-	}
-	eeprom_unlock_i2c();
-	return error;
-}
-
-EEPROM_RESULT eeprom_write(unsigned char *buf, int offset, int length)
-{
-	EEPROM_RESULT error = 0;
-	unsigned char frame[EEPROM_ADDR_LEN + EEPROM_PAGE_SIZE];
-
-	eeprom_lock_i2c();
-	while(length > 0)
-	{
-#if EEPROM_ADDR_LEN == 2
-		frame[0] = (unsigned char)(offset >> 8);
-		frame[1] = (unsigned char)offset;
-#else
-		frame[0] = (unsigned char)offset;
-#endif
-		int max_length = EEPROM_PAGE_SIZE - (offset & (EEPROM_PAGE_SIZE - 1));
-		int frame_length = length > max_length ? max_length : length;
-		for (int i = 0; i < frame_length; i++) frame[i + EEPROM_ADDR_LEN] = *buf++;
-		error = hal_i2c_master_frame(EEPROM_I2C_MODULE, EEPROM_I2C_ADDRESS, frame, EEPROM_ADDR_LEN + frame_length, 0);
-		if (error == 3)
-		{
-			for(int retry = 0; retry < 200; retry++)
-			{
-				error = hal_i2c_master_frame(EEPROM_I2C_MODULE, EEPROM_I2C_ADDRESS, frame, EEPROM_ADDR_LEN + frame_length, 0);
-				if (error != 3) 
-					break;
-			}
-		}
-		if (error != 0) break;
-		offset += frame_length;
-		length -= frame_length;
-	}
-	eeprom_unlock_i2c();
-	return error;
-}
-
-__attribute__((__weak__))
-void eeprom_lock_i2c()
-{
-}
-
-__attribute__((__weak__))
-void eeprom_unlock_i2c()
-{
-}
 
 

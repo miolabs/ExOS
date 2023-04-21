@@ -30,6 +30,12 @@ bool apple_cp30_initialize()
 	return false;
 }
 
+__weak
+void apple_cp30_i2c_lock(bool lock)
+{
+	/* nothing */
+}
+
 static bool _read(cp30_reg_t reg, unsigned char *buffer, unsigned char length)
 {
 	i2c_context_t i2c;

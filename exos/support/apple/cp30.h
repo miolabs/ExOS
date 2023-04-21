@@ -57,6 +57,9 @@ bool apple_cp30_read_acc_cert(unsigned char *buffer, unsigned short length);
 bool apple_cp30_begin_challenge(unsigned char *challenge, unsigned short length, unsigned short *presp_len);
 bool apple_cp30_read_challenge_resp(unsigned char *data, unsigned short length);
 
+// overridables
+void apple_cp30_i2c_lock(bool lock);
+
 #endif // APPLE_CP30_H
 
 
