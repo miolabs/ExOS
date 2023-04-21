@@ -10,8 +10,8 @@
 #define _verbose(level, ...) { /* nothing */ }
 #endif
 
-#ifndef USB_KEYBOARD_MAX_INSTANCES
-#define USB_KEYBOARD_MAX_INSTANCES 1
+#ifndef USBKB_MAX_INSTANCES
+#define USBKB_MAX_INSTANCES 1
 #endif
 
 static pool_t _handler_pool;
@@ -28,13 +28,14 @@ static const hid_driver_t _driver = {
 
 void usbkb_initialize()
 {
-	static usbkb_function_handler_t _handler_heap[USB_KEYBOARD_MAX_INSTANCES];
+	static usbkb_function_handler_t _handler_heap[USBKB_MAX_INSTANCES];
 
-	pool_create(&_handler_pool, (node_t *)_handler_heap, sizeof(usbkb_function_handler_t), USB_KEYBOARD_MAX_INSTANCES);
-	for (unsigned i = 0; i < USB_KEYBOARD_MAX_INSTANCES; i++) 
+	pool_create(&_handler_pool, (node_t *)_handler_heap, sizeof(usbkb_function_handler_t), USBKB_MAX_INSTANCES);
+	for (unsigned i = 0; i < USBKB_MAX_INSTANCES; i++) 
 	{
 		usbkb_function_handler_t *kb = (usbkb_function_handler_t *)&_handler_heap[i];
 		kb->InstanceIndex = i;
+		kb->UserData = NULL;
 	}
 
 	static hid_driver_node_t node = (hid_driver_node_t) { .Driver = &_driver };
@@ -123,6 +124,8 @@ static bool _start(hid_function_handler_t *handler, hid_report_parser_t *parser)
 	{
 		unsigned char leds[] = { 0x0f };
 		usb_hid_set_report(handler->Function, USB_HID_REPORT_OUTPUT, 0, leds, sizeof(leds));
+
+		usbkb_connected(kb, true);
 	}
 	return done; 
 }
@@ -131,7 +134,8 @@ static void _stop(hid_function_handler_t *handler)
 {
 	usbkb_function_handler_t *kb = (usbkb_function_handler_t *)handler;
 	
-//	kb->State = USB_KB_DETACHED;
+	usbkb_connected(kb, false);
+
 	_verbose(VERBOSE_COMMENT, "stopped");
 
 	pool_free(&_handler_pool, &handler->Node);
@@ -171,6 +175,12 @@ static void _notify(hid_function_handler_t *handler, unsigned char *data, unsign
 //		exos_io_buffer_write(&handle->IOBuffer, text, length);
 //	}
 //}
+
+__attribute__((__weak__))
+void usbkb_connected(usbkb_function_handler_t *kb, bool connected)
+{
+	_verbose(VERBOSE_DEBUG, "handler: %s", connected ? "connected" : "disconnected");
+}
 
 __attribute__((__weak__))
 void usbkb_translate(usbkb_function_handler_t *kb, usbkb_modifier_t mask, unsigned char *keys, unsigned char length)

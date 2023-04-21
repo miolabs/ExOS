@@ -28,12 +28,14 @@ typedef struct
 	unsigned char InstanceIndex;
 	unsigned char MaxReportId;
 	usbkb_report_t Report;
+	void *UserData;
 } usbkb_function_handler_t; 
 
 void usbkb_initialize();
 bool usbkb_set_report(hid_function_t *func, unsigned char report_id, unsigned char *data, unsigned length);
 
 //void usbkb_push_text(usb_keyboard_handler_t *kb, char *text, int length);
+void usbkb_connected(usbkb_function_handler_t *kb, bool connected);
 void usbkb_translate(usbkb_function_handler_t *kb, usbkb_modifier_t mask, unsigned char *keys, unsigned char length);
 
 #endif // HID_KEYBOARD_H
