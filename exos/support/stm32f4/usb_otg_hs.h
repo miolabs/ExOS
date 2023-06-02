@@ -2,6 +2,7 @@
 #define STM32F1_USB_OTG_HS_H
 
 #include <kernel/types.h>
+#include <usb/host.h>
 
 #define USB_OTG_HS_BASE 0x40040000UL
 
@@ -164,7 +165,12 @@ typedef struct
 extern void __usb_otg_hs_host_irq_handler() __weak;
 extern void __usb_otg_hs_device_irq_handler() __weak;
 
+extern event_t *__otg_hs_event;
+
 void usb_otg_hs_initialize();
+usb_host_role_state_t usb_otg_hs_role_state();
+void usb_otg_hs_notify(usb_host_role_state_t state);
+
 
 
 #endif // STM32F1_USB_OTG_HS_H

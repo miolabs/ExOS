@@ -3,9 +3,6 @@
 #include <kernel/panic.h>
 #include <string.h>
 
-//#define USBD_IEP_COUNT 4
-//#define USBD_OEP_COUNT 4
-
 static usb_otg_crs_global_t * const otg_global = (usb_otg_crs_global_t *)(USB_OTG_FS_BASE + 0x000);
 static usb_otg_crs_power_t * const otg_power = (usb_otg_crs_power_t *)(USB_OTG_FS_BASE + 0xe00);
 
@@ -79,4 +76,5 @@ void usb_otg_fs_notify(usb_host_role_state_t state)
 	_state = state;
 	exos_event_set(&_otg_event);
 }
+
 
