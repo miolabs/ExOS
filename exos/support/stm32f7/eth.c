@@ -1,45 +1,56 @@
 #include "eth.h"
 #include "cpu.h"
 #include "gpio.h"
-#include <kernel/driver/net/adapter.h>
+#include <net/adapter.h>
+#include <net/support/macgen.h>
 #include <kernel/machine/hal.h>
 #include <kernel/panic.h>
 #include <kernel/verbose.h>
+#include <string.h>
 
+#ifdef STM32_ETH_DEBUG
 #define _verbose(level, ...) verbose(level, "eth", __VA_ARGS__)
-
-#ifndef TX_BUFFERS
-#define TX_BUFFERS 32
+#else
+#define _verbose(level, ...)	{ /* nothing */ }
 #endif
 
-#ifndef RX_BUFFERS
-#define RX_BUFFERS 4
+#ifndef TX_DESCRIPTORS
+#define TX_DESCRIPTORS 16
 #endif
 
-static struct _rx_buffer { unsigned char data[ETH_MAX_FRAME_SIZE]; } _rx_buffers[RX_BUFFERS];
-static rx_edesc_t _rx_desc[RX_BUFFERS] __aligned(32);
-static tx_edesc_t _tx_desc[TX_BUFFERS] __aligned(32);
+#ifndef RX_DESCRIPTORS
+#define RX_DESCRIPTORS 4
+#endif
 
-static rx_edesc_t * volatile _rx_desc_ptr1;
-static rx_edesc_t * volatile _rx_desc_ptr2;
+static struct _rx_buffer { unsigned char data[ETH_MAX_FRAME_SIZE]; } _rx_buffers[RX_DESCRIPTORS];
+static rx_edesc_t _rx_desc[RX_DESCRIPTORS] __aligned(32);
+static tx_edesc_t _tx_desc[TX_DESCRIPTORS] __aligned(32);
+
+static rx_edesc_t * volatile _rx_desc_ptr;
+static tx_edesc_t * volatile _tx_desc_ptr1;
+static tx_edesc_t * volatile _tx_desc_ptr2;
 
 static bool _initialize(net_adapter_t *adapter, unsigned phy_unit, const phy_handler_t *handler);
+static void _eth_start(net_adapter_t *adapter, dispatcher_context_t *context);
 static void _link_up(net_adapter_t *adapter);
 static void _link_down(net_adapter_t *adapter);
-static void *_get_input_buffer(net_adapter_t *adapter, unsigned *plength);
-static void _discard_input_buffer(net_adapter_t *adapter, void *buffer);
-static void *_get_output_buffer(net_adapter_t *adapter, unsigned size);
-static int _send_output_buffer(net_adapter_t *adapter, net_mbuf_t *mbuf, NET_CALLBACK callback, void *state);
-const net_driver_t __stm32_eth_driver = { .Initialize = _initialize,
+static net_buffer_t *_get_input_buffer(net_adapter_t *adapter);
+static bool _send_output_buffer(net_adapter_t *adapter, net_buffer_t *buf);
+static void _flush(net_adapter_t *adapter);
+const net_driver_t __stm32_eth_driver = { .Initialize = _initialize, .Start = _eth_start,
 	.LinkUp = _link_up, .LinkDown = _link_down,
-	.GetInputBuffer = _get_input_buffer, .DiscardInputBuffer = _discard_input_buffer,
-	.GetOutputBuffer = _get_output_buffer, .SendOutputBuffer = _send_output_buffer }; 
+	.GetInputBuffer = _get_input_buffer, .SendOutputBuffer = _send_output_buffer,
+	.Flush = _flush }; 
 
 static void _phy_write(unsigned unit, phy_reg_t reg, unsigned short value);
 static unsigned short _phy_read(unsigned unit, phy_reg_t reg);
 static const phy_driver_t _phy_driver = { .Write = _phy_write, .Read = _phy_read };
 
+static void _output_callback(dispatcher_context_t *context, dispatcher_t *dispatcher);
+
 static net_adapter_t *_adapter = NULL;
+static event_t _output_event;
+static dispatcher_t _output_dispatcher;
 
 static bool _initialize(net_adapter_t *adapter, unsigned phy_unit, const phy_handler_t *handler)
 {
@@ -48,7 +59,13 @@ static bool _initialize(net_adapter_t *adapter, unsigned phy_unit, const phy_han
 
 	ASSERT(_adapter == NULL, KERNEL_ERROR_KERNEL_PANIC);
 	_adapter = adapter;
-		
+	adapter->Name = "eth";
+	adapter->MaxFrameSize = ETH_MAX_FRAME_SIZE;
+	stm32_eth_get_hw_addr(&adapter->MAC);
+
+	exos_event_create(&_output_event, EXOS_EVENTF_AUTORESET);
+	exos_dispatcher_create(&_output_dispatcher, &_output_event, _output_callback, adapter);
+
 	unsigned mdc_cr;
 	if (SystemCoreClock <= 35000000UL) mdc_cr = 2;
 	else if (SystemCoreClock <= 60000000UL) mdc_cr = 3;
@@ -66,23 +83,24 @@ static bool _initialize(net_adapter_t *adapter, unsigned phy_unit, const phy_han
 	ETH->MACMIIAR = mdc_cr << ETH_MACMIIAR_CR_Pos;
 	phy_create(&adapter->Phy, &_phy_driver, phy_unit, handler);
 
-	for(unsigned i = 0; i < TX_BUFFERS; i++)
+	for(unsigned i = 0; i < TX_DESCRIPTORS; i++)
 	{
-		unsigned nexti = (i != TX_BUFFERS - 1) ? i + 1 : 0;
+		unsigned nexti = (i != TX_DESCRIPTORS - 1) ? i + 1 : 0;
 		tx_edesc_t *next = &_tx_desc[nexti];
 		_tx_desc[i] = (tx_edesc_t) { .tdes[3] = (unsigned)next };
 	}
+	_tx_desc_ptr1 = _tx_desc_ptr2 = &_tx_desc[0];
 	
-	for(unsigned i = 0; i < RX_BUFFERS; i++)
+	for(unsigned i = 0; i < RX_DESCRIPTORS; i++)
 	{
-		unsigned nexti = (i != RX_BUFFERS - 1) ? i + 1 : 0;
+		unsigned nexti = (i != RX_DESCRIPTORS - 1) ? i + 1 : 0;
 		rx_edesc_t *next = &_rx_desc[nexti];
 		_rx_desc[i] = (rx_edesc_t) { .rdes[0] = RDES0_OWN,
 			.rdes[1] = RDES1_RCH | ETH_MAX_FRAME_SIZE,
 			.rdes[2] = (unsigned)&_rx_buffers[i],
 			.rdes[3] = (unsigned)next };
 	}
-	_rx_desc_ptr1 = _rx_desc_ptr2 = &_rx_desc[0];
+	_rx_desc_ptr = &_rx_desc[0];
 
 	ETH->DMABMR = 0		// TTC <- TxFIFO mode = Store-and-forward
 		| ETH_DMABMR_FB	// FB Fixed Burst
@@ -93,7 +111,7 @@ static bool _initialize(net_adapter_t *adapter, unsigned phy_unit, const phy_han
 		;
 
 	ETH->DMAOMR = 0
-		| ETH_DMAOMR_DTCEFD	// DTCEFD Do not drop TCP Checksum Error Frames <- FIXME: Remove 
+		| ETH_DMAOMR_DTCEFD	// DTCEFD Do not drop TCP Checksum Error Frames <<<<<<<<<<< FIXME: Remove 
 		| ETH_DMAOMR_TSF	// TSF Transmit Store-and-forward
 		; 
 	// You must make sure the Transmit FIFO is deep enough to store a complete frame before that frame is transferred 
@@ -103,8 +121,9 @@ static bool _initialize(net_adapter_t *adapter, unsigned phy_unit, const phy_han
 
 	ETH->DMATDLAR = (unsigned)_tx_desc;	// address of first transmit descriptor
 	ETH->DMARDLAR = (unsigned)_rx_desc;	// address of first receive descriptor
-	ETH->DMAOMR |= ETH_DMAOMR_ST | ETH_DMAOMR_SR;	// Start Tx / Start Rx
-	ETH->DMAIER = ETH_DMAIER_RIE | ETH_DMAIER_NISE	// Normal Int Summary Enable
+	ETH->DMAOMR |= ETH_DMAOMR_SR | ETH_DMAOMR_ST;	// Start Tx / Start Rx
+	ETH->DMAIER = ETH_DMAIER_RIE | ETH_DMAIER_TIE	// Receive, Transmit
+		| ETH_DMAIER_NISE	// Normal Int Summary Enable
 		| ETH_DMAIER_AISE;	 // TODO: Abnormal Int Summary Enable
 
 	ETH->MACFCR;	// BPA <- Back Pressure Active?
@@ -113,10 +132,21 @@ static bool _initialize(net_adapter_t *adapter, unsigned phy_unit, const phy_han
 	ETH->MACCR = 0		// IFG <- interframe gap?
 		| ETH_MACCR_FES	// Fast Ethernet Speed (phy negotiated)
 		| ETH_MACCR_DM	// full Duplex Mode enable (phy negotiated)
-		| ETH_MACCR_RE;	// Rx Enable
+		| ETH_MACCR_TE | ETH_MACCR_RE;	// Tx, Rx Enable
 
 	NVIC_EnableIRQ(ETH_IRQn);
 	return true;
+}
+
+__weak
+void stm32_eth_get_hw_addr(hw_addr_t *mac)
+{
+	macgen_generate(mac, MAC_OUI_LOCAL, 0);
+}
+
+static void _eth_start(net_adapter_t *adapter, dispatcher_context_t *context)
+{
+	exos_dispatcher_add(context, &_output_dispatcher, EXOS_TIMEOUT_NEVER);
 }
 
 static void _phy_write(unsigned unit, phy_reg_t reg, unsigned short value)
@@ -152,57 +182,196 @@ static unsigned short _phy_read(unsigned unit, phy_reg_t reg)
 
 static void _link_up(net_adapter_t *adapter)
 {
+	_verbose(VERBOSE_DEBUG, "link_up() ignored");
 }
 
 static void _link_down(net_adapter_t *adapter)
 {
+	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 }
 
-static void *_get_input_buffer(net_adapter_t *adapter, unsigned *plength)
+static net_buffer_t *_get_input_buffer(net_adapter_t *adapter)
 {
-	bool done = false;
-	rx_edesc_t *desc = _rx_desc_ptr1;
-	unsigned rdes0 = desc->rdes[0];
-	if (0 == (rdes0 & RDES0_OWN))
+	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
+
+	net_buffer_t *buf = NULL;
+
+	rx_edesc_t *desc = _rx_desc_ptr;
+	unsigned rdes0;
+	while (rdes0 = desc->rdes[0], (rdes0 & (RDES0_OWN | RDES0_FS)) == RDES0_FS)
 	{
+		// NOTE: our receive buffers should hold a complete frame
 		if (rdes0 & RDES0_LS)	// last desc for this frame
 		{
-			unsigned length = (rdes0 & RDES0_FL_MASK) >> RDES0_FL_BIT;
-			*plength = length;
-			done = true;
-		} else _verbose(VERBOSE_ERROR, "rx frame didn't fit in a single desc");
+			buf = net_adapter_alloc_buffer(adapter);
+			if (buf != NULL)
+			{
+				unsigned fl = (desc->rdes[0] & RDES0_FL_MASK) >> RDES0_FL_BIT;
+				ASSERT(fl <= buf->Root.Length, KERNEL_ERROR_KERNEL_PANIC);
+				memcpy(buf->Root.Buffer, (void *)desc->rdes[2], fl);
+				buf->Root.Length = fl;
+			}
+		}
+		else 
+		{
+			_verbose(VERBOSE_ERROR, "rx frame didn't fit in a single desc");
+			do
+			{
+				desc->rdes[0] = RDES0_OWN;
+				desc = (rx_edesc_t *)desc->rdes[3];	// next
+				rdes0 = desc->rdes[0];
+			} while((rdes0 & RDES0_LS) == 0);
+		}
 
-		 _rx_desc_ptr1 = (rx_edesc_t *)desc->rdes[3];
+		desc->rdes[0] = RDES0_OWN;
+		desc = (rx_edesc_t *)desc->rdes[3];	// next
+
+		if (buf != NULL)
+			break;
 	}
-	return done ? (void *)desc->rdes[2] : NULL;
+	_rx_desc_ptr = desc;
+	return buf;
 }
 
-static void _discard_input_buffer(net_adapter_t *adapter, void *buffer)
+static bool _send_output_buffer(net_adapter_t *adapter, net_buffer_t *buf)
 {
-	ASSERT(buffer != NULL, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
 
-	// TODO: reorder descriptors if needed
+	tx_edesc_t *desc = _tx_desc_ptr1;
+	net_mbuf_t *mbuf = &buf->Root;
+	unsigned count = 0;
+	unsigned tdes0 = TDES0_FS | TDES0_TCH | TDES0_IC;	// First Segment, TDES3 is desc CHain ptr, Int. on Complete
+	while(mbuf->Buffer != NULL && mbuf->Length != 0)
+	{
+		if ((desc->tdes[0] & TDES0_OWN) != 0)	// buffer is still owned by dma
+		{
+			count = 0;
+			break;
+		}
+		else 
+		{
+			if (mbuf->Next == NULL) tdes0 |= TDES0_LS;
+			else if (mbuf->Next->Buffer == NULL || mbuf->Next->Length == 0) tdes0 |= TDES0_LS;
+			desc->tdes[0] = tdes0;
+			desc->tdes[1] = mbuf->Length;
+			desc->tdes[2] = (unsigned)mbuf->Buffer + mbuf->Offset;
+			desc->tdes[4] = (count == 0) ? (unsigned)buf : 0;
+#ifdef DEBUG
+			desc->tdes[5] = (unsigned)buf;
+#endif
+			desc = (tx_edesc_t *)desc->tdes[3];
+			count++;
+		}
 
-	rx_edesc_t *desc = _rx_desc_ptr2;
-	ASSERT(buffer == (void *)desc->rdes[2], KERNEL_ERROR_KERNEL_PANIC);
-	_rx_desc_ptr2 = (rx_edesc_t *)desc->rdes[3];	// next
-	desc->rdes[0] = RDES0_OWN;
+		if (tdes0 & TDES0_LS)
+			break;
+
+		if (desc == _tx_desc_ptr2)
+		{
+			count = 0;
+			break;
+		}
+
+		tdes0 &= ~TDES0_FS;
+		mbuf = mbuf->Next;
+	}
+
+	if (count != 0)
+	{
+		desc = _tx_desc_ptr1;
+		for (unsigned i = 0; i < count; i++)
+		{
+			// FIXME: should we set OWN on all segments after the first one? <<<<<<<<<<<<
+			desc->tdes[0] |= TDES0_OWN;
+			desc = (tx_edesc_t *)desc->tdes[3];
+		}
+		_verbose(VERBOSE_COMMENT, "send_output() queued buffer @$%x; desc=$%x; count=%d", 
+			(unsigned)buf & 0xffff, (unsigned)_tx_desc_ptr1 & 0xffff, count);
+
+		_tx_desc_ptr1 = desc;
+
+		// write TransmitPollDemandRegister to wake up the descriptor parsing
+		ETH->DMATPDR = 0;
+		
+		return true;
+	}
+	_verbose(VERBOSE_ERROR, "send_output() failed!");
+	return false;
 }
 
-static void *_get_output_buffer(net_adapter_t *adapter, unsigned size)
+static net_buffer_t *_reclaim_tx_buffer(bool flush)
 {
+	tx_edesc_t *desc = _tx_desc_ptr2;
+	unsigned tdes0 = desc->tdes[0];
+	net_buffer_t *buf = (net_buffer_t *)desc->tdes[4];
+	if (buf != NULL && 
+		(!(tdes0 & TDES0_OWN) || flush))
+	{
+		ASSERT(buf == (net_buffer_t *)desc->tdes[5], KERNEL_ERROR_KERNEL_PANIC);
+		ASSERT(buf->Root.Buffer == (void *)desc->tdes[2], KERNEL_ERROR_KERNEL_PANIC);
+		ASSERT((desc->tdes[0] & TDES0_FS) != 0, KERNEL_ERROR_KERNEL_PANIC);
+		
+		desc->tdes[0] = 0;
+		desc->tdes[4] = (unsigned)NULL;	// clear buffer reference
+
+		tx_edesc_t *next = (tx_edesc_t *)desc->tdes[3];
+		ASSERT(next != NULL, KERNEL_ERROR_NULL_POINTER);
+		while((tdes0 & TDES0_LS) == 0)
+		{
+			desc = next;
+			tdes0 = desc->tdes[0];
+			desc->tdes[0] = 0;
+			desc->tdes[4] = (unsigned)NULL;	// clear buffer reference
+
+			tx_edesc_t *next = (tx_edesc_t *)desc->tdes[3];
+			ASSERT(next != NULL, KERNEL_ERROR_NULL_POINTER);
+		}
+		
+		unsigned err_mask = tdes0 & (TDES0_IHE | TDES0_ES | TDES0_JT | TDES0_FF | TDES0_IPE | TDES0_LCA | TDES0_NC | TDES0_LCO | TDES0_EC);
+		if (err_mask != 0)
+		{
+			if (err_mask & TDES0_IHE) _verbose(VERBOSE_ERROR, "tx IHE (ip header error)");
+			if (err_mask & TDES0_JT) _verbose(VERBOSE_ERROR, "tx JT (jabber timeout)");
+			if (err_mask & TDES0_FF) _verbose(VERBOSE_ERROR, "tx FF (frame flushed)");
+			if (err_mask & TDES0_IPE) _verbose(VERBOSE_ERROR, "tx IPE (ip payload error)");
+			if (err_mask & TDES0_LCA) _verbose(VERBOSE_ERROR, "tx LCA (loss of carrier)");
+			if (err_mask & TDES0_NC) _verbose(VERBOSE_ERROR, "tx NC (no carrier)");
+			if (err_mask & TDES0_LCA) _verbose(VERBOSE_ERROR, "tx LCA (loss of carrier)");
+			if (err_mask & TDES0_LCO) _verbose(VERBOSE_ERROR, "tx LCO (late collision)");
+			if (err_mask & TDES0_EC) _verbose(VERBOSE_ERROR, "tx EC (excessive collision)");
+		} 
+		
+		desc = next;
+		_tx_desc_ptr2 = desc;
+		return buf;
+	}
+	return NULL;
 }
 
-static int _send_output_buffer(net_adapter_t *adapter, net_mbuf_t *mbuf, NET_CALLBACK callback, void *state)
+static void _output_callback(dispatcher_context_t *context, dispatcher_t *dispatcher)
 {
-	// write TransmitPollDemandRegister to wake up the descriptor parsing
-	ETH->DMATPDR = 0;
+	net_adapter_t *adapter = (net_adapter_t *)dispatcher->CallbackState;
+	ASSERT(adapter != NULL, KERNEL_ERROR_NULL_POINTER);
+
+	net_buffer_t *buf;
+	while(buf = _reclaim_tx_buffer(false), buf != NULL)
+	{
+		_verbose(VERBOSE_COMMENT, "freed buf @$%x", (unsigned)buf & 0xffff);
+		net_adapter_free_buffer(buf);
+	}
+
+	exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);
 }
 
-
-
-
-
+static void _flush(net_adapter_t *adapter)
+{
+	net_buffer_t *buf;
+	while(buf = _reclaim_tx_buffer(true), buf != NULL)
+	{
+		_verbose(VERBOSE_DEBUG, "flushed buf @$%x", (unsigned)buf & 0xffff);
+		net_adapter_free_buffer(buf);
+	}
+}
 
 void ETH_IRQHandler()
 {
@@ -213,7 +382,12 @@ void ETH_IRQHandler()
 		exos_event_set(&_adapter->InputEvent);
 		ETH->DMASR = ETH_DMASR_RS | ETH_DMASR_NIS;	// clear
 	}
-
+	if (dma_sr & ETH_DMASR_TS)	// Transmit Status
+	{
+		exos_event_set(&_output_event);
+		ETH->DMASR = ETH_DMASR_TS | ETH_DMASR_NIS;	// clear 
+	}
+	//TODO: service underflow?  
 }
 
 void ETH_WKUP_IRQHandler()
