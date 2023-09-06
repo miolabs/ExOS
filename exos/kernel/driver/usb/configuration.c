@@ -260,6 +260,7 @@ usb_descriptor_header_t *usb_device_config_get_descriptor(unsigned short req_val
 			break;
 		case USB_DESCRIPTOR_TYPE_DEVICE_QUALIFIER:
 			//NOTE: this descriptor is rejected for full-speed and low-speed devices
+			verbose(VERBOSE_DEBUG, "usb_conf", "device_qualifier desc rejected for LS or FS devices");
 			break;
 		default:
 			switch(desc_type & 0x3f)
@@ -321,6 +322,10 @@ const char *usb_device_config_get_string(int index)
 
 #ifndef USB_USER_DEVICE_VERSION
 #define USB_USER_DEVICE_VERSION	0
+#endif
+
+#ifndef USB_MAX_PACKET0
+#define USB_MAX_PACKET0 64
 #endif
 
 __weak

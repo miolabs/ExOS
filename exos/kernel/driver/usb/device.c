@@ -189,8 +189,9 @@ static void _setup_handler(dispatcher_context_t *context, dispatcher_t *dispatch
 		exos_mutex_lock(&_device_lock);
 		memcpy(&_setup, _setup_data, 8); 
 		hal_usbd_prepare_setup_ep(&_setup_io);
-		//_debug("setup", &_setup, 8);
-
+#if USB_DEVICE_DEBUG > 1
+		_debug("setup", &_setup, 8);
+#endif
 		if ((_setup.RequestType & USB_REQTYPE_DIRECTION_MASK) == USB_REQTYPE_HOST_TO_DEVICE) 
 		{
 			if (_setup.Length != 0)
@@ -246,8 +247,9 @@ static void _setup_handler(dispatcher_context_t *context, dispatcher_t *dispatch
 					_control_in.Data = _control_data;
 					_control_in.Length = 0;
 					hal_usbd_prepare_in_ep(0, &_control_in);
-					//_verbose(VERBOSE_DEBUG, "-> status_in");
-
+#if USB_DEVICE_DEBUG > 1
+					_verbose(VERBOSE_DEBUG, "-> status_in");
+#endif
 					exos_event_wait(_control_in.Event, EXOS_TIMEOUT_NEVER);
 					if (_control_in.Status != USB_IOSTA_DONE)
 					{
@@ -278,6 +280,7 @@ static void _setup_handler(dispatcher_context_t *context, dispatcher_t *dispatch
 		{
 			_error_flag = true;
 		}
+		else _verbose(VERBOSE_ERROR, "setup not done!!!");
 	}
 
 	exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);
@@ -318,13 +321,6 @@ static void _stop_configuration(usb_device_configuration_t *conf)
 	hal_usbd_configure(false);
 }
 
-static void _set_interface(usb_device_interface_t *iface, unsigned alt_setting)
-{
-
-
-	// TODO
-}
-
 static void _set_configuration(unsigned char conf_value)
 {
     usb_device_configuration_t *conf;
@@ -337,7 +333,7 @@ static void _set_configuration(unsigned char conf_value)
 			if (driver == nullptr)
 				kernel_panic(KERNEL_ERROR_NULL_POINTER);
 
-			int if_configured = 0;
+			unsigned if_configured = 0;
 			FOREACH(node, &conf->Interfaces)
 			{
 				usb_device_interface_t *if_node = (usb_device_interface_t *)node;
@@ -348,14 +344,14 @@ static void _set_configuration(unsigned char conf_value)
 					kernel_panic(KERNEL_ERROR_NULL_POINTER);
 
 				usb_endpoint_descriptor_t ep_desc;
-				for (int ep_index = 0; ; ep_index++)
+				for (unsigned ep_index = 0; ; ep_index++)
 				{
 					ASSERT(driver->FillConfigurationDescriptor != nullptr, KERNEL_ERROR_NULL_POINTER);
-					int size = if_driver->FillEndpointDescriptor(if_node, ep_index, &ep_desc, sizeof(usb_endpoint_descriptor_t));
+					unsigned size = if_driver->FillEndpointDescriptor(if_node, ep_index, &ep_desc, sizeof(usb_endpoint_descriptor_t));
 					if (size == 0) break;
 
 					// save max packet length
-					int ep_num = ep_desc.AddressBits.EndpointNumber;
+					unsigned ep_num = ep_desc.AddressBits.EndpointNumber;
 					if (ep_desc.AddressBits.Input)
 						_tx_max_packet[ep_num] = USB16TOH(ep_desc.MaxPacketSize);
 					else
@@ -366,12 +362,14 @@ static void _set_configuration(unsigned char conf_value)
 						hal_usbd_enable_in_ep(ep_desc.AddressBits.EndpointNumber, 
 							ep_desc.AttributesBits.TransferType, 
 							USB16TOH(ep_desc.MaxPacketSize));
+						_verbose(VERBOSE_DEBUG, "enabled IN ep %d", ep_desc.AddressBits.EndpointNumber);
 					}
 					else
 					{
 						hal_usbd_enable_out_ep(ep_desc.AddressBits.EndpointNumber, 
 							ep_desc.AttributesBits.TransferType, 
 							USB16TOH(ep_desc.MaxPacketSize));
+						_verbose(VERBOSE_DEBUG, "enabled OUT ep %d", ep_desc.AddressBits.EndpointNumber);
 					}
 				}
 
@@ -485,7 +483,6 @@ static bool _setup_std_req(usb_request_t *req, void **pdata, unsigned *plength)
 			_verbose(VERBOSE_DEBUG, "set_interface %d (alt=$%x)", iface->Index, req->Value);
 			if (driver->SetInterface != nullptr)
 				driver->SetInterface(iface, req->Value);
-			_set_interface(iface, req->Value);
 			return true;
 		}
 		else
@@ -497,7 +494,7 @@ static bool _setup_std_req(usb_request_t *req, void **pdata, unsigned *plength)
 	}
 	else if (recipient == USB_REQTYPE_RECIPIENT_ENDPOINT)
 	{
-		int ep_num = req->Index & 0x3f;
+		unsigned ep_num = req->Index & 0x3f;
 		switch(code)
 		{
 			case USB_REQUEST_CLEAR_FEATURE:
@@ -515,6 +512,18 @@ static bool _setup_std_req(usb_request_t *req, void **pdata, unsigned *plength)
 					}
 				}
 				return true;
+			case USB_REQUEST_GET_STATUS:
+				if (*plength == 2)
+				{
+					usb16_t *psta = (usb16_t *)*pdata;
+					*psta = hal_usbd_is_halted(req->Index) ? HTOUSB16(0x1) : HTOUSB16(0x0);
+					return true;
+				}
+				else
+				{
+					_verbose(VERBOSE_ERROR, "get status (bad length) ep %d", ep_num);
+				}
+				return false;
 			default:
 				_setup_error(KERNEL_ERROR_NOT_IMPLEMENTED);
 				break;
@@ -534,7 +543,7 @@ static bool _setup_class_req(usb_request_t *req, void **pdata, unsigned *plength
 			ASSERT(driver != nullptr, KERNEL_ERROR_NULL_POINTER);
 			if (driver->DeviceClassRequest != nullptr)
 			{
-				_debug("class device request", req, 8);
+				//_debug("class device request", req, 8);
 				return driver->DeviceClassRequest(req, pdata, plength);
 			}
 			_debug("class device request unhandled (FAIL)", req, 8);
@@ -548,7 +557,7 @@ static bool _setup_class_req(usb_request_t *req, void **pdata, unsigned *plength
 	}
 	else if (recipient == USB_REQTYPE_RECIPIENT_INTERFACE)
 	{
-		_debug("class interface request", req, 8);
+//		_debug("class interface request", req, 8);
 		usb_device_interface_t *iface = _get_interface(req->Index);
 		ASSERT(iface != nullptr, KERNEL_ERROR_KERNEL_PANIC);
 		const usb_device_interface_driver_t *driver = iface->Driver;
@@ -570,7 +579,7 @@ static bool _setup_vendor_req(usb_request_t *req, void **pdata, unsigned *plengt
 			ASSERT(driver != nullptr, KERNEL_ERROR_NULL_POINTER);
 			if (driver->DeviceVendorRequest != nullptr)
 			{
-				_debug("vendor device request", req, 8);
+				//_debug("vendor device request", req, 8);
 				return driver->DeviceVendorRequest(req, pdata, plength);
 			}
 			_debug("vendor device request unhandled (FAIL)", req, 8);
@@ -619,6 +628,17 @@ void usb_set_tx_buffer(unsigned ep_num, usb_io_buffer_t *buffer)
 		hal_usbd_prepare_in_ep(ep_num, buffer);
 		exos_mutex_unlock(&_device_lock);
 	}
+}
+
+void usb_device_stall(unsigned ep_num)
+{
+	ASSERT(ep_num < USB_DEVICE_ENDPOINTS, KERNEL_ERROR_KERNEL_PANIC);
+	if (ep_num != 0)
+	{
+		exos_mutex_lock(&_device_lock);
+		hal_usbd_stall_in_ep(ep_num, true);
+		exos_mutex_unlock(&_device_lock);		
+	}	
 }
 
 static void _setup_error(KERNEL_ERROR error)

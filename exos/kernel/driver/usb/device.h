@@ -14,10 +14,6 @@
 #define USB_DEVICE_ENDPOINTS 16
 #endif
 
-#ifndef USB_MAX_PACKET0
-#define USB_MAX_PACKET0 8
-#endif
-
 typedef enum 
 {
 	USB_IOF_NONE = 0,
@@ -32,6 +28,7 @@ typedef enum
 	USB_IOSTA_OUT_WAIT,
 	USB_IOSTA_IN_WAIT,
 	USB_IOSTA_IN_COMPLETE,
+	USB_IOSTA_IN_STALL,
 	USB_IOSTA_DONE,
 	USB_IOSTA_ERROR,
 } usb_io_status_t;
@@ -116,6 +113,7 @@ bool usb_device_start();
 void usb_device_stop();
 void usb_set_rx_buffer(unsigned ep_num, usb_io_buffer_t *rx_buffer);
 void usb_set_tx_buffer(unsigned ep_num, usb_io_buffer_t *tx_buffer);
+void usb_device_stall(unsigned ep_num);
 
 #endif // USB_DEVICE_H
  

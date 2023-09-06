@@ -19,5 +19,6 @@ void hal_usbd_prepare_out_ep(unsigned ep_num, usb_io_buffer_t *iob);
 void hal_usbd_prepare_in_ep(unsigned ep_num, usb_io_buffer_t *iob);
 void hal_usbd_stall_out_ep(unsigned ep_num, bool stall);
 void hal_usbd_stall_in_ep(unsigned ep_num, bool stall);
+bool hal_usbd_is_halted(unsigned ep_num);
 
 #endif // USB_DEVICE_HAL_H
