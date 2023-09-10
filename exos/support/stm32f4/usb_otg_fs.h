@@ -21,11 +21,11 @@ typedef struct
 	union 
 	{
 		volatile unsigned HNPTXFSIZ;	// host mode
-		volatile unsigned DIEPTXF0;	// device mode
+		volatile unsigned DIEPTXF0;		// device mode
 	};
 	volatile unsigned HNPTXSTS;
-	volatile unsigned Reserved30;	
-	volatile unsigned Reserved34;	
+	volatile unsigned Reserved030;	
+	volatile unsigned Reserved034;	
 	volatile unsigned GCCFG;
 	volatile unsigned CID;	
 	volatile unsigned Reserved40[48];
@@ -33,7 +33,10 @@ typedef struct
 	volatile unsigned DIEPTXF1;
 	volatile unsigned DIEPTXF2;
 	volatile unsigned DIEPTXF3;
-	volatile unsigned DIEPTXF4;
+	volatile unsigned DIEPTXF4;	// offset $110
+	volatile unsigned DIEPTXF5;
+	volatile unsigned DIEPTXF6;
+	volatile unsigned DIEPTXF7;	 
 } usb_otg_crs_global_t;
 
 #define OTG_FS_GAHBCFG_GINTMASK (1<<0)
@@ -82,97 +85,30 @@ typedef struct
 	volatile unsigned DIEPEMPMSK;
 	volatile unsigned Reserved838[50];
 
-   	volatile unsigned DIEPCTL0;	// offset $900
-	volatile unsigned Reserved904;
-	volatile unsigned DIEPINT0;
-	volatile unsigned Reserved90c;
-	volatile unsigned DIEPTSIZ0;
-	volatile unsigned Reserved914;
-	volatile unsigned DTXFSTS0;	
-	volatile unsigned Reserved91c;
+	struct {	// offset $900
+   	volatile unsigned CTL;	
+	volatile unsigned ResIEP04;
+	volatile unsigned INT;
+	volatile unsigned ResIEP0c;
+	volatile unsigned TSIZ;
+	volatile unsigned ResIEP14;
+	volatile unsigned TXFSTS;	
+	volatile unsigned ResIEP1c;
+	} DIEP[8];
 
-   	volatile unsigned DIEPCTL1;	// offset $920
-	volatile unsigned Reserved924;
-	volatile unsigned DIEPINT1;
-	volatile unsigned Reserved92c;
-	volatile unsigned DIEPTSIZ1;
-	volatile unsigned Reserved934;
-	volatile unsigned DTXFSTS1;	
-	volatile unsigned Reserved93c;
+	volatile unsigned Reserveda00[64];
 
-   	volatile unsigned DIEPCTL2;	// offset $940
-	volatile unsigned Reserved944;
-	volatile unsigned DIEPINT2;
-	volatile unsigned Reserved94c;
-	volatile unsigned DIEPTSIZ2;
-	volatile unsigned Reserved954;
-	volatile unsigned DTXFSTS2;	
-	volatile unsigned Reserved95c;
+	struct {	// offset $b00
+	volatile unsigned CTL;
+	volatile unsigned ResOEP04;
+	volatile unsigned INT;
+	volatile unsigned ResOEP0c;
+	volatile unsigned TSIZ;
+	volatile unsigned ResOEP14;
+	volatile unsigned ResOEP18;
+	volatile unsigned ResOEP1c;
+	} DOEP[8];
 
-   	volatile unsigned DIEPCTL3;	// offset $960
-	volatile unsigned Reserved964;
-	volatile unsigned DIEPINT3;
-	volatile unsigned Reserved96c;
-	volatile unsigned DIEPTSIZ3;
-	volatile unsigned Reserved974;
-	volatile unsigned DTXFSTS3;	
-	volatile unsigned Reserved97c;
-
-   	volatile unsigned DIEPCTL4;	// offset $980
-	volatile unsigned Reserved984;
-	volatile unsigned DIEPINT4;
-	volatile unsigned Reserved98c;
-	volatile unsigned DIEPTSIZ4;
-	volatile unsigned Reserved994;
-	volatile unsigned DTXFSTS4;	
-	volatile unsigned Reserved99c;
-
-	volatile unsigned Reserved9a0[88];
-
-	volatile unsigned DOEPCTL0;	// offset $b00
-	volatile unsigned Reservedb04;
-	volatile unsigned DOEPINT0;
-	volatile unsigned Reservedb0c;
-	volatile unsigned DOEPTSIZ0;
-	volatile unsigned Reservedb14;
-	volatile unsigned Reservedb18;
-	volatile unsigned Reservedb1c;
-
-	volatile unsigned DOEPCTL1;	// offset $b20
-	volatile unsigned Reservedb24;
-	volatile unsigned DOEPINT1;
-	volatile unsigned Reservedb2c;
-	volatile unsigned DOEPTSIZ1;
-	volatile unsigned Reservedb34;
-	volatile unsigned Reservedb38;
-	volatile unsigned Reservedb3c;
-
-	volatile unsigned DOEPCTL2;	// offset $b40
-	volatile unsigned Reservedb44;
-	volatile unsigned DOEPINT2;
-	volatile unsigned Reservedb4c;
-	volatile unsigned DOEPTSIZ2;
-	volatile unsigned Reservedb54;
-	volatile unsigned Reservedb58;
-	volatile unsigned Reservedb5c;
-
-	volatile unsigned DOEPCTL3;	// offset $b60
-	volatile unsigned Reservedb64;
-	volatile unsigned DOEPINT3;
-	volatile unsigned Reservedb6c;
-	volatile unsigned DOEPTSIZ3;
-	volatile unsigned Reservedb74;
-	volatile unsigned Reservedb78;
-	volatile unsigned Reservedb7c;
-
-	volatile unsigned DOEPCTL4;	// offset $b80
-	volatile unsigned Reservedb84;
-	volatile unsigned DOEPINT4;
-	volatile unsigned Reservedb8c;
-	volatile unsigned DOEPTSIZ4;
-	volatile unsigned Reservedb94;
-	volatile unsigned Reservedb98;
-	volatile unsigned Reservedb9c;
 } usb_otg_crs_device_t;
 
 typedef struct 
@@ -188,6 +124,5 @@ extern event_t *__otg_fs_event;
 void usb_otg_fs_initialize();
 usb_host_role_state_t usb_otg_fs_role_state();
 void usb_otg_fs_notify(usb_host_role_state_t state);
-
 
 #endif // STM32F4_USB_OTG_FS_H

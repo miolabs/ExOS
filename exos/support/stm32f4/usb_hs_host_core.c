@@ -338,6 +338,29 @@ static void _update_channel(stm32_usbh_channel_t *ch, uint8_t addr, usb_host_dev
 		| (max_packet_size << USB_OTG_HCCHAR_MPSIZ_Pos);
 }
 
+static void _halt_channel(stm32_usbh_channel_t *ch)
+{
+	unsigned sts;
+	unsigned cchar = otg_host->HC[ch->Index].HCCHAR & 
+		~(USB_OTG_HCCHAR_CHENA_Msk | USB_OTG_HCCHAR_CHDIS_Msk);
+
+	switch(ch->EndpointType)
+	{
+		case USB_TT_CONTROL:
+		case USB_TT_BULK:
+			sts = (otg_global->HNPTXSTS & USB_OTG_GNPTXSTS_NPTQXSAV_Msk) >> USB_OTG_GNPTXSTS_NPTQXSAV_Pos;
+			break;
+		default:
+			kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+	}
+	
+	if (sts == 0)
+	{
+		usb_hs_host_flush_tx_fifo(ch->Index);
+	}
+	otg_host->HC[ch->Index].HCCHAR = cchar | USB_OTG_HCCHAR_CHENA; // halts channel
+}
+
 static bool _alloc_channel(unsigned *pindex, usb_host_pipe_t *pipe, usb_direction_t dir, unsigned char period)
 {
 	for(unsigned i = 0; i < NUM_CHANNELS; i++)
@@ -559,8 +582,6 @@ static unsigned _write_fifo(unsigned ch_num)
 	
 	ASSERT(urb->Pipe != nullptr && urb->Pipe->Endpoint == ep, KERNEL_ERROR_KERNEL_PANIC);
 	ASSERT(urb->Pipe->EndpointNumber == ch->EndpointNumber, KERNEL_ERROR_KERNEL_PANIC);
-	//if (ack_done)
-	//	urb->Done += xfer->LastPacketLength;
 
 	unsigned rem = (urb->Length > urb->Done) ? urb->Length - urb->Done : 0;
 	unsigned lenw = (rem + 3) >> 2;

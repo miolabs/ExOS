@@ -1,24 +1,19 @@
-#include "usb_hs_device.h"
+#include "usb_fs_device.h"
 #include "cpu.h"
 #include <support/usb/device_hal.h>
 #include <kernel/panic.h>
 #include <string.h>
 
-#if defined STM32F469xx
 #define USB_DEV_EP_COUNT 6
-#else
-#define USB_DEV_EP_COUNT 5
-#endif
 
-static usb_otg_crs_global_t * const otg_global = (usb_otg_crs_global_t *)(USB_OTG_HS_BASE + 0x000);
-static usb_otg_crs_device_t * const otg_device = (usb_otg_crs_device_t *)(USB_OTG_HS_BASE + 0x800);
-static usb_otg_crs_power_t * const otg_power = (usb_otg_crs_power_t *) (USB_OTG_HS_BASE + 0xe00);
+static usb_otg_crs_global_t * const otg_global = (usb_otg_crs_global_t *)(USB_OTG_FS_BASE + 0x000);
+static usb_otg_crs_device_t * const otg_device = (usb_otg_crs_device_t *)(USB_OTG_FS_BASE + 0x800);
+static usb_otg_crs_power_t * const otg_power = (usb_otg_crs_power_t *) (USB_OTG_FS_BASE + 0xe00);
 static volatile uint32_t * const otg_fifo[] = {
-	 (volatile uint32_t *)(USB_OTG_HS_BASE + 0x1000), (volatile uint32_t *)(USB_OTG_HS_BASE + 0x2000),
-	 (volatile uint32_t *)(USB_OTG_HS_BASE + 0x3000), (volatile uint32_t *)(USB_OTG_HS_BASE + 0x4000),
-	 (volatile uint32_t *)(USB_OTG_HS_BASE + 0x5000), (volatile uint32_t *)(USB_OTG_HS_BASE + 0x6000) };
+	 (volatile uint32_t *)(USB_OTG_FS_BASE + 0x1000), (volatile uint32_t *)(USB_OTG_FS_BASE + 0x2000),
+	 (volatile uint32_t *)(USB_OTG_FS_BASE + 0x3000), (volatile uint32_t *)(USB_OTG_FS_BASE + 0x4000),
+	 (volatile uint32_t *)(USB_OTG_FS_BASE + 0x5000), (volatile uint32_t *)(USB_OTG_FS_BASE + 0x6000) };
 
-#define USB_HS_ENABLE_DMA
 
 static event_t _connected;
 static usb_io_buffer_t *_ep_setup_io = nullptr;
@@ -26,8 +21,8 @@ static usb_io_buffer_t *_ep_out_io[USB_DEV_EP_COUNT];
 static usb_io_buffer_t *_ep_in_io[USB_DEV_EP_COUNT];
 static unsigned char _ep_max_length[USB_DEV_EP_COUNT];
 
-// NOTE: total fifo size for OTG_FS is 1024 words (4 Kbytes)
-#define FIFO_TOTAL_WORDS	1024
+// NOTE: total fifo size for OTG_FS is 320 words (1280 bytes)
+#define FIFO_TOTAL_WORDS	320
 #define FIFO_TX_WORDS		32		// words for each IN EP (min 16)
 
 // NOTE: GD32 requires double packet size of FIFO space for interrupt engine to work
@@ -44,9 +39,9 @@ void hal_usbd_initialize()
 #endif
 
 	// core initialization
-	usb_otg_hs_initialize();
+	usb_otg_fs_initialize();
 
-#ifndef USB_HS_ENABLE_ID
+#ifndef USB_FS_ENABLE_ID
 	unsigned gusbcfg = otg_global->GUSBCFG & ~(USB_OTG_GUSBCFG_HNPCAP | USB_OTG_GUSBCFG_SRPCAP);
 	otg_global->GUSBCFG = gusbcfg | USB_OTG_GUSBCFG_FDMOD;	// force usb-device mode
 #endif
@@ -71,10 +66,8 @@ void hal_usbd_initialize()
 			case 1:	otg_global->DIEPTXF1 = txf_reg;	break;
 			case 2:	otg_global->DIEPTXF2 = txf_reg;	break;
 			case 3:	otg_global->DIEPTXF3 = txf_reg;	break;
-#if USB_DEV_EP_COUNT >= 5
-			case 4:	otg_global->DIEPTXF4 = txf_reg;	break;
-#endif
 #if USB_DEV_EP_COUNT >= 6
+			case 4:	otg_global->DIEPTXF4 = txf_reg;	break;
 			case 5:	otg_global->DIEPTXF5 = txf_reg;	break;
 #endif
 #if USB_DEV_EP_COUNT >= 8
@@ -95,7 +88,7 @@ void hal_usbd_initialize()
 
 	otg_device->DCTL = USB_OTG_DCTL_POPRGDNE | USB_OTG_DCTL_SDIS;	// disable until app calls connect()
 
-#ifdef USB_HS_ENABLE_VBUS 
+#ifdef USB_FS_ENABLE_VBUS 
 	#ifdef USB_OTG_GCCFG_VBDEN
 		otg_global->GCCFG = USB_OTG_GCCFG_PWRDWN | USB_OTG_GCCFG_VBDEN;	
 	#else
@@ -109,12 +102,8 @@ void hal_usbd_initialize()
 	#endif
 #endif
 
-#ifdef USB_HS_ENABLE_DMA
-	otg_global->GAHBCFG |= USB_OTG_GAHBCFG_DMAEN | (5 << USB_OTG_GAHBCFG_HBSTLEN_Pos);
-#endif
-
 #ifdef USB_HOST_ROLE_USES_DEVICE_SERVICE
-	usb_otg_hs_notify(USB_HOST_ROLE_DEVICE);
+	usb_otg_fs_notify(USB_HOST_ROLE_DEVICE);
 #endif
 }
 
@@ -144,7 +133,7 @@ bool hal_usbd_is_connected()
 bool hal_usbd_disconnected()
 {
 #ifdef USB_HOST_ROLE_USES_DEVICE_SERVICE
-	usb_otg_hs_notify(USB_HOST_ROLE_DEVICE_CLOSING);
+	usb_otg_fs_notify(USB_HOST_ROLE_DEVICE_CLOSING);
 	return false;
 #else
 	return true;
@@ -225,9 +214,6 @@ void hal_usbd_prepare_setup_ep(usb_io_buffer_t *iob)
 	iob->Status = USB_IOSTA_OUT_WAIT;
 
 	_ep_setup_io = iob;
-#ifdef USB_HS_ENABLE_DMA
-	otg_device->DOEP[0].DMA = (unsigned)iob->Data;
-#endif
 	otg_device->DOEP[0].CTL = USB_OTG_DOEPCTL_EPENA | USB_OTG_DOEPCTL_CNAK;	 // NOTE: size is taken from DIEPCTL0
 }
 
@@ -257,9 +243,6 @@ static void _prepare_out_ep(unsigned ep_num, usb_io_buffer_t *iob)
 	}
 
 	otg_device->DOEP[ep_num].TSIZ = siz;
-#ifdef USB_HS_ENABLE_DMA
-	otg_device->DOEP[ep_num].DMA = (unsigned)(iob->Data + iob->Done);
-#endif
 	otg_device->DOEP[ep_num].CTL |= USB_OTG_DOEPCTL_EPENA | USB_OTG_DOEPCTL_CNAK;
 }
 
@@ -274,15 +257,6 @@ void hal_usbd_prepare_out_ep(unsigned ep_num, usb_io_buffer_t *iob)
 
 	_ep_out_io[ep_num] = iob;
 	_prepare_out_ep(ep_num, iob);
-
-	// NOTE: pio mode doesn't use out-ep irq handler because all handling is done in rxfifo handler
-#ifdef USB_HS_ENABLE_DMA
-	if (ep_num != 0)
-	{
-		unsigned mask  = (1 << USB_OTG_DAINTMSK_OEPM_Pos) << ep_num;
-		otg_device->DAINTMSK |= mask;
-	}
-#endif
 }
 
 
@@ -400,20 +374,13 @@ static void _prepare_in_ep(unsigned ep_num, usb_io_buffer_t *iob)
 		ASSERT(txlen < 128, KERNEL_ERROR_NOT_SUPPORTED);
 	}
 	otg_device->DIEP[ep_num].TSIZ = dieptsiz;
-#ifdef USB_HS_ENABLE_DMA
-	otg_device->DIEP[ep_num].DMA = (unsigned)(iob->Data + iob->Done);
-	iob->Done += txlen;
-	iob->Status = USB_IOSTA_IN_COMPLETE;
-#endif
 	unsigned ctl = otg_device->DIEP[ep_num].CTL & ~USB_OTG_DIEPCTL_EPDIS;
 	otg_device->DIEP[ep_num].CTL = ctl | USB_OTG_DIEPCTL_EPENA | USB_OTG_DIEPCTL_CNAK;
 
-#ifndef USB_HS_ENABLE_DMA
 	if (txlen != 0)
 	{
 		otg_device->DIEPEMPMSK |= (1 << ep_num);
 	}
-#endif
 }
 
 void hal_usbd_prepare_in_ep(unsigned ep_num, usb_io_buffer_t *iob)
@@ -567,8 +534,6 @@ static void _handle_rxf()
 			iob = _ep_setup_io;
 			break;
 		case 0b0011:		// DATA-OUT complete
-			// NOTE: rx complete is handled in _ep_out_handler() when dma is enabled
-#ifndef USB_HS_ENABLE_DMA
 			iob = _ep_out_io[ep_num];
 			if (iob != nullptr)
 			{
@@ -576,7 +541,6 @@ static void _handle_rxf()
 				iob->Status = USB_IOSTA_DONE;
 				exos_event_set(iob->Event);
 			}
-#endif
 			break;
 		case 0b0010:		// OUT data_packet
 			iob = _ep_out_io[ep_num];
@@ -607,9 +571,6 @@ static void _handle_rxf()
 	{
 		if (bcnt != 0)
 		{
-#ifdef USB_HS_ENABLE_DMA
-			ASSERT(ep_num == 0, KERNEL_ERROR_KERNEL_PANIC);
-#endif
 			_read_fifo(ep_num, (unsigned char *)iob->Data + iob->Done, bcnt);
 			iob->Done += bcnt;
 		}
@@ -631,33 +592,12 @@ static void _ep_out_handler(unsigned ep)
 	unsigned int_handled = 0;
 	if (intreq & USB_OTG_DOEPINT_XFRC)
 	{
-#ifdef USB_HS_ENABLE_DMA
-		iob = _ep_out_io[ep];
-		if (iob != nullptr)
-		{
-			ASSERT(iob->Status == USB_IOSTA_OUT_WAIT, KERNEL_ERROR_KERNEL_PANIC);
-			unsigned xfrsiz = otg_device->DOEP[ep].TSIZ & USB_OTG_DOEPTSIZ_XFRSIZ;
-			iob->Done = iob->Length - xfrsiz;
-			iob->Status = USB_IOSTA_DONE;
-			exos_event_set(iob->Event);
-		}
-		else
-		{
-			ASSERT(ep == 0, KERNEL_ERROR_NOT_IMPLEMENTED);
-		}
-#endif
+		// NOTE: currently nothing
 		int_handled = USB_OTG_DOEPINT_XFRC;
 	}
 	else if (intreq & USB_OTG_DOEPINT_STUP)	// setup(out) complete
 	{
-#ifdef USB_HS_ENABLE_DMA
-		iob = _ep_setup_io;
-		if (iob->Status == USB_IOSTA_OUT_WAIT)
-		{
-			iob->Status = USB_IOSTA_DONE;
-			exos_event_set(iob->Event);
-		}
-#endif
+		// NOTE: currently nothing because the iob is notified in the rx-fifo handler
 		int_handled = USB_OTG_DOEPINT_STUP;
 	}
 
@@ -796,16 +736,6 @@ static void _reset(unsigned speed)
 				otg_device->DOEP[0].CTL = USB_OTG_DOEPCTL_EPENA | USB_OTG_DOEPCTL_CNAK;	 // NOTE: size is taken from DIEPCTL0
 				_ep_max_length[0] = 64;
 				break;
-			case 1:	// hs phy in full-speed
-				// NOTE: usb turnaround time is 9 for ahbclk = 48 Mhz
-				cfg = otg_global->GUSBCFG & ~USB_OTG_GUSBCFG_TRDT;
-				otg_global->GUSBCFG = cfg | (9 << USB_OTG_GUSBCFG_TRDT_Pos);
-
-				// NOTE: initial value for full-speed is 64 bytes
-				otg_device->DIEP[0].CTL = (0 << USB_OTG_DIEPCTL_MPSIZ_Pos); // DIEPCTL0.MPSIZ[1:0] 0 = 64 bytes
-				otg_device->DOEP[0].CTL = USB_OTG_DOEPCTL_EPENA | USB_OTG_DOEPCTL_CNAK;	 // NOTE: size is taken from DIEPCTL0
-				_ep_max_length[0] = 64;
-				break;
 			default:	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
 		}
 
@@ -815,7 +745,7 @@ static void _reset(unsigned speed)
 }
 
 
-void __usb_otg_hs_device_irq_handler()
+void __usb_otg_device_irq_handler()
 {
 	static unsigned _rst_count = 0;
 	static unsigned _edn_count = 0;
@@ -829,12 +759,8 @@ void __usb_otg_hs_device_irq_handler()
 
 	if (intreq & USB_OTG_GINTSTS_RXFLVL)	// rx-fifo
 	{
-#ifdef USB_HS_ENABLE_DMA
-		// NOTE: stm32f7 seems to NEVER trigger rx-fifo interrupt, but stm32f4 DOES for ep0
 		_handle_rxf();
-#else
-		_handle_rxf();
-#endif	
+	
 		_rxf_count++;
 	}
 	else if (intreq & USB_OTG_GINTSTS_IEPINT)
@@ -869,11 +795,9 @@ void __usb_otg_hs_device_irq_handler()
 //			_set_connect_status(USB_DEVSTA_DETACHED);
 		}
 		otg_device->DCFG = otg_device->DCFG & ~(USB_OTG_DCFG_PFIVL_Msk | USB_OTG_DCFG_DAD_Msk | USB_OTG_DCFG_NZLSOHSK_Msk)
-#ifdef STM32_USB_HS_ULPI
-			| (1 << USB_OTG_DCFG_DSPD_Pos); // hs phy in full speed
-#else
+//			| USB_OTG_DCFG_NZLSOHSK	// auto-stall out status stage
 			| (3 << USB_OTG_DCFG_DSPD_Pos); // full speed
-#endif
+
 		_rst_count++;
 	}
 	else if (intreq & USB_OTG_GINTSTS_ENUMDNE)

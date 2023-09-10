@@ -23,7 +23,7 @@ static volatile uint32_t * const otg_fifo[NUM_CHANNELS] = {
 	 (volatile uint32_t *)(USB_OTG_HS_BASE + 0x5000), (volatile uint32_t *)(USB_OTG_HS_BASE + 0x6000), 
 	 (volatile uint32_t *)(USB_OTG_HS_BASE + 0x7000), (volatile uint32_t *)(USB_OTG_HS_BASE + 0x8000) }; 
 
-// FIXME: total words for OTG_FS is 320 (1280 bytes)
+// FIXME: total words for OTG_FS is 320 (1280 bytes) <<<<<<<
 #define RX_WORDS 128
 #define NPTX_WORDS 96
 #define PTX_WORDS 96 
@@ -36,15 +36,18 @@ static stm32_usbh_channel_t _ch_table[NUM_CHANNELS];
 static stm32_usbh_ep_t *_ch2ep[NUM_CHANNELS];
 static stm32_usbh_ep_t _ep_array[NUM_ENDPOINTS];
 static pool_t _ep_pool;
-static stm32_usbh_ep_t _common_control_ep;
+static stm32_usbh_ep_t *_root_control_ep = nullptr;
 
 static usb_host_controller_t *_hc = nullptr;
-static enum { HPORT_DISABLED = 0, HPORT_POWERED, HPORT_RESET, HPORT_RESET_DONE, HPORT_SUSPEND, HPORT_READY } _port_state = HPORT_DISABLED;
+static enum { HPORT_DISABLED = 0, HPORT_POWERED, HPORT_RESET, HPORT_RESET_DONE, HPORT_SUSPEND, HPORT_ERROR, HPORT_READY } _port_state = HPORT_DISABLED;
 static enum { HPORT_FULL_SPEED = 1, HPORT_LOW_SPEED = 2 } _port_speed;
-static bool _role_switch_requested = false;
 
 static dispatcher_t _port_dispatcher;
 static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatcher);
+static dispatcher_t _otg_dispatcher;
+static void _otg_callback(dispatcher_context_t *context, dispatcher_t *dispatcher);
+
+static void _host_reset(dispatcher_context_t *context);
 
 void usb_hs_host_initialize(usb_host_controller_t *hc, dispatcher_context_t *context)
 {
@@ -52,6 +55,14 @@ void usb_hs_host_initialize(usb_host_controller_t *hc, dispatcher_context_t *con
 	ASSERT(_hc == nullptr, KERNEL_ERROR_NOT_ENOUGH_MEMORY);	// already in use
 	_hc = hc;
 
+	exos_dispatcher_create(&_otg_dispatcher, __otg_hs_event, _otg_callback, hc);
+	exos_dispatcher_add(context, &_otg_dispatcher, EXOS_TIMEOUT_NEVER);
+
+	_host_reset(context);
+}
+
+static void _host_reset(dispatcher_context_t *context)
+{
 	usb_otg_hs_initialize();
 
 	otg_global->GUSBCFG |= USB_OTG_GUSBCFG_FHMOD;	// Force Host MODe
@@ -59,8 +70,10 @@ void usb_hs_host_initialize(usb_host_controller_t *hc, dispatcher_context_t *con
 	exos_thread_sleep(50);
 
 	otg_power->PCGCCTL = 0;
-	otg_host->HCFG = (otg_host->HCFG & ~USB_OTG_HCFG_FSLSPCS_Msk) 
-		/*| (0x1 << USB_OTG_HCFG_FSLSPCS_Pos)*/ | USB_OTG_HCFG_FSLSS;	// FIXME
+	otg_host->HCFG &= ~USB_OTG_HCFG_FSLSS_Msk;
+
+	otg_host->HCFG &= ~USB_OTG_HCFG_FSLSPCS_Msk;
+	otg_host->HCFG |= 1 << USB_OTG_HCFG_FSLSPCS_Pos;	// 48 Mhz
 
 	otg_global->GRXFSIZ = RX_WORDS;
 	otg_global->HNPTXFSIZ = (NPTX_WORDS << 16) | (RX_WORDS);
@@ -71,17 +84,19 @@ void usb_hs_host_initialize(usb_host_controller_t *hc, dispatcher_context_t *con
 	otg_global->GINTMSK |= USB_OTG_GINTMSK_RXFLVLM
 		| USB_OTG_GINTMSK_SOFM
 		| USB_OTG_GINTMSK_HCIM		// Host Channels Int Mask
-		| USB_OTG_GINTMSK_PRTIM;	// host PoRT Int Mask
+		| USB_OTG_GINTMSK_PRTIM		// host PoRT Int Mask
+		| USB_OTG_GINTMSK_DISCINT;
 
 	otg_host->HPRT |= USB_OTG_HPRT_PPWR;
 	_port_state = HPORT_POWERED;	// FIXME
 
 	pool_create(&_ep_pool, (node_t *)_ep_array, sizeof(stm32_usbh_ep_t), NUM_ENDPOINTS);
+	_root_control_ep = nullptr;
 
 	exos_dispatcher_create(&_port_dispatcher, &_hc->RootHubEvent, _port_callback, nullptr);
 	exos_dispatcher_add(context, &_port_dispatcher, EXOS_TIMEOUT_NEVER);
 
-	_role_switch_requested = false;
+	usb_otg_hs_notify(USB_HOST_ROLE_HOST);
 }
 
 bool usb_hs_request_role_switch(usb_host_controller_t *hc)
@@ -89,18 +104,46 @@ bool usb_hs_request_role_switch(usb_host_controller_t *hc)
 	ASSERT(hc != nullptr, KERNEL_ERROR_NULL_POINTER);
 	ASSERT(_hc == hc, KERNEL_ERROR_KERNEL_PANIC);
 	
-	if (_port_state == HPORT_READY)	// AKA idle
+	if (_port_state == HPORT_READY ||	// AKA idle
+		_port_state == HPORT_POWERED)
 	{
-		_role_switch_requested = true;
-		_verbose(VERBOSE_DEBUG, "role-switch requested");	
+		usb_otg_hs_notify(USB_HOST_ROLE_HOST_CLOSING);
+		_verbose(VERBOSE_DEBUG, "role-switch requested");
+
+		if (_port_state == HPORT_POWERED)
+			exos_event_set(&hc->RootHubEvent);
+
 		return true;
 	}
 	return false;
 }
 
+static void _otg_callback(dispatcher_context_t *context, dispatcher_t *dispatcher)
+{
+	usb_host_controller_t *hc = (usb_host_controller_t *)dispatcher->CallbackState;
+	ASSERT(hc != nullptr, KERNEL_ERROR_NULL_POINTER);
+
+	usb_host_role_state_t role_state = usb_otg_hs_role_state();
+	switch(role_state)
+	{
+		case USB_HOST_ROLE_DEVICE_CLOSING:
+			_verbose(VERBOSE_COMMENT, "ending role switch -> restart host");
+			exos_thread_sleep(1000);
+
+			_host_reset(context);
+			break; 
+		default:
+			_verbose(VERBOSE_DEBUG, "otg state %d", role_state);
+			break;
+	}
+
+	exos_dispatcher_add(context, dispatcher, EXOS_TIMEOUT_NEVER);
+}
+
 static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatcher)
 {
 	unsigned timeout = EXOS_TIMEOUT_NEVER;
+	usb_host_role_state_t role_state;
 
 	unsigned hprt = otg_host->HPRT;
 	unsigned hprt_const = USB_OTG_HPRT_PENA | 
@@ -118,6 +161,12 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 				_port_state = HPORT_RESET;
 				otg_host->HPRT = hprt_const | USB_OTG_HPRT_PRST;
 				timeout = 20;	// min 20ms
+			}
+			else
+			{
+				role_state = usb_otg_hs_role_state();
+				if (role_state == USB_HOST_ROLE_HOST_CLOSING)
+					_port_state = HPORT_DISABLED;
 			}
 			break;
 		case HPORT_RESET:
@@ -142,13 +191,11 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 				{
 					case HPORT_FULL_SPEED:
 						otg_host->HFIR = 48000;
-						otg_host->HCFG = (otg_host->HCFG & USB_OTG_HCFG_FSLSS) | 
-							(1 << USB_OTG_HCFG_FSLSPCS_Pos);	// 48MHz core
+						otg_host->HCFG = (1 << USB_OTG_HCFG_FSLSPCS_Pos);	// 48MHz core
 						break;
 					case HPORT_LOW_SPEED:
 						otg_host->HFIR = 6000;
-						otg_host->HCFG = (otg_host->HCFG & USB_OTG_HCFG_FSLSS) | 
-							(2 << USB_OTG_HCFG_FSLSPCS_Pos);	// 6MHz core
+						otg_host->HCFG = (2 << USB_OTG_HCFG_FSLSPCS_Pos);	// 6MHz core
 						break;
 					default:
 						kernel_panic(KERNEL_ERROR_KERNEL_PANIC);
@@ -163,7 +210,7 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 				usb_host_device_t *child = usb_host_create_root_device(_hc, 0, 
 					(_port_speed == HPORT_FULL_SPEED) ? USB_HOST_DEVICE_FULL_SPEED : USB_HOST_DEVICE_LOW_SPEED);
 				if (child != nullptr)
-					verbose(VERBOSE_COMMENT, "usb-hs-roothub", "child %04x/%04x added at port #%d", child->Vendor, child->Product, child->Port);
+					verbose(VERBOSE_COMMENT, "usb-hs-roothub", "child %04x:%04x added at port #%d", child->Vendor, child->Product, child->Port);
 				else	
 					verbose(VERBOSE_ERROR, "usb-hs-roothub", "device add failed");		
 			}
@@ -174,27 +221,28 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 				timeout = 500;
 			}
 			break;
+		case HPORT_ERROR:
+			verbose(VERBOSE_DEBUG, "usb-hs-roothub", "error state!");
+			// TODO: we should perform an usb controller reset now
+
+			_port_state = HPORT_READY;
+			timeout = 10;
+			break;
+
 		case HPORT_READY:
 			if (hprt & USB_OTG_HPRT_PENA)
 				kernel_panic(KERNEL_ERROR_KERNEL_PANIC);
 			
 			ASSERT(_hc->Devices != nullptr, KERNEL_ERROR_NULL_POINTER);
 			usb_host_device_t *child = &_hc->Devices[0];	// single port
-			verbose(VERBOSE_DEBUG, "usb-hs-roothub", "child %04x/%04x removing at port #%d", child->Vendor, child->Product, child->Port);
+			verbose(VERBOSE_DEBUG, "usb-hs-roothub", "child %04x:%04x removing at port #%d", child->Vendor, child->Product, child->Port);
 			usb_host_destroy_device(child);
-			verbose(VERBOSE_COMMENT, "usb-hs-roothub", "child %04x/%04x removed", child->Vendor, child->Product);
+			verbose(VERBOSE_COMMENT, "usb-hs-roothub", "child %04x:%04x removed", child->Vendor, child->Product);
 			
 			exos_thread_sleep(10);	// NOTE: avoid glitchy re-connect
 
-			if (_role_switch_requested)
-			{				
-				usb_otg_hs_initialize();
-
-				// remove root hub dispatchers
-				exos_dispatcher_remove(context, &_port_dispatcher);
-				_port_state = HPORT_DISABLED;
-			}
-			else _port_state = HPORT_POWERED;
+			role_state = usb_otg_hs_role_state();
+			_port_state = (role_state == USB_HOST_ROLE_HOST_CLOSING) ? HPORT_DISABLED : HPORT_POWERED;
 			break;
 		default:
 			kernel_panic(KERNEL_ERROR_KERNEL_PANIC);
@@ -208,7 +256,9 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 	else 
 	{
 		verbose(VERBOSE_DEBUG, "usb-hs-roothub", "host root-hub disabled");
-		__usb_host_disabled(_hc);
+
+		bool started = usb_host_start_device_mode(_hc);
+		ASSERT(started, KERNEL_ERROR_KERNEL_PANIC);
 	}
 }
 
@@ -279,6 +329,7 @@ static void _update_channel(stm32_usbh_channel_t *ch, uint8_t addr, usb_host_dev
 {
 	ASSERT(ch != nullptr, KERNEL_ERROR_NULL_POINTER);
 	ASSERT(ch->Index < 8, KERNEL_ERROR_KERNEL_PANIC);
+	// NOTE this is used only for EP0 channel to start a new control transfer (recycling) 
 
 	otg_host->HC[ch->Index].HCCHAR = 
 		(otg_host->HC[ch->Index].HCCHAR & ~(USB_OTG_HCCHAR_CHENA_Msk | USB_OTG_HCCHAR_DAD_Msk | USB_OTG_HCCHAR_LSDEV_Msk | USB_OTG_HCCHAR_MPSIZ_Msk))
@@ -351,8 +402,6 @@ static void _free_channel(unsigned index)
 
 bool usb_hs_host_start_pipe(usb_host_pipe_t *pipe)
 {
-	static stm32_usbh_ep_t *_root_control_ep = nullptr;
-
 	ASSERT(pipe != nullptr, KERNEL_ERROR_NULL_POINTER);
 	ASSERT(pipe->Device != nullptr, KERNEL_ERROR_NULL_POINTER);
 	unsigned chn, chn2;
@@ -452,7 +501,7 @@ void usb_hs_host_update_control_pipe(usb_host_pipe_t *pipe)
 	_update_channel(ep->Tx, pipe->Device->Address, pipe->Device->Speed, pipe->MaxPacketSize);
 }
 
-static void _xfer_complete(unsigned ch_num, urb_status_t status)
+static void _xfer_complete(unsigned ch_num, stm32_usbh_error_t err)
 {
 	stm32_usbh_channel_t *ch = &_ch_table[ch_num];
 	ASSERT(ch->EndpointNumber < NUM_ENDPOINTS, KERNEL_ERROR_KERNEL_PANIC);
@@ -462,13 +511,16 @@ static void _xfer_complete(unsigned ch_num, urb_status_t status)
 		usb_request_buffer_t *urb = ch->Current.Request;
 		if (urb != nullptr)
 		{
-			if (status == URB_STATUS_DONE && urb->Pipe->Direction == USB_HOST_TO_DEVICE)
+			if (err == STM32_USBERR_OK && urb->Pipe->Direction == USB_HOST_TO_DEVICE)
 			{
 				urb->Done = urb->Length;
 			}
 
-			urb->Status = status;
-
+			urb->Status = (err == STM32_USBERR_OK) ? URB_STATUS_DONE : URB_STATUS_FAILED;
+#ifdef DEBUG
+			if (err != STM32_USBERR_OK)
+				urb->UserState = (void *)err;
+#endif
 			exos_event_reset(&urb->Event);
 			ch->Current.Request = nullptr;
 		}
@@ -488,14 +540,14 @@ static void _disable_channel(unsigned ch_num, bool wait)
 			stm32_usbh_ep_t *ep;
 			while(ep = _ch2ep[ch_num], ep != nullptr)
 			{
-				//ASSERT(ep->Status == STM32_EP_STA_STOPPING, KERNEL_ERROR_KERNEL_PANIC);
+				// TODO: debug timeout?
 			}
 		}
 	}
 	else
 	{
 		otg_host->HC[ch_num].HCINTMSK = 0;
-		_xfer_complete(ch_num, URB_STATUS_FAILED);
+		_xfer_complete(ch_num, STM32_USBERR_CANCEL);
 		_free_channel(ch_num);
 	}
 }
@@ -516,7 +568,7 @@ void usb_hs_host_stop_pipe(usb_host_pipe_t *pipe)
 	pool_free(&_ep_pool, &ep->Node);
 }
 
-static unsigned _write_fifo(unsigned ch_num, bool ack_done)
+static unsigned _write_fifo(unsigned ch_num)
 {
 	ASSERT(ch_num < NUM_CHANNELS, KERNEL_ERROR_KERNEL_PANIC);
 	stm32_usbh_channel_t *ch = &_ch_table[ch_num];
@@ -530,8 +582,6 @@ static unsigned _write_fifo(unsigned ch_num, bool ack_done)
 	
 	ASSERT(urb->Pipe != nullptr && urb->Pipe->Endpoint == ep, KERNEL_ERROR_KERNEL_PANIC);
 	ASSERT(urb->Pipe->EndpointNumber == ch->EndpointNumber, KERNEL_ERROR_KERNEL_PANIC);
-	if (ack_done)
-		urb->Done += xfer->LastPacketLength;
 
 	unsigned rem = (urb->Length > urb->Done) ? urb->Length - urb->Done : 0;
 	unsigned lenw = (rem + 3) >> 2;
@@ -557,7 +607,7 @@ static void _enable_channel(unsigned ch_num)
 
 	if (ch->Direction == USB_HOST_TO_DEVICE)
 	{
-		unsigned rem = _write_fifo(ch->Index, false);
+		unsigned rem = _write_fifo(ch->Index);
 		if (rem != 0)
 		{
 			switch(ch->EndpointType)
@@ -605,7 +655,7 @@ bool usb_hs_host_begin_xfer(usb_request_buffer_t *urb, usb_direction_t dir, bool
 	ASSERT(ch != nullptr, KERNEL_ERROR_KERNEL_PANIC);
 	unsigned ch_num = ch->Index;
 
-	ASSERT(ep->Status == STM32_EP_STA_IDLE, KERNEL_ERROR_NOT_IMPLEMENTED);	// TODO: queue
+	//ASSERT(ep->Status == STM32_EP_STA_IDLE, KERNEL_ERROR_NOT_SUPPORTED);	// TODO: queue
 	ep->Status = STM32_EP_STA_BUSY;
 	stm32_usbh_xfer_t *xfer = &ch->Current;	
 	xfer->Request = urb;
@@ -621,7 +671,7 @@ bool usb_hs_host_begin_xfer(usb_request_buffer_t *urb, usb_direction_t dir, bool
 			ch->Toggle ^= num_packets & 1;
 
 			otg_host->HC[ch_num].HCCHAR = 
-				(otg_host->HC[ch_num].HCCHAR & ~(USB_OTG_HCCHAR_CHENA_Msk | USB_OTG_HCCHAR_ODDFRM_Msk))
+				(otg_host->HC[ch_num].HCCHAR & ~(USB_OTG_HCCHAR_CHENA_Msk | USB_OTG_HCCHAR_CHDIS_Msk | USB_OTG_HCCHAR_ODDFRM_Msk))
 				| ((otg_host->HFNUM & 1) ? 0 : USB_OTG_HCCHAR_ODDFRM);
 			break;
 		default:	kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
@@ -707,7 +757,7 @@ void __usb_hs_nptxfe_irq_handler()
 	unsigned qtop = (sts & USB_OTG_GNPTXSTS_NPTXQTOP_Msk) >> USB_OTG_GNPTXSTS_NPTXQTOP_Pos;
 	unsigned ch_num = qtop >> 3;
 
-	unsigned rem = _write_fifo(ch_num, true);
+	unsigned rem = _write_fifo(ch_num);
 	if (rem == 0)
 	{
 		// disable int
@@ -731,17 +781,20 @@ void __usb_hs_hcint_irq_handler()
 
 				if (hcint & USB_OTG_HCINT_TXERR)
 				{
-					_xfer_complete(ch_num, URB_STATUS_FAILED);
+					_disable_channel(ch_num, false);	// NOTE: will trigger CHH interrupt
 					otg_host->HC[ch_num].HCINT = USB_OTG_HCINT_TXERR;
 				}
 				else if (hcint & USB_OTG_HCINT_STALL)
 				{
-					_xfer_complete(ch_num, URB_STATUS_FAILED);
+					_xfer_complete(ch_num, STM32_USBERR_STALL);
 					otg_host->HC[ch_num].HCINT = USB_OTG_HCINT_STALL;
 				}
 				else if (hcint & USB_OTG_HCINT_XFRC)
 				{
-					_xfer_complete(ch_num, URB_STATUS_DONE);
+					unsigned pktcnt = (otg_host->HC[ch_num].HCTSIZ & USB_OTG_HCTSIZ_PKTCNT_Msk) >> USB_OTG_HCTSIZ_PKTCNT_Pos;
+					ASSERT(pktcnt == 0, KERNEL_ERROR_KERNEL_PANIC);
+
+					_xfer_complete(ch_num, STM32_USBERR_OK);
 					otg_host->HC[ch_num].HCINT = USB_OTG_HCINT_XFRC | USB_OTG_HCINT_ACK;
 				}
 				else if (hcint & USB_OTG_HCINT_NAK)
@@ -795,7 +848,7 @@ void __usb_hs_hcint_irq_handler()
 								}
 								break;
 							case STM32_EP_STA_STOPPING:
-								_xfer_complete(ch_num, URB_STATUS_FAILED);
+								_xfer_complete(ch_num, STM32_USBERR_HALTED);
 								_free_channel(ch_num);
 								break;
 						}
@@ -857,5 +910,16 @@ void __usb_otg_hs_host_irq_handler()
 			otg_host->HPRT = hprt_const | USB_OTG_HPRT_PENCHNG;	 // clear interrupt
 			exos_event_set(&_hc->RootHubEvent);
 		}
+	}
+
+	if (sta & USB_OTG_GINTMSK_DISCINT)
+	{
+		// TODO: somehow we should start a sw reset (they say)
+		// otg_global->GRSTCTL |= USB_OTG_GRSTCTL_CSRST; ??? 
+		
+		_port_state = HPORT_ERROR;
+		exos_event_set(&_hc->RootHubEvent);
+
+		otg_global->GINTSTS = USB_OTG_GINTSTS_DISCINT;
 	}
 }

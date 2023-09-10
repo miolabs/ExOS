@@ -559,8 +559,6 @@ static unsigned _write_fifo(unsigned ch_num)
 	
 	ASSERT(urb->Pipe != nullptr && urb->Pipe->Endpoint == ep, KERNEL_ERROR_KERNEL_PANIC);
 	ASSERT(urb->Pipe->EndpointNumber == ch->EndpointNumber, KERNEL_ERROR_KERNEL_PANIC);
-	//if (ack_done)
-	//	urb->Done += xfer->LastPacketLength;
 
 	unsigned rem = (urb->Length > urb->Done) ? urb->Length - urb->Done : 0;
 	unsigned lenw = (rem + 3) >> 2;

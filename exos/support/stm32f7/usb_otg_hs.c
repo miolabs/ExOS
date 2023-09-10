@@ -7,10 +7,19 @@
 static usb_otg_crs_global_t * const otg_global = (usb_otg_crs_global_t *)(USB_OTG_HS_BASE + 0x000);
 static usb_otg_crs_power_t * const otg_power = (usb_otg_crs_power_t *)(USB_OTG_HS_BASE + 0xe00);
 
-#define STM32_USB_HS_ULPI	// FIXME: temporary
+static event_t _otg_event;
+event_t *__otg_hs_event = &_otg_event;
+
 
 void usb_otg_hs_initialize()
 {
+	static bool init_done = false;
+	if (!init_done)
+	{
+		exos_event_create(&_otg_event, EXOS_EVENTF_AUTORESET);
+		init_done = true;
+	}
+
 	// core initialization
 	RCC->AHB1RSTR |= RCC_AHB1RSTR_OTGHRST;
 	RCC->AHB1ENR |= RCC_AHB1ENR_OTGHSEN;	// enable peripheral clock
@@ -19,23 +28,32 @@ void usb_otg_hs_initialize()
 #endif
 	RCC->AHB1RSTR ^= RCC_AHB1RSTR_OTGHRST;
 
+unsigned gusbcfg = otg_global->GUSBCFG & (USB_OTG_GUSBCFG_TOCAL | USB_OTG_GUSBCFG_TRDT | (1<<4));
 #ifdef STM32_USB_HS_ULPI
-	otg_global->GUSBCFG |= (1<<4); // FIXME: undefined USB_OTG_GUSBCFG_ULPISEL
-	otg_global->GUSBCFG |= USB_OTG_GUSBCFG_ULPIEVBUSD | USB_OTG_GUSBCFG_ULPIIPD;
+	#ifdef USB_OTG_GUSBCFG_ULPI_UTMI_SEL
+	// NOTE: select external ULPY HS PHY for devices with internal HS PHY
+	otg_global->GUSBCFG |= USB_OTG_GUSBCFG_ULPI_UTMI_SEL;
+	#endif
+	otg_global->GUSBCFG = gusbcfg /*| USB_OTG_GUSBCFG_ULPIEVBUSI*/ | USB_OTG_GUSBCFG_ULPIIPD | USB_OTG_GUSBCFG_ULPIAR 
+		 | USB_OTG_GUSBCFG_ULPIEVBUSD;
 #else
-	otg_global->GUSBCFG |= USB_OTG_GUSBCFG_PHYSEL;
+	// NOTE: selects internal FS PHY
+	otg_global->GUSBCFG = gusbcfg | USB_OTG_GUSBCFG_PHYSEL;
 #endif
 
 	while(!(otg_global->GRSTCTL & USB_OTG_GRSTCTL_AHBIDL));
 	for(unsigned volatile i = 0; i < 100; i++);	// wait 3 phy clks
-
 
 	otg_global->GRSTCTL |= USB_OTG_GRSTCTL_CSRST;	// soft-reset
 	while(otg_global->GRSTCTL & USB_OTG_GRSTCTL_CSRST);	// NOTE: self-clearing
 	for(unsigned volatile i = 0; i < 100; i++);	// wait 3 phy clks
 
 	// enable PHY
-	otg_global->GCCFG = USB_OTG_GCCFG_PWRDWN/* | USB_OTG_GCCFG_NOVBUSSENS*/;	// <--- FIXME
+#ifdef USB_OTG_GCCFG_NOVBUSSENS 
+	otg_global->GCCFG = USB_OTG_GCCFG_PWRDWN | USB_OTG_GCCFG_NOVBUSSENS;
+#else
+	otg_global->GCCFG = USB_OTG_GCCFG_PWRDWN;
+#endif
 	exos_thread_sleep(20);
 
 #if defined(STM32_USB_HS_ULPI) && defined(DEBUG)
@@ -56,7 +74,7 @@ void usb_otg_hs_initialize()
 
 	otg_global->GINTMSK = USB_OTG_GINTMSK_MMISM;	// Mode MISmatch Mask
 
-	otg_global->GAHBCFG |= OTG_HS_GAHBCFG_GINTMASK;
+	otg_global->GAHBCFG |= USB_OTG_GAHBCFG_GINT;
 	NVIC_EnableIRQ(OTG_HS_IRQn);
 }
 
@@ -94,19 +112,36 @@ bool usb_otg_hs_ulpi_write(unsigned short addr, unsigned char data)
 }
 
 
-
-
-
-
 void OTG_HS_IRQHandler()
 {
-	if (otg_global->GINTSTS & USB_OTG_GINTSTS_MMIS)
+	unsigned sta = otg_global->GINTSTS;
+
+	if (sta & USB_OTG_GINTSTS_MMIS)
 	{
 		otg_global->GINTSTS = USB_OTG_GINTSTS_MMIS; // clear int
 	}
 
-	__usb_otg_hs_host_irq_handler();
-    __usb_otg_hs_device_irq_handler();
+	if (sta & USB_OTG_GINTSTS_CMOD)
+	{
+		__usb_otg_hs_host_irq_handler();
+	}
+	else
+	{
+		__usb_otg_hs_device_irq_handler();
+	}
+}
+
+static usb_host_role_state_t _state;
+
+usb_host_role_state_t usb_otg_hs_role_state()
+{
+	return _state;
+}
+
+void usb_otg_hs_notify(usb_host_role_state_t state)
+{
+	_state = state;
+	exos_event_set(&_otg_event);
 }
 
 

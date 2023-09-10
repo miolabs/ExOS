@@ -4,11 +4,7 @@
 #include <kernel/panic.h>
 #include <string.h>
 
-#if defined STM32F469xx
 #define USB_DEV_EP_COUNT 6
-#else
-#define USB_DEV_EP_COUNT 5
-#endif
 
 static usb_otg_crs_global_t * const otg_global = (usb_otg_crs_global_t *)(USB_OTG_HS_BASE + 0x000);
 static usb_otg_crs_device_t * const otg_device = (usb_otg_crs_device_t *)(USB_OTG_HS_BASE + 0x800);
@@ -71,10 +67,8 @@ void hal_usbd_initialize()
 			case 1:	otg_global->DIEPTXF1 = txf_reg;	break;
 			case 2:	otg_global->DIEPTXF2 = txf_reg;	break;
 			case 3:	otg_global->DIEPTXF3 = txf_reg;	break;
-#if USB_DEV_EP_COUNT >= 5
-			case 4:	otg_global->DIEPTXF4 = txf_reg;	break;
-#endif
 #if USB_DEV_EP_COUNT >= 6
+			case 4:	otg_global->DIEPTXF4 = txf_reg;	break;
 			case 5:	otg_global->DIEPTXF5 = txf_reg;	break;
 #endif
 #if USB_DEV_EP_COUNT >= 8
@@ -534,6 +528,7 @@ static void _read_fifo(unsigned ep_num, unsigned char *ptr, unsigned bcnt)
 	}
 }
 
+#ifndef USB_HS_ENABLE_DMA
 static void _handle_rxf()
 {
 	static unsigned _fail = 0;
@@ -567,8 +562,6 @@ static void _handle_rxf()
 			iob = _ep_setup_io;
 			break;
 		case 0b0011:		// DATA-OUT complete
-			// NOTE: rx complete is handled in _ep_out_handler() when dma is enabled
-#ifndef USB_HS_ENABLE_DMA
 			iob = _ep_out_io[ep_num];
 			if (iob != nullptr)
 			{
@@ -576,7 +569,6 @@ static void _handle_rxf()
 				iob->Status = USB_IOSTA_DONE;
 				exos_event_set(iob->Event);
 			}
-#endif
 			break;
 		case 0b0010:		// OUT data_packet
 			iob = _ep_out_io[ep_num];
@@ -607,9 +599,6 @@ static void _handle_rxf()
 	{
 		if (bcnt != 0)
 		{
-#ifdef USB_HS_ENABLE_DMA
-			ASSERT(ep_num == 0, KERNEL_ERROR_KERNEL_PANIC);
-#endif
 			_read_fifo(ep_num, (unsigned char *)iob->Data + iob->Done, bcnt);
 			iob->Done += bcnt;
 		}
@@ -619,6 +608,7 @@ static void _handle_rxf()
 		ASSERT(bcnt == 0, KERNEL_ERROR_NULL_POINTER);
 	}
 }
+#endif
 
 static void _ep_out_handler(unsigned ep)
 {
@@ -830,8 +820,7 @@ void __usb_otg_hs_device_irq_handler()
 	if (intreq & USB_OTG_GINTSTS_RXFLVL)	// rx-fifo
 	{
 #ifdef USB_HS_ENABLE_DMA
-		// NOTE: stm32f7 seems to NEVER trigger rx-fifo interrupt, but stm32f4 DOES for ep0
-		_handle_rxf();
+		kernel_panic(KERNEL_ERROR_KERNEL_PANIC);
 #else
 		_handle_rxf();
 #endif	
@@ -869,6 +858,7 @@ void __usb_otg_hs_device_irq_handler()
 //			_set_connect_status(USB_DEVSTA_DETACHED);
 		}
 		otg_device->DCFG = otg_device->DCFG & ~(USB_OTG_DCFG_PFIVL_Msk | USB_OTG_DCFG_DAD_Msk | USB_OTG_DCFG_NZLSOHSK_Msk)
+//			| USB_OTG_DCFG_NZLSOHSK	// auto-stall out status stage
 #ifdef STM32_USB_HS_ULPI
 			| (1 << USB_OTG_DCFG_DSPD_Pos); // hs phy in full speed
 #else
