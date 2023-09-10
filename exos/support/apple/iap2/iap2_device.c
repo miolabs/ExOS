@@ -294,7 +294,7 @@ static unsigned short _iap2_identify(iap2_transport_t *t, iap2_control_parameter
 	// add transport component parameters
 	iap2_short_t *cid = iap2_helper_add_parameter(params, IAP2_TCID_ComponentIdentifier, sizeof(unsigned short));
 	*cid = HTOIAP2S(t->ComponentId);
-	iap2_helper_add_param_string(params, IAP2_TCID_ComponentName, "iAP2 USB-Host");
+	iap2_helper_add_param_string(params, IAP2_TCID_ComponentName, "HostMode");
 	iap2_helper_add_parameter(params, IAP2_TCID_SupportsiAP2Connection, 0);		 
 	return IAP2_IIID_USBHostTransportComponent;
 }

@@ -470,7 +470,7 @@ static void _send_auth_certificate(iap2_context_t *iap2)
 				buf->Buffer[buf->Length] = _checksum((unsigned char *)ctrl_msg, buf->Length - sizeof(iap2_header_t));
 				buf->Length++;
 
-				_verbose(VERBOSE_DEBUG, "tx [auth] acc certificate (%d), msg_length = %d", cert_size, IAP2SHTOH(ctrl_msg->MessageLength));
+				_verbose(VERBOSE_DEBUG, "tx [auth] acc certificate (%d), msg_length=%d", cert_size, IAP2SHTOH(ctrl_msg->MessageLength));
 
 				_send_packet(iap2, buf);
 			}
@@ -590,6 +590,8 @@ static unsigned short _get_protocol_definition(iap2_context_t *iap2, unsigned in
 
 		//iap2_short_t *tcid = iap2_helper_add_parameter(&params, IAP2_EAPID_NativeTransportComponentIdentifier, sizeof(iap2_short_t));
 		//*tcid = HTOIAP2S(iap2->Transport->ComponentId);
+
+//		_verbose(VERBOSE_DEBUG, "protocol id='%d' name='%s'", p->ProtocolId, p->Url);
 	}
 	return params.Length;
 }
@@ -607,7 +609,7 @@ static void _ea_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher
 	while(1)
 	{
 		unsigned offset = 0;
-		unsigned rem = 256;	// FIXME: IAP2_BUFFER_SIZE - (haeder + footer)
+		unsigned rem = 256;	// FIXME: IAP2_BUFFER_SIZE - (header + footer)
 
 		iap2_buffer_t *buf = _init_packet(iap2, IAP2_CONTROLF_ACK, sess1->Id);
 		if (buf != NULL)
@@ -750,9 +752,13 @@ static void _send_identification(iap2_context_t *iap2)
 				void *eap = _add_parameter(resp_msg, IAP2_IIID_SupportedExternalAccessoryProtocol, eap_len);
 				memcpy(eap, param_buffer, eap_len);
 			} 
-			else break;
+			else 
+			{
+				_verbose(VERBOSE_DEBUG, "identification reporting %d accesory protocols", pi);
+				break;
+			}
 		}
-			
+
 		// TODO AppMatchTeamID
 
 		_add_param_string(resp_msg, IAP2_IIID_CurrentLanguage, "en");
@@ -769,7 +775,7 @@ static void _send_identification(iap2_context_t *iap2)
 		_add_param_string(resp_msg, IAP2_IIID_ProductPlanUID, IAP2_PRODUCT_PLAN_UID);
 
 #ifdef DEBUG
-		//_debug_params(resp_msg);
+//		_debug_params(resp_msg);
 #endif
 		buf->Length += IAP2SHTOH(resp_msg->MessageLength);	// NOTE: fix buffer length 
 		buf->Buffer[buf->Length] = _checksum((unsigned char *)resp_msg, buf->Length - sizeof(iap2_header_t));

@@ -21,7 +21,7 @@ typedef enum
 	IAP2_LINGO_GENERAL = 0,
 } iap2_lingo_t;
 
-typedef struct
+typedef struct __packed
 {
 	unsigned char High, Low; 
 } iap2_short_t;
