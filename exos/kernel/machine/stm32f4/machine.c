@@ -119,7 +119,7 @@ void __machine_reboot(void **vbase)
 		NVIC_DisableIRQ((IRQn_Type)i);
 
 	}
-	SCB->VTOR = (unsigned)vbase;
+	SCB->VTOR = ((unsigned)vbase & 0xFFFFFF) + FLASH_BASE;
 	__enable_irq();
 
 	__asm__ volatile (

@@ -9,7 +9,7 @@
     debug_start_from_entry_point_symbol="No" />
   <configuration
     Name="Debug"
-    c_preprocessor_definitions="DEBUG;RTT_SLOWDOWN;USB_HOST_DEBUG;STM32_USB_DEBUG;__IAP_DEBUG;IAP2_DEBUG;USB_DEVICE_DEBUG;__USB_HUB_DEBUG;__HID_DEBUG;__FUSB_DEBUG;__STM32_ETH_DEBUG;NCM_DEBUG"
+    c_preprocessor_definitions="DEBUG;__RTT_SLOWDOWN;USB_DEVICE_DEBUG;__USB_HUB_DEBUG"
     gcc_debugging_level="Level 3"
     gcc_optimization_level="None"
     hidden="Yes" />
