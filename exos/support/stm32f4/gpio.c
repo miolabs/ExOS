@@ -78,7 +78,7 @@ void gpio_pin_config(gpio_pin_t pin, gpio_mode_t mode, unsigned alt_func)
 	unsigned mode_mask = 0x3 << mode_shift;
 	gpio->MODER = (gpio->MODER & ~mode_mask) | ((mode & 0x3) << mode_shift);
 
-	unsigned odr_mask = 1 << (pin & 0xf); 
+	unsigned odr_mask = 1 << (pin & 0xf);
 	if (mode & GPIO_MODEF_OPEN_DRAIN)
 		gpio->OTYPER |= odr_mask;
 	else
@@ -118,11 +118,6 @@ bool hal_gpio_pin(unsigned pin)
 
 void hal_gpio_pin_config(unsigned pin, hal_gpio_flags_t flags)
 {
-	unsigned port = pin >> 4;
-	ASSERT(port < GPIO_PORT_COUNT, KERNEL_ERROR_KERNEL_PANIC);
-	GPIO_TypeDef *gpio = _ports[port];
-	ASSERT(gpio != nullptr, KERNEL_ERROR_KERNEL_PANIC);
-	
 	gpio_mode_t mode = (flags & GPIOF_ANALOG) ? GPIO_MODE_ANALOG :
 		((flags & GPIOF_OUTPUT) ? GPIO_MODE_OUTPUT : GPIO_MODE_INPUT);
 	if (flags & GPIOF_PULLUP) mode |= GPIO_MODEF_PULL_UP;
@@ -130,7 +125,4 @@ void hal_gpio_pin_config(unsigned pin, hal_gpio_flags_t flags)
 	if (flags & GPIOF_OPEN_DRAIN) mode |= GPIO_MODEF_OPEN_DRAIN;
 	gpio_pin_config(pin, mode, 0);
 }
-
-
-
 

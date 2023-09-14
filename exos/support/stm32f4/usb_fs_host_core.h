@@ -63,9 +63,6 @@ bool usb_fs_host_start_pipe(usb_host_pipe_t *pipe);
 void usb_fs_host_update_control_pipe(usb_host_pipe_t *pipe);
 void usb_fs_host_stop_pipe(usb_host_pipe_t *pipe);
 
-void usb_fs_host_flush_tx_fifo(unsigned num);	// FIXME
-void usb_fs_host_flush_rx_fifo();	// FIXME
-
 bool usb_fs_host_begin_xfer(usb_request_buffer_t *urb, usb_direction_t dir, bool setup);
 
 #endif // STM32F4_USB_FS_HOST_CORE_H

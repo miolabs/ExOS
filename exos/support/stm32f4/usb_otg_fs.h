@@ -39,10 +39,6 @@ typedef struct
 	volatile unsigned DIEPTXF7;	 
 } usb_otg_crs_global_t;
 
-#define OTG_FS_GAHBCFG_GINTMASK (1<<0)
-#define OTG_FS_GAHBCFG_TXFELVL (1<<7)
-#define OTG_FS_GAHBCFG_PTXFELVL (1<<8)
-
 typedef struct 
 {
 	volatile unsigned HCFG;		// offset $400

@@ -15,7 +15,11 @@ _vectors:
 	.word 0 // Reserved
 	.word SVC_Handler
 	.word DebugMon_Handler
+#ifdef RESVD34_VECTOR
+        .word RESVD34_VECTOR
+#else
 	.word 0 // Reserved
+#endif
 	.word PendSV_Handler
 	.word SysTick_Handler 
 	.word WWDG_IRQHandler

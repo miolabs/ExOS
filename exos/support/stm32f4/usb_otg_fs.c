@@ -24,9 +24,13 @@ void usb_otg_fs_initialize()
 	RCC->AHB2ENR |= RCC_AHB2ENR_OTGFSEN;	// enable peripheral clock
 	RCC->AHB2RSTR ^= RCC_AHB2RSTR_OTGFSRST;
 
-	otg_global->GUSBCFG |= USB_OTG_GUSBCFG_PHYSEL;
+	unsigned gusbcfg = otg_global->GUSBCFG & (USB_OTG_GUSBCFG_TOCAL | USB_OTG_GUSBCFG_TRDT | (1<<4));
+	otg_global->GUSBCFG = gusbcfg | USB_OTG_GUSBCFG_PHYSEL;
+//	otg_global->GOTGCTL = 0;
 
 	while(!(otg_global->GRSTCTL & USB_OTG_GRSTCTL_AHBIDL));
+	for(unsigned volatile i = 0; i < 100; i++);	// wait 3 phy clks
+
 	otg_global->GRSTCTL |= USB_OTG_GRSTCTL_CSRST;	// soft-reset
 	while(otg_global->GRSTCTL & USB_OTG_GRSTCTL_CSRST);	// NOTE: self-clearing
 	for(unsigned volatile i = 0; i < 100; i++);	// wait 3 phy clks
@@ -40,8 +44,9 @@ void usb_otg_fs_initialize()
 	exos_thread_sleep(20);
 
 	otg_global->GINTMSK = USB_OTG_GINTMSK_MMISM;	// Mode MISmatch Mask
+	otg_global->GINTSTS = 0xFFFFFFFFUL;
 
-	otg_global->GAHBCFG |= OTG_FS_GAHBCFG_GINTMASK;
+	otg_global->GAHBCFG |= USB_OTG_GAHBCFG_GINT;
 	NVIC_EnableIRQ(OTG_FS_IRQn);
 }
 

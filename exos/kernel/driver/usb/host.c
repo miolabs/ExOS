@@ -49,10 +49,8 @@ bool usb_host_start_device_mode(usb_host_controller_t *hc)
 	const usb_host_controller_driver_t *hcd = hc->Driver;
 	ASSERT(hcd != nullptr, KERNEL_ERROR_NULL_POINTER);
 
-	// FIXME: we have to use generic thread-based device mode api, because usb device is a service 
 	bool done = false;
 #ifdef USB_HOST_ROLE_USES_DEVICE_SERVICE
-//	exos_thread_sleep(500);
 	done = usb_device_start();
 #endif
 	return done;
