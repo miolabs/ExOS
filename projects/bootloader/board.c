@@ -19,11 +19,15 @@ void __board_init()
 	// NOTE: we currently don't use VBUS input because we don't have a discharge hw (and more) 
 	gpio_pin_config(PA9, GPIO_MODE_ALT_FUNC, 10);	// USB-FS VBUS
 	#endif
-	gpio_pin_config(PA11, GPIO_MODE_ALT_FUNC, 10);	// USB-FS DM
-	gpio_pin_config(PA12, GPIO_MODE_ALT_FUNC, 10);	// USB-FS DP
 
-	gpio_pin_config(PB14, GPIO_MODE_ALT_FUNC, 12);	// USB-HS DM
-	gpio_pin_config(PB15, GPIO_MODE_ALT_FUNC, 12);	// USB-HS DP
+	//gpio_pin_config(PA11, GPIO_MODE_ALT_FUNC, 10);	// USB-FS DM
+	//gpio_pin_config(PA12, GPIO_MODE_ALT_FUNC, 10);	// USB-FS DP
+
+	//gpio_pin_config(PB14, GPIO_MODE_ALT_FUNC, 12);	// USB-HS DM
+	//gpio_pin_config(PB15, GPIO_MODE_ALT_FUNC, 12);	// USB-HS DP
+
+	gpio_pin_config(PC6, GPIO_MODE_OUTPUT | GPIO_MODEF_OPEN_DRAIN, 0);
+	hal_gpio_pin_set(PC6, 0);	// set /hub_reset
 
 	//gpio_pin_config(PA1, GPIO_MODE_ALT_FUNC | GPIO_MODEF_FAST_SPEED, 11);	// ETH_RMII_REF_CLK
 	//gpio_pin_config(PA7, GPIO_MODE_ALT_FUNC | GPIO_MODEF_FAST_SPEED, 11);	// ETH_RMII_CRS_DV
@@ -34,21 +38,6 @@ void __board_init()
 	//gpio_pin_config(PC5, GPIO_MODE_ALT_FUNC | GPIO_MODEF_FAST_SPEED, 11);	// ETH_RMII_RXD1
 	//gpio_pin_config(PC1, GPIO_MODE_ALT_FUNC | GPIO_MODEF_FAST_SPEED, 11);	// ETH_MDC
 	//gpio_pin_config(PA2, GPIO_MODE_ALT_FUNC | GPIO_MODEF_FAST_SPEED, 11);	// ETH_MDIO
-
-	//#define CHG_SCL_PIN	PA8
-	//gpio_pin_config(CHG_SCL_PIN, GPIO_MODE_ALT_FUNC, 4);	// I2C3_SCL
-	//#define CHG_SDA_PIN PC9
-	//gpio_pin_config(CHG_SDA_PIN, GPIO_MODE_ALT_FUNC | GPIO_MODEF_OPEN_DRAIN | GPIO_MODEF_PULL_UP, 4);	// I2C3_SDA
-	//#define CHG_INT_PIN	PC8
-	//hal_gpio_pin_config(CHG_INT_PIN, GPIOF_INPUT | GPIOF_PULLUP);
-	//#define CHG_I2C_MODULE 2 // AKA I2C3
-
-	//#define DFP_SCL_PIN	PB8
-	//gpio_pin_config(DFP_SCL_PIN, GPIO_MODE_ALT_FUNC, 4);	// I2C1_SCL
-	//#define DFP_SDA_PIN PB9
-	//gpio_pin_config(DFP_SDA_PIN, GPIO_MODE_ALT_FUNC | GPIO_MODEF_OPEN_DRAIN | GPIO_MODEF_PULL_UP, 4);	// I2C1_SDA
-	//hal_gpio_pin_config(DFP_INT_PIN, GPIOF_INPUT | GPIOF_PULLUP);
-	//#define DFP_I2C_MODULE 0 // AKA I2C1
 
 	#ifdef LED_RED_PIN
 	hal_gpio_pin_config(LED_RED_PIN, GPIOF_OUTPUT);
@@ -64,12 +53,6 @@ void __board_init()
 	board_led(0);
 //	board_output(BOARD_OUTF_HUB_RESET, 0);
 
-#ifdef CHG_I2C_MODULE
-	hal_i2c_initialize(CHG_I2C_MODULE, 500000UL);
-#endif
-#ifdef DFP_I2C_MODULE
-	hal_i2c_initialize(DFP_I2C_MODULE, 1000000UL);
-#endif
 }
 
 void board_led(board_led_t value)
