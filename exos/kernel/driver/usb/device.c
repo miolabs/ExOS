@@ -8,6 +8,9 @@
 #include <string.h>
 #include <stdio.h>
 
+#ifdef USB_DEVICE_DEBUG
+#define _verbose(level, ...) verbose(level, "usb_device", __VA_ARGS__)
+
 #ifndef USB_THREAD_STACK
 #define USB_THREAD_STACK 1536
 #endif
@@ -58,6 +61,7 @@ bool usb_device_start()
 
 	if (!_init_done)
 	{
+		_verbose(VERBOSE_COMMENT, "initializing...");
 		usb_device_config_initialize();
 		_init_done = true;
 	}
@@ -84,9 +88,6 @@ void usb_device_stop()
 		_started = false;
 	}
 }
-
-#ifdef USB_DEVICE_DEBUG
-#define _verbose(level, ...) verbose(level, "usb_device", __VA_ARGS__)
 
 static void _debug(const char *prefix, const void *data, unsigned length)
 {
@@ -146,7 +147,7 @@ static void *_service(void *arg)
 
 		hal_usbd_prepare_setup_ep(&_setup_io);
 		hal_usbd_connect(true);
-		_verbose(VERBOSE_COMMENT, "connect! -----");
+		_verbose(VERBOSE_COMMENT, "connected! -----");
 
 		while(1)
 		{
@@ -155,6 +156,8 @@ static void *_service(void *arg)
 			if (_error_flag || exit_flag)
 				break;
 		}
+
+		exos_dispatcher_remove(&_context, &setup_dispatcher);
 
     	if (_configuration != nullptr)
 		{
