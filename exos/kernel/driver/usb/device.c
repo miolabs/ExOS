@@ -10,6 +10,9 @@
 
 #ifdef USB_DEVICE_DEBUG
 #define _verbose(level, ...) verbose(level, "usb_device", __VA_ARGS__)
+#else
+#define _verbose(...) { /* nothing */ }
+#endif
 
 #ifndef USB_THREAD_STACK
 #define USB_THREAD_STACK 1536
@@ -89,6 +92,7 @@ void usb_device_stop()
 	}
 }
 
+#ifdef USB_DEVICE_DEBUG
 static void _debug(const char *prefix, const void *data, unsigned length)
 {
 	static char buf[256];
@@ -103,10 +107,8 @@ static void _debug(const char *prefix, const void *data, unsigned length)
 	}
 	else verbose(VERBOSE_DEBUG, "usb_device", length != 0 ? "%s (%d)" : "%s", prefix, length);
 }
-
 #else
 #define _debug(prefix, data, length)  { /* nothing */ }
-#define _verbose(level, ...)  { /* nothing */ }
 #endif
 
 static void *_service(void *arg)
@@ -181,6 +183,8 @@ static void *_service(void *arg)
 static void _exit_handler(dispatcher_context_t *context, dispatcher_t *dispatcher)
 {
 	bool *pflag = (bool *)dispatcher->CallbackState;
+	_verbose(VERBOSE_DEBUG, "exit handler done...");
+
 	ASSERT(pflag != NULL, KERNEL_ERROR_NULL_POINTER);
 	*pflag = true;
 }
@@ -202,8 +206,9 @@ static void _setup_handler(dispatcher_context_t *context, dispatcher_t *dispatch
 				_control_out.Data = _control_data;
 				_control_out.Length = _setup.Length;
 				hal_usbd_prepare_out_ep(0, &_control_out);
+#if USB_DEVICE_DEBUG > 1
 				_verbose(VERBOSE_DEBUG, "-> data_out");
-
+#endif
 				exos_event_wait(_control_out.Event, EXOS_TIMEOUT_NEVER);
 				if (_control_out.Status != USB_IOSTA_DONE)
 				{
@@ -228,8 +233,9 @@ static void _setup_handler(dispatcher_context_t *context, dispatcher_t *dispatch
 					_control_in.Data = data;
 					_control_in.Length = length;
 					hal_usbd_prepare_in_ep(0, &_control_in);
-					//_debug("-> data_in", data, length);
-
+#if USB_DEVICE_DEBUG > 1
+					_verbose(VERBOSE_DEBUG, "-> data_in (%d)", length);
+#endif
 					exos_event_wait(_control_in.Event, EXOS_TIMEOUT_NEVER);
 					if (_control_in.Status != USB_IOSTA_DONE)
 					{
