@@ -85,30 +85,33 @@ static bool _write(cp30_reg_t reg, unsigned char *buffer, unsigned char length)
 
 bool apple_cp30_read_device_id(unsigned long *pdevice_id)
 {
-	int done;
+	apple_cp30_i2c_lock(true);
     unsigned char buffer[4];
-	done = _read(CP30_REG_DEVICE_ID, buffer, 4);
+	bool done = _read(CP30_REG_DEVICE_ID, buffer, 4);
 	if (done)
 	{
 		*pdevice_id = (buffer[0] << 24) | (buffer[1] << 16) | (buffer[2] << 8) | buffer[3];
 	}
+	apple_cp30_i2c_lock(false);
 	return done;
 }
 
 bool apple_cp30_read_acc_cert_length(unsigned short *plength)
 {
+	apple_cp30_i2c_lock(true);
     unsigned char buffer[2];
 	bool done = _read(CP30_REG_ACCESORY_CERTIFICATE_DATA_LENGTH, buffer, 2);
 	if (done)
 	{
 		*plength = (buffer[0] << 8) | buffer[1];
-		return true;
 	}
-	return false;
+	apple_cp30_i2c_lock(false);
+	return done;
 }
 
 bool apple_cp30_read_acc_cert(unsigned char *buffer, unsigned short length)
 {
+	apple_cp30_i2c_lock(true);
 	unsigned reg = CP30_REG_ACCESORY_CERTIFICATE_DATA1;
 	unsigned short done = 0;
 	while(done < length)
@@ -122,6 +125,7 @@ bool apple_cp30_read_acc_cert(unsigned char *buffer, unsigned short length)
 		}
 		else break;
 	}
+	apple_cp30_i2c_lock(false);
 	return done == length;
 }
 
@@ -133,12 +137,13 @@ bool apple_cp30_begin_challenge(unsigned char *challenge, unsigned short length,
 		return false;
 	}
 
+	apple_cp30_i2c_lock(true);
+	bool done = false;
 	unsigned char buffer[2];
 	if (_write(CP30_REG_CHALLENGE_DATA, challenge, length)
 		&& _read(CP30_REG_CHALLENGE_DATA_LENGTH, buffer, sizeof(buffer))
 		&& buffer[0] == 0 && buffer[1] == 32)
 	{
-		bool done = false;
 		unsigned char acas = CP30_ACAS_START;
 		_write(CP30_REG_AUTH_CONTROL_AND_STATUS, &acas, 1);
 		exos_thread_sleep(1);
@@ -172,17 +177,20 @@ bool apple_cp30_begin_challenge(unsigned char *challenge, unsigned short length,
 			if (_read(CP30_REG_CHALLENGE_RESP_DATA_LENGTH, buffer, sizeof(buffer)))
 			{
 				*presp_len = (buffer[0] << 8) | buffer[1];
-				return true;
 			}
+			else done = false;
 		}
 	}
 	
-	return false;
+	apple_cp30_i2c_lock(false);
+	return done;
 }
 
 bool apple_cp30_read_challenge_resp(unsigned char *data, unsigned short length)
 {
+	apple_cp30_i2c_lock(true);
 	bool done = _read(CP30_REG_CHALLENGE_RESP_DATA, data, length);
+	apple_cp30_i2c_lock(false);
 	return done;
 }
 

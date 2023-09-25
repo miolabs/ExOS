@@ -10,6 +10,7 @@ typedef struct
 	bool (*Clear)(const eeprom_context_t *context);
 	bool (*Read)(const eeprom_context_t *context, unsigned char *data, unsigned addr, unsigned length);
 	bool (*Write)(const eeprom_context_t *context, unsigned char *data, unsigned addr, unsigned length);
+	void (*Lock)(const eeprom_context_t *context, bool lock);
 } eeprom_driver_t;
 
 typedef struct
@@ -43,6 +44,7 @@ bool eeprom_write(const eeprom_context_t *context, void *data, unsigned addr, un
 void eeprom_context_create(eeprom_context_t *context, const eeprom_geometry_t *geo, const eeprom_driver_t *driver, void *driver_context);
 
 void eeprom_i2c_context_create(eeprom_context_t *context, const eeprom_geometry_t *geo);
+void eeprom_i2c_lock(const eeprom_context_t *context, bool lock);
 
 #endif // MISC_EEPROM_H
 

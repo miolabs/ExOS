@@ -10,17 +10,24 @@ bool eeprom_read(const eeprom_context_t *context, void *data, unsigned addr, uns
 	ASSERT(driver != NULL, KERNEL_ERROR_NULL_POINTER);
 	unsigned pagesize = context->Geometry.PageSize != 0 ? context->Geometry.PageSize : 256;
 
+	if (driver->Lock != NULL)
+		driver->Lock(context, true);
+
 	unsigned done = 0;
 	while(done < length)
 	{
 		unsigned max_length = pagesize - (addr & (pagesize - 1));
 		unsigned partial = (length - done) < max_length ? (length - done) : max_length;
 		if (!driver->Read(context, data + done, addr, partial))
-			return false;
+			break;
 		addr += partial;
 		done += partial;
 	}
-	return true;
+
+	if (driver->Lock != NULL)
+		driver->Lock(context, false);
+
+	return done == length;
 } 
 
 bool eeprom_write(const eeprom_context_t *context, void *data, unsigned addr, unsigned length)
@@ -30,18 +37,25 @@ bool eeprom_write(const eeprom_context_t *context, void *data, unsigned addr, un
 	ASSERT(driver != NULL, KERNEL_ERROR_NULL_POINTER);
 	unsigned pagesize = context->Geometry.PageSize != 0 ? context->Geometry.PageSize : 256;
 
+	if (driver->Lock != NULL)
+		driver->Lock(context, true);
+
 	unsigned done = 0;
 	while(done < length)
 	{
 		unsigned max_length = pagesize - (addr & (pagesize - 1));
 		unsigned partial = (length - done) < max_length ? (length - done) : max_length;
 		if (!driver->Write(context, data + done, addr, partial))
-			return false;
+			break;
 		addr += partial;
 		done += partial;
 		exos_thread_sleep(5);
 	}
-	return true;
+
+	if (driver->Lock != NULL)
+		driver->Lock(context, false);
+
+	return done == length;
 }
 
 bool eeprom_clear_all(const eeprom_context_t *context)
@@ -50,13 +64,23 @@ bool eeprom_clear_all(const eeprom_context_t *context)
 	const eeprom_driver_t *driver = context->Driver;
 	ASSERT(driver != NULL, KERNEL_ERROR_NULL_POINTER);
 
-	if (driver->Clear == NULL)
-		return false;
-	if (!driver->Clear(context))
-		return false;
-	
-	exos_thread_sleep(5);
-	return true;
+	bool done = false;
+	if (driver->Clear != NULL)
+	{
+		if (driver->Lock != NULL)
+			driver->Lock(context, true);
+
+		if (driver->Clear(context))
+		{
+			done = true;
+			
+			exos_thread_sleep(5);
+		}
+
+		if (driver->Lock != NULL)
+			driver->Lock(context, false);
+	}
+	return done;
 }
 
 #ifdef EEPROM_I2C_MODULE
@@ -97,8 +121,14 @@ static bool _write(const eeprom_context_t *context, unsigned char *data, unsigne
 	return done;
 }
 
-static const eeprom_driver_t _driver_i2c_small = { .Read = _read_small, .Write = _write_small };
-static const eeprom_driver_t _driver_i2c = { .Read = _read, .Write = _write };
+__weak
+void eeprom_i2c_lock(const eeprom_context_t *context, bool lock)
+{
+	// nothing
+}
+
+static const eeprom_driver_t _driver_i2c_small = { .Read = _read_small, .Write = _write_small, .Lock = eeprom_i2c_lock };
+static const eeprom_driver_t _driver_i2c = { .Read = _read, .Write = _write, .Lock = eeprom_i2c_lock  };
 
 void eeprom_i2c_context_create(eeprom_context_t *context, const eeprom_geometry_t *geo)
 {
