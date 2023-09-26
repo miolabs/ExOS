@@ -203,7 +203,11 @@ static void _rx_dispatch(dispatcher_context_t *context, dispatcher_t *dispatcher
 #ifdef USB_DEVICE_DEBUG
 		_verbose(VERBOSE_DEBUG, "rx (%d bytes)", iap2dev->RxIo.Done);
 #endif
-		iap2_input(&iap2dev->Transport, iap2dev->RxData, iap2dev->RxIo.Done);
+		if (iap2dev->RxIo.Done != 0)
+		{
+			// NOTE: not really needed, but we skip (buggy) 0-length events to save some cpu
+			iap2_input(&iap2dev->Transport, iap2dev->RxData, iap2dev->RxIo.Done);
+		}
 
 		iap2dev->RxIo.Data = iap2dev->RxData;
 		iap2dev->RxIo.Length = sizeof(iap2dev->RxData);

@@ -235,6 +235,8 @@ void hal_usbd_prepare_setup_ep(usb_io_buffer_t *iob)
 static void _prepare_out_ep(unsigned ep_num, usb_io_buffer_t *iob)
 {
 	unsigned max_packet_length = _ep_max_length[ep_num];
+	ASSERT(max_packet_length != 0, KERNEL_ERROR_KERNEL_PANIC);
+
 	unsigned rxlen = iob->Length - iob->Done;
 	unsigned packet_count = rxlen / max_packet_length;
 	unsigned sp = rxlen - (packet_count * max_packet_length);
@@ -254,6 +256,7 @@ static void _prepare_out_ep(unsigned ep_num, usb_io_buffer_t *iob)
 	{
 		siz = (packet_count << USB_OTG_DOEPTSIZ_PKTCNT_Pos)
 			| (rxlen << USB_OTG_DOEPTSIZ_XFRSIZ_Pos);
+		ASSERT(((siz & USB_OTG_DOEPTSIZ_PKTCNT) != 0) || (rxlen == 0), KERNEL_ERROR_KERNEL_PANIC);
 	}
 
 	otg_device->DOEP[ep_num].TSIZ = siz;
@@ -576,6 +579,9 @@ static void _handle_rxf()
 				iob->Status = USB_IOSTA_DONE;
 				exos_event_set(iob->Event);
 			}
+#else
+			// we should never get here in dma mode
+			kernel_panic(KERNEL_ERROR_KERNEL_PANIC);
 #endif
 			break;
 		case 0b0010:		// OUT data_packet
@@ -635,11 +641,19 @@ static void _ep_out_handler(unsigned ep)
 		iob = _ep_out_io[ep];
 		if (iob != nullptr)
 		{
-			ASSERT(iob->Status == USB_IOSTA_OUT_WAIT, KERNEL_ERROR_KERNEL_PANIC);
+//			ASSERT(iob->Status == USB_IOSTA_OUT_WAIT, KERNEL_ERROR_KERNEL_PANIC);
+			if (iob->Status == USB_IOSTA_OUT_WAIT)
+			{
 			unsigned xfrsiz = otg_device->DOEP[ep].TSIZ & USB_OTG_DOEPTSIZ_XFRSIZ;
 			iob->Done = iob->Length - xfrsiz;
 			iob->Status = USB_IOSTA_DONE;
 			exos_event_set(iob->Event);
+			}
+			else
+			{
+				static unsigned debug_oep = 0;
+				debug_oep++;
+			}
 		}
 		else
 		{
