@@ -105,7 +105,9 @@ static void _destroy_device(usb_host_controller_t *hc, usb_host_device_t *device
 	if (device->State != USB_HOST_DEVICE_DETACHED)
 	{
 		device->State = USB_HOST_DEVICE_DETACHED;
-//		_stop_pipe(hc, &device->ControlPipe);	// FIXME
+
+		// NOTE: control pipe is shared, so it is stopped by root hub only for root device
+		//_stop_pipe(hc, &device->ControlPipe);
 	}
 
 	exos_mutex_unlock(&_mutex);

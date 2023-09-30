@@ -72,6 +72,7 @@ void usb_otg_hs_initialize()
 #endif
 
 	otg_global->GINTMSK = USB_OTG_GINTMSK_MMISM;	// Mode MISmatch Mask
+	otg_global->GINTSTS = 0xFFFFFFFFUL;
 
 	otg_global->GAHBCFG |= USB_OTG_GAHBCFG_GINT;
 	NVIC_EnableIRQ(OTG_HS_IRQn);

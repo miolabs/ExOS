@@ -70,8 +70,10 @@ void hal_usbd_initialize()
 			case 1:	otg_global->DIEPTXF1 = txf_reg;	break;
 			case 2:	otg_global->DIEPTXF2 = txf_reg;	break;
 			case 3:	otg_global->DIEPTXF3 = txf_reg;	break;
-#if USB_DEV_EP_COUNT >= 6
+#if USB_DEV_EP_COUNT >= 5
 			case 4:	otg_global->DIEPTXF4 = txf_reg;	break;
+#endif
+#if USB_DEV_EP_COUNT >= 6
 			case 5:	otg_global->DIEPTXF5 = txf_reg;	break;
 #endif
 #if USB_DEV_EP_COUNT >= 8
@@ -223,6 +225,8 @@ void hal_usbd_prepare_setup_ep(usb_io_buffer_t *iob)
 static void _prepare_out_ep(unsigned ep_num, usb_io_buffer_t *iob)
 {
 	unsigned max_packet_length = _ep_max_length[ep_num];
+	ASSERT(max_packet_length != 0, KERNEL_ERROR_KERNEL_PANIC);
+
 	unsigned rxlen = iob->Length - iob->Done;
 	unsigned packet_count = rxlen / max_packet_length;
 	unsigned sp = rxlen - (packet_count * max_packet_length);
@@ -242,6 +246,7 @@ static void _prepare_out_ep(unsigned ep_num, usb_io_buffer_t *iob)
 	{
 		siz = (packet_count << USB_OTG_DOEPTSIZ_PKTCNT_Pos)
 			| (rxlen << USB_OTG_DOEPTSIZ_XFRSIZ_Pos);
+		ASSERT(((siz & USB_OTG_DOEPTSIZ_PKTCNT) != 0) || (rxlen == 0), KERNEL_ERROR_KERNEL_PANIC);
 	}
 
 	otg_device->DOEP[ep_num].TSIZ = siz;
@@ -797,7 +802,6 @@ void __usb_otg_device_irq_handler()
 //			_set_connect_status(USB_DEVSTA_DETACHED);
 		}
 		otg_device->DCFG = otg_device->DCFG & ~(USB_OTG_DCFG_PFIVL_Msk | USB_OTG_DCFG_DAD_Msk | USB_OTG_DCFG_NZLSOHSK_Msk)
-//			| USB_OTG_DCFG_NZLSOHSK	// auto-stall out status stage
 			| (3 << USB_OTG_DCFG_DSPD_Pos); // full speed
 
 		_rst_count++;

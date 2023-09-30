@@ -67,8 +67,10 @@ void hal_usbd_initialize()
 			case 1:	otg_global->DIEPTXF1 = txf_reg;	break;
 			case 2:	otg_global->DIEPTXF2 = txf_reg;	break;
 			case 3:	otg_global->DIEPTXF3 = txf_reg;	break;
-#if USB_DEV_EP_COUNT >= 6
+#if USB_DEV_EP_COUNT >= 5
 			case 4:	otg_global->DIEPTXF4 = txf_reg;	break;
+#endif
+#if USB_DEV_EP_COUNT >= 6
 			case 5:	otg_global->DIEPTXF5 = txf_reg;	break;
 #endif
 #if USB_DEV_EP_COUNT >= 8
@@ -229,6 +231,8 @@ void hal_usbd_prepare_setup_ep(usb_io_buffer_t *iob)
 static void _prepare_out_ep(unsigned ep_num, usb_io_buffer_t *iob)
 {
 	unsigned max_packet_length = _ep_max_length[ep_num];
+	ASSERT(max_packet_length != 0, KERNEL_ERROR_KERNEL_PANIC);
+
 	unsigned rxlen = iob->Length - iob->Done;
 	unsigned packet_count = rxlen / max_packet_length;
 	unsigned sp = rxlen - (packet_count * max_packet_length);
@@ -248,6 +252,7 @@ static void _prepare_out_ep(unsigned ep_num, usb_io_buffer_t *iob)
 	{
 		siz = (packet_count << USB_OTG_DOEPTSIZ_PKTCNT_Pos)
 			| (rxlen << USB_OTG_DOEPTSIZ_XFRSIZ_Pos);
+		ASSERT(((siz & USB_OTG_DOEPTSIZ_PKTCNT) != 0) || (rxlen == 0), KERNEL_ERROR_KERNEL_PANIC);
 	}
 
 	otg_device->DOEP[ep_num].TSIZ = siz;
@@ -528,7 +533,6 @@ static void _read_fifo(unsigned ep_num, unsigned char *ptr, unsigned bcnt)
 	}
 }
 
-#ifndef USB_HS_ENABLE_DMA
 static void _handle_rxf()
 {
 	static unsigned _fail = 0;
@@ -562,6 +566,8 @@ static void _handle_rxf()
 			iob = _ep_setup_io;
 			break;
 		case 0b0011:		// DATA-OUT complete
+			// NOTE: rx complete is handled in _ep_out_handler() when dma is enabled
+#ifndef USB_HS_ENABLE_DMA
 			iob = _ep_out_io[ep_num];
 			if (iob != nullptr)
 			{
@@ -569,6 +575,10 @@ static void _handle_rxf()
 				iob->Status = USB_IOSTA_DONE;
 				exos_event_set(iob->Event);
 			}
+#else
+			// we should never get here in dma mode
+			kernel_panic(KERNEL_ERROR_KERNEL_PANIC);
+#endif
 			break;
 		case 0b0010:		// OUT data_packet
 			iob = _ep_out_io[ep_num];
@@ -599,6 +609,9 @@ static void _handle_rxf()
 	{
 		if (bcnt != 0)
 		{
+#ifdef USB_HS_ENABLE_DMA
+			ASSERT(ep_num == 0, KERNEL_ERROR_KERNEL_PANIC);
+#endif
 			_read_fifo(ep_num, (unsigned char *)iob->Data + iob->Done, bcnt);
 			iob->Done += bcnt;
 		}
@@ -608,7 +621,6 @@ static void _handle_rxf()
 		ASSERT(bcnt == 0, KERNEL_ERROR_NULL_POINTER);
 	}
 }
-#endif
 
 static void _ep_out_handler(unsigned ep)
 {
@@ -625,11 +637,13 @@ static void _ep_out_handler(unsigned ep)
 		iob = _ep_out_io[ep];
 		if (iob != nullptr)
 		{
-			ASSERT(iob->Status == USB_IOSTA_OUT_WAIT, KERNEL_ERROR_KERNEL_PANIC);
+			if (iob->Status == USB_IOSTA_OUT_WAIT)
+			{
 			unsigned xfrsiz = otg_device->DOEP[ep].TSIZ & USB_OTG_DOEPTSIZ_XFRSIZ;
 			iob->Done = iob->Length - xfrsiz;
 			iob->Status = USB_IOSTA_DONE;
 			exos_event_set(iob->Event);
+			}
 		}
 		else
 		{
@@ -858,7 +872,6 @@ void __usb_otg_hs_device_irq_handler()
 //			_set_connect_status(USB_DEVSTA_DETACHED);
 		}
 		otg_device->DCFG = otg_device->DCFG & ~(USB_OTG_DCFG_PFIVL_Msk | USB_OTG_DCFG_DAD_Msk | USB_OTG_DCFG_NZLSOHSK_Msk)
-//			| USB_OTG_DCFG_NZLSOHSK	// auto-stall out status stage
 #ifdef STM32_USB_HS_ULPI
 			| (1 << USB_OTG_DCFG_DSPD_Pos); // hs phy in full speed
 #else

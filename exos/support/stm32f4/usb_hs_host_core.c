@@ -92,6 +92,13 @@ static void _host_reset(dispatcher_context_t *context)
 
 	pool_create(&_ep_pool, (node_t *)_ep_array, sizeof(stm32_usbh_ep_t), NUM_ENDPOINTS);
 	_root_control_ep = nullptr;
+#ifdef DEBUG
+	for(unsigned i = 0; i < NUM_CHANNELS; i++)
+	{
+		// ensure that we are not re-initializing in a wrong state
+		ASSERT(_ch2ep[i] == nullptr, KERNEL_ERROR_KERNEL_PANIC);
+	}
+#endif
 
 	exos_dispatcher_create(&_port_dispatcher, &_hc->RootHubEvent, _port_callback, nullptr);
 	exos_dispatcher_add(context, &_port_dispatcher, EXOS_TIMEOUT_NEVER);
@@ -240,6 +247,9 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 			verbose(VERBOSE_COMMENT, "usb-hs-roothub", "child %04x:%04x removed", child->Vendor, child->Product);
 			
 			exos_thread_sleep(10);	// NOTE: avoid glitchy re-connect
+
+			// NOTE: stop -shared- control pipe 
+			usb_hs_host_stop_pipe(&child->ControlPipe);
 
 			role_state = usb_otg_hs_role_state();
 			_port_state = (role_state == USB_HOST_ROLE_HOST_CLOSING) ? HPORT_DISABLED : HPORT_POWERED;

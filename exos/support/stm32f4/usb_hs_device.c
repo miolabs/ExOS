@@ -641,7 +641,6 @@ static void _ep_out_handler(unsigned ep)
 		iob = _ep_out_io[ep];
 		if (iob != nullptr)
 		{
-//			ASSERT(iob->Status == USB_IOSTA_OUT_WAIT, KERNEL_ERROR_KERNEL_PANIC);
 			if (iob->Status == USB_IOSTA_OUT_WAIT)
 			{
 			unsigned xfrsiz = otg_device->DOEP[ep].TSIZ & USB_OTG_DOEPTSIZ_XFRSIZ;

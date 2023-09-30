@@ -489,7 +489,7 @@ static bool _setup_std_req(usb_request_t *req, void **pdata, unsigned *plength)
 		ASSERT(driver != nullptr, KERNEL_ERROR_NULL_POINTER);
 		if (req->RequestCode == USB_REQUEST_SET_INTERFACE)
 		{
-			_verbose(VERBOSE_DEBUG, "set_interface %d (alt=$%x)", iface->Index, req->Value);
+			_verbose(VERBOSE_DEBUG, "set_interface %d (alt=%d)", iface->Index, req->Value);
 			if (driver->SetInterface != nullptr)
 				driver->SetInterface(iface, req->Value);
 			return true;
