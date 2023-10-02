@@ -110,6 +110,13 @@ static void _host_reset(dispatcher_context_t *context)
 
 	pool_create(&_ep_pool, (node_t *)_ep_array, sizeof(stm32_usbh_ep_t), NUM_ENDPOINTS);
 	_root_control_ep = nullptr;
+#ifdef DEBUG
+	for(unsigned i = 0; i < NUM_CHANNELS; i++)
+	{
+		// ensure that we are not re-initializing in a wrong state
+		ASSERT(_ch2ep[i] == nullptr, KERNEL_ERROR_KERNEL_PANIC);
+	}
+#endif
 
 	exos_dispatcher_create(&_port_dispatcher, &_hc->RootHubEvent, _port_callback, nullptr);
 	exos_dispatcher_add(context, &_port_dispatcher, EXOS_TIMEOUT_NEVER);
@@ -260,6 +267,9 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 			
 			exos_thread_sleep(10);	// NOTE: avoid glitchy re-connect
 
+			// NOTE: stop -shared- control pipe 
+			usb_fs_host_stop_pipe(&child->ControlPipe);
+
 			role_state = usb_otg_fs_role_state();
 			_port_state = (role_state == USB_HOST_ROLE_HOST_CLOSING) ? HPORT_DISABLED : HPORT_POWERED;
 			break;
@@ -340,6 +350,29 @@ static void _update_channel(stm32_usbh_channel_t *ch, uint8_t addr, usb_host_dev
 		| ((addr & 0x7f) << USB_OTG_HCCHAR_DAD_Pos)
 		| ((speed == USB_HOST_DEVICE_LOW_SPEED && _port_speed == HPORT_FULL_SPEED) ? USB_OTG_HCCHAR_LSDEV : 0)
 		| (max_packet_size << USB_OTG_HCCHAR_MPSIZ_Pos);
+}
+
+static void _halt_channel(stm32_usbh_channel_t *ch)
+{
+	unsigned sts;
+	unsigned cchar = otg_host->HC[ch->Index].HCCHAR & 
+		~(USB_OTG_HCCHAR_CHENA_Msk | USB_OTG_HCCHAR_CHDIS_Msk);
+
+	switch(ch->EndpointType)
+	{
+		case USB_TT_CONTROL:
+		case USB_TT_BULK:
+			sts = (otg_global->HNPTXSTS & USB_OTG_GNPTXSTS_NPTQXSAV_Msk) >> USB_OTG_GNPTXSTS_NPTQXSAV_Pos;
+			break;
+		default:
+			kernel_panic(KERNEL_ERROR_NOT_IMPLEMENTED);
+	}
+	
+	if (sts == 0)
+	{
+		_flush_tx_fifo(ch->Index);
+	}
+	otg_host->HC[ch->Index].HCCHAR = cchar | USB_OTG_HCCHAR_CHENA; // halts channel
 }
 
 static bool _alloc_channel(unsigned *pindex, usb_host_pipe_t *pipe, usb_direction_t dir, unsigned char period)
@@ -900,8 +933,8 @@ void __usb_otg_host_irq_handler()
 		// TODO: somehow we should start a sw reset (they say)
 		// otg_global->GRSTCTL |= USB_OTG_GRSTCTL_CSRST; ??? 
 		
-//		_port_state = HPORT_ERROR;
-//		exos_event_set(&_hc->RootHubEvent);
+		_port_state = HPORT_ERROR;
+		exos_event_set(&_hc->RootHubEvent);
 
 		otg_global->GINTSTS = USB_OTG_GINTSTS_DISCINT;
 	}

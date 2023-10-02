@@ -61,6 +61,21 @@ void usb_hs_host_initialize(usb_host_controller_t *hc, dispatcher_context_t *con
 	_host_reset(context);
 }
 
+static void _flush_tx_fifo(unsigned num)
+{
+	otg_global->GRSTCTL = (num << USB_OTG_GRSTCTL_TXFNUM_Pos)
+		| USB_OTG_GRSTCTL_TXFFLSH; 
+	while(otg_global->GRSTCTL & USB_OTG_GRSTCTL_TXFFLSH);
+	for(unsigned volatile i = 0; i < 12; i++);	// wait 3 phy clks
+}
+
+static void _flush_rx_fifo()
+{
+	otg_global->GRSTCTL = USB_OTG_GRSTCTL_RXFFLSH; 
+	while(otg_global->GRSTCTL & USB_OTG_GRSTCTL_RXFFLSH);
+	for(unsigned volatile i = 0; i < 12; i++);	// wait 3 phy clks
+}
+
 static void _host_reset(dispatcher_context_t *context)
 {
 	usb_otg_hs_initialize();
@@ -72,8 +87,11 @@ static void _host_reset(dispatcher_context_t *context)
 	otg_power->PCGCCTL = 0;
 	otg_host->HCFG &= ~USB_OTG_HCFG_FSLSS_Msk;
 
-	otg_host->HCFG &= ~USB_OTG_HCFG_FSLSPCS_Msk;
-	otg_host->HCFG |= 1 << USB_OTG_HCFG_FSLSPCS_Pos;	// 48 Mhz
+	_flush_tx_fifo(0x10);
+	_flush_rx_fifo();
+
+	//otg_host->HCFG &= ~USB_OTG_HCFG_FSLSPCS_Msk;
+	//otg_host->HCFG |= 1 << USB_OTG_HCFG_FSLSPCS_Pos;	// 48 Mhz
 
 	otg_global->GRXFSIZ = RX_WORDS;
 	otg_global->HNPTXFSIZ = (NPTX_WORDS << 16) | (RX_WORDS);
@@ -124,6 +142,7 @@ bool usb_hs_request_role_switch(usb_host_controller_t *hc)
 	}
 	return false;
 }
+
 
 static void _otg_callback(dispatcher_context_t *context, dispatcher_t *dispatcher)
 {
@@ -208,8 +227,8 @@ static void _port_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 						kernel_panic(KERNEL_ERROR_KERNEL_PANIC);
 				}
 				
-				usb_hs_host_flush_tx_fifo(0x10); // TXNUM_FLUSH_ALL
-				usb_hs_host_flush_rx_fifo();
+				_flush_tx_fifo(0x10); // TXNUM_FLUSH_ALL
+				_flush_rx_fifo();
 
 				_port_state = HPORT_READY;
 				exos_thread_sleep(200);	// FIXME
@@ -279,21 +298,6 @@ void usb_hs_host_port_reset()
 	exos_thread_sleep(100);
 	otg_host->HPRT = hport;
 	exos_thread_sleep(20);
-}
-
-void usb_hs_host_flush_tx_fifo(unsigned num)
-{
-	otg_global->GRSTCTL = (num << USB_OTG_GRSTCTL_TXFNUM_Pos)
-		| USB_OTG_GRSTCTL_TXFFLSH; 
-	while(otg_global->GRSTCTL & USB_OTG_GRSTCTL_TXFFLSH);
-	for(unsigned volatile i = 0; i < 12; i++);	// wait 3 phy clks
-}
-
-void usb_hs_host_flush_rx_fifo()
-{
-	otg_global->GRSTCTL = USB_OTG_GRSTCTL_RXFFLSH; 
-	while(otg_global->GRSTCTL & USB_OTG_GRSTCTL_RXFFLSH);
-	for(unsigned volatile i = 0; i < 12; i++);	// wait 3 phy clks
 }
 
 static void _open_channel(stm32_usbh_channel_t *ch, uint8_t addr, usb_host_device_speed_t speed, unsigned max_packet_size)
@@ -366,7 +370,7 @@ static void _halt_channel(stm32_usbh_channel_t *ch)
 	
 	if (sts == 0)
 	{
-		usb_hs_host_flush_tx_fifo(ch->Index);
+		_flush_tx_fifo(ch->Index);
 	}
 	otg_host->HC[ch->Index].HCCHAR = cchar | USB_OTG_HCCHAR_CHENA; // halts channel
 }
@@ -843,6 +847,8 @@ void __usb_hs_hcint_irq_handler()
 
 									// NOTE: GD32x workaround: need to re-write HCSIZx register to re-enable non-periodic
 									otg_host->HC[ch_num].HCTSIZ = otg_host->HC[ch_num].HCTSIZ;
+									
+									_flush_tx_fifo(0);
 
 									_enable_channel(ch_num);
 								}

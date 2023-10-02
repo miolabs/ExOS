@@ -247,15 +247,22 @@ static bool _ctrl_setup_write(usb_host_device_t *device, void *setup_data, unsig
 		{
 			// FIXME: some devices require to issue setup and data/status phase in different frames
 			if (device->Speed == USB_HOST_DEVICE_LOW_SPEED)
-				exos_thread_sleep(2);
+#if 1
+				exos_event_wait(&device->Controller->SOF, EXOS_TIMEOUT_NEVER);
+#else
+				thread_sleep(2);
+#endif
 
 			done = _do_control_xfer(&urb, USB_HOST_TO_DEVICE, false, out_data, out_length);
+			if (!done) _verbose(VERBOSE_DEBUG, "ctrl data failed (%d)!", (unsigned)urb.UserState);
 		}
 		if (done) 
 		{
             done = _do_control_xfer(&urb, USB_DEVICE_TO_HOST, false, nullptr, 0);
-        }
+			if (!done) _verbose(VERBOSE_DEBUG, "ctrl ack failed (%d)!", (unsigned)urb.UserState);
+		}
     }
+	else _verbose(VERBOSE_DEBUG, "ctrl setup failed (%d)!", (unsigned)urb.UserState);
 
 	exos_mutex_unlock(&_mutex);
 	return done;
