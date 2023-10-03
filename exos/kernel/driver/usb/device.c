@@ -178,6 +178,7 @@ static void *_service(void *arg)
 		}
 	}
 	_verbose(VERBOSE_COMMENT, "exit -----");
+	return NULL;
 }
 
 static void _exit_handler(dispatcher_context_t *context, dispatcher_t *dispatcher)

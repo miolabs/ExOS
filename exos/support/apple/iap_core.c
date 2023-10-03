@@ -621,6 +621,7 @@ static void *_service(void *arg)
 	}
 	_verbose(VERBOSE_COMMENT, "Service exiting...");
 	_service_exit = 0;
+	return NULL;
 }
 
 

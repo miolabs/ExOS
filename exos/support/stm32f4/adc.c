@@ -75,6 +75,7 @@ bool adc_initialize(unsigned module, unsigned rate, unsigned bits)
 	exos_event_set(&_event[module]);	// NOTE: don't wait if conversion not started yet
 	if (!dma_alloc_stream(ADC_DMA_MODULE, &_dma_si[module], _dma_stream_msk[module]))	// NOTE: dma stream is never released
 			kernel_panic(KERNEL_ERROR_NO_HARDWARE_RESOURCES);
+	return true;
 } 
 
 static inline ADC_TypeDef *_adc(unsigned module)

@@ -33,7 +33,7 @@ static volatile uint32_t * const otg_fifo[NUM_CHANNELS] = {
 #endif
 
 static stm32_usbh_channel_t _ch_table[NUM_CHANNELS];
-static stm32_usbh_ep_t *_ch2ep[NUM_CHANNELS];
+static stm32_usbh_ep_t * volatile _ch2ep[NUM_CHANNELS];
 static stm32_usbh_ep_t _ep_array[NUM_ENDPOINTS];
 static pool_t _ep_pool;
 static stm32_usbh_ep_t *_root_control_ep = nullptr;
@@ -551,8 +551,7 @@ static void _disable_channel(unsigned ch_num, bool wait)
 		otg_host->HC[ch_num].HCCHAR |= USB_OTG_HCCHAR_CHDIS | USB_OTG_HCCHAR_CHENA;	// FIXME
 		if (wait)
 		{
-			stm32_usbh_ep_t *ep;
-			while(ep = _ch2ep[ch_num], ep != nullptr)
+			while(_ch2ep[ch_num] != nullptr)
 			{
 				// TODO: debug timeout?
 			}
@@ -866,6 +865,9 @@ void __usb_otg_hcint_irq_handler()
 							case STM32_EP_STA_STOPPING:
 								_xfer_complete(ch_num, STM32_USBERR_HALTED);
 								_free_channel(ch_num);
+								break;
+							default:
+								//nothing
 								break;
 						}
 					}

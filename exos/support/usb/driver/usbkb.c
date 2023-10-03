@@ -98,6 +98,9 @@ static bool _parse_report_descriptor(usbkb_function_handler_t *handler, hid_repo
 				//_verbose(VERBOSE_DEBUG, "output report id #%d, keyboard page, usages 0x%02x-0x%02x (offset %d)", 
 				//	state->ReportId, usage_min, usage_max, state->InputOffset);
 				break;
+			default:
+				// nothing
+				break;
 		}
 	}
 

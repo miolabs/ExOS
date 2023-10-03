@@ -50,7 +50,7 @@ extern exos_thread_t *__kernel_schedule();
 
 void __thread_init();
 void exos_thread_create(exos_thread_t *thread, int pri, void *stack, unsigned stack_size, exos_thread_func_t entry, void *arg);
-void exos_thread_exit();
+void exos_thread_exit(void *result);
 void *exos_thread_join(exos_thread_t *thread);
 
 void exos_thread_set_pri(int pri);

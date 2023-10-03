@@ -290,6 +290,7 @@ static bool _init2(usb_device_interface_t *iface, const void *instance_data)
 	ASSERT(instance_data != nullptr, KERNEL_ERROR_NULL_POINTER);
 	iface->DriverContext = (void *)instance_data;
 	iface->AlternateSettings = 1;
+	return true;
 }
 
 static unsigned _fill_if_desc2(usb_device_interface_t *iface, usb_interface_descriptor_t *if_desc, unsigned buffer_size)
@@ -368,6 +369,7 @@ static bool _enable_data_if(usb_device_interface_t *iface, bool enable)
 		ncm_dev->Enabled = true;
 		_verbose(VERBOSE_COMMENT, "[%d] data if enabled!", iface->Index);
 	}
+	return true;
 }
 
 static bool _start2(usb_device_interface_t *iface, unsigned char alternate_setting, dispatcher_context_t *context)

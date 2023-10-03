@@ -21,7 +21,7 @@ void __machine_reset() __noreturn;
 void __machine_reboot(void **vbase) __noreturn;
 void __machine_halt() __noreturn;
 void __machine_req_switch();
-void __machine_idle();
+void __machine_idle(void *args);
 void __machine_dsb();
 void __machine_init_thread_stack(void **pstack, unsigned long arg, unsigned long pc, unsigned long lr);
 void __machine_init_thread_local_storage(void **pstack);

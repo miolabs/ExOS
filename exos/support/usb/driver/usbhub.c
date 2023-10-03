@@ -153,7 +153,7 @@ static void _stop(usb_host_function_t *usb_func)
 	ASSERT(func->Request.Status != URB_STATUS_ISSUED, KERNEL_ERROR_KERNEL_PANIC);
 
 	usb_host_device_t *child;
-	while(child = (usb_host_device_t *)LIST_FIRST(&func->Children))
+	while(child = (usb_host_device_t *)LIST_FIRST(&func->Children), child != NULL)
 	{
 		list_remove(&child->Node);
 		_free_device(child);

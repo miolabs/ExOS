@@ -124,7 +124,6 @@
       <folder Name="kernel">
         <folder Name="driver">
           <folder Name="comm">
-            <file file_name="$(ExosDir)/kernel/driver/comm/comm_input.c" />
             <file file_name="$(ExosDir)/kernel/driver/comm/comm_rtt.c" />
             <file file_name="$(ExosDir)/kernel/driver/comm/comm_uart.c" />
           </folder>

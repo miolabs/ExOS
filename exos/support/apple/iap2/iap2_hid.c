@@ -76,6 +76,9 @@ static bool _parse_report_descriptor(iap2_hid_handler_t *iap2, hid_report_parser
 					_verbose(VERBOSE_DEBUG, "report id #%d, %d bytes", r->ReportId, r->Length);
 				}
 				break;
+			default:
+				// nothing
+				break;
 		}
 	}
 
@@ -104,7 +107,7 @@ static bool _start(hid_function_handler_t *handler, hid_report_parser_t *parser)
 	t->LinkParams.CumulativeAckTimeout = 100;
 
 	t->ComponentId = 0;	// FIXME: should be allocated to provide unique transport component ids
-	iap2_start(t);
+	return iap2_start(t);
 }
 
 static void _stop(hid_function_handler_t *handler)

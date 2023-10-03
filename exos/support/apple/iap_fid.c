@@ -114,7 +114,7 @@ static int _fid_callback(IAP_FID_TOKEN *token, IAP_FID_TOKEN_VALUES *values, uns
 			{
 				case 0:
 					buffer[offset++] = IAP_ACCESORY_INFO_NAME;
-					offset += __str_copy(buffer + offset, IAP_ACCESORY_NAME, 255) + 1;
+					offset += __str_copy((char *)buffer + offset, IAP_ACCESORY_NAME, 255) + 1;
 					*values = (IAP_FID_TOKEN_VALUES) { .Token = IAP_FID_TOKEN_ACCESORY_INFO, 
 						.Data = buffer, .DataLength = offset };
 					index++;
@@ -139,21 +139,21 @@ static int _fid_callback(IAP_FID_TOKEN *token, IAP_FID_TOKEN_VALUES *values, uns
 					return 1;
 				case 3:
 					buffer[offset++] = IAP_ACCESORY_INFO_MANUFACTURER;
-					offset += __str_copy(buffer + offset, IAP_ACCESORY_MANUFACTURER, 255) + 1;
+					offset += __str_copy((char *)buffer + offset, IAP_ACCESORY_MANUFACTURER, 255) + 1;
 					*values = (IAP_FID_TOKEN_VALUES) { .Token = IAP_FID_TOKEN_ACCESORY_INFO, 
 						.Data = buffer, .DataLength = offset };
 					index++;
 					return 1;
 				case 4:
 					buffer[offset++] = IAP_ACCESORY_INFO_MODEL;
-					offset += __str_copy(buffer + offset, IAP_ACCESORY_MODEL, 255) + 1;
+					offset += __str_copy((char *)buffer + offset, IAP_ACCESORY_MODEL, 255) + 1;
 					*values = (IAP_FID_TOKEN_VALUES) { .Token = IAP_FID_TOKEN_ACCESORY_INFO, 
 						.Data = buffer, .DataLength = offset };
 					index++;
 					return 1;
 				case 5:
 					buffer[offset++] = IAP_ACCESORY_INFO_SERIAL;
-					offset += __str_copy(buffer + offset, IAP_ACCESORY_SERIAL, 255) + 1;
+					offset += __str_copy((char *)buffer + offset, IAP_ACCESORY_SERIAL, 255) + 1;
 					*values = (IAP_FID_TOKEN_VALUES) { .Token = IAP_FID_TOKEN_ACCESORY_INFO, 
 						.Data = buffer, .DataLength = offset };
 					index++;
@@ -181,12 +181,12 @@ static int _fid_callback(IAP_FID_TOKEN *token, IAP_FID_TOKEN_VALUES *values, uns
 			APPLE_IAP_PROTOCOL_MANAGER *iap = iap_comm_get_protocol(index);
 			if (iap != NULL)
 			{
-				offset += __str_copy(buffer + offset, iap->Name, 255) + 1;
+				offset += __str_copy((char *)buffer + offset, iap->Name, 255) + 1;
 			}
 			else 
 			{
 				verbose(VERBOSE_ERROR, "iap-fid", "protocol enumeration failed!!!");
-				offset += sprintf(buffer + offset, "com.miolabs.proto%d", index) + 1;
+				offset += sprintf((char *)buffer + offset, "com.miolabs.proto%d", index) + 1;
 			}
 			*values = (IAP_FID_TOKEN_VALUES) { .Token = IAP_FID_TOKEN_EA_PROTOCOL, 
 				.Data = buffer, .DataLength = offset };
@@ -198,11 +198,14 @@ static int _fid_callback(IAP_FID_TOKEN *token, IAP_FID_TOKEN_VALUES *values, uns
 			}
 			return 1;
 		case IAP_FID_TOKEN_BUNDLE_SEED_ID_PREF:
-			offset += __str_copy(buffer + offset, IAP_ACCESORY_BUNDLE_SEED, 255) + 1;
+			offset += __str_copy((char *)buffer + offset, IAP_ACCESORY_BUNDLE_SEED, 255) + 1;
 			*values = (IAP_FID_TOKEN_VALUES) { .Token = IAP_FID_TOKEN_BUNDLE_SEED_ID_PREF, 
 				.Data = buffer, .DataLength = offset };
 			*token = IAP_FID_TOKEN_INVALID;
 			return 1;
+		default:
+			//nothing
+			break;
 	}
 	index = 0;
 	return 0;

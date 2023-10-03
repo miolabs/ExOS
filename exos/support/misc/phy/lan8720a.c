@@ -36,7 +36,7 @@ static bool _read_link_state(phy_t *phy)
 	unsigned short bsr = driver->Read(phy->Unit, PHYR_BSR);
 	if (bsr & PHY_BSR_LINK_UP)
 	{
-		unsigned short csr = driver->Read(phy->Unit, PHYR_LAN8720A_SP_CSR);
+		unsigned short csr = driver->Read(phy->Unit, (phy_reg_t)PHYR_LAN8720A_SP_CSR);
 		phy->Link = ((csr & PHY_LAN8720A_S_CSR_FULLDUPLEX) ? ETH_LINK_FULL_DUPLEX : ETH_LINK_HALF_DUPLEX)
 			| ((csr & PHY_LAN8720A_S_CSR_100BASET) ? ETH_LINK_100M : ETH_LINK_10M);
 	}

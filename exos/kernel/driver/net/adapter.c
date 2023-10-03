@@ -190,6 +190,9 @@ bool net_adapter_control(net_adapter_t *adapter, net_adapter_ctrl_t ctrl)
 		case NET_ADAPTER_CTRL_LINK_UPDATE:
 			done = phy_read_link_state(phy);
 			break;
+		default:
+			// nothing
+			break;
 	}
 	return done;
 }

@@ -867,6 +867,9 @@ void __usb_hs_hcint_irq_handler()
 								_xfer_complete(ch_num, STM32_USBERR_HALTED);
 								_free_channel(ch_num);
 								break;
+							default:
+								//nothing
+								break;
 						}
 					}
 					otg_host->HC[ch_num].HCINT = USB_OTG_HCINT_CHH;

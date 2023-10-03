@@ -78,6 +78,9 @@ static bool _parse_report_descriptor(iap_hid_handler_t *iap, hid_report_parser_t
 					_verbose(VERBOSE_DEBUG, "output report id #%d, %d bytes", output->ReportId, output->Length);
 				}
 				break;
+			default:
+				// nothing
+				break;
 		}
 	}
 
@@ -99,6 +102,7 @@ static bool _start(hid_function_handler_t *handler, hid_report_parser_t *parser)
 	_parse_report_descriptor(iap, parser);
 
 	iap_core_start();
+	return true;
 }
 
 static void _stop(hid_function_handler_t *handler)

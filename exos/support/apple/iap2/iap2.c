@@ -1054,4 +1054,5 @@ static void *_service(void *arg)
 
 	_service_run = false;
 	_verbose(VERBOSE_COMMENT, "service exiting (%s)...", t->Id);
+	return NULL;
 }

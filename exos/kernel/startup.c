@@ -34,7 +34,7 @@ __weak void __machine_init()
 	// weak initializer does nothing
 }
 
-__weak void __machine_idle()
+__weak void __machine_idle(void *args)
 {
 	while(1);
 }

@@ -49,3 +49,13 @@ void __aeabi_memcpy4(void *dest, const void *src, size_t n)
 	}
 }
 
+void __aeabi_memcpy(void *dest, const void *src, size_t n)
+{
+	uint8_t *dest1 = (uint8_t *)dest;
+	uint8_t *src1 = (uint8_t *)src;
+	while(n != 0)
+	{
+		*dest1++ = *src1++;
+		n --;
+	}
+}
