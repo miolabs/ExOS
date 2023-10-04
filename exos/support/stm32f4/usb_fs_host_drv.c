@@ -106,7 +106,9 @@ static void _destroy_device(usb_host_controller_t *hc, usb_host_device_t *device
 	if (device->State != USB_HOST_DEVICE_DETACHED)
 	{
 		device->State = USB_HOST_DEVICE_DETACHED;
-//		_stop_pipe(hc, &device->ControlPipe);	// FIXME
+
+		// NOTE: control pipe is shared, so it is stopped by root hub only for root device
+		//_stop_pipe(hc, &device->ControlPipe);
 	}
 
 	exos_mutex_unlock(&_mutex);
@@ -247,15 +249,22 @@ static bool _ctrl_setup_write(usb_host_device_t *device, void *setup_data, unsig
 		{
 			// FIXME: some devices require to issue setup and data/status phase in different frames
 			if (device->Speed == USB_HOST_DEVICE_LOW_SPEED)
-				exos_thread_sleep(2);
+#if 1
+				event_wait(&device->Controller->SOF, TIMEOUT_NEVER);
+#else
+				thread_sleep(2);
+#endif
 
 			done = _do_control_xfer(&urb, USB_HOST_TO_DEVICE, false, out_data, out_length);
+			if (!done) _verbose(VERBOSE_DEBUG, "ctrl data failed (%d)!", (unsigned)urb.UserState);
 		}
 		if (done) 
 		{
             done = _do_control_xfer(&urb, USB_DEVICE_TO_HOST, false, nullptr, 0);
-        }
+			if (!done) _verbose(VERBOSE_DEBUG, "ctrl ack failed (%d)!", (unsigned)urb.UserState);
+		}
     }
+	else _verbose(VERBOSE_DEBUG, "ctrl setup failed (%d)!", (unsigned)urb.UserState);
 
 	exos_mutex_unlock(&_mutex);
 	return done;
