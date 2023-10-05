@@ -21,7 +21,7 @@ static void _prompt(const terminal_context_t *term);
 static void _time_callback(dispatcher_context_t *context, dispatcher_t *dispatcher);
 
 static boot_image_info_t _info;
-static boot_tag_t *_tag = NULL;
+static boot_tag_t *_boot_tag = NULL;
 
 void main()
 {
@@ -40,7 +40,7 @@ void main()
 		boot_tag_t *tag = (boot_tag_t *)search_ptr;
 		printf("tag: '%s' ('%s' version=%d)\n", tag->Product, tag->Id, tag->Version);
 
-		_tag = tag;
+		_boot_tag = tag;
 		search_ptr = board_upper_flash_addr();
 		printf("searching for update at $%x...\n", (unsigned)search_ptr);
 
@@ -48,11 +48,17 @@ void main()
 		if (bootloader_search_image(&search_ptr, &update_info, flash_size))
 		{
 			tag = (boot_tag_t *)search_ptr;
-			ASSERT(tag != _tag, KERNEL_ERROR_KERNEL_PANIC);
+			ASSERT(tag != _boot_tag, KERNEL_ERROR_KERNEL_PANIC);
 
-			printf("update image found at $%x...\n", (unsigned)tag);
+			printf("update image found at $%x...\n", update_info.Start);
 			printf("tag: '%s' ('%s' version=%d)\n", tag->Product, tag->Id, tag->Version);
-			// TODO: copy
+#ifdef AUTOUPDATE
+			puts("installing...");
+			board_install_image(update_info, tag);
+#else
+			puts("ready to install...");
+			_boot_tag = NULL;	// don't reboot now 
+#endif
 		}
 		else
 		{
@@ -85,7 +91,7 @@ void main()
 
 static void _time_callback(dispatcher_context_t *context, dispatcher_t *dispatcher)
 {
-	if (_tag != NULL)
+	if (_boot_tag != NULL)
 	{
 		board_led(0);
 		
@@ -96,7 +102,7 @@ static void _time_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 
 static void _prompt(const terminal_context_t *term)
 {
-	_tag = NULL;	// disable reboot
+	_boot_tag = NULL;	// disable reboot
 
 	printf("$ ");
 }
