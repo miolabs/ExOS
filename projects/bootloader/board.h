@@ -16,6 +16,8 @@ typedef enum
 
 void board_led(board_led_t value);
 unsigned board_flash_size();
+void *board_upper_flash_addr();
+void board_erase_upper_flash();
 
 void board_i2c_lock(bool lock);
 void board_create_eeprom(eeprom_context_t *eeprom);

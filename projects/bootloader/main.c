@@ -3,6 +3,7 @@
 #include <modules/bootloader.h>
 #include <kernel/memory.h>
 #include <kernel/tree.h>
+#include <kernel/panic.h>
 #include <usb/device.h>
 #include <stdio.h>
 #include <string.h>
@@ -40,6 +41,24 @@ void main()
 		printf("tag: '%s' ('%s' version=%d)\n", tag->Product, tag->Id, tag->Version);
 
 		_tag = tag;
+		search_ptr = board_upper_flash_addr();
+		printf("searching for update at $%x...\n", (unsigned)search_ptr);
+
+		static boot_image_info_t update_info;
+		if (bootloader_search_image(&search_ptr, &update_info, flash_size))
+		{
+			tag = (boot_tag_t *)search_ptr;
+			ASSERT(tag != _tag, KERNEL_ERROR_KERNEL_PANIC);
+
+			printf("update image found at $%x...\n", (unsigned)tag);
+			printf("tag: '%s' ('%s' version=%d)\n", tag->Product, tag->Id, tag->Version);
+			// TODO: copy
+		}
+		else
+		{
+			board_erase_upper_flash();
+			printf("upper flash cleared\n");
+		}
 	}
 	else
 	{
@@ -74,7 +93,6 @@ static void _time_callback(dispatcher_context_t *context, dispatcher_t *dispatch
 		bootloader_reboot(&_info);
 	}
 }
-
 
 static void _prompt(const terminal_context_t *term)
 {

@@ -3,6 +3,7 @@
 #include <support/stm32f4/dma.h>
 #include <support/stm32f4/gpio.h>
 #include <support/gpio_hal.h>
+#include <kernel/panic.h>
 
 static mutex_t _i2c_lock;
 
@@ -75,4 +76,44 @@ unsigned board_flash_size()
 	return info.TotalSize;
 }
 
+static unsigned _get_upper_sector(flash_info_t *info)
+{
+	unsigned upper_flash_blocks = BOOT_RESERVED_UPPER_BLOCKS;
+	ASSERT(upper_flash_blocks != 0, KERNEL_ERROR_KERNEL_PANIC);
+
+	flash_get_info(info);
+	ASSERT(info->SectorCount > upper_flash_blocks, KERNEL_ERROR_NULL_POINTER);
+	return (info->SectorCount - upper_flash_blocks);
+}
+
+void *board_upper_flash_addr()
+{
+	flash_info_t info;
+	unsigned start = _get_upper_sector(&info);
+	unsigned size;
+	return flash_get_sector_addr(start, &size);
+}
+
+static bool _check_empty(void *base, unsigned size)
+{
+	unsigned *ptr = base;
+	for(unsigned i = 0; i < (size >> 2); i++) if (ptr[i] != 0xffffffffu) return false;
+	return true; 
+}
+
+void board_erase_upper_flash()
+{
+	flash_info_t info;
+	unsigned start = _get_upper_sector(&info);
+	for(unsigned sector = start; sector < info.SectorCount; sector++)
+	{
+		unsigned size;
+		void *addr = flash_get_sector_addr(sector, &size);
+		if (!_check_empty(addr, size))
+		{
+			bool done = flash_erase_sector(sector);
+			ASSERT(done, KERNEL_ERROR_UNKNOWN);
+		}
+	}
+}
 

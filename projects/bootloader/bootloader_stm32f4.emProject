@@ -5,7 +5,7 @@
     Name="Common"
     arm_instruction_set="Thumb"
     arm_library_instruction_set="Thumb"
-    c_preprocessor_definitions="EXOS_OLD_TICK_API;_USB_FS_ENABLE_VBUS;BOOT_OFFSET=0x10000"
+    c_preprocessor_definitions="EXOS_OLD_TICK_API;_USB_FS_ENABLE_VBUS;BOOT_OFFSET=0x10000;BOOT_RESERVED_UPPER_BLOCKS=4"
     debug_start_from_entry_point_symbol="No" />
   <configuration
     Name="Debug"

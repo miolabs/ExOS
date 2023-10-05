@@ -139,4 +139,10 @@ void flash_get_info(flash_info_t *info)
 		info->TotalSize += _sector_sizes[i];
 }
 
+bool flash_erase_sector(unsigned sector)
+{
+	unsigned sta = _erase_sector(sector);
+	sta &= FLASH_SR_PGSERR | FLASH_SR_PGPERR | FLASH_SR_PGAERR;
+	return sta == 0;
+}
 
