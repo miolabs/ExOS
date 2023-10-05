@@ -250,7 +250,7 @@ static bool _ctrl_setup_write(usb_host_device_t *device, void *setup_data, unsig
 			// FIXME: some devices require to issue setup and data/status phase in different frames
 			if (device->Speed == USB_HOST_DEVICE_LOW_SPEED)
 #if 1
-				event_wait(&device->Controller->SOF, TIMEOUT_NEVER);
+				exos_event_wait(&device->Controller->SOF, EXOS_TIMEOUT_NEVER);
 #else
 				thread_sleep(2);
 #endif
