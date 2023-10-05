@@ -19,6 +19,7 @@ void pipe_create_context(pipe_context_t *context, const char *name, io_buffer_t 
 	context->Input = input;
 	context->Output = output;
 	context->Entry = NULL;
+	exos_event_create(&context->OpenEvent, EXOS_EVENTF_AUTORESET);
 	exos_io_add_device(&context->Device, name, &_io_driver, context);	
 }
 
@@ -36,13 +37,14 @@ static io_error_t _open(io_entry_t *io, const char *path, io_flags_t flags)
 		
 		io_buffer_t *input = context->Input;
 		if (input != NULL)
-			input->NotEmptyEvent = &io->InputEvent;
+			exos_io_buffer_create(input, input->Buffer, input->Size, &io->InputEvent, NULL);
 
 		io_buffer_t *output = context->Output;
 		if (output != NULL)
-			output->NotFullEvent = &io->OutputEvent;
+			exos_io_buffer_create(output, output->Buffer, output->Size, NULL, &io->OutputEvent);
 
 		context->Entry = io;
+		exos_event_set(&context->OpenEvent);
 		return IO_OK;
 	}
 	_verbose(VERBOSE_ERROR, "file open failed (already open)");
@@ -59,6 +61,7 @@ static void _close(io_entry_t *io)
 
 	_verbose(VERBOSE_COMMENT, "file closed");
 	context->Entry = NULL;
+	exos_event_set(&context->OpenEvent);
 }
 
 static int _read(io_entry_t *io, unsigned char *buffer, unsigned length)

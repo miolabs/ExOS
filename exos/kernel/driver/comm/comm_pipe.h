@@ -10,6 +10,7 @@ typedef struct
 	io_entry_t *Entry;
 	io_buffer_t *Input;	// for read()
 	io_buffer_t *Output; // for write()
+	event_t OpenEvent;
 } pipe_context_t;
 
 void pipe_create_context(pipe_context_t *context, const char *name, io_buffer_t *input, io_buffer_t *output);
