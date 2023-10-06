@@ -1,5 +1,5 @@
-#ifndef PIPE_DEVICE_H
-#define PIPE_DEVICE_H
+#ifndef HANDLER_DEVICE_H
+#define HANDLER_DEVICE_H
 
 #include <kernel/io.h>
 #include <kernel/iobuffer.h>
@@ -11,10 +11,10 @@ typedef struct
 	io_buffer_t *Input;	// for read()
 	io_buffer_t *Output; // for write()
 	event_t OpenEvent;
-} pipe_context_t;
+} handler_context_t;
 
-void pipe_create_context(pipe_context_t *context, const char *name, io_buffer_t *input, io_buffer_t *output);
+void handler_create_context(handler_context_t *hc, const char *name, io_buffer_t *input, io_buffer_t *output);
 
-#endif // PIPE_DEVICE_H
+#endif // HANDLER_DEVICE_H
 
 
