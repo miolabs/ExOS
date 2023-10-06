@@ -1,8 +1,8 @@
-#include "comm_pipe.h"
+#include "comm_handler.h"
 #include <kernel/verbose.h>
 #include <kernel/panic.h>
 
-#define _verbose(level, ...) verbose(level, "pipe", __VA_ARGS__)
+#define _verbose(level, ...) verbose(level, "handler", __VA_ARGS__)
 
 static io_error_t _open(io_entry_t *io, const char *path, io_flags_t flags);
 static void _close(io_entry_t *io);
