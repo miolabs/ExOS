@@ -71,9 +71,9 @@ static int _read(io_entry_t *io, unsigned char *buffer, unsigned length)
 	handler_context_t *hc = io->DriverContext;
 	ASSERT(hc != NULL, KERNEL_ERROR_NULL_POINTER);
 	
-	if (io == hc->Entry && hc->Input != NULL)
+	if (io == hc->Entry && hc->Output != NULL)
 	{
-		int done = exos_io_buffer_read(hc->Input, buffer, length);
+		int done = exos_io_buffer_read(hc->Output, buffer, length);
 		return done;
 	}
 	return -1;
@@ -86,9 +86,9 @@ static int _write(io_entry_t *io, const unsigned char *buffer, unsigned length)
 	handler_context_t *hc = io->DriverContext;
 	ASSERT(hc != NULL, KERNEL_ERROR_NULL_POINTER);
 	
-	if (io == hc->Entry && hc->Output != NULL)
+	if (io == hc->Entry && hc->Input != NULL)
 	{
-		int done = exos_io_buffer_write(hc->Output, buffer, length);
+		int done = exos_io_buffer_write(hc->Input, buffer, length);
 		return done;
 	}
 	return -1;
