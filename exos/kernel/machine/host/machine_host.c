@@ -21,6 +21,8 @@
 
 #include <ucontext.h>
 #include <sys/mman.h>
+#include <unistd.h>
+#include <sys/syscall.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -222,6 +224,14 @@ void __machine_unlock(unsigned char *lock)
 void __machine_dsb(void)
 {
 	__asm__ volatile ("" ::: "memory");
+}
+
+// Console write to the real host stdout. exos defines its own write()/printf()
+// in the portable libc, so those names resolve to exos symbols, not libc. We
+// reach the kernel's real file descriptor 1 through the raw syscall instead.
+long __host_console_write(const void *buf, unsigned long len)
+{
+	return syscall(SYS_write, 1, buf, len);
 }
 
 void __machine_idle(void *args)
