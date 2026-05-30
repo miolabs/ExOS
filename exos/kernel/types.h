@@ -4,6 +4,7 @@
 #if defined __GNUC__
 #define __init __attribute__((section(".init")))
 #define __naked __attribute__((naked))
+#undef __weak
 #define __weak __attribute__((weak))
 #define __noreturn __attribute__((noreturn))
 #define __deprecated __attribute((__deprecated__))
