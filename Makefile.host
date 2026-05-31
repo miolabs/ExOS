@@ -1,0 +1,128 @@
+# Host "virtual board" build.
+#
+# Compiles the whole exos kernel as an ordinary macOS/clang process so it can be
+# run and tested without a microcontroller. See exos/kernel/machine/host/.
+#
+# Two-tier include strategy:
+#   * Portable kernel/posix/board TUs compile WITH exos's freestanding libc
+#     (exos/include) -- bool == int, the exos string/stdio/etc.
+#   * The host machine glue compiles WITHOUT exos/include, against the system
+#     headers, so it gets a real ucontext and LP64-correct stdint. It reaches
+#     the kernel only through exos/kernel/*.h.
+# Both tiers agree on the shared struct ABI (thread_t, io_entry_t, ...), which
+# use only plain int/long/pointer types.
+#
+# Usage:  make -f Makefile.host run
+
+CC      := clang
+BUILD   := build/host
+TARGET  := $(BUILD)/exos-host
+
+KROOT   := exos
+
+# Tier A: portable code sees exos's own libc first.
+INC_PORTABLE := -I $(KROOT)/include -I $(KROOT) -I $(KROOT)/support
+# Tier B: host glue sees only the kernel headers (system libc otherwise).
+INC_HOST     := -I $(KROOT)
+
+WARN   := -Wno-deprecated-declarations -Wno-macro-redefined \
+          -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast -Wno-pointer-sign
+COMMON := -g -O0 -fms-extensions $(WARN)
+
+# STDOUT_STREAM wires the POSIX stdio layer to the /dev/console device that the
+# virtual board mounts. EXOS_OLD_TICK_API selects the __kernel_tick entry that
+# the host idle loop pumps.
+DEFS := -DSTDOUT_STREAM='"/dev/console"' -DEXOS_OLD_TICK_API -DEXOS_NO_NET
+
+# --- source lists ---------------------------------------------------------
+
+# Portable kernel core.
+KERNEL_SRCS := \
+	$(KROOT)/kernel/startup.c \
+	$(KROOT)/kernel/thread.c \
+	$(KROOT)/kernel/thread_pool.c \
+	$(KROOT)/kernel/event.c \
+	$(KROOT)/kernel/mutex.c \
+	$(KROOT)/kernel/list.c \
+	$(KROOT)/kernel/timer.c \
+	$(KROOT)/kernel/memory.c \
+	$(KROOT)/kernel/io.c \
+	$(KROOT)/kernel/tree.c \
+	$(KROOT)/kernel/port.c \
+	$(KROOT)/kernel/panic.c \
+	$(KROOT)/kernel/types.c \
+	$(KROOT)/kernel/verbose.c \
+	$(KROOT)/kernel/dispatch.c \
+	$(KROOT)/kernel/fifo.c \
+	$(KROOT)/kernel/iobuffer.c \
+	$(KROOT)/kernel/datetime.c \
+	$(KROOT)/kernel/machine/hal.c \
+	$(KROOT)/support/services/init.c
+
+# POSIX layer.
+POSIX_SRCS := \
+	$(KROOT)/kernel/posix/posix.c \
+	$(KROOT)/kernel/posix/pthread.c \
+	$(KROOT)/kernel/posix/pthread_cond.c \
+	$(KROOT)/kernel/posix/pthread_time.c \
+	$(KROOT)/kernel/posix/stdio.c \
+	$(KROOT)/kernel/posix/stdlib.c \
+	$(KROOT)/kernel/posix/string.c \
+	$(KROOT)/kernel/posix/unistd.c \
+	$(KROOT)/kernel/posix/errno.c \
+	$(KROOT)/kernel/posix/fcntl.c
+
+# Dummy board (portable: matches the kernel ABI).
+BOARD_SRCS := test/board/board_virtual.c
+
+# Application under test (its main() is renamed; see APP_DEFS below).
+APP_SRCS := test/posix/basic_pthread_tests.c
+
+# Host machine glue (tier B).
+HOST_SRCS := \
+	$(KROOT)/kernel/machine/host/machine_host.c \
+	$(KROOT)/kernel/machine/host/host_start.c
+
+PORTABLE_SRCS := $(KERNEL_SRCS) $(POSIX_SRCS) $(BOARD_SRCS)
+
+obj = $(BUILD)/$(1:.c=.o)
+
+PORTABLE_OBJS := $(foreach s,$(PORTABLE_SRCS),$(call obj,$(s)))
+APP_OBJS      := $(foreach s,$(APP_SRCS),$(call obj,$(s)))
+HOST_OBJS     := $(foreach s,$(HOST_SRCS),$(call obj,$(s)))
+ALL_OBJS      := $(PORTABLE_OBJS) $(APP_OBJS) $(HOST_OBJS)
+
+# --- rules ----------------------------------------------------------------
+
+.PHONY: all run clean
+all: $(TARGET)
+
+# startup.c needs the app-main rename so the kernel calls the renamed entry.
+$(BUILD)/$(KROOT)/kernel/startup.o: $(KROOT)/kernel/startup.c
+	@mkdir -p $(dir $@)
+	$(CC) -c $(COMMON) $(DEFS) -DEXOS_APP_MAIN=exos_app_main $(INC_PORTABLE) $< -o $@
+
+# The application's main() is renamed so the kernel can call it as a thread.
+$(APP_OBJS): $(BUILD)/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(CC) -c $(COMMON) $(DEFS) -Dmain=exos_app_main $(INC_PORTABLE) $< -o $@
+
+# Host glue: system headers, kernel headers only.
+$(HOST_OBJS): $(BUILD)/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(CC) -c $(COMMON) $(DEFS) $(INC_HOST) $< -o $@
+
+# Everything else portable.
+$(BUILD)/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(CC) -c $(COMMON) $(DEFS) $(INC_PORTABLE) $< -o $@
+
+$(TARGET): $(ALL_OBJS)
+	@mkdir -p $(dir $@)
+	$(CC) $(COMMON) $(ALL_OBJS) -o $@
+
+run: $(TARGET)
+	./$(TARGET)
+
+clean:
+	rm -rf $(BUILD)

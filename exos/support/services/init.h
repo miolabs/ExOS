@@ -24,9 +24,19 @@ typedef struct
 	void (*Func)();
 } EXOS_INIT_NODE;
 
+// The initializer pointers are gathered into one section whose boundaries the
+// linker exposes as __ctors_start__/__ctors_end__ (see init.c). ELF targets use
+// a plain ".ctors"; Mach-O requires a "segment,section" pair and supplies the
+// boundary symbols via the magic section$start$/section$end$ names instead.
+#if defined(__MACH__)
+#define EXOS_CTORS_SECTION "__DATA,__exos_ctors"
+#else
+#define EXOS_CTORS_SECTION ".ctors"
+#endif
+
 #define EXOS_INITIALIZER(name, pri, func) \
 	static EXOS_INIT_NODE name = { .Type = EXOS_NODE_INITIALIZER, .Priority = pri, .Func = func }; \
-	static __used const EXOS_CTOR __attribute__((section(".ctors"))) name##_ctor = &name
+	static __used const EXOS_CTOR __attribute__((section(EXOS_CTORS_SECTION))) name##_ctor = &name
 
 #endif // EXOS_INIT_H
 

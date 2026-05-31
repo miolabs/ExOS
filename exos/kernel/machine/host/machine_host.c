@@ -249,6 +249,14 @@ void __machine_idle(void *args)
 	}
 }
 
+// On a real target this programs the SysTick period; the host instead pumps a
+// virtual tick from the idle loop (see __machine_idle), so there is no hardware
+// timer to configure.
+void hal_time_initialize(int period_us)
+{
+	(void)period_us;
+}
+
 void __machine_init(void)
 {
 	__board_init();

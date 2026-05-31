@@ -13,6 +13,9 @@
 #include "board.h"
 #include <kernel/io.h>
 #include <kernel/machine/hal.h>
+#include <support/services/init.h>
+#include <stdio.h>
+#include <stdarg.h>
 
 // Defined in the host machine layer (machine_host.c), which is compiled against
 // the system headers so it can reach the kernel's real fd 1 without colliding
@@ -58,9 +61,18 @@ static const io_driver_t _console_driver = {
 
 static io_tree_device_t _console_device;
 
-void __board_init()
+// Mount the console under /dev. This must run after __io_initialize() has built
+// the device tree but before the POSIX stdio layer opens /dev/console, so it is
+// registered as an IO-driver initializer (higher priority than EXOS_INIT_POSIX)
+// rather than from __board_init (which runs before the tree exists).
+static void _register_console(void)
 {
 	exos_io_add_device(&_console_device, "console", &_console_driver, NULL);
+}
+EXOS_INITIALIZER(_console_init, EXOS_INIT_IO_DRIVER, _register_console);
+
+void __board_init()
+{
 }
 
 // On a real board this hands memory regions to the allocator; the host machine
@@ -78,4 +90,16 @@ void board_led_set(board_led_t led, bool state)
 void board_output(board_output_t mask, board_output_t value)
 {
 	(void)mask; (void)value;
+}
+
+// Diagnostic output. On a real board this goes to a dedicated debug UART/RTT;
+// on the host we route it to the same console (stdout). vprintf no-ops while
+// stdout is unset (early boot), which is fine for the diagnostic call sites.
+int debug_printf(const char *format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	int r = vprintf(format, args);
+	va_end(args);
+	return r;
 }
