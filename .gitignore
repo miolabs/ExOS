@@ -6,3 +6,6 @@
 *.jlink
 .vscode
 .output
+
+# host virtual-board build output
+/build/

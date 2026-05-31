@@ -26,8 +26,11 @@ INC_PORTABLE := -I $(KROOT)/include -I $(KROOT) -I $(KROOT)/support
 INC_HOST     := -I $(KROOT)
 
 WARN   := -Wno-deprecated-declarations -Wno-macro-redefined \
-          -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast -Wno-pointer-sign
-COMMON := -g -O0 -fms-extensions $(WARN)
+          -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast -Wno-pointer-sign \
+          -Wno-microsoft-anon-tag -Wno-incompatible-library-redeclaration
+# -fno-builtin: exos ships its own libc (malloc/memcpy/printf/...), so clang
+# must not assume the builtin semantics of those names -- same as the ARM build.
+COMMON := -g -O0 -fms-extensions -fno-builtin $(WARN)
 
 # STDOUT_STREAM wires the POSIX stdio layer to the /dev/console device that the
 # virtual board mounts. EXOS_OLD_TICK_API selects the __kernel_tick entry that
