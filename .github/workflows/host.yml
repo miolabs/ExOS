@@ -2,9 +2,11 @@
 # The ARM firmware (SEGGER Embedded Studio projects) is not covered here.
 name: host virtual board
 
+# Feature branches run through their pull request only, so a push to a PR
+# branch does not start a duplicate run.
 on:
   push:
-    branches: [main, develop, "feature/**", "feat/**"]
+    branches: [main, develop]
   pull_request:
 
 jobs:
