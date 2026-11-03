@@ -157,7 +157,7 @@ typedef struct
 {
 	exos_thread_func_t entry;
 	void *arg;
-	void (*ret)(void);
+	void (*ret)(void *result);
 } _thread_start_t;
 
 #define HOST_THREAD_STACK (512 * 1024)	// host coroutines need far more than an MCU
@@ -166,8 +166,7 @@ static void _trampoline(unsigned hi, unsigned lo)
 {
 	uintptr_t p = ((uintptr_t)hi << 32) | (uintptr_t)lo;
 	_thread_start_t *st = (_thread_start_t *)p;
-	st->entry(st->arg);
-	st->ret();							// thread.c _exit(): removes thread, switches away
+	st->ret(st->entry(st->arg));		// thread.c _exit(result): removes thread, switches away
 	abort();							// must not return
 }
 
@@ -185,7 +184,7 @@ void __machine_init_thread_stack(void **pstack, unsigned long arg, unsigned long
 	_thread_start_t *st = (_thread_start_t *)((unsigned char *)region + sizeof(ucontext_t));
 	st->entry = (exos_thread_func_t)pc;
 	st->arg = (void *)arg;
-	st->ret = (void (*)(void))lr;
+	st->ret = (void (*)(void *))lr;
 
 	unsigned char *stack_lo = (unsigned char *)(st + 1);
 	stack_lo = (unsigned char *)(((uintptr_t)stack_lo + 15) & ~(uintptr_t)15);

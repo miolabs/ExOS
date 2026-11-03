@@ -26,6 +26,7 @@ typedef struct
 	exos_wait_mask_t MaskUsed;
 	exos_wait_mask_t MaskWait;
 	list_t Joining;
+	void *Result;	// value returned by the entry function or passed to exos_thread_exit()
 #ifdef THREAD_DEBUG
 	void (*Debugger)(struct __thread_struct *thread);
 #endif
