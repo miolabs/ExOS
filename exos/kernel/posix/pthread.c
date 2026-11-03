@@ -29,7 +29,9 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attrs, void *(* func
 
 int pthread_join(pthread_t thread, void **value_ptr)
 {
-	*value_ptr = exos_thread_join(thread.info);
+	void *retval = exos_thread_join(thread.info);
+	if (value_ptr != NULL)			// POSIX: a NULL value_ptr discards the result
+		*value_ptr = retval;
 	return 0;
 }
 

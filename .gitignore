@@ -7,5 +7,9 @@
 .vscode
 .output
 
-# host virtual-board build output
+# host virtual-board build output (CLI, plus IDE generators e.g. build-xcode/)
 /build/
+/build-*/
+*.xcodeproj/
+DerivedData/
+.DS_Store

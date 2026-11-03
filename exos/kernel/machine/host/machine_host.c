@@ -52,10 +52,6 @@ void * const __machine_stack_start = &_main_stack_region[0];
 void * const __machine_stack_end = &_main_stack_region[sizeof(_main_stack_region)];
 void * const __machine_tbss_start = &_tbss_region[0];
 
-// Heap backing store. memory.c references &__heap_start__ / &__heap_end__ as
-// boundary symbols; alias them onto this array via the assembler.
-unsigned char __exos_host_heap[EXOS_HOST_HEAP];
-
 #define _HSTR(x) #x
 #define _HSTR2(x) _HSTR(x)
 
@@ -65,11 +61,24 @@ unsigned char __exos_host_heap[EXOS_HOST_HEAP];
 #define _SYM(s) s
 #endif
 
+// memory.c brackets the exos heap with the boundary symbols __heap_start__ /
+// __heap_end__ (defined by the linker script on a real target). On the host we
+// synthesise them as labels bracketing a zero-filled BSS block. They must be
+// genuinely DEFINED symbols: an ".set sym, base+offset" alias is NOT recorded
+// as a definition in the Mach-O archive symbol table, so while it links in a
+// direct object link it fails once ExOS is packaged as a static library.
 __asm__(
 	".globl " _SYM("__heap_start__") "\n"
-	".set   " _SYM("__heap_start__") ", " _SYM("__exos_host_heap") "\n"
 	".globl " _SYM("__heap_end__") "\n"
-	".set   " _SYM("__heap_end__") ", " _SYM("__exos_host_heap") "+" _HSTR2(EXOS_HOST_HEAP) "\n");
+#if defined(__APPLE__)
+	".section __DATA,__bss,zerofill\n"
+#else
+	".bss\n"
+#endif
+	".p2align 4\n"
+	_SYM("__heap_start__") ":\n"
+	".space " _HSTR2(EXOS_HOST_HEAP) "\n"
+	_SYM("__heap_end__") ":\n");
 
 // ---------------------------------------------------------------------------
 // Cooperative scheduler glue (emulated PendSV)
