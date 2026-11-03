@@ -153,7 +153,77 @@ unsigned int __uint_decl(char *dst, unsigned int value)
 #pragma weak __ulong_declz = __uint_declz
 #pragma weak __ulong_hexlz = __uint_hexlz
 #else
-#error "Not implemented"
+// LP64 host (long wider than int): dedicated long-width formatters.
+unsigned int __ulong_hexlz(char *dst, unsigned long value, int tz, char tc)
+{
+	unsigned int length = 0;
+	do
+	{
+		int digit = value & 0xF;
+		value >>= 4;
+		dst[length++] = (digit >= 10) ? digit + 'a' - 10 : digit + '0';
+	} while(value != 0);
+
+	while(length < tz)
+		dst[length++] = tc;
+
+	_reverse_str(dst, length);
+	return length;
+}
+
+unsigned int __ulong_hexl(char *dst, unsigned long value)
+{
+	return __ulong_hexlz(dst, value, 0, '\0');
+}
+
+unsigned int __long_declz(char *dst, long value, int tz, char tc)
+{
+	unsigned int length = 0;
+	if (value < 0)
+	{
+		*dst++ = '-';
+		value = -value;
+	}
+	do
+	{
+		int digit = value % 10;
+		value /= 10;
+		dst[length++] = digit + '0';
+	} while(value != 0);
+
+	while(length < tz)
+		dst[length++] = tc;
+
+	_reverse_str(dst, length);
+	return length;
+}
+
+unsigned int __long_decl(char *dst, long value)
+{
+	return __long_declz(dst, value, 0, '\0');
+}
+
+unsigned int __ulong_declz(char *dst, unsigned long value, int tz, char tc)
+{
+	unsigned int length = 0;
+	do
+	{
+		unsigned long digit = value % 10UL;
+		value /= 10UL;
+		dst[length++] = digit + '0';
+	} while(value != 0);
+
+	while(length < tz)
+		dst[length++] = tc;
+
+	_reverse_str(dst, length);
+	return length;
+}
+
+unsigned int __ulong_decl(char *dst, unsigned long value)
+{
+	return __ulong_declz(dst, value, 0, '\0');
+}
 #endif
 
 unsigned int __decl_uint(const char *src, unsigned int *pvalue)

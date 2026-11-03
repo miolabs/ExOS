@@ -1,0 +1,17 @@
+# Build output
+/build/
+/build-*/
+
+# CMake / IDE generated
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+*.cbp
+
+# Xcode
+*.xcodeproj/
+DerivedData/
+
+# Editor cruft
+.DS_Store
+*.swp

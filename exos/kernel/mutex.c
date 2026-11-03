@@ -75,3 +75,20 @@ void exos_mutex_unlock(mutex_t *mutex)
 	__kernel_do(_unlock, mutex);
 }
 
+// Non-blocking acquire. The acquire decision lives in ___mutex_cond (it grabs
+// the mutex and returns NULL, or returns the wait list when it would block);
+// run it in a kernel section so the check-and-take is atomic, exactly as the
+// blocking path does via the wait-handle machinery.
+static int _try(unsigned long *args)
+{
+	mutex_t *mutex = (mutex_t *)args[0];
+	return ___mutex_cond(mutex) == NULL ? 0 : -1;
+}
+
+int exos_mutex_try(mutex_t *mutex)
+{
+	ASSERT(mutex != NULL, KERNEL_ERROR_NULL_POINTER);
+	ASSERT(__running_thread != NULL, KERNEL_ERROR_KERNEL_PANIC);
+	return __kernel_do(_try, mutex);
+}
+

@@ -1,0 +1,27 @@
+{
+	// IntelliSense for the editor. The real flags come from CMake (see
+	// compileCommands below); this block is the fallback/seed. The include
+	// paths mirror ExOS's two-tier layout: its freestanding libc (exos/include)
+	// then the kernel and support trees.
+	"version": 4,
+	"configurations": [
+		{
+			"name": "ExOS host",
+			"compileCommands": "${workspaceFolder}/build/compile_commands.json",
+			"includePath": [
+				"${workspaceFolder}/app",
+				"${workspaceFolder}/exos/include",
+				"${workspaceFolder}/exos",
+				"${workspaceFolder}/exos/support",
+				"${workspaceFolder}/exos/bsp/host_virtual"
+			],
+			"defines": [
+				"STDOUT_STREAM=\"/dev/console\"",
+				"EXOS_OLD_TICK_API",
+				"EXOS_NO_NET"
+			],
+			"cStandard": "c11",
+			"configurationProvider": "ms-vscode.cmake-tools"
+		}
+	]
+}

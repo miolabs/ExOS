@@ -4,11 +4,13 @@
 #if defined __GNUC__
 #define __init __attribute__((section(".init")))
 #define __naked __attribute__((naked))
+#undef __weak
 #define __weak __attribute__((weak))
 #define __noreturn __attribute__((noreturn))
 #define __deprecated __attribute((__deprecated__))
 #define __packed __attribute__((packed))
 #define __aligned(x) __attribute__((aligned(x)))
+#undef __always_inline					// glibc's sys/cdefs.h defines its own (host build)
 #define __always_inline __attribute__((always_inline))
 #define __used __attribute__((used)) 
 #define nullptr ((void *)0)

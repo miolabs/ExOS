@@ -11,7 +11,18 @@
 #warning "MAIN_THREAD_STACK is no longer used; use linker (process) stack definition for initial thread"
 #endif
 
-extern int main();
+// On a real target the application's main() is the kernel's initial thread. On
+// the host the process already has its own main() (the OS-thread entry that
+// calls __kernel_start), so the app main is renamed via -DEXOS_APP_MAIN.
+#ifndef EXOS_APP_MAIN
+#define EXOS_APP_MAIN main
+#endif
+
+extern int EXOS_APP_MAIN();
+
+// Result of the application's main(). A target ignores it (it resets); the
+// host port reports it as the process exit status so test runners see it.
+int __app_exit_code = 0;
 
 void __kernel_start()
 {
@@ -24,7 +35,7 @@ void __kernel_start()
 	__posix_init();
 	__services_init();
 
-	main();
+	__app_exit_code = EXOS_APP_MAIN();
 
 	__machine_reset();
 }

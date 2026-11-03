@@ -99,7 +99,7 @@ void exos_thread_create(exos_thread_t *thread, int pri, void *stack, unsigned st
 	__machine_init_thread_local_storage(&stack_end);
 	void *tp = stack_end - 8;	// NOTE: static tls skips first 8 bytes for DTV
 	__machine_init_thread_stack(&stack_end,
-		(unsigned)arg, (unsigned)entry, (unsigned)_exit);
+		(unsigned long)arg, (unsigned long)entry, (unsigned long)_exit);
 
 #ifdef DEBUG	
 	if (stack_end <= stack ||

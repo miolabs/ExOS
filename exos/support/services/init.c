@@ -2,7 +2,19 @@
 #include <kernel/machine/hal.h>
 #include <kernel/panic.h>
 
+// Boundaries of the initializer-pointer section (see EXOS_CTORS_SECTION in
+// init.h). On bare-metal ELF the linker script defines these; on Mach-O and on
+// hosted ELF the linker synthesises its own boundary symbols for the section,
+// which we bind to the same names via asm labels so the loop below is unchanged.
+#if defined(__MACH__)
+extern int __ctors_start__ __asm("section$start$__DATA$__exos_ctors");
+extern int __ctors_end__ __asm("section$end$__DATA$__exos_ctors");
+#elif defined(__linux__)
+extern int __ctors_start__ __asm("__start_exos_ctors");
+extern int __ctors_end__ __asm("__stop_exos_ctors");
+#else
 extern int __ctors_start__, __ctors_end__;
+#endif
 
 static list_t _init_list;
 
