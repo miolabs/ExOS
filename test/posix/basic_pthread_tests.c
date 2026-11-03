@@ -7,7 +7,7 @@ static pthread_mutex_t _mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void *_lock_func(void *arg)
 {
-	int led = (int)arg;
+	int led = (int)(long)arg;
 
 	for(int i = 0; i < 3; i++)
 	{
@@ -36,15 +36,19 @@ int main()
 	board_led_set(1, false);
 
 	pthread_t t1, t2;
-	int r1, r2;
+	void *r1 = NULL, *r2 = NULL;	// pthread_join writes a pointer: an int slot overflows on LP64 hosts
 	if (pthread_create(&t1, NULL, _lock_func, (void *)0) == 0)
 	{
 		if (pthread_create(&t2, NULL, _lock_func, (void *)1) == 0)
 		{
-			pthread_join(t2, (void **)&r2);
+			pthread_join(t2, &r2);
 		}
-		pthread_join(t1, (void **)&r1);
+		pthread_join(t1, &r1);
 	}
+	// NOTE: exos_thread_join does not return the thread result yet (kernel
+	// FIXME), so r1/r2 are not checked here.
+	(void)r1; (void)r2;
+	printf("posix_tests: ok\n");
 	return 0;
 }
 

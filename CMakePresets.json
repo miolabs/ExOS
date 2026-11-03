@@ -1,0 +1,34 @@
+{
+	"version": 6,
+	"cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+	"configurePresets": [
+		{
+			"name": "host-ninja",
+			"displayName": "Host virtual board (Ninja, Debug)",
+			"description": "Terminal / VS Code build of the whole OS as a host process",
+			"generator": "Ninja",
+			"binaryDir": "${sourceDir}/build",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Debug",
+				"CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+			}
+		},
+		{
+			"name": "host-xcode",
+			"displayName": "Host virtual board (Xcode)",
+			"description": "Generates build-xcode/exos.xcodeproj; open it and run an example scheme",
+			"generator": "Xcode",
+			"binaryDir": "${sourceDir}/build-xcode",
+			"cacheVariables": { "CMAKE_XCODE_GENERATE_SCHEME": "ON" },
+			"condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin" }
+		}
+	],
+	"buildPresets": [
+		{ "name": "host-ninja", "configurePreset": "host-ninja" },
+		{ "name": "host-xcode", "configurePreset": "host-xcode", "configuration": "Debug" }
+	],
+	"testPresets": [
+		{ "name": "host-ninja", "configurePreset": "host-ninja", "output": { "outputOnFailure": true } },
+		{ "name": "host-xcode", "configurePreset": "host-xcode", "configuration": "Debug", "output": { "outputOnFailure": true } }
+	]
+}

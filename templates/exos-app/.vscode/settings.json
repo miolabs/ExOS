@@ -1,0 +1,9 @@
+{
+	// CMake Tools drives the build; the presets in CMakePresets.json are the
+	// source of truth for generator, build dir and flags.
+	"cmake.useCMakePresets": "always",
+	"cmake.configureOnOpen": true,
+	// IntelliSense from the compile_commands.json the host-ninja preset emits.
+	"C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+	"files.associations": { "*.h": "c" }
+}

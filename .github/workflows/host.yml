@@ -1,0 +1,64 @@
+# Build and run ExOS on the host "virtual board" -- no hardware involved.
+# The ARM firmware (SEGGER Embedded Studio projects) is not covered here.
+name: host virtual board
+
+on:
+  push:
+    branches: [main, develop, "feature/**", "feat/**"]
+  pull_request:
+
+jobs:
+  ninja:
+    name: ${{ matrix.os }} / ${{ matrix.cc }} / Ninja
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-latest,  cc: clang }
+          - { os: ubuntu-latest, cc: gcc }
+          - { os: ubuntu-latest, cc: clang }
+    runs-on: ${{ matrix.os }}
+    env:
+      CC: ${{ matrix.cc }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Ninja (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - name: Install Ninja (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ninja
+      - run: cmake --preset host-ninja
+      - run: cmake --build --preset host-ninja
+      - run: ctest --preset host-ninja
+      - name: Run examples
+        run: |
+          ./build/examples/blink
+          ./build/examples/hello_service
+
+  xcode:
+    name: macOS / Xcode generator
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake --preset host-xcode
+      - run: cmake --build --preset host-xcode
+      - run: ctest --preset host-xcode
+      - run: ./build-xcode/examples/Debug/blink
+
+  template:
+    name: app template (submodule consumer)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble a consumer repo from the template
+        run: |
+          mkdir -p /tmp/app && cp -R templates/exos-app/. /tmp/app/
+          cp -R "$PWD" /tmp/app/exos
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - run: cmake --preset host-ninja
+        working-directory: /tmp/app
+      - run: cmake --build --preset host-ninja
+        working-directory: /tmp/app
+      - run: ./build/my_app
+        working-directory: /tmp/app

@@ -17,6 +17,8 @@
 #define _XOPEN_SOURCE 700				// expose the ucontext routines
 #if defined(__APPLE__)
 #define _DARWIN_C_SOURCE 1				// also expose MAP_ANON on macOS
+#else
+#define _DEFAULT_SOURCE 1				// glibc: keep syscall()/MAP_ANONYMOUS visible under _XOPEN_SOURCE
 #endif
 
 #include <ucontext.h>
@@ -271,9 +273,11 @@ void __machine_init(void)
 	__board_init();
 }
 
+extern int __app_exit_code;			// startup.c: result of the app's main()
+
 void __machine_reset(void)
 {
-	_Exit(0);
+	_Exit(__app_exit_code);
 }
 
 void __machine_reboot(void **vbase)

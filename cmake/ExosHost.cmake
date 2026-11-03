@@ -33,12 +33,20 @@ set(EXOS_HOST_CFLAGS
 	-fms-extensions
 	-fno-builtin
 	-Wno-deprecated-declarations
-	-Wno-macro-redefined
-	-Wno-microsoft-anon-tag
-	-Wno-incompatible-library-redeclaration
 	-Wno-pointer-to-int-cast
 	-Wno-int-to-pointer-cast
 	-Wno-pointer-sign)
+# clang-only silencers; gcc (Linux CI) rejects unknown -Wno- options once any
+# other diagnostic fires, so keep them out of its command line.
+if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+	list(APPEND EXOS_HOST_CFLAGS
+		-Wno-macro-redefined
+		-Wno-microsoft-anon-tag
+		-Wno-incompatible-library-redeclaration
+		# Xcode's default warning set; the kernel stores sizes in unsigned on
+		# purpose (it is a 32-bit OS), the host is just wider.
+		-Wno-shorten-64-to-32)
+endif()
 
 # Defines for the in-library build (not needed by app code):
 #  STDOUT_STREAM    : the device the POSIX stdio layer opens for stdout.
@@ -111,6 +119,11 @@ target_include_directories(exos_virtual_board_obj PRIVATE
 	${EXOS_K}/include ${EXOS_K} ${EXOS_K}/support ${EXOS_K}/bsp/host_virtual)
 target_compile_definitions(exos_virtual_board_obj PRIVATE EXOS_OLD_TICK_API EXOS_NO_NET)
 target_compile_options(exos_virtual_board_obj PRIVATE ${EXOS_HOST_CFLAGS})
+
+# The object libraries are implementation detail: keep them out of the Xcode
+# scheme list so an app project only shows its own executables.
+set_target_properties(exos_host_portable exos_host_machine exos_virtual_board_obj
+	PROPERTIES XCODE_GENERATE_SCHEME OFF)
 
 # --- consumer-facing aggregate targets ------------------------------------
 #

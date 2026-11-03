@@ -1,0 +1,30 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			// CodeLLDB (macOS / Linux). The kernel's green threads all run on one
+			// OS thread, so the debugger shows a single thread; step inside the
+			// app or kernel sources as usual.
+			"name": "Debug my_app (lldb)",
+			"type": "lldb",
+			"request": "launch",
+			"program": "${command:cmake.launchTargetPath}",
+			"args": [],
+			"cwd": "${workspaceFolder}",
+			"preLaunchTask": "cmake: build"
+		},
+		{
+			// Microsoft C/C++ extension (gdb on Linux, lldb-mi on macOS).
+			"name": "Debug my_app (cppdbg)",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${command:cmake.launchTargetPath}",
+			"args": [],
+			"cwd": "${workspaceFolder}",
+			"externalConsole": false,
+			"MIMode": "lldb",
+			"linux": { "MIMode": "gdb" },
+			"preLaunchTask": "cmake: build"
+		}
+	]
+}

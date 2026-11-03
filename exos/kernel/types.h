@@ -10,6 +10,7 @@
 #define __deprecated __attribute((__deprecated__))
 #define __packed __attribute__((packed))
 #define __aligned(x) __attribute__((aligned(x)))
+#undef __always_inline					// glibc's sys/cdefs.h defines its own (host build)
 #define __always_inline __attribute__((always_inline))
 #define __used __attribute__((used)) 
 #define nullptr ((void *)0)

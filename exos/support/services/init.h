@@ -25,11 +25,19 @@ typedef struct
 } EXOS_INIT_NODE;
 
 // The initializer pointers are gathered into one section whose boundaries the
-// linker exposes as __ctors_start__/__ctors_end__ (see init.c). ELF targets use
-// a plain ".ctors"; Mach-O requires a "segment,section" pair and supplies the
-// boundary symbols via the magic section$start$/section$end$ names instead.
+// linker exposes as __ctors_start__/__ctors_end__ (see init.c).
+//  * Bare-metal ELF (the firmware): a plain ".ctors"; the board's linker
+//    script defines the boundary symbols.
+//  * Hosted ELF (Linux): ".ctors" is NOT usable -- the GNU default linker
+//    script folds it into .init_array and the C runtime would call our node
+//    pointers as functions. Use an own section; for a C-identifier section name
+//    GNU ld synthesises __start_<name>/__stop_<name> automatically.
+//  * Mach-O (macOS): needs a "segment,section" pair; ld64 supplies the
+//    boundaries via the magic section$start$/section$end$ names.
 #if defined(__MACH__)
 #define EXOS_CTORS_SECTION "__DATA,__exos_ctors"
+#elif defined(__linux__)
+#define EXOS_CTORS_SECTION "exos_ctors"
 #else
 #define EXOS_CTORS_SECTION ".ctors"
 #endif

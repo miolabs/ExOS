@@ -97,7 +97,7 @@ Design rules for the Swift layer
 Commit the pending host work (CMake, examples, template, the two fixes), open the
 PR for `feat/host-virtual-board`. Everything below branches from it.
 
-### Phase 1 — Xcode and VS Code for the C host build (1–2 days)
+### Phase 1 — Xcode and VS Code for the C host build (1–2 days) — DONE 2026-11-03
 - **Presets:** `CMakePresets.json` with `host-ninja`, `host-xcode` (and later
   `stm32f4`), so both IDEs and the terminal configure the same way.
 - **Xcode:** verify `-G Xcode` end to end (schemes for the examples, breakpoints
@@ -108,6 +108,10 @@ PR for `feat/host-virtual-board`. Everything below branches from it.
   from `compile_commands.json`.
 - **CI:** GitHub Actions on macOS (clang, Ninja and Xcode generators) and Linux
   (gcc) building the examples and `test/posix` on the virtual board.
+- Done as: `CMakePresets.json` (`host-ninja`, `host-xcode`), `test/CMakeLists.txt`
+  + CTest, `templates/exos-app/.vscode/`, `.github/workflows/host.yml`. Linux
+  needed an own `exos_ctors` section (hosted ELF folds `.ctors` into
+  `.init_array`), and the host now exits with the app's `main()` result.
 
 Visual Studio on Windows, for later: it would need a `machine/host/win32`
 layer on Win32 fibers, the ClangCL toolset (ExOS uses `__weak`, section

@@ -30,4 +30,6 @@ include(${CMAKE_CURRENT_LIST_DIR}/cmake/ExosHost.cmake)
 # consuming application that add_subdirectory()s us doesn't inherit them.
 if(PROJECT_IS_TOP_LEVEL)
 	add_subdirectory(examples)
+	enable_testing()
+	add_subdirectory(test)
 endif()

@@ -20,6 +20,10 @@
 
 extern int EXOS_APP_MAIN();
 
+// Result of the application's main(). A target ignores it (it resets); the
+// host port reports it as the process exit status so test runners see it.
+int __app_exit_code = 0;
+
 void __kernel_start()
 {
 	__machine_init();
@@ -31,7 +35,7 @@ void __kernel_start()
 	__posix_init();
 	__services_init();
 
-	EXOS_APP_MAIN();
+	__app_exit_code = EXOS_APP_MAIN();
 
 	__machine_reset();
 }
