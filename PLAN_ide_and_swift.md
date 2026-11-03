@@ -1,6 +1,7 @@
-# ExOS: IDE matrix (Xcode / Visual Studio / VS Code) and a Swift application layer
+# ExOS: IDE support (Xcode / VS Code) and a Swift application layer
 
-Status: proposal, 2026-11-03. Branch of record: `feat/host-virtual-board`.
+Status: proposal, 2026-11-03 (rescoped same day: Visual Studio on Windows is out of
+scope for now). Branch of record: `feat/host-virtual-board`, PR #1.
 
 ## 0. Where we are
 
@@ -15,8 +16,7 @@ Already in the tree (uncommitted on `feat/host-virtual-board`):
 - Two fixes pending in the diff: heap boundary symbols as real labels (needed for
   a static-lib link) and `pthread_join(NULL)`.
 
-Not in the tree: an ARM build outside SEGGER Embedded Studio, any Windows host
-layer, any Swift.
+Not in the tree: an ARM build outside SEGGER Embedded Studio, any Swift.
 
 Toolchain facts measured today (they drive the Swift design):
 
@@ -28,15 +28,15 @@ Toolchain facts measured today (they drive the Swift design):
 A test file compiled for Cortex-M4 at `-Osize` produced a 4.7 KB object with only
 `__aeabi_memclr`, `__stack_chk_guard/__stack_chk_fail` and `malloc`-class
 symbols undefined. So: **the Swift layer is built by the swift.org toolchain,
-invoked from CMake as a plain compiler step. Xcode and Visual Studio never need
-to "understand" Swift**; they build C and link objects.
+invoked from CMake as a plain compiler step. Xcode and VS Code never need to
+"understand" Swift**; they build C and link objects.
 
 ## 1. Goals and non-goals
 
 Goals
 
-1. One source tree, one build description (CMake), three IDEs: Xcode, Visual
-   Studio, VS Code. Both the host virtual board and the ARM firmware build from it.
+1. One source tree, one build description (CMake), two IDEs: Xcode and VS Code
+   (macOS/Linux). Both the host virtual board and the ARM firmware build from it.
 2. Application layer optionally in Swift (Embedded Swift), same `.swift` sources
    for the host virtual board and the microcontroller.
 3. Core stays C. Swift shares the *application-facing* API, not the kernel.
@@ -50,6 +50,7 @@ Non-goals
   Embedded Swift anyway.
 - Replacing the SEGGER `.emProject` files: they keep working; CMake is added
   beside them.
+- Visual Studio on Windows. Not now; see the note at the end of Phase 1.
 
 ## 2. Architecture
 
@@ -63,7 +64,7 @@ Non-goals
 ├──────────────────────────────────────────────────────────────┤
 │ kernel/posix  + modules + services        (C, unchanged)      │
 ├──────────────────────────────────────────────────────────────┤
-│ machine/{armv7m,stm32f4,...} │ machine/host/{posix,win32}     │
+│ machine/{armv7m,stm32f4,...} │ machine/host (ucontext)        │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -96,30 +97,26 @@ Design rules for the Swift layer
 Commit the pending host work (CMake, examples, template, the two fixes), open the
 PR for `feat/host-virtual-board`. Everything below branches from it.
 
-### Phase 1 — IDE matrix for the C host build (3–5 days)
-- **Xcode:** verify `-G Xcode` end to end (schemes for examples, breakpoints in
-  kernel code, console output). Add `cmake/presets`: `CMakePresets.json` with
-  `host-xcode`, `host-ninja`, `host-vs`, later `stm32f4`.
-- **VS Code:** ship `templates/exos-app/.vscode/` (settings, launch, tasks) — the
-  README already promises it.
-- **Visual Studio (Windows):**
-  - New `machine/host/win32/` using Win32 fibers (`ConvertThreadToFiber`,
-    `CreateFiber`, `SwitchToFiber`) behind the same `__machine_*` interface;
-    move the current ucontext code to `machine/host/posix/`.
-  - Compile with the **ClangCL toolset** (`-T ClangCL`), not MSVC: ExOS relies on
-    `__weak`, `__attribute__((section))`, `__asm__` labels and GNU statement
-    forms that MSVC does not have. ClangCL keeps those on COFF.
-  - Heap/stack/TLS boundary symbols: replace the `__asm__` label trick with a
-    per-platform C definition (`host_symbols_{posix,win32}.c`).
-  - Known MSVC-side friction to budget for: `EXOS_INITIALIZER` section ordering
-    on COFF (`.CRT$XCU`-style naming), `-fno-builtin` libc override vs the UCRT
-    headers (the two-tier include split already isolates this).
-- CI: GitHub Actions matrix macOS (clang, Xcode gen) / Linux (gcc) / Windows
-  (VS 2022 + ClangCL), each runs the examples and `test/posix` on the virtual
-  board.
+### Phase 1 — Xcode and VS Code for the C host build (1–2 days)
+- **Presets:** `CMakePresets.json` with `host-ninja`, `host-xcode` (and later
+  `stm32f4`), so both IDEs and the terminal configure the same way.
+- **Xcode:** verify `-G Xcode` end to end (schemes for the examples, breakpoints
+  in kernel code, console output in the Xcode pane). Fix whatever the generator
+  trips on (object-library splice, `-fms-extensions` in the generated flags).
+- **VS Code:** ship `templates/exos-app/.vscode/` (settings for CMake Tools,
+  launch for lldb/gdb, tasks) — the README already promises it. IntelliSense
+  from `compile_commands.json`.
+- **CI:** GitHub Actions on macOS (clang, Ninja and Xcode generators) and Linux
+  (gcc) building the examples and `test/posix` on the virtual board.
+
+Visual Studio on Windows, for later: it would need a `machine/host/win32`
+layer on Win32 fibers, the ClangCL toolset (ExOS uses `__weak`, section
+attributes and `__asm__` labels that MSVC lacks), per-platform heap/stack
+boundary symbols instead of the `__asm__` labels, and COFF section ordering for
+`EXOS_INITIALIZER`. Nothing in Phases 1–5 blocks adding it afterwards.
 
 ### Phase 2 — ARM firmware through CMake (3–4 days)
-Prerequisite for Swift on hardware; also what lets Xcode/VS build firmware.
+Prerequisite for Swift on hardware; also what lets Xcode/VS Code build firmware.
 - `cmake/toolchains/arm-none-eabi.cmake` (GCC-ARM, `-mcpu=cortex-m4
   -mfpu=fpv4-sp-d16`, float ABI decided in the spike below, `-fms-extensions
   -fno-builtin`, no standard libs).
@@ -131,8 +128,8 @@ Prerequisite for Swift on hardware; also what lets Xcode/VS build firmware.
   producing `.elf/.hex` and a `flash` target (J-Link / OpenOCD).
 - Acceptance: `test/posix` firmware built by CMake runs the same tests on the
   STM32F4 board as the SEGGER build. LPC1778 second.
-- In Xcode/VS the firmware is an external-build target; debugging on hardware
-  stays in SEGGER/J-Link, which is fine.
+- In Xcode/VS Code the firmware is an external-build target; debugging on
+  hardware stays in SEGGER/J-Link, which is fine.
 
 ### Phase 3 — Swift spike (2–3 days, decides go/no-go)
 Minimal `blink` in Swift, same source, two builds:
@@ -175,9 +172,6 @@ Questions the spike must answer, with numbers:
 
 - **Toolchain drift.** Embedded Swift is still "experimental feature"; pin the
   swift.org version in `CMakePresets.json` and CI.
-- **Windows is the expensive IDE.** Visual Studio needs a new machine layer and
-  COFF-specific section handling; VS Code and Xcode are nearly free. If time is
-  short, ship Phase 1 without Windows and keep VS Code as the cross-platform path.
 - **Hard-float mismatch** could force softfp on the whole firmware; decide in the
   spike before Phase 4 starts.
 - **Two build systems for ARM** (SEGGER + CMake) until SEGGER is retired; the
@@ -187,7 +181,7 @@ Questions the spike must answer, with numbers:
 ## 5. Order and dependencies
 
 ```
-P0 ─► P1 (Xcode/VS Code) ─► P1 (Windows, optional)
+P0 ─► P1 (Xcode/VS Code)
   └─► P2 (ARM via CMake) ─► P3 (Swift spike) ─► P4 (Exos module) ─► P5
 ```
 P1 and P2 are independent and can run in parallel. P3 needs P2 for the hardware
