@@ -67,8 +67,12 @@ static int ___rem_thread(unsigned long *args)
 	return 0;
 }
 
-static void _exit()
+// Entered when the thread entry returns (through the lr set up by
+// __machine_init_thread_stack, so the entry's return value arrives as the
+// first argument) or explicitly from exos_thread_exit().
+static void _exit(void *result)
 {
+	__running_thread->Result = result;
 	__kernel_do(___rem_thread, __running_thread);
 
 	__kernel_panic();	// NOTE: should not get here
@@ -117,6 +121,7 @@ void exos_thread_create(exos_thread_t *thread, int pri, void *stack, unsigned st
 		.TP = tp,
 		.MaskUsed = 0,
 		.MaskWait = 0,
+		.Result = nullptr,
 #ifdef THREAD_DEBUG
 		.Debugger = nullptr,
 #endif
@@ -150,14 +155,13 @@ void *exos_thread_join(exos_thread_t *thread)
 	}
 	ASSERT(thread->State == EXOS_THREAD_DETACHED, KERNEL_ERROR_KERNEL_PANIC);
 
-	// FIXME: implement (void *) return value
-	return NULL;
+	return thread->Result;
 }
 
 void exos_thread_exit(void *result)
 {
 	// TODO: re-implement recycler functionality
-	_exit();
+	_exit(result);
 	
 	// should never get here
 	__kernel_panic();

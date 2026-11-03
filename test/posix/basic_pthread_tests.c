@@ -45,9 +45,13 @@ int main()
 		}
 		pthread_join(t1, &r1);
 	}
-	// NOTE: exos_thread_join does not return the thread result yet (kernel
-	// FIXME), so r1/r2 are not checked here.
-	(void)r1; (void)r2;
+	// each thread returns (led * 1000 + 1), delivered through pthread_join
+	if (r1 != (void *)1 || r2 != (void *)1001)
+	{
+		printf("posix_tests: FAILED: thread results r1=%ld r2=%ld (expected 1 and 1001)\n",
+			(long)r1, (long)r2);
+		return 1;
+	}
 	printf("posix_tests: ok\n");
 	return 0;
 }
